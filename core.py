@@ -16,18 +16,21 @@ class Experiment:
 	def __init__(folder='path/to/Experiment'):
 		self.n = []; # neuron list
 		self.s = []; # stim list
+		self.load(folder) # can this be done here???????????????
 
 	def load():
 		for neuron in neurons:
-			n.append(neuron)
+			self.n.append(neuron)
 
 		for stim in stims:
-			s.append(stim)
+			self.s.append(stim)
 
 class Neuron:
-	def __init__():
+	def __init__(fname):
 
-	def load():
+	def load(fname):
 
 class Stim:
-	def __init__():
+	def __init__(fname):
+
+	def load(fname):
