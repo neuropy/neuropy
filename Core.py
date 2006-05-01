@@ -1,6 +1,6 @@
 '''Core neuropy functions and classes'''
 
-DEFAULTDATAPATH  = 'C:/data' # without trailing slash
+DEFAULTDATAPATH  = 'C:/data/' # the convention in neuropy will be that all 'path' var names have a trailing slash
 DEFAULTCATID   = '15'
 DEFAULTTRACKID = '7c'
 SLASH = '/'
@@ -31,8 +31,7 @@ def parseRecordingName(recordingName):
 class Data(object):
 	'''Data can have multiple Cats'''
 	def __init__(self, dataPath=DEFAULTDATAPATH):
-		self.dataPath = dataPath
-		self.path = self.dataPath + SLASH
+		self.path = dataPath
 	def load(self):
 		self.c = {} # store Cats in a dictionary
 
@@ -41,13 +40,14 @@ class Cat(Data): # subclass of Data
 	'''A Cat can have multiple Tracks'''
 	def __init__(self, catid=DEFAULTCATID, catName=None):
 		super(Cat, self).__init__() # run constructor from Cat's superclass
+		self.dataPath = self.path # rename
 		if catid is None: # if it was intentionally set to None during the call
-			catid = self.name2id(self.path,catName) # use the name instead to get the id
+			catid = self.name2id(catName) # use the name instead to get the id
 		if catName is None:
 			catName = self.id2name(self.path,catid)
 		self.id = catid
 		self.name = catName
-		self.path += self.name + SLASH
+		self.path += self.name + SLASH # update
 	def name2id(self, catName):
 		catid = catName.replace('Cat ','',1) # replace first instance of 'Cat ' with nothing
 		if not catid:
@@ -58,7 +58,7 @@ class Cat(Data): # subclass of Data
 			pass # it's alphanumeric, leave it as a string
 		return catid
 	def id2name(self, path, catid):
-		catName = [ dirname for dirname in os.listdir(path) if ( os.path.isdir(path+SLASH+dirname) and dirname.startswith('Cat '+str(catid)) ) ] # os.listdir() actually returns all dirs AND files
+		catName = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+SLASH+dirname) and dirname.startswith('Cat '+str(catid)) ] # os.listdir() actually returns all dirs AND files
 		if len(catName) != 1:
 			raise Exception, 'Ambiguous or non-existent Cat id: '+str(catid)
 		else:
@@ -66,6 +66,7 @@ class Cat(Data): # subclass of Data
 		return catName
 	def load(self):
 		self.t = {} # store Tracks in a dictionary
+		trackNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+SLASH+dirname) and dirname.startswith('Track') ] # os.listdir() actually returns all dirs AND files
 		trackNames = [dirname for dirname in os.dirlisting(self.path) if dirname.startswith('Track')]
 		for trackName in trackNames:
 			track = Track(trackid=None, trackName=trackName) # make an instance using just the trackname (let it figure out the trackid)
