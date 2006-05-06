@@ -1,17 +1,35 @@
-'''Core neuropy functions and classes'''
+'''Core neuropy functions and classes
+
+neuropy object hierarchy:
+                                level:
+
+                Data              0
+                  |
+                 Cat              1
+                  |
+                Track             2
+                  |
+              Recording           3
+             /         \
+       Experiment      Rip        4
+                        |
+                      Neuron      5
+
+'''
 
 DEFAULTDATAPATH = 'C:/data/' # the convention in neuropy will be that all 'path' var names have a trailing slash
 DEFAULTCATID    = 15
 DEFAULTTRACKID  = '7c'
 DEFAULTRIPNAME  = 'liberal spikes' # a rip is the name of a spike sorting extraction; rips with the same name should have been done with the same templates, and possibly the same ripping thresholds
 SLASH = '/' # use forward slashes instead of having to use double backslashes
+TAB = '    ' # 4 spaces
 
-import os, types, pprint, numpy, struct
+import os, types, pprint, numpy, struct, re, StringIO, sys
 
 pp = pprint.pprint
 
+# generate sweeptables on the fly in Experiment.load()
 # need to delete the extra lines in all the textheaders, and uncomment some lines too!
-# need to renumber .din filenames to have 0-based ids
 # Rips should really have ids to make them easier to reference to: r[83].rip[0] instead of r[83].rip['conservative spikes'] - this means adding id prefixes to rip folder names (or maybe suffixes: 'conservative spikes.0.rip', 'liberal spikes.1.rip', etc...). Prefixes would be better cuz they'd force sorting by id in explorer (which uses alphabetical order) - ids should be 0-based of course
 # worry about conversion of ids to strings: some may be only 1 digit and may have a leading zero!
 # maybe make two load() f'ns for Experiment and Neuron: one from files, and a future one from a database
@@ -25,7 +43,8 @@ def str2(data):
 			s = '0'+s # add a leading zero for single digits
 """
 
-def txtdin2binarydin(fin,fout):
+def txtdin2binarydin(fin, fout):
+	'''Converts a csv text .din file to a uint64 binary .din file'''
 	fi = file(fin, 'r') # open the din file for reading in text mode
 	fo = file(fout,'wb') # for writing in binary mode
 	for line in fi:
@@ -35,21 +54,28 @@ def txtdin2binarydin(fin,fout):
 	fi.close()
 	fo.close()
 	print 'Converted ascii din: ', fin, ' to binary din: ', fout
-	# Code placed in Experiments class to convert all ascii .din to binary of the same filename:
-	"""
-		os.rename(self.path + self.name + '.din', self.path + self.name + '.din.txt')
-		fin = self.path + self.name + '.din.txt'
-		fout = self.path + self.name + '.din'
-		txtdin2binarydin(fin,fout)
-		os.remove(self.path + self.name + '.din.txt')
-	"""
 
+def treeappend(string, obj):
+	'''Print string to tree hierarchy and to screen'''
+	obj.writetree(string+'\n')
+	print string
 
 class Data(object): # use 'new-style' classes
 	'''Data can have multiple Cats'''
 	def __init__(self, dataPath=DEFAULTDATAPATH):
+		self.level = 0 # level in the hierarchy
+		self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+		self.name = 'Data'
 		self.path = dataPath
+	def tree(self):
+		'''Print tree hierarchy'''
+		print self.treebuf.getvalue(),
+	def writetree(self,string):
+		'''Write to self's tree buffer and to parent's too'''
+		self.treebuf.write(string)
+		# Data has no parent to write to
 	def load(self):
+		treeappend(string=self.name + '/', obj=self) # print string to tree hierarchy and screen
 		self.c = {} # store Cats in a dictionary
 		catNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.startswith('Cat ') ] # os.listdir() returns all dirs AND files
 		for catName in catNames:
@@ -60,6 +86,8 @@ class Data(object): # use 'new-style' classes
 class Cat(object):
 	'''A Cat can have multiple Tracks'''
 	def __init__(self, id=DEFAULTCATID, name=None, parent=Data):
+		self.level = 1 # level in the hierarchy
+		self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
 		try:
 			self.d = parent() # init parent Data object
 		except TypeError: # parent is an instance, not a class
@@ -73,6 +101,13 @@ class Cat(object):
 		self.id = id
 		self.name = name
 		self.path = self.d.path + self.name + SLASH
+	def tree(self):
+		'''Print tree hierarchy'''
+		print self.treebuf.getvalue(),
+	def writetree(self,string):
+		'''Write to self's tree buffer and to parent's too'''
+		self.treebuf.write(string)
+		self.d.writetree(string)
 	def id2name(self, path, id):
 		name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith('Cat '+str(id)) ]
 		if len(name) != 1:
@@ -81,7 +116,7 @@ class Cat(object):
 			name = name[0] # pull the string out of the list
 		return name
 	def name2id(self, name):
-		id = name.replace('Cat ','',1) # replace first occurrence of 'Cat ' with nothing
+		id = name.replace('Cat ','',1) # replace first occurrence of 'Cat ' with nothing, keep the rest
 		if not id:
 			raise NameError, 'Badly formatted Cat name: '+name
 		try:
@@ -90,6 +125,7 @@ class Cat(object):
 			pass # it's alphanumeric, leave it as a string
 		return id
 	def load(self):
+		treeappend(string=self.name + '/', obj=self) # print to tree hierarchy and screen
 		self.t = {} # store Tracks in a dictionary
 		trackNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.startswith('Track ') ]
 		for trackName in trackNames:
@@ -100,6 +136,7 @@ class Cat(object):
 class Track(object):
 	'''A Track can have multiple Recordings'''
 	def __init__(self, id=DEFAULTTRACKID, name=None, parent=Cat):
+		self.level = 2 # level in the hierarchy
 		try:
 			self.c = parent() # init parent Cat object
 		except TypeError: # parent is an instance, not a class
@@ -110,9 +147,17 @@ class Track(object):
 			id = self.name2id(name) # use the name to get the id
 		else:
 			raise ValueError, 'track id and name can\'t both be None'
+		self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
 		self.id = id
 		self.name = name
 		self.path = self.c.path + self.name + SLASH
+	def tree(self):
+		'''Print tree hierarchy'''
+		print self.treebuf.getvalue(),
+	def writetree(self,string):
+		'''Write to self's tree buffer and to parent's too'''
+		self.treebuf.write(string)
+		self.c.writetree(string)
 	def id2name(self, path, id):
 		name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith('Track '+str(id)) ]
 		if len(name) != 1:
@@ -121,7 +166,7 @@ class Track(object):
 			name = name[0] # pull the string out of the list
 		return name
 	def name2id(self, name):
-		id = name.replace('Track ','',1) # replace first occurrence of 'Track ' with nothing
+		id = name.replace('Track ','',1) # replace first occurrence of 'Track ' with nothing, keep the rest
 		if not id:
 			raise NameError, 'Badly formatted Track name: '+name
 		try:
@@ -130,9 +175,9 @@ class Track(object):
 			pass # it's alphanumeric, leave it as a string
 		return id
 	def load(self):
+		treeappend(string=TAB + self.name + '/', obj=self) # print to tree hierarchy and screen
 		self.r = {} # store Recordings in a dictionary
 		recordingNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname[0:2].isdigit() and dirname.count(' - ') == 1 ] # 1st 2 chars in dirname must be digits, must contain exactly 1 occurrence of ' - '
-		pp(recordingNames)
 		for recordingName in recordingNames:
 			recording = Recording(id=None, name=recordingName, parent=self) # make an instance using just the recording name (let it figure out the recording id)
 			recording.load() # load the Recording
@@ -144,6 +189,8 @@ class Recording(object):
 	pauses in between Experiments within that Recording. A Recording can have multiple Experiments,
 	and multiple spike extractions, called Rips'''
 	def __init__(self, id=None, name=None, parent=Track):
+		self.level = 3 # level in the hierarchy
+		self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
 		try:
 			self.t = parent() # init parent Track object
 		except TypeError: # parent is an instance, not a class
@@ -157,6 +204,13 @@ class Recording(object):
 		self.id = id
 		self.name = name
 		self.path = self.t.path + self.name + SLASH
+	def tree(self):
+		'''Print tree hierarchy'''
+		print self.treebuf.getvalue(),
+	def writetree(self,string):
+		'''Write to self's tree buffer and to parent's too'''
+		self.treebuf.write(string)
+		self.t.writetree(string)
 	def id2name(self, path, id):
 		name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith(str(id)+' - ') ]
 		if len(name) != 1:
@@ -175,6 +229,7 @@ class Recording(object):
 			pass # it's alphanumeric, leave it as a string
 		return id
 	def load(self):
+		treeappend(string=2*TAB + self.name + '/', obj=self) # print to tree hierarchy and screen
 		self.e = {} # store Experiments in a dictionary
 		experimentNames = [ fname[0:fname.rfind('.din')] for fname in os.listdir(self.path) if os.path.isfile(self.path+fname) and fname.endswith('.din') ] # returns din filenames without their .din extension
 		for (experimentid, experimentName) in enumerate(experimentNames): # experimentids will be according to alphabetical order of experimentNames
@@ -198,6 +253,8 @@ class Experiment(object):
 	It contains information about the stimulus during that session, including
 	the DIN values and the text header'''
 	def __init__(self, id=None, name=None, parent=Recording): # Experiment IDs are 1-based in the .din filenames, at least for now. They should be renamed to 0-based. Here, they're treated as 0-based
+		self.level = 4 # level in the hierarchy
+		self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
 		try:
 			self.r = parent() # init parent Recording object
 		except TypeError: # parent is an instance, not a class
@@ -207,7 +264,14 @@ class Experiment(object):
 		self.id = id # not really used by the Experiment class, just there for user's info
 		self.name = name
 		self.path = self.r.path
-	# doesn't need a id2name or name2id method, neither can really be derived from the other in an easy, the id is just alphabetical order
+	def tree(self):
+		'''Print tree hierarchy'''
+		print self.treebuf.getvalue(),
+	def writetree(self,string):
+		'''Write to self's tree buffer and to parent's too'''
+		self.treebuf.write(string)
+		self.r.writetree(string)
+	# doesn't need a id2name or name2id method, neither can really be derived from the other in an easy way (although could use re), the id is just alphabetical order, at least for now
 	def load(self):
 		f = file(self.path + self.name + '.din', 'rb') # open the din file for reading in binary mode
 		self.din = numpy.fromfile(f, dtype=numpy.uint64).reshape(-1,2) # reshape to nrows x 2 columns
@@ -216,9 +280,14 @@ class Experiment(object):
 		self.textheader = f.read() # read it all in
 		f.close()
 		# then, for each line in the textheader, exec() it so you get self.varname saved directly within in the Experiment object - watch out, will try and make Movie() objects and Bar() objects, etc?
+		# also need to generate sweeptable here
+		treeappend(string=3*TAB + self.name, obj=self) # print to tree hierarchy and screen
+
 
 class Rip(object):
 	def __init__(self, name=DEFAULTRIPNAME, parent=Recording):
+		self.level = 4 # level in the hierarchy
+		self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
 		try:
 			self.r = parent() # init parent Recording object
 		except TypeError: # parent is an instance, not a class
@@ -228,7 +297,15 @@ class Rip(object):
 		# rips don't have ids, at least for now. Just names
 		self.name = name
 		self.path = self.r.path + self.name + '.rip' + SLASH # have to add .rip extension to rip name to get its actual folder name
+	def tree(self):
+		'''Print tree hierarchy'''
+		print self.treebuf.getvalue(),
+	def writetree(self,string):
+		'''Write to self's tree buffer and to parent's too'''
+		self.treebuf.write(string)
+		self.r.writetree(string)
 	def load(self):
+		#treeappend(string=3*TAB + self.name, obj=self) # print to tree hierarchy and screen
 		self.n = {} # store Neurons in a dictionary
 		neuronNames = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(self.path) if os.path.isfile(self.path+fname) and fname.endswith('.spk') ] # returns spike filenames without their .spk extension
 		for neuronName in neuronNames:
@@ -244,6 +321,8 @@ class Neuron(object):
 	same spike template was used for all of those Recordings, and that therefore
 	the neuron ids are the same'''
 	def __init__(self, id=None, name=None, parent=Rip): # neuron names don't include the '.spk' ending, although neuron filenames do
+		self.level = 5 # level in the hierarchy
+		self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
 		try:
 			self.rip = parent() # init parent Rip object
 		except TypeError: # parent is an instance, not a class
@@ -257,6 +336,13 @@ class Neuron(object):
 		self.id = id
 		self.name = name
 		self.path = self.rip.path
+	def tree(self):
+		'''Print tree hierarchy'''
+		print self.treebuf.getvalue(),
+	def writetree(self,string):
+		'''Write to self's tree buffer and to parent's too'''
+		self.treebuf.write(string)
+		self.rip.writetree(string)
 	def id2name(self, path, id):
 		name = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(path) if os.path.isfile(path+fname) and \
 		             ( fname.find('_t'+str(id)+'.spk')!=-1 or fname.find('_t0'+str(id)+'.spk')!=-1 or fname.find('_t00'+str(id)+'.spk')!=-1 ) ] # have to deal with leading zero ids, go up to 3 digit ids, should really use a re to do this properly...
@@ -279,12 +365,4 @@ class Neuron(object):
 		f = file(self.path + self.name + '.spk', 'rb') # open the spike file for reading in binary mode
 		self.spikes = numpy.fromfile(f, numpy.uint64) # read it all in
 		f.close()
-"""
-class Stim(Experiment):
-	'''A Stim contains the visual stimulus information for a single Experiment. A Stim corresponds
-	to a single contiguous VisionEgg stimulus session'''
-	def __init__(self,fname):
-		pass
-	def load(self,fname):
-		pass
-"""
+		#treeappend(string=4*TAB + self.name, obj=self) # print to tree hierarchy and screen
