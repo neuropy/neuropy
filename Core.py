@@ -1,7 +1,6 @@
 '''Core neuropy functions and classes
 
-neuropy object hierarchy:
-                                level:
+          object hierarchy:     level:
 
                 Data              0
                   |
@@ -10,11 +9,10 @@ neuropy object hierarchy:
                 Track             2
                   |
               Recording           3
-             /         \
+             /         \\
        Experiment      Rip        4
-                        |
-                      Neuron      5
-
+            |           |
+          Movie       Neuron      5
 '''
 
 DEFAULTDATAPATH = 'C:/data/' # the convention in neuropy will be that all 'path' var names have a trailing slash
@@ -24,7 +22,10 @@ DEFAULTRIPNAME  = 'liberal spikes' # a rip is the name of a spike sorting extrac
 SLASH = '/' # use forward slashes instead of having to use double backslashes
 TAB = '    ' # 4 spaces
 
-import os, types, pprint, numpy, struct, re, StringIO, sys
+DEFAULTMOVIEPATH = 'C:/pub/Movies/'
+DEFAULTMOVIENAME = 'mseq32.m'
+
+import os, types, pprint, numpy, numarray, struct, re, StringIO, sys
 
 pp = pprint.pprint
 
@@ -55,10 +56,7 @@ def txtdin2binarydin(fin, fout):
 	fo.close()
 	print 'Converted ascii din: ', fin, ' to binary din: ', fout
 
-def treeappend(string, obj):
-	'''Print string to tree hierarchy and to screen'''
-	obj.writetree(string+'\n')
-	print string
+###########################
 
 class Data(object): # use 'new-style' classes
 	'''Data can have multiple Cats'''
@@ -75,7 +73,8 @@ class Data(object): # use 'new-style' classes
 		self.treebuf.write(string)
 		# Data has no parent to write to
 	def load(self):
-		treeappend(string=self.name + '/', obj=self) # print string to tree hierarchy and screen
+		treestr = self.level*TAB + self.name + '/'
+		self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
 		self.c = {} # store Cats in a dictionary
 		catNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.startswith('Cat ') ] # os.listdir() returns all dirs AND files
 		for catName in catNames:
@@ -125,7 +124,8 @@ class Cat(object):
 			pass # it's alphanumeric, leave it as a string
 		return id
 	def load(self):
-		treeappend(string=self.name + '/', obj=self) # print to tree hierarchy and screen
+		treestr = self.level*TAB + self.name + '/'
+		self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
 		self.t = {} # store Tracks in a dictionary
 		trackNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.startswith('Track ') ]
 		for trackName in trackNames:
@@ -175,7 +175,8 @@ class Track(object):
 			pass # it's alphanumeric, leave it as a string
 		return id
 	def load(self):
-		treeappend(string=TAB + self.name + '/', obj=self) # print to tree hierarchy and screen
+		treestr = self.level*TAB + self.name + '/'
+		self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
 		self.r = {} # store Recordings in a dictionary
 		recordingNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname[0:2].isdigit() and dirname.count(' - ') == 1 ] # 1st 2 chars in dirname must be digits, must contain exactly 1 occurrence of ' - '
 		for recordingName in recordingNames:
@@ -229,7 +230,8 @@ class Recording(object):
 			pass # it's alphanumeric, leave it as a string
 		return id
 	def load(self):
-		treeappend(string=2*TAB + self.name + '/', obj=self) # print to tree hierarchy and screen
+		treestr = self.level*TAB + self.name + '/'
+		self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
 		self.e = {} # store Experiments in a dictionary
 		experimentNames = [ fname[0:fname.rfind('.din')] for fname in os.listdir(self.path) if os.path.isfile(self.path+fname) and fname.endswith('.din') ] # returns din filenames without their .din extension
 		for (experimentid, experimentName) in enumerate(experimentNames): # experimentids will be according to alphabetical order of experimentNames
@@ -244,7 +246,7 @@ class Recording(object):
 			self.rip[rip.name] = rip # save it
 		try: # make the Neurons from the default rip (if it exists in the Recording path) available in the Recording, so you can access them via r.n[nid] instead of having to do r.rip[name].n[nid]. Make them just another pointer to the data in r.rip[DEFAULTRIPNAME].n
 			self.n = self.rip[DEFAULTRIPNAME].n
-			self.defaultrippath = self.path + DEFAULTRIPNAME + SLASH
+			self.defaultRipPath = self.path + DEFAULTRIPNAME + SLASH
 		except:
 			pass
 
@@ -281,8 +283,20 @@ class Experiment(object):
 		f.close()
 		# then, for each line in the textheader, exec() it so you get self.varname saved directly within in the Experiment object - watch out, will try and make Movie() objects and Bar() objects, etc?
 		# also need to generate sweeptable here
-		treeappend(string=3*TAB + self.name, obj=self) # print to tree hierarchy and screen
-
+		treestr = self.level*TAB + self.name + '/'
+		self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
+		self.m = [] # Experiments can potentially have multiple movies
+		for m in [mseq32, mseq16]: # check if this Experiment uses specific movies
+			if self.textheader.count(m.name): # search the textheader for the movie's filename
+				try:
+					m.data # see if this movie's already been loaded
+				except AttributeError: # load this movie
+					m.load()
+				self.m.append(m) # add the movie to this Experiment
+				treestr = m.level*TAB + m.name
+				self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
+		if len(self.m) == 1:
+			self.m = self.m[0] # get rid of the list if there's only a single movie in this Experiment (usual case)
 
 class Rip(object):
 	def __init__(self, name=DEFAULTRIPNAME, parent=Recording):
@@ -305,7 +319,8 @@ class Rip(object):
 		self.treebuf.write(string)
 		self.r.writetree(string)
 	def load(self):
-		#treeappend(string=3*TAB + self.name, obj=self) # print to tree hierarchy and screen
+		#treestr = self.level*TAB + self.name + '/'
+		#self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
 		self.n = {} # store Neurons in a dictionary
 		neuronNames = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(self.path) if os.path.isfile(self.path+fname) and fname.endswith('.spk') ] # returns spike filenames without their .spk extension
 		for neuronName in neuronNames:
@@ -363,6 +378,54 @@ class Neuron(object):
 		return id
 	def load(self): # or loadspikes()?
 		f = file(self.path + self.name + '.spk', 'rb') # open the spike file for reading in binary mode
-		self.spikes = numpy.fromfile(f, numpy.uint64) # read it all in
+		self.spikes = numpy.fromfile(f, dtype=numpy.uint64) # read it all in
 		f.close()
-		#treeappend(string=4*TAB + self.name, obj=self) # print to tree hierarchy and screen
+		#treestr = self.level*TAB + self.name + '/'
+		#self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
+
+class Movie(object): # careful with potential name conflict with Movies() in Dimstim
+	def __init__(self, name=DEFAULTMOVIENAME, path=DEFAULTMOVIEPATH, parent=None):
+		self.level = 5 # level in the hierarchy
+		try:
+			self.e = parent() # init parent Experiment object
+		except TypeError: # parent is an instance, not a class
+			self.e = parent # save parent Experiment object
+		self.name = name
+		self.path = path
+	def load(self):
+		# Load movie data
+		f = file(self.path + self.name, 'rb') # open the movie file for reading in binary format
+		headerstring = f.read(5)
+		if headerstring == 'movie': # a header has been added to the start of the file
+			(self.ncellswide,) = struct.unpack('H', f.read(2)) # 'H'== unsigned short int == 2 bytes on this PC
+			(self.ncellshigh,) = struct.unpack('H', f.read(2))
+			(self.nframes,) = struct.unpack('H', f.read(2))
+			if self.nframes == 0: # this was used in Cat 15 mseq movies to indicate 2**16 frames
+				self.nframes = 2**16
+			offset = 11 # header is this long
+		else: # there's no header at the start of the file, set the file pointer back to the beginning and use these hard coded values:
+			f.seek(0)
+			self.ncellswide = self.ncellshigh = 64
+			self.nframes = 6000
+			offset = 0 # header is this long
+		# read in all of the frames
+		self.data = numpy.fromfile(f, numpy.uint8, count=self.nframes*self.ncellshigh*self.ncellswide).reshape(self.nframes,self.ncellshigh,self.ncellswide) # read it all in
+		#self.data = numarray.fromfile(f, numpy.UInt8, (self.nframes,self.ncellshigh,self.ncellswide)) # read it all in
+		leftover = f.read() # check if there are any leftover bytes in the file
+		if leftover != '':
+			pp(leftover)
+			print self.nframes,self.ncellshigh,self.ncellswide
+			raise RuntimeError('There are unread bytes in movie file \'%s\'. Width, height, or nframes is incorrect in the movie file header.' %self.name)
+		#self.data = self.data[::,::-1,::] # flip the movie frames vertically for OpenGL's bottom left origin
+		f.close() # Close the movie file
+
+################
+
+# init some typical movies, then just point to them within the appropriate Experiments
+mseq32 = Movie(name='mseq32.m')
+#mseq32.load()
+mseq16 = Movie(name='mseq16.m')
+#mseq16.load()
+# shouldn't use sparse bar movies anymore, can access VisionEgg directly now, get the framebuffers to directly do STA
+#sparsebars = Movie(path='C:/data/Cat 15/Track 7c/72 - track 7c sparseexps/', name='72 - track 7c sparseexps.sparsebars.movie');
+#sparsebars.load()
