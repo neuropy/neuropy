@@ -28,6 +28,7 @@ DEFAULTMOVIENAME = 'mseq32.m'
 import os, types, pprint, numpy, numarray, struct, re, StringIO, sys
 
 pp = pprint.pprint
+INF = numpy.inf
 
 # generate sweeptables on the fly in Experiment.load()
 # need to delete the extra lines in all the textheaders, and uncomment some lines too!
@@ -45,13 +46,13 @@ def str2(data):
 """
 
 def txtdin2binarydin(fin, fout):
-	'''Converts a csv text .din file to a uint64 binary .din file'''
+	'''Converts a csv text .din file to a int64 binary .din file'''
 	fi = file(fin, 'r') # open the din file for reading in text mode
 	fo = file(fout,'wb') # for writing in binary mode
 	for line in fi:
 		line = line.split(',')
 		#print line[0], line[1]
-		fo.write( struct.pack('@QQ',int(line[0]),int(line[1])) ) # read both values in as a C long longs, using the system's native ('@') byte order
+		fo.write( struct.pack('@qq',int(line[0]),int(line[1])) ) # read both values in as a C long longs, using the system's native ('@') byte order
 	fi.close()
 	fo.close()
 	print 'Converted ascii din: ', fin, ' to binary din: ', fout
@@ -253,7 +254,7 @@ class Recording(object):
 class Experiment(object):
 	'''An Experiment corresponds to a single contiguous VisionEgg stimulus session.
 	It contains information about the stimulus during that session, including
-	the DIN values and the text header'''
+	the DIN values, the text header, and any Movies that were involved'''
 	def __init__(self, id=None, name=None, parent=Recording): # Experiment IDs are 1-based in the .din filenames, at least for now. They should be renamed to 0-based. Here, they're treated as 0-based
 		self.level = 4 # level in the hierarchy
 		self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
@@ -276,7 +277,7 @@ class Experiment(object):
 	# doesn't need a id2name or name2id method, neither can really be derived from the other in an easy way (although could use re), the id is just alphabetical order, at least for now
 	def load(self):
 		f = file(self.path + self.name + '.din', 'rb') # open the din file for reading in binary mode
-		self.din = numpy.fromfile(f, dtype=numpy.uint64).reshape(-1,2) # reshape to nrows x 2 columns
+		self.din = numpy.fromfile(f, dtype=numpy.int64).reshape(-1,2) # reshape to nrows x 2 columns
 		f.close()
 		f = file(self.path + self.name + '.textheader', 'r') # open the textheader file for reading
 		self.textheader = f.read() # read it all in
@@ -289,16 +290,20 @@ class Experiment(object):
 		for m in [mseq32, mseq16]: # check if this Experiment uses specific movies
 			if self.textheader.count(m.name): # search the textheader for the movie's filename
 				try:
-					m.data # see if this movie's already been loaded
+					m.data # see if this movie has already been loaded
 				except AttributeError: # load this movie
 					m.load()
-				self.m.append(m) # add the movie to this Experiment
+				self.m.append(Movie(parent=self)) # add a new movie to this Experiment
+				self.m[-1].data = m.data # point data to already loaded data in specific movie
 				treestr = m.level*TAB + m.name
 				self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
 		if len(self.m) == 1:
 			self.m = self.m[0] # get rid of the list if there's only a single movie in this Experiment (usual case)
 
 class Rip(object):
+	'''A Rip is a single spike extraction. Generally, Rips of the same name within the same Track
+	were generated with the same spike template, though of course Rips in different Tracks must
+	be generated from different templates, even if the Rips have the same name'''
 	def __init__(self, name=DEFAULTRIPNAME, parent=Recording):
 		self.level = 4 # level in the hierarchy
 		self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
@@ -378,12 +383,21 @@ class Neuron(object):
 		return id
 	def load(self): # or loadspikes()?
 		f = file(self.path + self.name + '.spk', 'rb') # open the spike file for reading in binary mode
-		self.spikes = numpy.fromfile(f, dtype=numpy.uint64) # read it all in
+		self.spikes = numpy.fromfile(f, dtype=numpy.int64) # read in all spike times in us
 		f.close()
 		#treestr = self.level*TAB + self.name + '/'
 		#self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
+	def cut(self, tstart=0, tend=INF): # maybe use a masked array instead
+		'''Returns all of the Neuron's spike times that fall within tstart and tend'''
+		return self.spikes[ (self.spikes >= tstart) & (self.spikes <= tend) ]
+	def cutrel(self, tstart=0, tend=INF):
+		'''Cuts Neuron spike times and returns them relative to tstart'''
+		if tstart.__class__ is not types.IntType:
+			raise Warning, 'Converting tstart to int'
+		return self.cut(tstart, tend) - int(tstart)
 
 class Movie(object): # careful with potential name conflict with Movies() in Dimstim
+	'''A Movie stimulus object'''
 	def __init__(self, name=DEFAULTMOVIENAME, path=DEFAULTMOVIEPATH, parent=None):
 		self.level = 5 # level in the hierarchy
 		try:
@@ -417,14 +431,14 @@ class Movie(object): # careful with potential name conflict with Movies() in Dim
 			print self.nframes,self.ncellshigh,self.ncellswide
 			raise RuntimeError('There are unread bytes in movie file \'%s\'. Width, height, or nframes is incorrect in the movie file header.' %self.name)
 		#self.data = self.data[::,::-1,::] # flip the movie frames vertically for OpenGL's bottom left origin
-		f.close() # Close the movie file
+		f.close() # close the movie file
 
 ################
 
 # init some typical movies, then just point to them within the appropriate Experiments
-mseq32 = Movie(name='mseq32.m')
+mseq32 = Movie(name='mseq32.m', parent=None)
 #mseq32.load()
-mseq16 = Movie(name='mseq16.m')
+mseq16 = Movie(name='mseq16.m', parent=None)
 #mseq16.load()
 # shouldn't use sparse bar movies anymore, can access VisionEgg directly now, get the framebuffers to directly do STA
 #sparsebars = Movie(path='C:/data/Cat 15/Track 7c/72 - track 7c sparseexps/', name='72 - track 7c sparseexps.sparsebars.movie');
