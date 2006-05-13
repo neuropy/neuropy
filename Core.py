@@ -25,7 +25,7 @@ TAB = '    ' # 4 spaces
 DEFAULTMOVIEPATH = 'C:/pub/Movies/'
 DEFAULTMOVIENAME = 'mseq32.m'
 
-import os, types, pprint, numpy, numarray, struct, re, StringIO, sys
+import os, types, pprint, numpy, numarray, struct, re, StringIO, sys, warnings
 
 pp = pprint.pprint
 INF = numpy.inf
@@ -387,14 +387,27 @@ class Neuron(object):
 		f.close()
 		#treestr = self.level*TAB + self.name + '/'
 		#self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-	def cut(self, tstart=0, tend=INF): # maybe use a masked array instead
+	def cut(self, tstart=None, tend=None): # maybe use a masked array instead
 		'''Returns all of the Neuron's spike times that fall within tstart and tend'''
+		#return self.spikes[ numpy.greater_equal(self.spikes, tstart) & numpy.less_equal(self.spikes, tend) ]
+		if tstart is None:
+			tstart = self.spikes[0]
+		if tend is None:
+			tend = self.spikes[-1]
 		return self.spikes[ (self.spikes >= tstart) & (self.spikes <= tend) ]
-	def cutrel(self, tstart=0, tend=INF):
+	def cutrel(self, tstart=None, tend=None):
 		'''Cuts Neuron spike times and returns them relative to tstart'''
-		if tstart.__class__ is not types.IntType:
-			raise Warning, 'Converting tstart to int'
+		if tstart is None:
+			tstart = self.spikes[0]
+		if tend is None:
+			tend = self.spikes[-1]
+		if tstart.__class__ is types.FloatType:
+			warnings.warn('Converting tstart to int: '+str(int(tstart)))
 		return self.cut(tstart, tend) - int(tstart)
+	def rate(self, method='bin'):
+		pass
+	def raster(self):
+		pass
 
 class Movie(object): # careful with potential name conflict with Movies() in Dimstim
 	'''A Movie stimulus object'''
@@ -435,11 +448,13 @@ class Movie(object): # careful with potential name conflict with Movies() in Dim
 
 ################
 
-# init some typical movies, then just point to them within the appropriate Experiments
+# init some typical movies (but don't load 'em til needed), then just point to them within the appropriate Experiments
 mseq32 = Movie(name='mseq32.m', parent=None)
-#mseq32.load()
 mseq16 = Movie(name='mseq16.m', parent=None)
-#mseq16.load()
 # shouldn't use sparse bar movies anymore, can access VisionEgg directly now, get the framebuffers to directly do STA
 #sparsebars = Movie(path='C:/data/Cat 15/Track 7c/72 - track 7c sparseexps/', name='72 - track 7c sparseexps.sparsebars.movie');
-#sparsebars.load()
+
+# init and load a Recording to play around with
+print 'Initing and loading Recording(92):'
+r=Recording(92)
+r.load()
