@@ -1,4 +1,4 @@
-# Neuron max channels for Cat 15 Track 7c liberal spikes.rip
+# Neuron max channels for 2a polytrode Cat 15 Track 7c liberal spikes.rip
 #             {neuronid: chanid}
 '''
 neuron2chan = {0: 21,
@@ -29,7 +29,7 @@ neuron2chan = {0: 21,
               27: 6}
 '''
 
-# Neuron max channels for '2005-07-13, 29 - track 6 tracking, 70uV bipolar trig.tem'
+# Neuron max channels for 2a polytrode Cat 15 Track 6 '2005-07-13, 29 - track 6 tracking, 70uV bipolar trig.tem'
 #             {neuronid: chanid}
 '''
 neuron2chan = {0: 32,
@@ -43,9 +43,9 @@ neuron2chan = {0: 32,
                8: 16}
 '''
 
-# Neuron max channels for '2005-08-02, 17 - track 5 tracking, 60uV bipolar trig.tem'
+# Neuron max channels for 2a polytrode Cat 15 Track 5 '2005-08-02, 17 - track 5 tracking, 60uV bipolar trig.tem'
 #             {neuronid: chanid}
-#'''
+'''
 neuron2chan = {0: 22,
                1: 22,
                2: 27,
@@ -55,15 +55,155 @@ neuron2chan = {0: 22,
                8: 21,
                9: 25,
               10: 6}
-#'''
+'''
 
+# Neuron max channels for 1b polytrode Cat 11 Track 1 '2004-05-07, 11 - +-49uV trig, whole file random sample.bak.tem; 2006-05-14 rip, some templates deleted by MAS.tem'
+#             {neuronid: chanid}
+'''
+neuron2chan = {0: 46,
+               1: 11,
+               2: 14,
+               3: 42,
+               4: 53,
+               5: 17,
+               6: 51,
+               7: 31,
+               8: 15,
+               9: 24,
+              10: 35,
+              11: 19,
+              12: 22,
+              13: 22,
+              14: 2,
+              15: 29,
+              16: 13,
+              17: 36,
+              18: 27,
+              19: 41,
+              20: 5,
+              21: 31,
+              22: 27,
+              23: 45,
+              24: 24,
+              25: 19,
+              26: 50,
+              27: 49,
+              28: 0,
+              29: 10,
+              30: 50,
+              31: 25,
+              32: 4,
+              33: 25,
+              34: 39,
+              35: 0,
+              36: 10,
+              37: 47,
+              38: 17}
+'''
+
+
+# Neuron max channels for 2b polytrode Cat 13 Track 8 '2004-04-28 - 07 - +-55uV trig, 0-10 mins random sample.tem; 2006-05-15 rip, some templates deleted by MAS.tem'
+#             {neuronid: chanid}
+#'''
+neuron2chan = {0: 29,
+               1: 28,
+               2: 23,
+               3: 22,
+               4: 3,
+               5: 0,
+               6: 49,
+               7: 5,
+               8: 53,
+               9: 52,
+              10: 24,
+              11: 13,
+              12: 24,
+              13: 12,
+              14: 13,
+              15: 12,
+              16: 6,
+              17: 23,
+              18: 25,
+              19: 53,
+              20: 30,
+              21: 14,
+              22: 15,
+              23: 17,
+              24: 11,
+              25: 25,
+              26: 41,
+              27: 10,
+              28: 27,
+              29: 11}
+#'''
 
 
 # maybe should make a Polytrode class with the different designs as subclasses?
 
-def chan2pos(polytrode='2a', chanid=None):
-	if polytrode == '2a':
-		SiteLoc = {} # init a dict
+def chan2pos(polytrode=None, chanid=None):
+	SiteLoc = {} # init a dict
+	if polytrode == '1a':
+		'''Need to fill it in'''
+		pass
+	elif polytrode == '1b':
+		SiteLoc[0] = (-43, 900)
+		SiteLoc[1] = (-43, 850)
+		SiteLoc[2] = (-43, 800)
+		SiteLoc[3] = (-43, 750)
+		SiteLoc[4] = (-43, 700)
+		SiteLoc[5] = (-43, 650)
+		SiteLoc[6] = (-43, 600)
+		SiteLoc[7] = (-43, 550)
+		SiteLoc[8] = (-43, 500)
+		SiteLoc[9] = (-43, 450)
+		SiteLoc[10] = (-43, 400)
+		SiteLoc[11] = (-43, 350)
+		SiteLoc[12] = (-43, 300)
+		SiteLoc[13] = (-43, 250)
+		SiteLoc[14] = (-43, 200)
+		SiteLoc[15] = (-43, 150)
+		SiteLoc[16] = (-43, 50)
+		SiteLoc[17] = (-43, 100)
+		SiteLoc[18] = (0, 900)
+		SiteLoc[19] = (0, 800)
+		SiteLoc[20] = (0, 700)
+		SiteLoc[21] = (0, 600)
+		SiteLoc[22] = (0, 500)
+		SiteLoc[23] = (0, 400)
+		SiteLoc[24] = (0, 200)
+		SiteLoc[25] = (0, 100)
+		SiteLoc[26] = (0, 300)
+		SiteLoc[27] = (0, 50)
+		SiteLoc[28] = (0, 150)
+		SiteLoc[29] = (0, 250)
+		SiteLoc[30] = (0, 350)
+		SiteLoc[31] = (0, 450)
+		SiteLoc[32] = (0, 550)
+		SiteLoc[33] = (0, 650)
+		SiteLoc[34] = (0, 750)
+		SiteLoc[35] = (0, 850)
+		SiteLoc[36] = (43, 200)
+		SiteLoc[37] = (43, 100)
+		SiteLoc[38] = (43, 50)
+		SiteLoc[39] = (43, 150)
+		SiteLoc[40] = (43, 250)
+		SiteLoc[41] = (43, 300)
+		SiteLoc[42] = (43, 350)
+		SiteLoc[43] = (43, 400)
+		SiteLoc[44] = (43, 450)
+		SiteLoc[45] = (43, 500)
+		SiteLoc[46] = (43, 550)
+		SiteLoc[47] = (43, 600)
+		SiteLoc[48] = (43, 650)
+		SiteLoc[49] = (43, 700)
+		SiteLoc[50] = (43, 750)
+		SiteLoc[51] = (43, 850)
+		SiteLoc[52] = (43, 900)
+		SiteLoc[53] = (43, 800)
+	elif polytrode == '1c':
+		'''Need to fill it in'''
+		pass
+	elif polytrode == '2a':
 		SiteLoc[0] = (-28, 1235)
 		SiteLoc[1] = (-28, 1170)
 		SiteLoc[2] = (-28, 1105)
@@ -118,23 +258,68 @@ def chan2pos(polytrode='2a', chanid=None):
 		SiteLoc[51] = (28, 1202)
 		SiteLoc[52] = (28, 1267)
 		SiteLoc[53] = (28, 1137)
-		'''
-	elif polytrode == '1a':
-		pass
-	elif polytrode == '1b':
-		pass
-	elif polytrode == '1c':
-		pass
 	elif polytrode == '2b':
-		pass
-		'''
+		SiteLoc[0] = (-25, 1275)
+		SiteLoc[1] = (-25, 1175)
+		SiteLoc[2] = (-25, 1075)
+		SiteLoc[3] = (-25, 975)
+		SiteLoc[4] = (-25, 875)
+		SiteLoc[5] = (-25, 775)
+		SiteLoc[6] = (-25, 725)
+		SiteLoc[7] = (-25, 675)
+		SiteLoc[8] = (-25, 625)
+		SiteLoc[9] = (-25, 575)
+		SiteLoc[10] = (-25, 525)
+		SiteLoc[11] = (-25, 475)
+		SiteLoc[12] = (-25, 425)
+		SiteLoc[13] = (-25, 375)
+		SiteLoc[14] = (-25, 325)
+		SiteLoc[15] = (-25, 275)
+		SiteLoc[16] = (-25, 225)
+		SiteLoc[17] = (-25, 175)
+		SiteLoc[18] = (-25, 125)
+		SiteLoc[19] = (-25, 75)
+		SiteLoc[20] = (-25, 25)
+		SiteLoc[21] = (-25, 825)
+		SiteLoc[22] = (-25, 925)
+		SiteLoc[23] = (-25, 1025)
+		SiteLoc[24] = (-25, 1225)
+		SiteLoc[25] = (-25, 1325)
+		SiteLoc[26] = (-25, 1125)
+		SiteLoc[27] = (25, 1300)
+		SiteLoc[28] = (25, 1200)
+		SiteLoc[29] = (25, 1100)
+		SiteLoc[30] = (25, 1000)
+		SiteLoc[31] = (25, 900)
+		SiteLoc[32] = (25, 0)
+		SiteLoc[33] = (25, 50)
+		SiteLoc[34] = (25, 100)
+		SiteLoc[35] = (25, 150)
+		SiteLoc[36] = (25, 200)
+		SiteLoc[37] = (25, 250)
+		SiteLoc[38] = (25, 300)
+		SiteLoc[39] = (25, 350)
+		SiteLoc[40] = (25, 400)
+		SiteLoc[41] = (25, 450)
+		SiteLoc[42] = (25, 500)
+		SiteLoc[43] = (25, 550)
+		SiteLoc[44] = (25, 600)
+		SiteLoc[45] = (25, 650)
+		SiteLoc[46] = (25, 700)
+		SiteLoc[47] = (25, 750)
+		SiteLoc[48] = (25, 800)
+		SiteLoc[49] = (25, 850)
+		SiteLoc[50] = (25, 950)
+		SiteLoc[51] = (25, 1150)
+		SiteLoc[52] = (25, 1250)
+		SiteLoc[53] = (25, 1050)
 	else:
 		raise ValueError, 'Unknown polytrode type', polytrode
 	return SiteLoc[chanid]
 
 print 'neuronid xcoord ycoord'
 for (neuronid,chanid) in neuron2chan.iteritems():
-	x,y = chan2pos(polytrode='2a', chanid=chanid) # unpack the tuple
+	x,y = chan2pos(polytrode='2b', chanid=chanid) # unpack the tuple
 	print neuronid, x, y
 
 '''
@@ -194,6 +379,83 @@ neuronid xcoord ycoord
 9 -28 1755
 10 -28 845
 
+Results for '2004-05-07, 11 - +-49uV trig, whole file random sample.bak.tem; 2006-05-14 rip, some templates deleted by MAS.tem':
+
+neuronid xcoord ycoord
+0 43 550
+1 -43 350
+2 -43 200
+3 43 350
+4 43 800
+5 -43 100
+6 43 850
+7 0 450
+8 -43 150
+9 0 200
+10 0 850
+11 0 800
+12 0 500
+13 0 500
+14 -43 800
+15 0 250
+16 -43 250
+17 43 200
+18 0 50
+19 43 300
+20 -43 650
+21 0 450
+22 0 50
+23 43 500
+24 0 200
+25 0 800
+26 43 750
+27 43 700
+28 -43 900
+29 -43 400
+30 43 750
+31 0 100
+32 -43 700
+33 0 100
+34 43 150
+35 -43 900
+36 -43 400
+37 43 600
+38 -43 100
+
+Results for 2b polytrode Cat 13 Track 8 '2004-04-28 - 07 - +-55uV trig, 0-10 mins random sample.tem; 2006-05-15 rip, some templates deleted by MAS.tem':
+
+neuronid xcoord ycoord
+0 25 1100
+1 25 1200
+2 -25 1025
+3 -25 925
+4 -25 975
+5 -25 1275
+6 25 850
+7 -25 775
+8 25 1050
+9 25 1250
+10 -25 1225
+11 -25 375
+12 -25 1225
+13 -25 425
+14 -25 375
+15 -25 425
+16 -25 725
+17 -25 1025
+18 -25 1325
+19 25 1050
+20 25 1000
+21 -25 325
+22 -25 275
+23 -25 175
+24 -25 475
+25 -25 1325
+26 25 450
+27 -25 525
+28 25 1300
+29 -25 475
+
 '''
 
 
@@ -201,8 +463,146 @@ neuronid xcoord ycoord
 
 
 '''the following re's were useful in the steps for converting pascal records syntax to Python dicts of tuples syntax:
-SiteLoc\[.*\]\.x =
-SiteLoc\[.*\]\.y =
+SiteLoc\[.*\]\.x :=
+SiteLoc\[.*\]\.y :=
+'''
+#SURF ElectrodeTypes.pas definition for 1b polytrode
+'''
+Name := 'uMap54_1b';
+Description := 'uMap54_1b, 50um spacing';
+SiteSize.x := 15;
+SiteSize.y := 15;
+RoundSite := TRUE;
+Created := FALSE;
+
+NumPoints := 8;
+Outline[0].x := -100;
+Outline[0].y := 0;
+Outline[1].x := -100;
+Outline[1].y := 900;
+Outline[2].x := -20;
+Outline[2].y := 1200;
+Outline[3].x := 0;
+Outline[3].y := 1250;
+Outline[4].x := 20;
+Outline[4].y := 1200;
+Outline[5].x := 100;
+Outline[5].y := 900;
+Outline[6].x := 100;
+Outline[6].y := 0;
+Outline[7].x := Outline[0].x;
+Outline[7].y := Outline[0].y;
+
+NumSites := 54;
+CenterX := 0;
+SiteLoc[0].x := -43;
+SiteLoc[0].y := 900;
+SiteLoc[1].x := -43;
+SiteLoc[1].y := 850;
+SiteLoc[2].x := -43;
+SiteLoc[2].y := 800;
+SiteLoc[3].x := -43;
+SiteLoc[3].y := 750;
+SiteLoc[4].x := -43;
+SiteLoc[4].y := 700;
+SiteLoc[5].x := -43;
+SiteLoc[5].y := 650;
+SiteLoc[6].x := -43;
+SiteLoc[6].y := 600;
+SiteLoc[7].x := -43;
+SiteLoc[7].y := 550;
+SiteLoc[8].x := -43;
+SiteLoc[8].y := 500;
+SiteLoc[9].x := -43;
+SiteLoc[9].y := 450;
+SiteLoc[10].x := -43;
+SiteLoc[10].y := 400;
+SiteLoc[11].x := -43;
+SiteLoc[11].y := 350;
+SiteLoc[12].x := -43;
+SiteLoc[12].y := 300;
+SiteLoc[13].x := -43;
+SiteLoc[13].y := 250;
+SiteLoc[14].x := -43;
+SiteLoc[14].y := 200;
+SiteLoc[15].x := -43;
+SiteLoc[15].y := 150;
+SiteLoc[16].x := -43;
+SiteLoc[16].y := 50;
+SiteLoc[17].x := -43;
+SiteLoc[17].y := 100;
+SiteLoc[18].x := 0;
+SiteLoc[18].y := 900;
+SiteLoc[19].x := 0;
+SiteLoc[19].y := 800;
+SiteLoc[20].x := 0;
+SiteLoc[20].y := 700;
+SiteLoc[21].x := 0;
+SiteLoc[21].y := 600;
+SiteLoc[22].x := 0;
+SiteLoc[22].y := 500;
+SiteLoc[23].x := 0;
+SiteLoc[23].y := 400;
+SiteLoc[24].x := 0;
+SiteLoc[24].y := 200;
+SiteLoc[25].x := 0;
+SiteLoc[25].y := 100;
+SiteLoc[26].x := 0;
+SiteLoc[26].y := 300;
+SiteLoc[27].x := 0;
+SiteLoc[27].y := 50;
+SiteLoc[28].x := 0;
+SiteLoc[28].y := 150;
+SiteLoc[29].x := 0;
+SiteLoc[29].y := 250;
+SiteLoc[30].x := 0;
+SiteLoc[30].y := 350;
+SiteLoc[31].x := 0;
+SiteLoc[31].y := 450;
+SiteLoc[32].x := 0;
+SiteLoc[32].y := 550;
+SiteLoc[33].x := 0;
+SiteLoc[33].y := 650;
+SiteLoc[34].x := 0;
+SiteLoc[34].y := 750;
+SiteLoc[35].x := 0;
+SiteLoc[35].y := 850;
+SiteLoc[36].x := 43;
+SiteLoc[36].y := 200;
+SiteLoc[37].x := 43;
+SiteLoc[37].y := 100;
+SiteLoc[38].x := 43;
+SiteLoc[38].y := 50;
+SiteLoc[39].x := 43;
+SiteLoc[39].y := 150;
+SiteLoc[40].x := 43;
+SiteLoc[40].y := 250;
+SiteLoc[41].x := 43;
+SiteLoc[41].y := 300;
+SiteLoc[42].x := 43;
+SiteLoc[42].y := 350;
+SiteLoc[43].x := 43;
+SiteLoc[43].y := 400;
+SiteLoc[44].x := 43;
+SiteLoc[44].y := 450;
+SiteLoc[45].x := 43;
+SiteLoc[45].y := 500;
+SiteLoc[46].x := 43;
+SiteLoc[46].y := 550;
+SiteLoc[47].x := 43;
+SiteLoc[47].y := 600;
+SiteLoc[48].x := 43;
+SiteLoc[48].y := 650;
+SiteLoc[49].x := 43;
+SiteLoc[49].y := 700;
+SiteLoc[50].x := 43;
+SiteLoc[50].y := 750;
+SiteLoc[51].x := 43;
+SiteLoc[51].y := 850;
+SiteLoc[52].x := 43;
+SiteLoc[52].y := 900;
+SiteLoc[53].x := 43;
+SiteLoc[53].y := 800;
 '''
 
 
@@ -345,5 +745,145 @@ SiteLoc[52].x := 28;
 SiteLoc[52].y := 1267;
 SiteLoc[53].x := 28;
 SiteLoc[53].y := 1137;
+'''
+
+
+#SURF ElectrodeTypes.pas definition for 2b polytrode
+'''
+Name := 'uMap54_2b';
+Description := 'uMap54_2b, 50um spacing';
+SiteSize.x := 15;
+SiteSize.y := 15;
+RoundSite := TRUE;
+Created := FALSE;
+
+NumPoints := 8;
+Outline[0].x := -100;
+Outline[0].y := -50;
+Outline[1].x := -100;
+Outline[1].y := 1350;
+Outline[2].x := -20;
+Outline[2].y := 1750;
+Outline[3].x := 0;
+Outline[3].y := 1850;
+Outline[4].x := 20;
+Outline[4].y := 1750;
+Outline[5].x := 100;
+Outline[5].y := 1350;
+Outline[6].x := 100;
+Outline[6].y := -50;
+Outline[7].x := Outline[0].x;
+Outline[7].y := Outline[0].y;
+
+NumSites := 54;
+CenterX := 0;
+SiteLoc[0].x := -25;
+SiteLoc[0].y := 1275;
+SiteLoc[1].x := -25;
+SiteLoc[1].y := 1175;
+SiteLoc[2].x := -25;
+SiteLoc[2].y := 1075;
+SiteLoc[3].x := -25;
+SiteLoc[3].y := 975;
+SiteLoc[4].x := -25;
+SiteLoc[4].y := 875;
+SiteLoc[5].x := -25;
+SiteLoc[5].y := 775;
+SiteLoc[6].x := -25;
+SiteLoc[6].y := 725;
+SiteLoc[7].x := -25;
+SiteLoc[7].y := 675;
+SiteLoc[8].x := -25;
+SiteLoc[8].y := 625;
+SiteLoc[9].x := -25;
+SiteLoc[9].y := 575;
+SiteLoc[10].x := -25;
+SiteLoc[10].y := 525;
+SiteLoc[11].x := -25;
+SiteLoc[11].y := 475;
+SiteLoc[12].x := -25;
+SiteLoc[12].y := 425;
+SiteLoc[13].x := -25;
+SiteLoc[13].y := 375;
+SiteLoc[14].x := -25;
+SiteLoc[14].y := 325;
+SiteLoc[15].x := -25;
+SiteLoc[15].y := 275;
+SiteLoc[16].x := -25;
+SiteLoc[16].y := 225;
+SiteLoc[17].x := -25;
+SiteLoc[17].y := 175;
+SiteLoc[18].x := -25;
+SiteLoc[18].y := 125;
+SiteLoc[19].x := -25;
+SiteLoc[19].y := 75;
+SiteLoc[20].x := -25;
+SiteLoc[20].y := 25;
+SiteLoc[21].x := -25;
+SiteLoc[21].y := 825;
+SiteLoc[22].x := -25;
+SiteLoc[22].y := 925;
+SiteLoc[23].x := -25;
+SiteLoc[23].y := 1025;
+SiteLoc[24].x := -25;
+SiteLoc[24].y := 1225;
+SiteLoc[25].x := -25;
+SiteLoc[25].y := 1325;
+SiteLoc[26].x := -25;
+SiteLoc[26].y := 1125;
+SiteLoc[27].x := 25;
+SiteLoc[27].y := 1300;
+SiteLoc[28].x := 25;
+SiteLoc[28].y := 1200;
+SiteLoc[29].x := 25;
+SiteLoc[29].y := 1100;
+SiteLoc[30].x := 25;
+SiteLoc[30].y := 1000;
+SiteLoc[31].x := 25;
+SiteLoc[31].y := 900;
+SiteLoc[32].x := 25;
+SiteLoc[32].y := 0;
+SiteLoc[33].x := 25;
+SiteLoc[33].y := 50;
+SiteLoc[34].x := 25;
+SiteLoc[34].y := 100;
+SiteLoc[35].x := 25;
+SiteLoc[35].y := 150;
+SiteLoc[36].x := 25;
+SiteLoc[36].y := 200;
+SiteLoc[37].x := 25;
+SiteLoc[37].y := 250;
+SiteLoc[38].x := 25;
+SiteLoc[38].y := 300;
+SiteLoc[39].x := 25;
+SiteLoc[39].y := 350;
+SiteLoc[40].x := 25;
+SiteLoc[40].y := 400;
+SiteLoc[41].x := 25;
+SiteLoc[41].y := 450;
+SiteLoc[42].x := 25;
+SiteLoc[42].y := 500;
+SiteLoc[43].x := 25;
+SiteLoc[43].y := 550;
+SiteLoc[44].x := 25;
+SiteLoc[44].y := 600;
+SiteLoc[45].x := 25;
+SiteLoc[45].y := 650;
+SiteLoc[46].x := 25;
+SiteLoc[46].y := 700;
+SiteLoc[47].x := 25;
+SiteLoc[47].y := 750;
+SiteLoc[48].x := 25;
+SiteLoc[48].y := 800;
+SiteLoc[49].x := 25;
+SiteLoc[49].y := 850;
+SiteLoc[50].x := 25;
+SiteLoc[50].y := 950;
+SiteLoc[51].x := 25;
+SiteLoc[51].y := 1150;
+SiteLoc[52].x := 25;
+SiteLoc[52].y := 1250;
+SiteLoc[53].x := 25;
+SiteLoc[53].y := 1050;
 
 '''

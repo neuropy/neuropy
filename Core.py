@@ -18,14 +18,16 @@
 DEFAULTDATAPATH = 'C:/data/' # the convention in neuropy will be that all 'path' var names have a trailing slash
 DEFAULTCATID    = 15
 DEFAULTTRACKID  = '7c'
-DEFAULTRIPNAME  = 'liberal spikes' # a rip is the name of a spike sorting extraction; rips with the same name should have been done with the same templates, and possibly the same ripping thresholds
+RIPKEYWORDS = ['best', 'liberal spikes'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording
 SLASH = '/' # use forward slashes instead of having to use double backslashes
 TAB = '    ' # 4 spaces
 
 DEFAULTMOVIEPATH = 'C:/pub/Movies/'
 DEFAULTMOVIENAME = 'mseq32.m'
 
-import os, types, pprint, numpy, numarray, struct, re, StringIO, sys, warnings
+import os, types, pprint, numpy, numarray, struct, re, StringIO, sys
+import Dimstim.Movies
+from Dimstim.Core import buildSweepTable
 
 pp = pprint.pprint
 INF = numpy.inf
@@ -51,12 +53,88 @@ def txtdin2binarydin(fin, fout):
 	fo = file(fout,'wb') # for writing in binary mode
 	for line in fi:
 		line = line.split(',')
-		#print line[0], line[1]
+		'''
+		# for old NVS display, converts from NVS condition numbers (which increment with repeats) to Dimstim sweepis (which don't)
+		nruns = 18
+		line[1] = int(line[1]) % nruns
+		'''
 		fo.write( struct.pack('@qq',int(line[0]),int(line[1])) ) # read both values in as a C long longs, using the system's native ('@') byte order
 	fi.close()
 	fo.close()
 	print 'Converted ascii din: ', fin, ' to binary din: ', fout
+def warn(msg,level=2,exit_val=1):
+	'''Standard warning printer. Gives formatting consistency. Stolen from IPython.genutils'''
+	if level>0:
+		header = ['','','WARNING: ','ERROR: ','FATAL ERROR: ']
+		print >> sys.stderr, '%s%s' % (header[level],msg)
+		if level == 4:
+			print >> sys.stderr,'Exiting.\n'
+			sys.exit(exit_val)
+"""
+def warn(msg):
+	import warnings
+	warnings.warn(msg, category=RuntimeWarning, stacklevel=2)
+"""
+"""
+def unique(objlist):
+	'''Does in-place removal of non-unique objects in a list of objects'''
+	for (i,obj1) in enumerate(objlist):
+		for (j,obj2) in enumerate(objlist):
+			if i != j and obj1 == obj2:
+				del objlist[j]
+"""
 
+def unique(inseq):
+	'''Return unique items from a 1-dimensional sequence. Stolen from numpy.unique(), modified to return list instead of array'''
+	# Dictionary setting is quite fast.
+	outseq = {}
+	for item in inseq:
+		outseq[item] = None
+	return list(outseq.keys())
+
+def iterable(y):
+	'''Check if the input is iterable, stolen from numpy.iterable()'''
+	try: iter(y)
+	except: return 0
+	return 1
+
+def histogramSorted(sorteda, bins=10, range=None, normed=False):
+	'''Builds a histogram, stolen from numpy.histogram(), modified to assume sorted input'''
+	a = numpy.asarray(sorteda).ravel()
+	if not iterable(bins):
+		if range is None:
+			range = (a.min(), a.max())
+		mn, mx = [mi+0.0 for mi in range]
+		if mn == mx:
+			mn -= 0.5
+			mx += 0.5
+		bins = numpy.linspace(mn, mx, bins, endpoint=False)
+	#n = numpy.sort(a).searchsorted(bins)
+	n = a.searchsorted(bins)
+	n = numpy.concatenate([n, [len(a)]]) # don't understand what this does
+	n = n[1:]-n[:-1]
+	if normed:
+		db = bins[1] - bins[0]
+		return 1.0/(a.size*db) * n, bins
+	else:
+		return n, bins
+
+"""
+def unique(objlist):
+	'''Returns the input list minus any repeated objects it may have had. Also defined in Dimstim'''
+	return list(set(objlist)) # this requires Python >= 2.4
+"""
+"""
+def tolist(obj):
+	'''Takes either scalar or sequence input and returns a list,
+	useful when you want to iterate over an object (like in a for loop),
+	and you don't want to have to do type checking or handle exceptions
+	when the object isn't a sequence'''
+	try: # assume obj is a sequence
+		return list(obj) # converts any sequence to a list
+	except TypeError: # obj is probably a scalar
+		return [obj] # converts any scalar to a list
+"""
 ###########################
 
 class Data(object): # use 'new-style' classes
@@ -82,6 +160,8 @@ class Data(object): # use 'new-style' classes
 			cat = Cat(id=None, name=catName, parent=self) # make an instance using just the catName (let it figure out the cat id)
 			cat.load() # load the Cat
 			self.c[cat.id] = cat # save it
+		#if len(self.c) == 1:
+		#	self.c = self.c.values[0] # pull it out of the dictionary
 
 class Cat(object):
 	'''A Cat can have multiple Tracks'''
@@ -111,14 +191,14 @@ class Cat(object):
 	def id2name(self, path, id):
 		name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith('Cat '+str(id)) ]
 		if len(name) != 1:
-			raise NameError, 'Ambiguous or non-existent Cat id: '+str(id)
+			raise NameError, 'Ambiguous or non-existent Cat id: %s' % id
 		else:
 			name = name[0] # pull the string out of the list
 		return name
 	def name2id(self, name):
 		id = name.replace('Cat ','',1) # replace first occurrence of 'Cat ' with nothing, keep the rest
 		if not id:
-			raise NameError, 'Badly formatted Cat name: '+name
+			raise NameError, 'Badly formatted Cat name: %s' % name
 		try:
 			id = int(id) # convert string to int if possible
 		except ValueError:
@@ -133,6 +213,8 @@ class Cat(object):
 			track = Track(id=None, name=trackName, parent=self) # make an instance using just the track name (let it figure out the track id)
 			track.load() # load the Track
 			self.t[track.id] = track # save it
+		#if len(self.t) == 1:
+		#	self.t = self.t.values[0] # pull it out of the dictionary
 
 class Track(object):
 	'''A Track can have multiple Recordings'''
@@ -162,14 +244,14 @@ class Track(object):
 	def id2name(self, path, id):
 		name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith('Track '+str(id)) ]
 		if len(name) != 1:
-			raise NameError, 'Ambiguous or non-existent Track id: '+str(id)
+			raise NameError, 'Ambiguous or non-existent Track id: %s' % id
 		else:
 			name = name[0] # pull the string out of the list
 		return name
 	def name2id(self, name):
 		id = name.replace('Track ','',1) # replace first occurrence of 'Track ' with nothing, keep the rest
 		if not id:
-			raise NameError, 'Badly formatted Track name: '+name
+			raise NameError, 'Badly formatted Track name: %s' % name
 		try:
 			id = int(id) # convert string to int if possible
 		except ValueError:
@@ -184,6 +266,8 @@ class Track(object):
 			recording = Recording(id=None, name=recordingName, parent=self) # make an instance using just the recording name (let it figure out the recording id)
 			recording.load() # load the Recording
 			self.r[recording.id] = recording # save it
+		#if len(self.r) == 1:
+		#	self.r = self.r.values[0] # pull it out of the dictionary
 
 class Recording(object):
 	'''A Recording corresponds to a single SURF file, ie everything recorded between when
@@ -216,7 +300,7 @@ class Recording(object):
 	def id2name(self, path, id):
 		name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith(str(id)+' - ') ]
 		if len(name) != 1:
-			raise NameError, 'Ambiguous or non-existent Recording id: '+str(id)
+			raise NameError, 'Ambiguous or non-existent Recording id: %s' % id
 		else:
 			name = name[0] # pull the string out of the list
 		return name
@@ -224,7 +308,7 @@ class Recording(object):
 		try:
 			id = name[0:name.index(' - ')] # everything before the first ' - ', index() raises ValueError if it can't be found
 		except ValueError:
-			raise ValueError, 'Badly formatted Recording name: '+name
+			raise ValueError, 'Badly formatted Recording name: %s' % name
 		try:
 			id = int(id) # convert string to int if possible
 		except ValueError:
@@ -239,17 +323,25 @@ class Recording(object):
 			experiment = Experiment(id=experimentid, name=experimentName, parent=self) # pass both the id and the name
 			experiment.load() # load the Experiment
 			self.e[experiment.id] = experiment # save it
+		#if len(self.e) == 1:
+		#	self.e = self.e.values[0] # pull it out of the dictionary
 		self.rip = {} # store Rips in a dictionary
 		ripNames = [ dirname[0:dirname.rfind('.rip')] for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.endswith('.rip') ] # returns rip folder names without their .rip extension
-		for ripName in ripNames:
-			rip = Rip(name=ripName, parent=self) # pass just the name, ain't no such thing as a ripid, at least for now
+		defaultRipNames = [ ripName for ripName in ripNames for ripkeyword in RIPKEYWORDS if ripName.count(ripkeyword) ]
+		if len(defaultRipNames) < 1:
+			warn('Couldn''t find a default Rip for Recording(%s)' % self.id)
+		if len(defaultRipNames) > 1: # This could just be a warning instead of an exception, but really, some folder renaming is in order
+			raise RuntimeError, 'More than one Rip folder in Recording(%s) has a default keyword: %s' %(self.id, defaultRipNames)
+		for (ripid, ripName) in enumerate(ripNames): # ripids will be according to alphabetical order of ripNames
+			rip = Rip(id=ripid, name=ripName, parent=self) # pass both the id and the name
 			rip.load() # load the Rip
 			self.rip[rip.name] = rip # save it
-		try: # make the Neurons from the default rip (if it exists in the Recording path) available in the Recording, so you can access them via r.n[nid] instead of having to do r.rip[name].n[nid]. Make them just another pointer to the data in r.rip[DEFAULTRIPNAME].n
-			self.n = self.rip[DEFAULTRIPNAME].n
-			self.defaultRipPath = self.path + DEFAULTRIPNAME + SLASH
-		except:
-			pass
+			# make the Neurons from the default Rip (if it exists in the Recording path) available in the Recording, so you can access them via r.n[nid] instead of having to do r.rip[name].n[nid]. Make them just another pointer to the data in r.rip[ripName].n
+			for ripkeyword in RIPKEYWORDS[::-1]: # reverse the keywords so first one gets processed last
+				if rip.name.count(ripkeyword): # if the keyword is in the ripName
+					self.n = self.rip[rip.name].n # make it the default Rip
+		#if len(self.rip) == 1:
+		#	self.rip = self.rip.values[0] # pull it out of the dictionary
 
 class Experiment(object):
 	'''An Experiment corresponds to a single contiguous VisionEgg stimulus session.
@@ -279,34 +371,134 @@ class Experiment(object):
 		f = file(self.path + self.name + '.din', 'rb') # open the din file for reading in binary mode
 		self.din = numpy.fromfile(f, dtype=numpy.int64).reshape(-1,2) # reshape to nrows x 2 columns
 		f.close()
-		f = file(self.path + self.name + '.textheader', 'r') # open the textheader file for reading
-		self.textheader = f.read() # read it all in
-		f.close()
-		# then, for each line in the textheader, exec() it so you get self.varname saved directly within in the Experiment object - watch out, will try and make Movie() objects and Bar() objects, etc?
-		# also need to generate sweeptable here
+		try:
+			f = file(self.path + self.name + '.textheader', 'r') # open the textheader file for reading
+			self.textheader = f.read() # read it all in
+			f.close()
+		except IOError:
+			warn('Error reading: <%s.textheader>, text header not loaded' % self.name)
+			self.textheader = '' # set to empty
+
 		treestr = self.level*TAB + self.name + '/'
 		self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-		self.m = [] # Experiments can potentially have multiple movies
-		for m in [mseq32, mseq16]: # check if this Experiment uses specific movies
-			if self.textheader.count(m.name): # search the textheader for the movie's filename
+
+		if self.textheader: # if it isn't empty
+			names1 = locals() # namespace before execing the textheader should this be locals() or globals()????????????
+			exec(self.textheader) # execute the textheader as Python code, maybe add some checks here to prevent changes to filesystem from accidental code, unload the os or sys modules or something?
+			names2 = locals() # namespace after
+			newnames = [ n2 for n2 in names2 for n1 in names1 if n2 != n1 ] # names that were added to the namespace
+			for newname in newnames:
+				self.__setattr__(newname, eval(newname)) # for each variable that was defined in the textheader, bind it as an attribute of this Experiment
+			'''
+			thlines = self.textheader.splitlines()
+			for line in thlines:
+				if line and not line.startswith('#'): # if it ain't blank and it ain't commented out
+					exec(line) # just exec the line first so everyting on the rhs is defined in the unbound namespace
+					exec('self.'+line) # exec the statement on each line in the text header and save it as an attribute of this Experiment
+			'''
+			# finding the movie object name:
+			# self.textheader.index(' = Movie()')
+			# or look for self.textheader.index('.oname = ')
+			# once you have the name in a string, run eval('self.'+oname)?
+			'''
+			# or, run something that returns all objects of type Movie in the attributes of self:
+			self.movies = [] # stores all the movies inited by the textheader
+			for objname in self.__dict__:
+				obj = eval('self.'+objname)
+				if isinstance(obj, Movie):
+					self.movies.append(obj)
+			'''
+			try:
+				self.stims = unique(self.playlist) # self.stims is a non-repeating list of object oriented stim objects (Movie is the only possible kind right now) in this Experiment
+			except AttributeError: # this was a simple non object-oriented stim, has no playlist
+				self.stims = []
+			#if len(self.stims) == 1:
+			#	self.stims = self.stims[0] # get rid of the list
+
+			# if you inited a stim object(s) (like a movie) while execing the textheader, you didn't have a chance to pass this exp as the parent in the init. So just set the attribute manually:
+
+			for s in self.stims:
+				s.e = self
+				try: # this'll probably only apply to Movies stim, cuz others won't have fnames
+					if s.name == None:
+						s.name = s.fname # fname should've been defined when loading in the textheader
+				except AttributeError: # probably not a Movie stim
+					pass
+				# Search self.moviepath string (from textheader) for 'Movies' word (preferably case insensitive). Everything after that is the relative path to your base movies folder. Eg, if self.moviepath = 'C:\\Desktop\\Movies\\reliability\\e\\single\\', then set self.relpath = 'reliability\\e\\single\\'
 				try:
-					m.data # see if this movie has already been loaded
-				except AttributeError: # load this movie
-					m.load()
-				self.m.append(Movie(parent=self)) # add a new movie to this Experiment
-				self.m[-1].data = m.data # point data to already loaded data in specific movie
-				treestr = m.level*TAB + m.name
-				self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-		if len(self.m) == 1:
-			self.m = self.m[0] # get rid of the list if there's only a single movie in this Experiment (usual case)
+					s.moviepath = s.moviepath.replace('\\','/') # replace annoying double backslashes with single forward slashes, which seem to work
+					s.relpath = s.moviepath[ s.moviepath.index('Movies/')+len('Movies/') :: ]
+					s.path = path + s.relpath
+				except AttributeError: # this Movie was manually inited, not loaded from a textheader. s.moviepath doesn't exist, use s.path instead. Or it might not even be a Movie
+					pass
+				'''
+				# also, if you initd a stim that needs to be loaded (like a movie), maybe you should also load it now (this wasn't done when execing the textheader)
+				try:
+					s.load()
+				except:
+					pass
+				'''
+
+			# Generate the sweeptable here, no need to load if from files anymore...
+			#self.sweeptable = {[]} # dictionary of lists, ie sweeptable={'ori',[0,45,90],'sfreq',[1,1,1]}
+			# so you index into it with self.sweeptable['var'][sweepi]
+			# vars = self.sweeptable.keys()
+
+			if self.stims: # this Experiment has object-oriented stim(s)
+				for s in self.stims:
+					varvals={} # init a dictionary that will contain variable values
+					for var in s.varlist:
+						varvals[var]=eval('s.'+var) # generate a dictionary with var:val entries, to pass to buildSweepTable
+					s.sweepTable = buildSweepTable(s.varlist, varvals, s.nruns, s.shuffleRuns, s.blankSweep, s.shuffleBlankSweeps, makeSweepTableText=0) # passing varlist by reference, dim indices end up being modified
+			else: # this is a simple stim (not object oriented)
+				varvals={} # init a dictionary that will contain variable values
+				for var in self.varlist:
+					varvals[var]=eval('self.'+var) # generate a dictionary with var:val entries, to pass to buildSweepTable
+				self.sweepTable = buildSweepTable(self.varlist, varvals, self.nruns, self.shuffleRuns, self.blankSweep, self.shuffleBlankSweeps, makeSweepTableText=0) # passing varlist by reference, dim indices end up being modified
+
+			'''
+			# Old code for creating a sweeptable file (used by Matlab and NVS):
+			sweeptabletext = sweeptabletext.replace('[','') # get rid of brackets and ' in first line, these demarcate dimensions, but aren't needed in matlab
+			sweeptabletext = sweeptabletext.replace(']','')
+			sweeptabletext = sweeptabletext.replace('\'','')
+			sweeptabletext = sweeptabletext.replace(',','') # also, replace any commas or spaces (in the first line) with tabs for delimiting
+			sweeptabletext = sweeptabletext.replace(' ','\t')
+
+			fname = string.replace(sys.argv[0],sys.path[0]+'\\','') # name of file that launched Python
+			fname = fname.replace('.textheader','') # remove .textheader part of filename
+			#fname = fname.replace('.py','') # remove .py part of filename
+			fname += '.sweeptable' # add .sweeptable extension
+
+			fullpathfname = sys.path[0]+'\\'+fname
+
+			print 'Writing to file:', fullpathfname
+
+			f = file(fullpathfname,'w')
+			f.write(sweeptabletext)
+			f.close()
+			'''
+
+			for defaultm in [MSEQ32, MSEQ16]: # check if this Experiment uses specific default movies
+				for s in self.stims: # for all stims inited by the textheader
+					if s.name == defaultm.name and isinstance(s,Movie):
+						if defaultm.data == None: # see if this default movie has yet to be loaded
+							defaultm.load() # load this default movie
+						s.data = defaultm.data # point this movie's data to default movie data
+						treestr = s.level*TAB + s.name
+						self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
+
+		self.buildsweepranges()
+	def buildsweepranges(self):
+		pass
+		self.sweepranges = []
 
 class Rip(object):
 	'''A Rip is a single spike extraction. Generally, Rips of the same name within the same Track
 	were generated with the same spike template, though of course Rips in different Tracks must
 	be generated from different templates, even if the Rips have the same name'''
-	def __init__(self, name=DEFAULTRIPNAME, parent=Recording):
+	def __init__(self, id=None, name=None, parent=Recording):
 		self.level = 4 # level in the hierarchy
-		self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+		#self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
 		try:
 			self.r = parent() # init parent Recording object
 		except TypeError: # parent is an instance, not a class
@@ -314,8 +506,10 @@ class Rip(object):
 		if name is None:
 			raise ValueError, 'rip name can\'t be None'
 		# rips don't have ids, at least for now. Just names
+		self.id = id # not really used by the Rip class, just there for user's info
 		self.name = name
 		self.path = self.r.path + self.name + '.rip' + SLASH # have to add .rip extension to rip name to get its actual folder name
+	"""
 	def tree(self):
 		'''Print tree hierarchy'''
 		print self.treebuf.getvalue(),
@@ -323,6 +517,7 @@ class Rip(object):
 		'''Write to self's tree buffer and to parent's too'''
 		self.treebuf.write(string)
 		self.r.writetree(string)
+	"""
 	def load(self):
 		#treestr = self.level*TAB + self.name + '/'
 		#self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
@@ -336,13 +531,13 @@ class Rip(object):
 		# maybe also load the template used for the rip, perhaps also stored in the same folder
 
 class Neuron(object):
-	'''A Neuron object's spike data spans all the Experiments within a Recording.
+	'''A Neuron object''s spike data spans all the Experiments within a Recording.
 	If different Recordings have Rips with the same name, you can assume that the
 	same spike template was used for all of those Recordings, and that therefore
 	the neuron ids are the same'''
 	def __init__(self, id=None, name=None, parent=Rip): # neuron names don't include the '.spk' ending, although neuron filenames do
 		self.level = 5 # level in the hierarchy
-		self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+		#self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
 		try:
 			self.rip = parent() # init parent Rip object
 		except TypeError: # parent is an instance, not a class
@@ -356,6 +551,7 @@ class Neuron(object):
 		self.id = id
 		self.name = name
 		self.path = self.rip.path
+	"""
 	def tree(self):
 		'''Print tree hierarchy'''
 		print self.treebuf.getvalue(),
@@ -363,11 +559,12 @@ class Neuron(object):
 		'''Write to self's tree buffer and to parent's too'''
 		self.treebuf.write(string)
 		self.rip.writetree(string)
+	"""
 	def id2name(self, path, id):
 		name = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(path) if os.path.isfile(path+fname) and \
-		             ( fname.find('_t'+str(id)+'.spk')!=-1 or fname.find('_t0'+str(id)+'.spk')!=-1 or fname.find('_t00'+str(id)+'.spk')!=-1 ) ] # have to deal with leading zero ids, go up to 3 digit ids, should really use a re to do this properly...
+		       ( fname.find('_t'+str(id)+'.spk')!=-1 or fname.find('_t0'+str(id)+'.spk')!=-1 or fname.find('_t00'+str(id)+'.spk')!=-1 ) ] # have to deal with leading zero ids, go up to 3 digit ids, should really use a re to do this properly...
 		if len(name) != 1:
-			raise NameError, 'Ambiguous or non-existent Neuron id: '+str(id)
+			raise NameError, 'Ambiguous or non-existent Neuron id: %s' % id
 		else:
 			name = name[0] # pull the string out of the list
 		return name
@@ -375,7 +572,7 @@ class Neuron(object):
 		try:
 			id = name[name.rindex('_t')+2::] # everything from just after the last '_t' to the end of the neuron name, index() raises ValueError if it can't be found
 		except ValueError:
-			raise ValueError, 'Badly formatted Neuron name: '+name
+			raise ValueError, 'Badly formatted Neuron name: %s' % name
 		try:
 			id = int(id) # convert string to int if possible
 		except ValueError:
@@ -385,6 +582,7 @@ class Neuron(object):
 		f = file(self.path + self.name + '.spk', 'rb') # open the spike file for reading in binary mode
 		self.spikes = numpy.fromfile(f, dtype=numpy.int64) # read in all spike times in us
 		f.close()
+		self.results = {} # a dictionary to store results in
 		#treestr = self.level*TAB + self.name + '/'
 		#self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
 	def cut(self, tstart=None, tend=None): # maybe use a masked array instead
@@ -394,7 +592,14 @@ class Neuron(object):
 			tstart = self.spikes[0]
 		if tend is None:
 			tend = self.spikes[-1]
+		'''
+		# this is what we're trying to do:
 		return self.spikes[ (self.spikes >= tstart) & (self.spikes <= tend) ]
+
+		self.searchsorted(values) method does it faster. It returns an index where the value would fit in self. The index is such that self[index-1] < value <= self[index]. In this formula self[self.size]=inf and self[-1]= -inf
+		'''
+		lo, hi = self.spikes.searchsorted([tstart, tend]) # returns slice indices
+		return self.spikes[ lo : hi ] # slice it
 	def cutrel(self, tstart=None, tend=None):
 		'''Cuts Neuron spike times and returns them relative to tstart'''
 		if tstart is None:
@@ -402,16 +607,25 @@ class Neuron(object):
 		if tend is None:
 			tend = self.spikes[-1]
 		if tstart.__class__ is types.FloatType:
-			warnings.warn('Converting tstart to int: '+str(int(tstart)))
+			warn('Converting tstart to int: '+str(int(tstart)))
 		return self.cut(tstart, tend) - int(tstart)
-	def rate(self, method='bin'):
-		pass
+	def rate(self, tres=50000, trange=None, method='bin'):
+		if method == 'bin':
+			'''bins sequence demarcates left bin edges'''
+			if trange==None:
+				trange = (self.spikes[0], self.spikes[1])
+			bins = arange( trange[0], trange[1], tres )
+			n, bins = numpy.histogram(self.spikes, bins=bins, normed=1)
+			n = n / float(tres)
+			self.results['rate'] = (n, bins)
+			return n
 	def raster(self):
 		pass
 
-class Movie(object): # careful with potential name conflict with Movies() in Dimstim
+class Movie(Dimstim.Movies.Movie): # inherit from Dimstim Movie() class (assumes it's new-style)
 	'''A Movie stimulus object'''
-	def __init__(self, name=DEFAULTMOVIENAME, path=DEFAULTMOVIEPATH, parent=None):
+	def __init__(self, name=None, path=DEFAULTMOVIEPATH, parent=None):
+		super(Movie, self).__init__() # first run __init__() of inherited Dimstim Movie class
 		self.level = 5 # level in the hierarchy
 		try:
 			self.e = parent() # init parent Experiment object
@@ -442,19 +656,23 @@ class Movie(object): # careful with potential name conflict with Movies() in Dim
 		if leftover != '':
 			pp(leftover)
 			print self.nframes,self.ncellshigh,self.ncellswide
-			raise RuntimeError('There are unread bytes in movie file \'%s\'. Width, height, or nframes is incorrect in the movie file header.' %self.name)
+			raise RuntimeError('There are unread bytes in movie file \'%s\'. Width, height, or nframes is incorrect in the movie file header.' % self.name)
 		#self.data = self.data[::,::-1,::] # flip the movie frames vertically for OpenGL's bottom left origin
 		f.close() # close the movie file
 
 ################
 
 # init some typical movies (but don't load 'em til needed), then just point to them within the appropriate Experiments
-mseq32 = Movie(name='mseq32.m', parent=None)
-mseq16 = Movie(name='mseq16.m', parent=None)
+MSEQ32 = Movie(name='mseq32.m', parent=None)
+MSEQ16 = Movie(name='mseq16.m', parent=None)
 # shouldn't use sparse bar movies anymore, can access VisionEgg directly now, get the framebuffers to directly do STA
 #sparsebars = Movie(path='C:/data/Cat 15/Track 7c/72 - track 7c sparseexps/', name='72 - track 7c sparseexps.sparsebars.movie');
-
+'''
 # init and load a Recording to play around with
 print 'Initing and loading Recording(92):'
 r=Recording(92)
+r.load()
+'''
+print 'Initing and loading Recording(71):'
+r=Recording(71)
 r.load()
