@@ -18,26 +18,33 @@
 DEFAULTDATAPATH = 'C:/data/' # the convention in neuropy will be that all 'path' var names have a trailing slash
 DEFAULTCATID    = 15
 DEFAULTTRACKID  = '7c'
-RIPKEYWORDS = ['best', 'liberal spikes'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording
+RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording
 SLASH = '/' # use forward slashes instead of having to use double backslashes
 TAB = '    ' # 4 spaces
 
 DEFAULTMOVIEPATH = 'C:/pub/Movies/'
 DEFAULTMOVIENAME = 'mseq32.m'
 
-import os, types, pprint, numpy, numarray, struct, re, StringIO, sys
+import os
+import types
+import pprint
+import numpy
+import scipy.signal as sig
+import struct
+import re
+import StringIO
+import sys
+import pylab as pl
 import Dimstim.Movies
 from Dimstim.Core import buildSweepTable
 
 pp = pprint.pprint
 INF = numpy.inf
 
-# generate sweeptables on the fly in Experiment.load()
-# need to delete the extra lines in all the textheaders, and uncomment some lines too!
 # Rips should really have ids to make them easier to reference to: r[83].rip[0] instead of r[83].rip['conservative spikes'] - this means adding id prefixes to rip folder names (or maybe suffixes: 'conservative spikes.0.rip', 'liberal spikes.1.rip', etc...). Prefixes would be better cuz they'd force sorting by id in explorer (which uses alphabetical order) - ids should be 0-based of course
 # worry about conversion of ids to strings: some may be only 1 digit and may have a leading zero!
 # maybe make two load() f'ns for Experiment and Neuron: one from files, and a future one from a database
-# make a save() f'n that pickles the object (including any of its results, like its STA, tuning curve points, etc)?
+# make a save() f'n that pickles the object (including any of its results, like its STA, tuning curve points, etc)? - just use IPython's %store
 
 """
 def str2(data):
@@ -46,9 +53,8 @@ def str2(data):
 		if len(s) == 1:
 			s = '0'+s # add a leading zero for single digits
 """
-
 def txtdin2binarydin(fin, fout):
-	'''Converts a csv text .din file to a int64 binary .din file'''
+	'''Converts a csv text .din file to an int64 binary .din file'''
 	fi = file(fin, 'r') # open the din file for reading in text mode
 	fo = file(fout,'wb') # for writing in binary mode
 	for line in fi:
@@ -62,6 +68,17 @@ def txtdin2binarydin(fin, fout):
 	fi.close()
 	fo.close()
 	print 'Converted ascii din: ', fin, ' to binary din: ', fout
+
+def renameSpikeFiles(path, newname):
+	'''Renames all .spk files in path to newname, retaining their '_t##.spk' ending'''
+	for fname in os.listdir(path):
+		if fname.endswith('.spk'):
+			i=fname.find('_t')
+			if i!=-1:
+				newfname = newname+fname[i::]
+				print newfname
+				os.rename(path+SLASH+fname, path+SLASH+newfname)
+
 def warn(msg,level=2,exit_val=1):
 	'''Standard warning printer. Gives formatting consistency. Stolen from IPython.genutils'''
 	if level>0:
@@ -75,6 +92,18 @@ def warn(msg):
 	import warnings
 	warnings.warn(msg, category=RuntimeWarning, stacklevel=2)
 """
+def unique(inseq):
+	'''Return unique items from a 1-dimensional sequence. Stolen from numpy.unique(), modified to return list instead of array'''
+	# Dictionary setting is quite fast.
+	outseq = {}
+	for item in inseq:
+		outseq[item] = None
+	return list(outseq.keys())
+"""
+def unique(objlist):
+	'''Returns the input list minus any repeated objects it may have had. Also defined in Dimstim'''
+	return list(set(objlist)) # this requires Python >= 2.4
+"""
 """
 def unique(objlist):
 	'''Does in-place removal of non-unique objects in a list of objects'''
@@ -84,19 +113,22 @@ def unique(objlist):
 				del objlist[j]
 """
 
-def unique(inseq):
-	'''Return unique items from a 1-dimensional sequence. Stolen from numpy.unique(), modified to return list instead of array'''
-	# Dictionary setting is quite fast.
-	outseq = {}
-	for item in inseq:
-		outseq[item] = None
-	return list(outseq.keys())
-
 def iterable(y):
 	'''Check if the input is iterable, stolen from numpy.iterable()'''
 	try: iter(y)
 	except: return 0
 	return 1
+"""
+def tolist(obj):
+	'''Takes either scalar or sequence input and returns a list,
+	useful when you want to iterate over an object (like in a for loop),
+	and you don't want to have to do type checking or handle exceptions
+	when the object isn't a sequence'''
+	try: # assume obj is a sequence
+		return list(obj) # converts any sequence to a list
+	except TypeError: # obj is probably a scalar
+		return [obj] # converts any scalar to a list
+"""
 
 def histogramSorted(sorteda, bins=10, range=None, normed=False):
 	'''Builds a histogram, stolen from numpy.histogram(), modified to assume sorted input'''
@@ -112,29 +144,13 @@ def histogramSorted(sorteda, bins=10, range=None, normed=False):
 	#n = numpy.sort(a).searchsorted(bins)
 	n = a.searchsorted(bins)
 	n = numpy.concatenate([n, [len(a)]]) # don't understand what this does
-	n = n[1:]-n[:-1]
+	n = n[1:]-n[:-1] # and therefore, don't understand this either
 	if normed:
 		db = bins[1] - bins[0]
 		return 1.0/(a.size*db) * n, bins
 	else:
 		return n, bins
 
-"""
-def unique(objlist):
-	'''Returns the input list minus any repeated objects it may have had. Also defined in Dimstim'''
-	return list(set(objlist)) # this requires Python >= 2.4
-"""
-"""
-def tolist(obj):
-	'''Takes either scalar or sequence input and returns a list,
-	useful when you want to iterate over an object (like in a for loop),
-	and you don't want to have to do type checking or handle exceptions
-	when the object isn't a sequence'''
-	try: # assume obj is a sequence
-		return list(obj) # converts any sequence to a list
-	except TypeError: # obj is probably a scalar
-		return [obj] # converts any scalar to a list
-"""
 ###########################
 
 class Data(object): # use 'new-style' classes
@@ -383,40 +399,20 @@ class Experiment(object):
 		self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
 
 		if self.textheader: # if it isn't empty
-			names1 = locals() # namespace before execing the textheader should this be locals() or globals()????????????
+			names1 = locals().copy() # namespace before execing the textheader
 			exec(self.textheader) # execute the textheader as Python code, maybe add some checks here to prevent changes to filesystem from accidental code, unload the os or sys modules or something?
-			names2 = locals() # namespace after
-			newnames = [ n2 for n2 in names2 for n1 in names1 if n2 != n1 ] # names that were added to the namespace
+			names2 = locals().copy() # namespace after
+			newnames = [ n2 for n2 in names2 if not names1.has_key(n2) and n2 != 'names1' ] # names that were added to the namespace, excluding the 'names1' name itself
 			for newname in newnames:
 				self.__setattr__(newname, eval(newname)) # for each variable that was defined in the textheader, bind it as an attribute of this Experiment
-			'''
-			thlines = self.textheader.splitlines()
-			for line in thlines:
-				if line and not line.startswith('#'): # if it ain't blank and it ain't commented out
-					exec(line) # just exec the line first so everyting on the rhs is defined in the unbound namespace
-					exec('self.'+line) # exec the statement on each line in the text header and save it as an attribute of this Experiment
-			'''
-			# finding the movie object name:
-			# self.textheader.index(' = Movie()')
-			# or look for self.textheader.index('.oname = ')
-			# once you have the name in a string, run eval('self.'+oname)?
-			'''
-			# or, run something that returns all objects of type Movie in the attributes of self:
-			self.movies = [] # stores all the movies inited by the textheader
-			for objname in self.__dict__:
-				obj = eval('self.'+objname)
-				if isinstance(obj, Movie):
-					self.movies.append(obj)
-			'''
+
 			try:
 				self.stims = unique(self.playlist) # self.stims is a non-repeating list of object oriented stim objects (Movie is the only possible kind right now) in this Experiment
 			except AttributeError: # this was a simple non object-oriented stim, has no playlist
 				self.stims = []
 			#if len(self.stims) == 1:
 			#	self.stims = self.stims[0] # get rid of the list
-
-			# if you inited a stim object(s) (like a movie) while execing the textheader, you didn't have a chance to pass this exp as the parent in the init. So just set the attribute manually:
-
+			'''If you inited a stim object(s) (like a movie) while execing the textheader, you didn't have a chance to pass this exp as the parent in the init. So just set the attribute manually:'''
 			for s in self.stims:
 				s.e = self
 				try: # this'll probably only apply to Movies stim, cuz others won't have fnames
@@ -432,13 +428,12 @@ class Experiment(object):
 				except AttributeError: # this Movie was manually inited, not loaded from a textheader. s.moviepath doesn't exist, use s.path instead. Or it might not even be a Movie
 					pass
 				'''
-				# also, if you initd a stim that needs to be loaded (like a movie), maybe you should also load it now (this wasn't done when execing the textheader)
+				# Also, if you inited a stim that needs to be loaded (like a movie), maybe you should also load it now (this wasn't done when execing the textheader)
 				try:
 					s.load()
 				except:
 					pass
 				'''
-
 			# Generate the sweeptable here, no need to load if from files anymore...
 			#self.sweeptable = {[]} # dictionary of lists, ie sweeptable={'ori',[0,45,90],'sfreq',[1,1,1]}
 			# so you index into it with self.sweeptable['var'][sweepi]
@@ -449,12 +444,12 @@ class Experiment(object):
 					varvals={} # init a dictionary that will contain variable values
 					for var in s.varlist:
 						varvals[var]=eval('s.'+var) # generate a dictionary with var:val entries, to pass to buildSweepTable
-					s.sweepTable = buildSweepTable(s.varlist, varvals, s.nruns, s.shuffleRuns, s.blankSweep, s.shuffleBlankSweeps, makeSweepTableText=0) # passing varlist by reference, dim indices end up being modified
+					s.sweepTable = buildSweepTable(s.varlist, varvals, s.nruns, s.shuffleRuns, s.blankSweep, s.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
 			else: # this is a simple stim (not object oriented)
 				varvals={} # init a dictionary that will contain variable values
 				for var in self.varlist:
 					varvals[var]=eval('self.'+var) # generate a dictionary with var:val entries, to pass to buildSweepTable
-				self.sweepTable = buildSweepTable(self.varlist, varvals, self.nruns, self.shuffleRuns, self.blankSweep, self.shuffleBlankSweeps, makeSweepTableText=0) # passing varlist by reference, dim indices end up being modified
+				self.sweepTable = buildSweepTable(self.varlist, varvals, self.nruns, self.shuffleRuns, self.blankSweep, self.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
 
 			'''
 			# Old code for creating a sweeptable file (used by Matlab and NVS):
@@ -487,9 +482,8 @@ class Experiment(object):
 						treestr = s.level*TAB + s.name
 						self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
 
-		self.buildsweepranges()
+		#self.buildsweepranges()
 	def buildsweepranges(self):
-		pass
 		self.sweepranges = []
 
 class Rip(object):
@@ -609,17 +603,98 @@ class Neuron(object):
 		if tstart.__class__ is types.FloatType:
 			warn('Converting tstart to int: '+str(int(tstart)))
 		return self.cut(tstart, tend) - int(tstart)
-	def rate(self, tres=50000, trange=None, method='bin'):
-		if method == 'bin':
-			'''bins sequence demarcates left bin edges'''
-			if trange==None:
-				trange = (self.spikes[0], self.spikes[1])
-			bins = arange( trange[0], trange[1], tres )
-			n, bins = numpy.histogram(self.spikes, bins=bins, normed=1)
-			n = n / float(tres)
-			self.results['rate'] = (n, bins)
-			return n
+	def rate(self, kind='vbin', **kwargs):
+		'''Returns an existing Rate object, or creates a new one if necessary'''
+		try:
+			self.rates
+		except AttributeError: # self.rates doesn't exist yet
+			self.rates = [] # create a list that'll hold Rate objects
+		if kind == 'bin':
+			r = Neuron.BinRate(neuron=self, **kwargs) # init a new Rate.Bin object
+		elif kind == 'vbin':
+			r = Neuron.VBinRate(neuron=self, **kwargs) # init a new Rate.Vbin object
+		elif kind == 'gauss':
+			r = Neuron.GaussRate(neuron=self, **kwargs) # init a new Rate.Gauss object
+		elif kind == 'rect':
+			r = Neuron.RectRate(neuron=self, **kwargs) # init a new Rate.Rect object
+		else:
+			raise NameError, 'Unknown Rate kind: %s' % repr(self.kind)
+		for rate in self.rates:
+			if r == rate: # need to define special == method for class Rate()
+				return rate # returns the first Rate object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self.rates
+		r.calc() # no matching Rate was found, calculate it
+		self.rates.append(r) # add it to the Rate object list
+		return r
+	class Rate(object):
+		'''Abstract firing rate class'''
+		def __init__(self, neuron=None, trange=None):
+			self.neuron = neuron
+			if trange == None:
+				trange = self.neuron.spikes[0], self.neuron.spikes[-1]
+			self.trange = trange
+		def __eq__(self, other):
+			selfd = self.__dict__.copy()
+			otherd = other.__dict__.copy()
+			# Delete their r and t attribs, if they exist, to prevent comparing them below, since they may not have yet been calculated
+			[ d.__delitem__(key) for d in [selfd, otherd] for key in ['r', 't'] if d.has_key(key) ]
+			if type(self) == type(other) and selfd == otherd:
+				return True
+			else:
+				return False
+		def plot(self):
+			pl.figure()
+			pl.plot(self.t, self.r)
+			pl.title('spike rate')
+			pl.xlabel('t')
+			pl.ylabel('spike rate')
+	class BinRate(Rate):
+		'''Uses simple binning to calculate firing rate'''
+		def __init__(self, neuron=None, tres=100000):
+			super(Neuron.BinRate, self).__init__(neuron=neuron)
+			#self.kind='bin'
+			self.tres = tres
+		def calc(self):
+			t = numpy.arange( self.trange[0], self.trange[1], self.tres ) # t sequence demarcates left bin edges
+			self.r, self.t = histogramSorted(self.neuron.spikes, bins=t, normed=0) # assumes spikes are in chrono order
+			self.r = self.r / float(self.tres) * 1000000 # spikes/sec
+	class VBinRate(Rate):
+		'''Uses variable bin widths to calculate firing rate, with a fixed number of spikes per bin'''
+		def __init__(self, neuron=None, nspb=4, tres=50000):
+			super(Neuron.VBinRate, self).__init__(neuron=neuron)
+			#self.kind='vbin'
+			self.nspb = nspb
+			self.tres = tres
+		def calc(self):
+			s = self.neuron.spikes
+			nspb0 = self.nspb-1
+			# compare s to a shifted version of itself:
+			diff = s[nspb0::] - s[:-nspb0:] # nspb0 to end, single steps; beginning to nspb0 from end, single steps
+			r = float(self.nspb) / diff * 1000000 # spikes/sec
+			t = s[nspb0::]
+			# now interpolate:
+			f = sig.interpolate.interp1d(t, r, kind='linear') # returns an interpolation f'n
+			self.t = numpy.arange(t[0], t[-1], self.tres) # new set of timepoints
+			self.r = f(self.t) # interpolate over new timepoints
+	class GaussRate(Rate):
+		'''Uses a sliding Gaussian window to calculate firing rate'''
+		def __init__(self, neuron=None, width=200000):
+			super(Neuron.GaussRate, self).__init__(neuron=neuron)
+			#self.kind='gauss'
+			self.width = width
+		def calc(self):
+			pass
+	class RectRate(Rate):
+		'''Uses a sliding rectangular window to calculate firing rate'''
+		def __init__(self, neuron=None, width=200000):
+			super(Neuron.RectRate, self).__init__(neuron=neuron)
+			#self.kind='rect'
+			self.width = width
+		def calc(self):
+			pass
+	#class FancyRate(Rate):
+		# use numpy.piecewise()
 	def raster(self):
+		# use pylab.vlines()
 		pass
 
 class Movie(Dimstim.Movies.Movie): # inherit from Dimstim Movie() class (assumes it's new-style)
@@ -656,7 +731,7 @@ class Movie(Dimstim.Movies.Movie): # inherit from Dimstim Movie() class (assumes
 		if leftover != '':
 			pp(leftover)
 			print self.nframes,self.ncellshigh,self.ncellswide
-			raise RuntimeError('There are unread bytes in movie file \'%s\'. Width, height, or nframes is incorrect in the movie file header.' % self.name)
+			raise RuntimeError, 'There are unread bytes in movie file %s. Width, height, or nframes is incorrect in the movie file header.' % repr(self.name)
 		#self.data = self.data[::,::-1,::] # flip the movie frames vertically for OpenGL's bottom left origin
 		f.close() # close the movie file
 
@@ -667,12 +742,14 @@ MSEQ32 = Movie(name='mseq32.m', parent=None)
 MSEQ16 = Movie(name='mseq16.m', parent=None)
 # shouldn't use sparse bar movies anymore, can access VisionEgg directly now, get the framebuffers to directly do STA
 #sparsebars = Movie(path='C:/data/Cat 15/Track 7c/72 - track 7c sparseexps/', name='72 - track 7c sparseexps.sparsebars.movie');
-'''
-# init and load a Recording to play around with
-print 'Initing and loading Recording(92):'
-r=Recording(92)
-r.load()
-'''
+
+# init and load some neuropy objects:
+#print 'Initing and loading Recording(92):'
+#r92=Recording(92)
+#r92.load()
+#print 'Initing and loading Track(\'7c\'):'
+#t=Track('7c')
+#t.load
 print 'Initing and loading Recording(71):'
-r=Recording(71)
-r.load()
+r71=Recording(71)
+r71.load()
