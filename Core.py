@@ -28,7 +28,7 @@ DEFAULTMOVIENAME = 'mseq32.m'
 import os
 import types
 import pprint
-import numpy
+import numpy as np
 import scipy.signal as sig
 import struct
 import re
@@ -39,7 +39,7 @@ import Dimstim.Movies
 from Dimstim.Core import buildSweepTable
 
 pp = pprint.pprint
-INF = numpy.inf
+INF = np.inf
 
 # Rips should really have ids to make them easier to reference to: r[83].rip[0] instead of r[83].rip['conservative spikes'] - this means adding id prefixes to rip folder names (or maybe suffixes: 'conservative spikes.0.rip', 'liberal spikes.1.rip', etc...). Prefixes would be better cuz they'd force sorting by id in explorer (which uses alphabetical order) - ids should be 0-based of course
 # worry about conversion of ids to strings: some may be only 1 digit and may have a leading zero!
@@ -112,7 +112,6 @@ def unique(objlist):
 			if i != j and obj1 == obj2:
 				del objlist[j]
 """
-
 def iterable(y):
 	'''Check if the input is iterable, stolen from numpy.iterable()'''
 	try: iter(y)
@@ -129,10 +128,9 @@ def tolist(obj):
 	except TypeError: # obj is probably a scalar
 		return [obj] # converts any scalar to a list
 """
-
 def histogramSorted(sorteda, bins=10, range=None, normed=False):
 	'''Builds a histogram, stolen from numpy.histogram(), modified to assume sorted input'''
-	a = numpy.asarray(sorteda).ravel()
+	a = np.asarray(sorteda).ravel()
 	if not iterable(bins):
 		if range is None:
 			range = (a.min(), a.max())
@@ -140,10 +138,10 @@ def histogramSorted(sorteda, bins=10, range=None, normed=False):
 		if mn == mx:
 			mn -= 0.5
 			mx += 0.5
-		bins = numpy.linspace(mn, mx, bins, endpoint=False)
-	#n = numpy.sort(a).searchsorted(bins)
+		bins = np.linspace(mn, mx, bins, endpoint=False)
+	#n = np.sort(a).searchsorted(bins)
 	n = a.searchsorted(bins)
-	n = numpy.concatenate([n, [len(a)]]) # don't understand what this does
+	n = np.concatenate([n, [len(a)]]) # don't understand what this does
 	n = n[1:]-n[:-1] # and therefore, don't understand this either
 	if normed:
 		db = bins[1] - bins[0]
@@ -151,7 +149,6 @@ def histogramSorted(sorteda, bins=10, range=None, normed=False):
 	else:
 		return n, bins
 
-###########################
 
 class Data(object): # use 'new-style' classes
 	'''Data can have multiple Cats'''
@@ -178,6 +175,7 @@ class Data(object): # use 'new-style' classes
 			self.c[cat.id] = cat # save it
 		#if len(self.c) == 1:
 		#	self.c = self.c.values[0] # pull it out of the dictionary
+
 
 class Cat(object):
 	'''A Cat can have multiple Tracks'''
@@ -232,6 +230,7 @@ class Cat(object):
 		#if len(self.t) == 1:
 		#	self.t = self.t.values[0] # pull it out of the dictionary
 
+
 class Track(object):
 	'''A Track can have multiple Recordings'''
 	def __init__(self, id=DEFAULTTRACKID, name=None, parent=Cat):
@@ -284,6 +283,7 @@ class Track(object):
 			self.r[recording.id] = recording # save it
 		#if len(self.r) == 1:
 		#	self.r = self.r.values[0] # pull it out of the dictionary
+
 
 class Recording(object):
 	'''A Recording corresponds to a single SURF file, ie everything recorded between when
@@ -359,6 +359,7 @@ class Recording(object):
 		#if len(self.rip) == 1:
 		#	self.rip = self.rip.values[0] # pull it out of the dictionary
 
+
 class Experiment(object):
 	'''An Experiment corresponds to a single contiguous VisionEgg stimulus session.
 	It contains information about the stimulus during that session, including
@@ -385,7 +386,7 @@ class Experiment(object):
 	# doesn't need a id2name or name2id method, neither can really be derived from the other in an easy way (although could use re), the id is just alphabetical order, at least for now
 	def load(self):
 		f = file(self.path + self.name + '.din', 'rb') # open the din file for reading in binary mode
-		self.din = numpy.fromfile(f, dtype=numpy.int64).reshape(-1,2) # reshape to nrows x 2 columns
+		self.din = np.fromfile(f, dtype=np.int64).reshape(-1,2) # reshape to nrows x 2 columns
 		f.close()
 		try:
 			f = file(self.path + self.name + '.textheader', 'r') # open the textheader file for reading
@@ -486,6 +487,7 @@ class Experiment(object):
 	def buildsweepranges(self):
 		self.sweepranges = []
 
+
 class Rip(object):
 	'''A Rip is a single spike extraction. Generally, Rips of the same name within the same Track
 	were generated with the same spike template, though of course Rips in different Tracks must
@@ -523,6 +525,7 @@ class Rip(object):
 			self.n[neuron.id] = neuron # save it
 		# then, maybe add something that loads info about the rip, say from some file describing the template used, and all the thresholds, exported to the same folder by SURF
 		# maybe also load the template used for the rip, perhaps also stored in the same folder
+
 
 class Neuron(object):
 	'''A Neuron object''s spike data spans all the Experiments within a Recording.
@@ -574,14 +577,15 @@ class Neuron(object):
 		return id
 	def load(self): # or loadspikes()?
 		f = file(self.path + self.name + '.spk', 'rb') # open the spike file for reading in binary mode
-		self.spikes = numpy.fromfile(f, dtype=numpy.int64) # read in all spike times in us
+		self.spikes = np.fromfile(f, dtype=np.int64) # read in all spike times in us
 		f.close()
 		self.results = {} # a dictionary to store results in
 		#treestr = self.level*TAB + self.name + '/'
 		#self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
+
 	def cut(self, tstart=None, tend=None): # maybe use a masked array instead
 		'''Returns all of the Neuron's spike times that fall within tstart and tend'''
-		#return self.spikes[ numpy.greater_equal(self.spikes, tstart) & numpy.less_equal(self.spikes, tend) ]
+		#return self.spikes[ np.greater_equal(self.spikes, tstart) & np.less_equal(self.spikes, tend) ]
 		if tstart is None:
 			tstart = self.spikes[0]
 		if tend is None:
@@ -594,6 +598,7 @@ class Neuron(object):
 		'''
 		lo, hi = self.spikes.searchsorted([tstart, tend]) # returns slice indices
 		return self.spikes[ lo : hi ] # slice it
+
 	def cutrel(self, tstart=None, tend=None):
 		'''Cuts Neuron spike times and returns them relative to tstart'''
 		if tstart is None:
@@ -602,7 +607,8 @@ class Neuron(object):
 			tend = self.spikes[-1]
 		if tstart.__class__ is types.FloatType:
 			warn('Converting tstart to int: '+str(int(tstart)))
-		return self.cut(tstart, tend) - int(tstart)
+		return self.cut(tstart, tend) - int(round(tstart))
+
 	def rate(self, kind='vbin', **kwargs):
 		'''Returns an existing Rate object, or creates a new one if necessary'''
 		try:
@@ -618,13 +624,14 @@ class Neuron(object):
 		elif kind == 'rect':
 			r = Neuron.RectRate(neuron=self, **kwargs) # init a new Rate.Rect object
 		else:
-			raise NameError, 'Unknown Rate kind: %s' % repr(self.kind)
+			raise ValueError, 'Unknown kind: %s' % repr(self.kind)
 		for rate in self.rates:
 			if r == rate: # need to define special == method for class Rate()
 				return rate # returns the first Rate object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self.rates
 		r.calc() # no matching Rate was found, calculate it
 		self.rates.append(r) # add it to the Rate object list
 		return r
+
 	class Rate(object):
 		'''Abstract firing rate class'''
 		def __init__(self, neuron=None, trange=None):
@@ -647,6 +654,7 @@ class Neuron(object):
 			pl.title('spike rate')
 			pl.xlabel('t')
 			pl.ylabel('spike rate')
+
 	class BinRate(Rate):
 		'''Uses simple binning to calculate firing rate'''
 		def __init__(self, neuron=None, tres=100000):
@@ -654,9 +662,10 @@ class Neuron(object):
 			#self.kind='bin'
 			self.tres = tres
 		def calc(self):
-			t = numpy.arange( self.trange[0], self.trange[1], self.tres ) # t sequence demarcates left bin edges
+			t = np.arange( self.trange[0], self.trange[1], self.tres ) # t sequence demarcates left bin edges
 			self.r, self.t = histogramSorted(self.neuron.spikes, bins=t, normed=0) # assumes spikes are in chrono order
 			self.r = self.r / float(self.tres) * 1000000 # spikes/sec
+
 	class VBinRate(Rate):
 		'''Uses variable bin widths to calculate firing rate, with a fixed number of spikes per bin'''
 		def __init__(self, neuron=None, nspb=4, tres=50000):
@@ -670,11 +679,12 @@ class Neuron(object):
 			# compare s to a shifted version of itself:
 			diff = s[nspb0::] - s[:-nspb0:] # nspb0 to end, single steps; beginning to nspb0 from end, single steps
 			r = float(self.nspb) / diff * 1000000 # spikes/sec
-			t = s[nspb0::]
+			t = s[nspb0::] # keep it causal
 			# now interpolate:
 			f = sig.interpolate.interp1d(t, r, kind='linear') # returns an interpolation f'n
-			self.t = numpy.arange(t[0], t[-1], self.tres) # new set of timepoints
+			self.t = np.arange(t[0], t[-1], self.tres) # new set of timepoints
 			self.r = f(self.t) # interpolate over new timepoints
+
 	class GaussRate(Rate):
 		'''Uses a sliding Gaussian window to calculate firing rate'''
 		def __init__(self, neuron=None, width=200000):
@@ -683,6 +693,7 @@ class Neuron(object):
 			self.width = width
 		def calc(self):
 			pass
+
 	class RectRate(Rate):
 		'''Uses a sliding rectangular window to calculate firing rate'''
 		def __init__(self, neuron=None, width=200000):
@@ -691,11 +702,86 @@ class Neuron(object):
 			self.width = width
 		def calc(self):
 			pass
-	#class FancyRate(Rate):
-		# use numpy.piecewise()
+
+	class FancyRate(Rate):
+		# use np.piecewise()
+		pass
+
+	def ratepdf(self, **kwargs):
+		'''Returns an existing RatePDF object, or creates a new one if necessary'''
+		try:
+			self.ratepdfs
+		except AttributeError: # self.ratepdfs doesn't exist yet
+			self.ratepdfs = [] # create a list that'll hold RatePDF objects
+		rpdf = Neuron.RatePDF(neuron=self, **kwargs)
+		for ratepdf in self.ratepdfs:
+			if rpdf == ratepdf: # need to define special == method for class RatePDF()
+				return ratepdf # returns the first RatePDF object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self.ratepdfs
+		rpdf.calc() # no matching RatePDF object was found, calculate it
+		self.ratepdfs.append(rpdf) # add it to the RatePDF object list
+		return rpdf
+
+	class RatePDF(object):
+		'''Firing rate probability distribution function class'''
+		def __init__(self, neuron=None, rrange=(0, 200), nbins=100, scale='log', normed=False, **kwargs): # rrange == rate range, ie limits of pdf x axis; nbins == number of rate bins
+			self.neuron = neuron
+			self.rrange = rrange
+			self.nbins = nbins
+			self.scale = scale
+			self.normed = normed
+			self.rate = neuron.rate(**kwargs)
+		def __eq__(self, other):
+			selfd = self.__dict__.copy()
+			otherd = other.__dict__.copy()
+			# Delete their n and r and logrrange attribs, if they exist, to prevent comparing them below, since they may not have yet been calculated
+			[ d.__delitem__(key) for d in [selfd, otherd] for key in ['n', 'r', 'logrrange'] if d.has_key(key) ]
+			if type(self) == type(other) and selfd == otherd:
+				return True
+			else:
+				return False
+		def calc(self):
+			if self.scale == 'log':
+				safe = list(self.rrange) # convert from immutable tuple to mutable list
+				# prevent from taking log(0):
+				for (i,r) in enumerate(safe):
+					if r == 0:
+						safe[i] = 0.1 # set to 0.1 Hz
+				self.logrrange = np.log10(tuple(safe)) # convert back to tuple, is now safe to take log
+				# r sequence demarcates left rate bin edges
+				r = np.logspace(start=self.logrrange[0], stop=self.logrrange[1], num=self.nbins, endpoint=True, base=10.0)
+			elif self.scale == 'linear':
+				r = np.linspace(start=self.rrange[0], stop=self.rrange[1], num=self.nbins, endpoint=True)
+			else:
+				raise ValueError, 'Unknown scale: %s' % repr(scale)
+			self.n, self.r = np.histogram(self.rate.r, bins=r, normed=self.normed)
+		def plot(self):
+			pl.figure()
+			if self.scale == 'log':
+				pl.axes().set_xscale('log', basex=10)
+				barwidth = list(np.diff(self.r)) # each bar will have a different width, convert to list so you can append
+				# need to add one more entry to barwidth to the end to get nbins of them:
+				#barwidth.append(barwidth[-1]) # not exactly correct
+				logbinwidth = (self.logrrange[1]-self.logrrange[0])/self.nbins
+				barwidth.append(10**(self.logrrange[1]+logbinwidth)-self.r[-1]) # should be exactly correct
+			elif self.scale == 'linear':
+				pl.axes().set_xscale('linear')
+				barwidth = (self.rrange[1]-self.rrange[0])/self.nbins
+			else:
+				raise ValueError, 'Unknown scale: %s' % repr(scale)
+			#pl.hist(self.n, bins=self.r, normed=0, bottom=0, width=None, hold=False) # doesn't seem to work
+			pl.bar(left=self.r, height=self.n, width=barwidth, bottom=0, color='k', yerr=None, xerr=None, ecolor='k', capsize=3)
+			pl.title('spike rate PDF')
+			if self.normed:
+				pl.ylabel('P')
+			else:
+				pl.ylabel('count')
+			pl.xlabel('spike rate')
+
+
 	def raster(self):
 		# use pylab.vlines()
 		pass
+
 
 class Movie(Dimstim.Movies.Movie): # inherit from Dimstim Movie() class (assumes it's new-style)
 	'''A Movie stimulus object'''
@@ -725,8 +811,8 @@ class Movie(Dimstim.Movies.Movie): # inherit from Dimstim Movie() class (assumes
 			self.nframes = 6000
 			offset = 0 # header is this long
 		# read in all of the frames
-		self.data = numpy.fromfile(f, numpy.uint8, count=self.nframes*self.ncellshigh*self.ncellswide).reshape(self.nframes,self.ncellshigh,self.ncellswide) # read it all in
-		#self.data = numarray.fromfile(f, numpy.UInt8, (self.nframes,self.ncellshigh,self.ncellswide)) # read it all in
+		self.data = np.fromfile(f, np.uint8, count=self.nframes*self.ncellshigh*self.ncellswide).reshape(self.nframes,self.ncellshigh,self.ncellswide) # read it all in
+		#self.data = numarray.fromfile(f, np.UInt8, (self.nframes,self.ncellshigh,self.ncellswide)) # read it all in
 		leftover = f.read() # check if there are any leftover bytes in the file
 		if leftover != '':
 			pp(leftover)
@@ -735,7 +821,8 @@ class Movie(Dimstim.Movies.Movie): # inherit from Dimstim Movie() class (assumes
 		#self.data = self.data[::,::-1,::] # flip the movie frames vertically for OpenGL's bottom left origin
 		f.close() # close the movie file
 
-################
+
+
 
 # init some typical movies (but don't load 'em til needed), then just point to them within the appropriate Experiments
 MSEQ32 = Movie(name='mseq32.m', parent=None)
