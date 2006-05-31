@@ -128,7 +128,7 @@ def tolist(obj):
 	except TypeError: # obj is probably a scalar
 		return [obj] # converts any scalar to a list
 """
-def histogramSorted(sorteda, bins=10, range=None, normed=False):
+def histogramSorted(sorteda, bins=10, range=None):
 	'''Builds a histogram, stolen from numpy.histogram(), modified to assume sorted input'''
 	a = np.asarray(sorteda).ravel()
 	if not iterable(bins):
@@ -143,11 +143,11 @@ def histogramSorted(sorteda, bins=10, range=None, normed=False):
 	n = a.searchsorted(bins)
 	n = np.concatenate([n, [len(a)]]) # don't understand what this does
 	n = n[1:]-n[:-1] # and therefore, don't understand this either
-	if normed:
-		db = bins[1] - bins[0]
-		return 1.0/(a.size*db) * n, bins
-	else:
-		return n, bins
+	#if normed:
+	#	db = bins[1] - bins[0]
+	#	return 1.0/(a.size*db) * n, bins # this seems a bit weird
+	#else:
+	return n, bins
 
 
 class Data(object): # use 'new-style' classes
@@ -483,10 +483,25 @@ class Experiment(object):
 						treestr = s.level*TAB + s.name
 						self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
 
+		try:
+			self.REFRESHTIME = int(round(1/float(self.REFRESHRATE)*1000000)) # in us, keep 'em integers
+		except AttributeError:
+			self.REFRESHTIME = self.din[1,0] - self.din[0,0] # use the time difference between the first two din instead
 		#self.buildsweepranges()
+
 	def buildsweepranges(self):
 		self.sweepranges = []
 
+	def rate(self, neuron=0, **kwargs):
+		'''Returns a Neuron.Rate object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id'''
+		trange = (self.din[0,0], self.din[-1,0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
+		try:
+			return neuron.rate(trange=trange, **kwargs) # see if neuron is a Neuron
+		except AttributeError:
+			return self.r.n[neuron].rate(trange=trange, **kwargs) # neuron is probably a Neuron id
+
+	def ratepdf(self):
+		pass
 
 class Rip(object):
 	'''A Rip is a single spike extraction. Generally, Rips of the same name within the same Track
@@ -579,58 +594,82 @@ class Neuron(object):
 		f = file(self.path + self.name + '.spk', 'rb') # open the spike file for reading in binary mode
 		self.spikes = np.fromfile(f, dtype=np.int64) # read in all spike times in us
 		f.close()
-		self.results = {} # a dictionary to store results in
+		self.nspikes = len(self.spikes)
+		#self.results = {} # a dictionary to store results in
 		#treestr = self.level*TAB + self.name + '/'
 		#self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
 
-	def cut(self, tstart=None, tend=None): # maybe use a masked array instead
-		'''Returns all of the Neuron's spike times that fall within tstart and tend'''
-		#return self.spikes[ np.greater_equal(self.spikes, tstart) & np.less_equal(self.spikes, tend) ]
-		if tstart is None:
+	def cut(self, *args):
+		'''Returns all of the Neuron's spike times where tstart <= spikes <= tend'''
+		if len(args) == 0: # passed nothing
 			tstart = self.spikes[0]
-		if tend is None:
+			tend = self.spikes[-1]
+		elif len(args) == 1: # passed a tuple
+			tstart = args[0][0]
+			tend = args[0][1]
+		elif len(args) == 2: # passed tstart and tend as separate args
+			tstart = args[0]
+			tend = args[1]
+		else:
+			raise RuntimeError, 'Too many arguments'
+		if tstart == 0: # shorthand for "from first spike" - would be problematic if a spike existed at t=0
+			tstart = self.spikes[0]
+		if tend == -1: # shorthand for "to last spike" - would be problematic if a spike existed at t=-1
 			tend = self.spikes[-1]
 		'''
 		# this is what we're trying to do:
 		return self.spikes[ (self.spikes >= tstart) & (self.spikes <= tend) ]
-
 		self.searchsorted(values) method does it faster. It returns an index where the value would fit in self. The index is such that self[index-1] < value <= self[index]. In this formula self[self.size]=inf and self[-1]= -inf
+		Another possibility could be to use a masked array instead?
 		'''
-		lo, hi = self.spikes.searchsorted([tstart, tend]) # returns slice indices
+		lo, hi = self.spikes.searchsorted([tstart, tend]) # returns indices where tstart and tend would fit in spikes
+		if tend  == self.spikes[min(hi, self.nspikes-1)]: # protect from going out of index bounds
+			hi += 1 # inc to include a spike if it happens to exactly equal tend. This gives us end inclusion
+			hi = min(hi, self.nspikes) # limit hi to max slice index (==max value index + 1)
 		return self.spikes[ lo : hi ] # slice it
 
-	def cutrel(self, tstart=None, tend=None):
+	def cutrel(self, *args):
 		'''Cuts Neuron spike times and returns them relative to tstart'''
-		if tstart is None:
+		if len(args) == 0: # passed nothing
 			tstart = self.spikes[0]
-		if tend is None:
 			tend = self.spikes[-1]
-		if tstart.__class__ is types.FloatType:
-			warn('Converting tstart to int: '+str(int(tstart)))
-		return self.cut(tstart, tend) - int(round(tstart))
+		elif len(args) == 1: # passed a tuple
+			tstart = args[0][0]
+			tend = args[0][1]
+		elif len(args) == 2: # passed tstart and tend as separate args
+			tstart = args[0]
+			tend = args[1]
+		else:
+			raise RuntimeError, 'Too many arguments'
+		#if tstart == 0: # shorthand for "from first spike"
+		#	tstart = self.spikes[0]
+		if tend == -1: # shorthand for "to last spike"
+			tend = self.spikes[-1]
+		tstart = np.int64(round(tstart)) # let's keep all the returned spikes as integers, us is more than accurate enough
+		return self.cut(tstart, tend) - tstart
 
-	def rate(self, kind='vbin', **kwargs):
+	def rate(self, kind='insi', **kwargs):
 		'''Returns an existing Rate object, or creates a new one if necessary'''
 		try:
 			self.rates
 		except AttributeError: # self.rates doesn't exist yet
 			self.rates = [] # create a list that'll hold Rate objects
 		if kind == 'bin':
-			r = Neuron.BinRate(neuron=self, **kwargs) # init a new Rate.Bin object
-		elif kind == 'vbin':
-			r = Neuron.VBinRate(neuron=self, **kwargs) # init a new Rate.Vbin object
+			ro = Neuron.BinRate(neuron=self, **kwargs) # init a new Rate.Bin object
+		elif kind == 'insi':
+			ro = Neuron.InSIRate(neuron=self, **kwargs) # init a new Rate.InSI object
 		elif kind == 'gauss':
-			r = Neuron.GaussRate(neuron=self, **kwargs) # init a new Rate.Gauss object
+			ro = Neuron.GaussRate(neuron=self, **kwargs) # init a new Rate.Gauss object
 		elif kind == 'rect':
-			r = Neuron.RectRate(neuron=self, **kwargs) # init a new Rate.Rect object
+			ro = Neuron.RectRate(neuron=self, **kwargs) # init a new Rate.Rect object
 		else:
 			raise ValueError, 'Unknown kind: %s' % repr(self.kind)
 		for rate in self.rates:
-			if r == rate: # need to define special == method for class Rate()
+			if ro == rate: # need to define special == method for class Rate()
 				return rate # returns the first Rate object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self.rates
-		r.calc() # no matching Rate was found, calculate it
-		self.rates.append(r) # add it to the Rate object list
-		return r
+		ro.calc() # no matching Rate was found, calculate it
+		self.rates.append(ro) # add it to the Rate object list
+		return ro
 
 	class Rate(object):
 		'''Abstract firing rate class'''
@@ -651,61 +690,83 @@ class Neuron(object):
 		def plot(self):
 			pl.figure()
 			pl.plot(self.t, self.r)
-			pl.title('spike rate')
+			# diagnostic for comparing interpolated to raw insi rate:
+			#pl.plot(self.rawt, self.rawr, 'r+')
 			pl.xlabel('t')
 			pl.ylabel('spike rate')
 
 	class BinRate(Rate):
 		'''Uses simple binning to calculate firing rate'''
-		def __init__(self, neuron=None, tres=100000):
-			super(Neuron.BinRate, self).__init__(neuron=neuron)
+		def __init__(self, neuron=None, trange=None, tres=100000):
+			super(Neuron.BinRate, self).__init__(neuron=neuron, trange=trange)
 			#self.kind='bin'
 			self.tres = tres
 		def calc(self):
 			t = np.arange( self.trange[0], self.trange[1], self.tres ) # t sequence demarcates left bin edges
-			self.r, self.t = histogramSorted(self.neuron.spikes, bins=t, normed=0) # assumes spikes are in chrono order
+			self.r, self.t = histogramSorted(self.neuron.spikes, bins=t) # assumes spikes are in chrono order
 			self.r = self.r / float(self.tres) * 1000000 # spikes/sec
+		def plot(self):
+			super(Neuron.BinRate, self).plot()
+			pl.title('binned spike rate')
 
-	class VBinRate(Rate):
-		'''Uses variable bin widths to calculate firing rate, with a fixed number of spikes per bin'''
-		def __init__(self, neuron=None, nspb=4, tres=50000):
-			super(Neuron.VBinRate, self).__init__(neuron=neuron)
-			#self.kind='vbin'
-			self.nspb = nspb
+	class InSIRate(Rate):
+		'''Uses inter n spike interval to calculate firing rate, with a fixed number of spikes n per bin. n == 2 is the ISI rate'''
+		def __init__(self, neuron=None, trange=None, n=4, tres=50000):
+			super(Neuron.InSIRate, self).__init__(neuron=neuron, trange=trange)
+			#self.kind='insi'
+			self.n = n
 			self.tres = tres
 		def calc(self):
-			s = self.neuron.spikes
-			nspb0 = self.nspb-1
+			s = self.neuron.cut(self.trange) # spike times
+			n0 = self.n-1 # 0-based n
 			# compare s to a shifted version of itself:
-			diff = s[nspb0::] - s[:-nspb0:] # nspb0 to end, single steps; beginning to nspb0 from end, single steps
-			r = float(self.nspb) / diff * 1000000 # spikes/sec
-			t = s[nspb0::] # keep it causal
+			diff = s[n0::] - s[:-n0:] # (n0 to end, single steps) - (beginning to n0 from end, single steps)
+			r = float(self.n) / diff * 1000000 # spikes/sec
+			t = s[n0::] # for the corresponding timepoints, pick the spike time at the end of the group of n spikes to keep it causal
 			# now interpolate:
+			self.rawr = r
+			self.rawt = t
 			f = sig.interpolate.interp1d(t, r, kind='linear') # returns an interpolation f'n
-			self.t = np.arange(t[0], t[-1], self.tres) # new set of timepoints
-			self.r = f(self.t) # interpolate over new timepoints
+			tstart = t[0] - (t[0] % self.tres) + self.tres # make the start of our interpolated timepoints be even multiples of self.tres. Round up to the nearest multiple. This way, the timepoints will line up, even if different Rates have different starting points, like neuron.rate() vs experiment.rate()
+			self.t = np.arange(tstart, t[-1], self.tres) # new set of timepoints to interpolate over
+			self.r = f(self.t) # interpolate over the new timepoints
+		def plot(self):
+			super(Neuron.InSIRate, self).plot()
+			pl.title('inter-%d-spike-interval spike rate' % self.n)
 
 	class GaussRate(Rate):
 		'''Uses a sliding Gaussian window to calculate firing rate'''
-		def __init__(self, neuron=None, width=200000):
-			super(Neuron.GaussRate, self).__init__(neuron=neuron)
+		def __init__(self, neuron=None, trange=None, width=200000):
+			super(Neuron.GaussRate, self).__init__(neuron=neuron, trange=trange)
 			#self.kind='gauss'
 			self.width = width
 		def calc(self):
 			pass
+		def plot(self):
+			super(Neuron.GaussRate, self).plot()
+			pl.title('Gaussian sliding window spike rate')
 
 	class RectRate(Rate):
 		'''Uses a sliding rectangular window to calculate firing rate'''
-		def __init__(self, neuron=None, width=200000):
-			super(Neuron.RectRate, self).__init__(neuron=neuron)
+		def __init__(self, neuron=None, trange=None, width=200000):
+			super(Neuron.RectRate, self).__init__(neuron=neuron, trange=trange)
 			#self.kind='rect'
 			self.width = width
 		def calc(self):
 			pass
+		def plot(self):
+			super(Neuron.RectRate, self).plot()
+			pl.title('rectangular sliding window spike rate')
 
 	class FancyRate(Rate):
 		# use np.piecewise()
 		pass
+		#def plot(self)
+
+	class WInSIRate(Rate):
+		'''Uses a weighted sum of various inter n spike intervals to calculate rate'''
+		pass
+		#def plot(self)
 
 	def ratepdf(self, **kwargs):
 		'''Returns an existing RatePDF object, or creates a new one if necessary'''
@@ -753,18 +814,20 @@ class Neuron(object):
 				r = np.linspace(start=self.rrange[0], stop=self.rrange[1], num=self.nbins, endpoint=True)
 			else:
 				raise ValueError, 'Unknown scale: %s' % repr(scale)
-			self.n, self.r = np.histogram(self.rate.r, bins=r, normed=self.normed)
+			self.n, self.r = np.histogram(self.rate.r, bins=r, normed=False) # don't use histogram()'s normed, not sure what the hell it does
+			if self.normed:
+				self.n = self.n / float(np.sum(self.n)) # do own normalization
 		def plot(self):
 			pl.figure()
 			if self.scale == 'log':
-				pl.axes().set_xscale('log', basex=10)
+				pl.axes().set_xscale(self.scale, basex=10)
 				barwidth = list(np.diff(self.r)) # each bar will have a different width, convert to list so you can append
 				# need to add one more entry to barwidth to the end to get nbins of them:
 				#barwidth.append(barwidth[-1]) # not exactly correct
 				logbinwidth = (self.logrrange[1]-self.logrrange[0])/self.nbins
 				barwidth.append(10**(self.logrrange[1]+logbinwidth)-self.r[-1]) # should be exactly correct
 			elif self.scale == 'linear':
-				pl.axes().set_xscale('linear')
+				pl.axes().set_xscale(self.scale)
 				barwidth = (self.rrange[1]-self.rrange[0])/self.nbins
 			else:
 				raise ValueError, 'Unknown scale: %s' % repr(scale)
@@ -772,7 +835,7 @@ class Neuron(object):
 			pl.bar(left=self.r, height=self.n, width=barwidth, bottom=0, color='k', yerr=None, xerr=None, ecolor='k', capsize=3)
 			pl.title('spike rate PDF')
 			if self.normed:
-				pl.ylabel('P')
+				pl.ylabel('probability')
 			else:
 				pl.ylabel('count')
 			pl.xlabel('spike rate')
