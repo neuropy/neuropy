@@ -149,6 +149,15 @@ def histogramSorted(sorteda, bins=10, range=None):
 	#else:
 	return n, bins
 
+def sah(t, y, ts):
+	'''Resample using sample and hold. Returns resampled values at ts given the original points (t,y)
+	such that the resampled values are just the most recent value in y (think of a staircase).
+	Assumes that t is sorted. Contributed by Robert Kern.'''
+	i = np.searchsorted(t, ts) - 1 # find where ts falls in t, dec so you get indices that point to the most recent value in y
+	# Handle the cases where ts is smaller than the first point.
+	i = np.where(i < 0, 0, i)
+	print 'this has an issue of not keeping the original data point where ts == t, needs another look. Plot it'
+	return y[i]
 
 class Data(object): # use 'new-style' classes
 	'''Data can have multiple Cats'''
@@ -648,20 +657,24 @@ class Neuron(object):
 		tstart = np.int64(round(tstart)) # let's keep all the returned spikes as integers, us is more than accurate enough
 		return self.cut(tstart, tend) - tstart
 
-	def rate(self, kind='insi', **kwargs):
+	def rate(self, kind='nisi', **kwargs):
 		'''Returns an existing Rate object, or creates a new one if necessary'''
 		try:
 			self.rates
 		except AttributeError: # self.rates doesn't exist yet
 			self.rates = [] # create a list that'll hold Rate objects
 		if kind == 'bin':
-			ro = Neuron.BinRate(neuron=self, **kwargs) # init a new Rate.Bin object
-		elif kind == 'insi':
-			ro = Neuron.InSIRate(neuron=self, **kwargs) # init a new Rate.InSI object
+			ro = Neuron.BinRate(neuron=self, **kwargs) # init a new BinRate object
+		elif kind == 'nisi':
+			ro = Neuron.nISIRate(neuron=self, **kwargs) # init a new nISIRate object
+		elif kind == 'wnisi':
+			ro = Neuron.WnISIRate(neuron=self, **kwargs) # init a new WnISIRate object
+		elif kind == 'idp':
+			ro = Neuron.IDPRate(neuron=self, **kwargs) # init a new IDPRate object
 		elif kind == 'gauss':
-			ro = Neuron.GaussRate(neuron=self, **kwargs) # init a new Rate.Gauss object
+			ro = Neuron.GaussRate(neuron=self, **kwargs) # init a new GaussRate object
 		elif kind == 'rect':
-			ro = Neuron.RectRate(neuron=self, **kwargs) # init a new Rate.Rect object
+			ro = Neuron.RectRate(neuron=self, **kwargs) # init a new RectRate object
 		else:
 			raise ValueError, 'Unknown kind: %s' % repr(self.kind)
 		for rate in self.rates:
@@ -681,8 +694,8 @@ class Neuron(object):
 		def __eq__(self, other):
 			selfd = self.__dict__.copy()
 			otherd = other.__dict__.copy()
-			# Delete their r and t attribs, if they exist, to prevent comparing them below, since they may not have yet been calculated
-			[ d.__delitem__(key) for d in [selfd, otherd] for key in ['r', 't'] if d.has_key(key) ]
+			# Delete their r and t attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
+			[ d.__delitem__(key) for d in [selfd, otherd] for key in ['r', 't', 'rawr', 'rawt'] if d.has_key(key) ]
 			if type(self) == type(other) and selfd == otherd:
 				return True
 			else:
@@ -690,7 +703,7 @@ class Neuron(object):
 		def plot(self):
 			pl.figure()
 			pl.plot(self.t, self.r)
-			# diagnostic for comparing interpolated to raw insi rate:
+			# diagnostic for comparing interpolated to raw nisi rate:
 			#pl.plot(self.rawt, self.rawr, 'r+')
 			pl.xlabel('t')
 			pl.ylabel('spike rate')
@@ -699,7 +712,7 @@ class Neuron(object):
 		'''Uses simple binning to calculate firing rate'''
 		def __init__(self, neuron=None, trange=None, tres=100000):
 			super(Neuron.BinRate, self).__init__(neuron=neuron, trange=trange)
-			#self.kind='bin'
+			self.kind = 'bin'
 			self.tres = tres
 		def calc(self):
 			t = np.arange( self.trange[0], self.trange[1], self.tres ) # t sequence demarcates left bin edges
@@ -709,36 +722,77 @@ class Neuron(object):
 			super(Neuron.BinRate, self).plot()
 			pl.title('binned spike rate')
 
-	class InSIRate(Rate):
-		'''Uses inter n spike interval to calculate firing rate, with a fixed number of spikes n per bin. n == 2 is the ISI rate'''
-		def __init__(self, neuron=None, trange=None, n=4, tres=50000):
-			super(Neuron.InSIRate, self).__init__(neuron=neuron, trange=trange)
-			#self.kind='insi'
-			self.n = n
+	class nISIRate(Rate):
+		'''Uses nisi inter spike intervals to calculate firing rate, with a fixed number of spikes nisi+1 per bin. nisi == 1 is the ISI rate'''
+		def __init__(self, neuron=None, trange=None, nisi=3, tres=50000):
+			super(Neuron.nISIRate, self).__init__(neuron=neuron, trange=trange)
+			self.kind = 'nisi'
+			self.nisi = nisi
 			self.tres = tres
 		def calc(self):
 			s = self.neuron.cut(self.trange) # spike times
-			n0 = self.n-1 # 0-based n
+			#n0 = self.n-1 # 0-based n
 			# compare s to a shifted version of itself:
-			diff = s[n0::] - s[:-n0:] # (n0 to end, single steps) - (beginning to n0 from end, single steps)
-			r = float(self.n) / diff * 1000000 # spikes/sec
-			t = s[n0::] # for the corresponding timepoints, pick the spike time at the end of the group of n spikes to keep it causal
+			diff = s[self.nisi::] - s[:-self.nisi:] # (n0 to end, single steps) - (beginning to n0 from end, single steps)
+			r = float(self.nisi+1) / diff * 1000000 # spikes/sec
+			t = s[self.nisi::] # for the corresponding timepoints, pick the spike time at the end of the group of n spikes to keep it causal
+			#self.rawr = r
+			#self.rawt = t
 			# now interpolate:
-			self.rawr = r
-			self.rawt = t
 			f = sig.interpolate.interp1d(t, r, kind='linear') # returns an interpolation f'n
-			tstart = t[0] - (t[0] % self.tres) + self.tres # make the start of our interpolated timepoints be even multiples of self.tres. Round up to the nearest multiple. This way, the timepoints will line up, even if different Rates have different starting points, like neuron.rate() vs experiment.rate()
+			# or maybe try sig.resample() instead
+			tstart = t[0] - (t[0] % self.tres) + self.tres # make the start of our interpolated timepoints be an even multiple of self.tres. Round up to the nearest multiple. This way, the timepoints will line up, even if different Rates have different starting points, like neuron.rate() vs experiment.rate()
 			self.t = np.arange(tstart, t[-1], self.tres) # new set of timepoints to interpolate over
 			self.r = f(self.t) # interpolate over the new timepoints
 		def plot(self):
-			super(Neuron.InSIRate, self).plot()
-			pl.title('inter-%d-spike-interval spike rate' % self.n)
+			super(Neuron.nISIRate, self).plot()
+			pl.title('%d-inter-spike-interval spike rate' % self.nisi)
+
+	class WnISIRate(Rate):
+		'''Uses a weighted sum of various inter n spike intervals to calculate rate'''
+		pass
+		#def plot(self)
+
+	class IDPRate(Rate):
+		'''Instantaneous discharge probability. See Pauluis and Baker, 2000'''
+		def __init__(self, neuron=None, IDP_a=4, tres=50000):
+			super(Neuron.IDPRate, self).__init__(neuron=neuron, trange=trange)
+			self.kind = 'idp'
+			self.tres = tres
+		def calc(self):
+
+			# Step 1: generate an ISI rate sampled with sufficiently fine resolution
+			isiro = self.neuron.rate(kind='nisi', nisi=1, tres=self.tres) # ISI rate object
+			# interpolation needs to be sample and hold, not linear
+
+			# Step 2: find sudde
+			Is = diff(self.neuron.spikes) # intervals
+			# find the sudden ISI rate changes:
+			# y=gdtrc(a,b,x) returns the integral from x to infinity of the gamma probability density function.  SEE gdtr, gdtri
+			b = IDP_a
+			increaseOnsets = [] # stores the interval indices of significant sudden increases in ISI rate
+			decreaseOnsets = [] # stores the interval indices of significant sudden decreases in ISI rate
+			for (n,I) in enumerate(Is):
+				IDP_mu = Is(n+1) # the next interval
+				a = IDP_a / float(IDP_mu)
+				p1 = gdtrc(a,b,I) # integrate from I to infinity
+				IDP_mu = Is(n+2) # the interval after that
+				a = IDP_a / float(IDP_mu)
+				p2 = gdtrc(a,b,I) # integrate from I to infinity
+				if p1 < pthresh and p2 < pthresh: # then this nth interval was a sudden increase in ISI firing rate
+					inreaseOnsets.append(n)
+
+
+
+			# use np.piecewise() ?
+		pass
+		#def plot(self)
 
 	class GaussRate(Rate):
 		'''Uses a sliding Gaussian window to calculate firing rate'''
 		def __init__(self, neuron=None, trange=None, width=200000):
 			super(Neuron.GaussRate, self).__init__(neuron=neuron, trange=trange)
-			#self.kind='gauss'
+			self.kind = 'gauss'
 			self.width = width
 		def calc(self):
 			pass
@@ -750,23 +804,13 @@ class Neuron(object):
 		'''Uses a sliding rectangular window to calculate firing rate'''
 		def __init__(self, neuron=None, trange=None, width=200000):
 			super(Neuron.RectRate, self).__init__(neuron=neuron, trange=trange)
-			#self.kind='rect'
+			self.kind = 'rect'
 			self.width = width
 		def calc(self):
 			pass
 		def plot(self):
 			super(Neuron.RectRate, self).plot()
 			pl.title('rectangular sliding window spike rate')
-
-	class FancyRate(Rate):
-		# use np.piecewise()
-		pass
-		#def plot(self)
-
-	class WInSIRate(Rate):
-		'''Uses a weighted sum of various inter n spike intervals to calculate rate'''
-		pass
-		#def plot(self)
 
 	def ratepdf(self, **kwargs):
 		'''Returns an existing RatePDF object, or creates a new one if necessary'''
@@ -790,11 +834,11 @@ class Neuron(object):
 			self.nbins = nbins
 			self.scale = scale
 			self.normed = normed
-			self.rate = neuron.rate(**kwargs)
+			self.rate = neuron.rate(**kwargs) # returns a Rate object of some kind
 		def __eq__(self, other):
 			selfd = self.__dict__.copy()
 			otherd = other.__dict__.copy()
-			# Delete their n and r and logrrange attribs, if they exist, to prevent comparing them below, since they may not have yet been calculated
+			# Delete their n and r and logrrange attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
 			[ d.__delitem__(key) for d in [selfd, otherd] for key in ['n', 'r', 'logrrange'] if d.has_key(key) ]
 			if type(self) == type(other) and selfd == otherd:
 				return True
@@ -833,7 +877,7 @@ class Neuron(object):
 				raise ValueError, 'Unknown scale: %s' % repr(scale)
 			#pl.hist(self.n, bins=self.r, normed=0, bottom=0, width=None, hold=False) # doesn't seem to work
 			pl.bar(left=self.r, height=self.n, width=barwidth, bottom=0, color='k', yerr=None, xerr=None, ecolor='k', capsize=3)
-			pl.title('spike rate PDF')
+			pl.title('%s spike rate PDF' % self.rate.kind)
 			if self.normed:
 				pl.ylabel('probability')
 			else:
