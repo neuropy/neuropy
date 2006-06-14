@@ -201,7 +201,7 @@ def chan2pos(polytrode=None, chanid=None):
         SiteLoc[52] = (43, 900)
         SiteLoc[53] = (43, 800)
     elif polytrode == '1c':
-        '''Need to fill it in'''
+        """Need to fill it in"""
         pass
     elif polytrode == '2a':
         SiteLoc[0] = (-28, 1235)
@@ -462,10 +462,10 @@ neuronid xcoord ycoord
 ######################################
 
 
-'''the following re's were useful in the steps for converting pascal records syntax to Python dicts of tuples syntax:
+"""the following re's were useful in the steps for converting pascal records syntax to Python dicts of tuples syntax:
 SiteLoc\[.*\]\.x :=
 SiteLoc\[.*\]\.y :=
-'''
+"""
 #SURF ElectrodeTypes.pas definition for 1b polytrode
 '''
 Name := 'uMap54_1b';

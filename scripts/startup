@@ -1,0 +1,97 @@
+import os
+import sys
+import types
+import copy
+import __main__
+from pprint import pprint
+
+import numpy as np
+import pylab as pl
+from numpy import arange, array
+from pylab import figure, plot, xlabel, ylabel, title
+
+# set some numpy options
+np.set_printoptions(precision=8)
+np.set_printoptions(threshold=1000)
+np.set_printoptions(edgeitems=5)
+np.set_printoptions(linewidth=150)
+np.set_printoptions(suppress=True)
+
+#import deep_reload # modifies __builtin__.reload() to do a deep reload
+#import LazyPython
+#sys.excepthook = LazyPython.LazyPython() # this doesn't seem to work
+
+def who():
+    import __main__
+    pprint(__main__.__dict__.keys())
+def whos():
+    exec 'pprint(locals())' in globals()
+cd = os.chdir
+cd('c:/home/mspacek/Desktop')
+def pwd():
+    print os.getcwd()
+def ls():
+    pwd()
+    print os.listdir(pwd())
+def ll():
+    pwd()
+    pprint(os.listdir(pwd()))
+
+def refresh(mod):
+    try:
+        reload(mod)
+    except:
+        import mod
+    print '%s refreshed' % mod.__name__
+    '''
+    """Clears all names from mod and reloads it into namespace"""
+    modname = mod.__name__
+    if not mod.__all__:
+        raise AttributeError, 'module %s must have an "__all__" attribute' % mod.__name__
+    import copy
+    import types
+    import __main__
+    moddict = mod.__dict__
+    maindict = __main__.__dict__
+    for key in mod.__all__:
+        #if not key.startswith('_'):# not in key:# and type(d[key]) is not types.ModuleType:
+        try:
+            del maindict[key]
+            print 'deleted maindict key', key
+        except:
+            print 'couldnt delete', key
+        if type(moddict[key]) is types.ModuleType:
+            reload(moddict[key])
+            print 'reloaded moddict key', key
+        else:
+            del moddict[key]
+
+            print 'deleted moddict key', key
+
+    del mod
+
+    exec 'reload(%s)' % modname
+    print '%s refreshed' % modname
+    '''
+def cf():
+    """Closes all figures"""
+    pl.close('all')
+    print 'all figures closed'
+
+def c():
+    """Clears all names added to the namespace after the '__original' point"""
+    import __main__
+    import copy
+    md = __main__.__dict__
+    for key in md.keys():
+        if key not in _original and key != '_original':
+            del md[key]
+            #print 'deleted md key:', key
+    print 'namespace cleared'
+
+import neuropy
+
+_original = __main__.__dict__.keys()
+
+from neuropy import *
+

@@ -1,4 +1,4 @@
-'''CD to the directory you want to run this in first'''
+# CD to the directory you want to run this in first
 
 import os
 

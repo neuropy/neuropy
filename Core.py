@@ -1,4 +1,4 @@
-r'''Core neuropy functions and classes
+r"""Core neuropy functions and classes
 
           object hierarchy:     level:
 
@@ -13,7 +13,7 @@ r'''Core neuropy functions and classes
        Experiment      Rip        4
             |           |
           Movie       Neuron      5
-'''
+"""
 
 DEFAULTDATAPATH = 'C:/data/' # the convention in neuropy is that all 'path' var names have a trailing slash
 DEFAULTCATID    = 15
@@ -27,34 +27,32 @@ DEFAULTMOVIENAME = 'mseq32.m'
 
 import os
 import types
-import pprint
-import numpy as np
-import scipy.signal as sig
+from pprint import pprint
 import struct
 import re
 import StringIO
 import sys
+
+import numpy as np
 import pylab as pl
+import scipy.signal as sig
 import Dimstim.Movies
 from Dimstim.Core import buildSweepTable
-
-pp = pprint.pprint
-INF = np.inf
 
 # Rips should really have ids to make them easier to reference to: r[83].rip[0] instead of r[83].rip['conservative spikes'] - this means adding id prefixes to rip folder names (or maybe suffixes: 'conservative spikes.0.rip', 'liberal spikes.1.rip', etc...). Prefixes would be better cuz they'd force sorting by id in explorer (which uses alphabetical order) - ids should be 0-based of course
 # worry about conversion of ids to strings: some may be only 1 digit and may have a leading zero!
 # maybe make two load() f'ns for Experiment and Neuron: one from files, and a future one from a database
 # make a save() f'n that pickles the object (including any of its results, like its STA, tuning curve points, etc)? - just use IPython's %store
 
-"""
+'''
 def str2(data):
     if type(data) is types.IntTypes:
         s = str(data)
         if len(s) == 1:
             s = '0'+s # add a leading zero for single digits
-"""
+'''
 def txtdin2binarydin(fin, fout):
-    '''Converts a csv text .din file to an int64 binary .din file'''
+    """Converts a csv text .din file to an int64 binary .din file"""
     fi = file(fin, 'r') # open the din file for reading in text mode
     fo = file(fout,'wb') # for writing in binary mode
     for line in fi:
@@ -70,7 +68,7 @@ def txtdin2binarydin(fin, fout):
     print 'Converted ascii din: ', fin, ' to binary din: ', fout
 
 def renameSpikeFiles(path, newname):
-    '''Renames all .spk files in path to newname, retaining their '_t##.spk' ending'''
+    """Renames all .spk files in path to newname, retaining their '_t##.spk' ending"""
     for fname in os.listdir(path):
         if fname.endswith('.spk'):
             i=fname.find('_t')
@@ -80,56 +78,68 @@ def renameSpikeFiles(path, newname):
                 os.rename(path+SLASH+fname, path+SLASH+newfname)
 
 def warn(msg,level=2,exit_val=1):
-    '''Standard warning printer. Gives formatting consistency. Stolen from IPython.genutils'''
+    """Standard warning printer. Gives formatting consistency. Stolen from IPython.genutils"""
     if level>0:
         header = ['','','WARNING: ','ERROR: ','FATAL ERROR: ']
         print >> sys.stderr, '%s%s' % (header[level],msg)
         if level == 4:
             print >> sys.stderr,'Exiting.\n'
             sys.exit(exit_val)
-"""
+'''
 def warn(msg):
     import warnings
     warnings.warn(msg, category=RuntimeWarning, stacklevel=2)
-"""
+'''
 def unique(inseq):
-    '''Return unique items from a 1-dimensional sequence. Stolen from numpy.unique(), modified to return list instead of array'''
+    """Return unique items from a 1-dimensional sequence. Stolen from numpy.unique(), modified to return list instead of array"""
     # Dictionary setting is quite fast.
     outseq = {}
     for item in inseq:
         outseq[item] = None
     return list(outseq.keys())
-"""
+'''
 def unique(objlist):
-    '''Returns the input list minus any repeated objects it may have had. Also defined in Dimstim'''
+    """Returns the input list minus any repeated objects it may have had. Also defined in Dimstim"""
     return list(set(objlist)) # this requires Python >= 2.4
-"""
-"""
+'''
+'''
 def unique(objlist):
-    '''Does in-place removal of non-unique objects in a list of objects'''
+    """Does in-place removal of non-unique objects in a list of objects"""
     for (i,obj1) in enumerate(objlist):
         for (j,obj2) in enumerate(objlist):
             if i != j and obj1 == obj2:
                 del objlist[j]
-"""
+'''
 def iterable(y):
-    '''Check if the input is iterable, stolen from numpy.iterable()'''
+    """Check if the input is iterable, stolen from numpy.iterable()"""
     try: iter(y)
     except: return 0
     return 1
-"""
+'''
 def tolist(obj):
-    '''Takes either scalar or sequence input and returns a list,
+    """Takes either scalar or sequence input and returns a list,
     useful when you want to iterate over an object (like in a for loop),
     and you don't want to have to do type checking or handle exceptions
-    when the object isn't a sequence'''
+    when the object isn't a sequence"""
     try: # assume obj is a sequence
         return list(obj) # converts any sequence to a list
     except TypeError: # obj is probably a scalar
         return [obj] # converts any scalar to a list
-"""
+'''
+def approx(a, b, rtol=1.e-14, atol=1.e-14):
+    """Returns a boolean array describing which components of a and b are equal
+    subject to given tolerances. The relative error rtol must be positive and << 1.0
+    The absolute error atol comes into play for those elements of y that are very
+    small or zero; it says how small x must be also. Copied and modified from
+    numpy.allclose()"""
+    x = np.array(a, copy=False)
+    y = np.array(b, copy=False)
+    print x.shape
+    print y.shape
+    return np.less(np.absolute(x-y), atol + rtol * np.absolute(y))
+
 def histogramSorted(sorteda, bins=10, range=None):
-    '''Builds a histogram, stolen from numpy.histogram(), modified to assume sorted input'''
+    """Builds a histogram, stolen from numpy.histogram(), modified to assume sorted input"""
     a = np.asarray(sorteda).ravel()
     if not iterable(bins):
         if range is None:
@@ -149,28 +159,35 @@ def histogramSorted(sorteda, bins=10, range=None):
     #else:
     return n, bins
 
-def sah(t, y, ts):
-    '''Resample using sample and hold. Returns resampled values at ts given the original points (t,y)
-    such that the resampled values are just the most recent value in y (think of a staircase).
-    Assumes that t is sorted. Contributed by Robert Kern.'''
+def sah(t, y, ts, keep=False):
+    """Resample using sample and hold. Returns resampled values at ts given the original points (t,y)
+    such that the resampled values are just the most recent value in y (think of a staircase with non-uniform steps).
+    Assumes that t is sorted. t and ts arrays should be of the same data type. Contributed by Robert Kern."""
     i = np.searchsorted(t, ts) - 1 # find where ts falls in t, dec so you get indices that point to the most recent value in y
-    # Handle the cases where ts is smaller than the first point.
-    i = np.where(i < 0, 0, i)
-    print 'this has an issue of not keeping the original data point where ts == t, needs another look. Plot it'
+    i = np.where(i < 0, 0, i) # handle the cases where ts is smaller than the first point.
+    '''this has an issue of not keeping the original data point where ts == t'''
+    if keep:
+        # The following ensures that the original data point is kept when ts == t, doesn't really work if the shortest ISI is less than tres in ts
+        di = np.diff(i).nonzero()[0] # find changes in i, nonzero() method returns a tuple, pick the result for the first dim with [0] index
+        si = approx(t[1::], ts[di]) # check at those change indices if t ~= ts (ignoring potential floating point representational inaccuracies). If so, inc i at that point so you keep y at that point.
+        #print i
+        i[di[si]] += 1
+        #print i
     return y[i]
 
+
 class Data(object): # use 'new-style' classes
-    '''Data can have multiple Cats'''
+    """Data can have multiple Cats"""
     def __init__(self, dataPath=DEFAULTDATAPATH):
         self.level = 0 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         self.name = 'Data'
         self.path = dataPath
     def tree(self):
-        '''Print tree hierarchy'''
+        """Print tree hierarchy"""
         print self.treebuf.getvalue(),
     def writetree(self,string):
-        '''Write to self's tree buffer and to parent's too'''
+        """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
         # Data has no parent to write to
     def load(self):
@@ -187,7 +204,7 @@ class Data(object): # use 'new-style' classes
 
 
 class Cat(object):
-    '''A Cat can have multiple Tracks'''
+    """A Cat can have multiple Tracks"""
     def __init__(self, id=DEFAULTCATID, name=None, parent=Data):
         self.level = 1 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
@@ -205,10 +222,10 @@ class Cat(object):
         self.name = name
         self.path = self.d.path + self.name + SLASH
     def tree(self):
-        '''Print tree hierarchy'''
+        """Print tree hierarchy"""
         print self.treebuf.getvalue(),
     def writetree(self,string):
-        '''Write to self's tree buffer and to parent's too'''
+        """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
         self.d.writetree(string)
     def id2name(self, path, id):
@@ -241,7 +258,7 @@ class Cat(object):
 
 
 class Track(object):
-    '''A Track can have multiple Recordings'''
+    """A Track can have multiple Recordings"""
     def __init__(self, id=DEFAULTTRACKID, name=None, parent=Cat):
         self.level = 2 # level in the hierarchy
         try:
@@ -259,10 +276,10 @@ class Track(object):
         self.name = name
         self.path = self.c.path + self.name + SLASH
     def tree(self):
-        '''Print tree hierarchy'''
+        """Print tree hierarchy"""
         print self.treebuf.getvalue(),
     def writetree(self,string):
-        '''Write to self's tree buffer and to parent's too'''
+        """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
         self.c.writetree(string)
     def id2name(self, path, id):
@@ -295,10 +312,10 @@ class Track(object):
 
 
 class Recording(object):
-    '''A Recording corresponds to a single SURF file, ie everything recorded between when
+    """A Recording corresponds to a single SURF file, ie everything recorded between when
     the user hits record and when the user hits stop and closes the SURF file, including any
     pauses in between Experiments within that Recording. A Recording can have multiple Experiments,
-    and multiple spike extractions, called Rips'''
+    and multiple spike extractions, called Rips"""
     def __init__(self, id=None, name=None, parent=Track):
         self.level = 3 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
@@ -316,10 +333,10 @@ class Recording(object):
         self.name = name
         self.path = self.t.path + self.name + SLASH
     def tree(self):
-        '''Print tree hierarchy'''
+        """Print tree hierarchy"""
         print self.treebuf.getvalue(),
     def writetree(self,string):
-        '''Write to self's tree buffer and to parent's too'''
+        """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
         self.t.writetree(string)
     def id2name(self, path, id):
@@ -370,9 +387,9 @@ class Recording(object):
 
 
 class Experiment(object):
-    '''An Experiment corresponds to a single contiguous VisionEgg stimulus session.
+    """An Experiment corresponds to a single contiguous VisionEgg stimulus session.
     It contains information about the stimulus during that session, including
-    the DIN values, the text header, and any Movies that were involved'''
+    the DIN values, the text header, and any Movies that were involved"""
     def __init__(self, id=None, name=None, parent=Recording): # Experiment IDs are 1-based in the .din filenames, at least for now. They should be renamed to 0-based. Here, they're treated as 0-based
         self.level = 4 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
@@ -386,10 +403,10 @@ class Experiment(object):
         self.name = name
         self.path = self.r.path
     def tree(self):
-        '''Print tree hierarchy'''
+        """Print tree hierarchy"""
         print self.treebuf.getvalue(),
     def writetree(self,string):
-        '''Write to self's tree buffer and to parent's too'''
+        """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
         self.r.writetree(string)
     # doesn't need a id2name or name2id method, neither can really be derived from the other in an easy way (although could use re), the id is just alphabetical order, at least for now
@@ -501,8 +518,16 @@ class Experiment(object):
     def buildsweepranges(self):
         self.sweepranges = []
 
+    def code(self, neuron=0, **kwargs):
+        """Returns a Neuron.Code object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
+        trange = (self.din[0,0], self.din[-1,0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
+        try:
+            return neuron.code(trange=trange, **kwargs) # see if neuron is a Neuron
+        except AttributeError:
+            return self.r.n[neuron].code(trange=trange, **kwargs) # neuron is probably a Neuron id
+
     def rate(self, neuron=0, **kwargs):
-        '''Returns a Neuron.Rate object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id'''
+        """Returns a Neuron.Rate object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
         trange = (self.din[0,0], self.din[-1,0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
         try:
             return neuron.rate(trange=trange, **kwargs) # see if neuron is a Neuron
@@ -513,9 +538,9 @@ class Experiment(object):
         pass
 
 class Rip(object):
-    '''A Rip is a single spike extraction. Generally, Rips of the same name within the same Track
+    """A Rip is a single spike extraction. Generally, Rips of the same name within the same Track
     were generated with the same spike template, though of course Rips in different Tracks must
-    be generated from different templates, even if the Rips have the same name'''
+    be generated from different templates, even if the Rips have the same name"""
     def __init__(self, id=None, name=None, parent=Recording):
         self.level = 4 # level in the hierarchy
         #self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
@@ -529,15 +554,15 @@ class Rip(object):
         self.id = id # not really used by the Rip class, just there for user's info
         self.name = name
         self.path = self.r.path + self.name + '.rip' + SLASH # have to add .rip extension to rip name to get its actual folder name
-    """
+    '''
     def tree(self):
-        '''Print tree hierarchy'''
+        """Print tree hierarchy"""
         print self.treebuf.getvalue(),
     def writetree(self,string):
-        '''Write to self's tree buffer and to parent's too'''
+        """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
         self.r.writetree(string)
-    """
+    '''
     def load(self):
         #treestr = self.level*TAB + self.name + '/'
         #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
@@ -552,10 +577,10 @@ class Rip(object):
 
 
 class Neuron(object):
-    '''A Neuron object''s spike data spans all the Experiments within a Recording.
+    """A Neuron object''s spike data spans all the Experiments within a Recording.
     If different Recordings have Rips with the same name, you can assume that the
     same spike template was used for all of those Recordings, and that therefore
-    the neuron ids are the same'''
+    the neuron ids are the same"""
     def __init__(self, id=None, name=None, parent=Rip): # neuron names don't include the '.spk' ending, although neuron filenames do
         self.level = 5 # level in the hierarchy
         #self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
@@ -572,15 +597,15 @@ class Neuron(object):
         self.id = id
         self.name = name
         self.path = self.rip.path
-    """
+    '''
     def tree(self):
-        '''Print tree hierarchy'''
+        """Print tree hierarchy"""
         print self.treebuf.getvalue(),
     def writetree(self,string):
-        '''Write to self's tree buffer and to parent's too'''
+        """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
         self.rip.writetree(string)
-    """
+    '''
     def id2name(self, path, id):
         name = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(path) if os.path.isfile(path+fname) and \
                ( fname.find('_t'+str(id)+'.spk')!=-1 or fname.find('_t0'+str(id)+'.spk')!=-1 or fname.find('_t00'+str(id)+'.spk')!=-1 ) ] # have to deal with leading zero ids, go up to 3 digit ids, should really use a re to do this properly...
@@ -609,7 +634,7 @@ class Neuron(object):
         #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
 
     def cut(self, *args):
-        '''Returns all of the Neuron's spike times where tstart <= spikes <= tend'''
+        """Returns all of the Neuron's spike times where tstart <= spikes <= tend"""
         if len(args) == 0: # passed nothing
             tstart = self.spikes[0]
             tend = self.spikes[-1]
@@ -632,13 +657,13 @@ class Neuron(object):
         Another possibility could be to use a masked array instead?
         '''
         lo, hi = self.spikes.searchsorted([tstart, tend]) # returns indices where tstart and tend would fit in spikes
-        if tend  == self.spikes[min(hi, self.nspikes-1)]: # protect from going out of index bounds
+        if tend  == self.spikes[min(hi, self.nspikes-1)]: # if tend matches a spike (protect from going out of index bounds when checking)
             hi += 1 # inc to include a spike if it happens to exactly equal tend. This gives us end inclusion
             hi = min(hi, self.nspikes) # limit hi to max slice index (==max value index + 1)
         return self.spikes[ lo : hi ] # slice it
 
     def cutrel(self, *args):
-        '''Cuts Neuron spike times and returns them relative to tstart'''
+        """Cuts Neuron spike times and returns them relative to tstart"""
         if len(args) == 0: # passed nothing
             tstart = self.spikes[0]
             tend = self.spikes[-1]
@@ -657,8 +682,63 @@ class Neuron(object):
         tstart = np.int64(round(tstart)) # let's keep all the returned spikes as integers, us is more than accurate enough
         return self.cut(tstart, tend) - tstart
 
+    def code(self, kind='binary', **kwargs):
+        """Returns an existing Code object, or creates a new one if necessary"""
+        try:
+            self.codes
+        except AttributeError: # self.codes doesn't exist yet
+            self.codes = [] # create a list that'll hold Code objects
+        if kind == 'binary':
+            co = Neuron.BinaryCode(neuron=self, **kwargs) # init a new BinaryCode object
+        else:
+            raise ValueError, 'Unknown kind: %s' % repr(self.kind)
+        for code in self.codes:
+            if co == code: # need to define special == method for class Code()
+                return code # returns the first Code object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self.codes
+        co.calc() # no matching Rate was found, calculate it
+        self.codes.append(co) # add it to the Code object list
+        return co
+
+    class Code(object):
+        """Abstract spike code class"""
+        def __init__(self, neuron=None, trange=None):
+            self.neuron = neuron
+            if trange == None:
+                trange = self.neuron.spikes[0], self.neuron.spikes[-1]
+            self.trange = trange
+        def __eq__(self, other):
+            selfd = self.__dict__.copy()
+            otherd = other.__dict__.copy()
+            # Delete their c and t attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
+            [ d.__delitem__(key) for d in [selfd, otherd] for key in ['c', 't'] if d.has_key(key) ]
+            if type(self) == type(other) and selfd == otherd:
+                return True
+            else:
+                return False
+        def plot(self):
+            # plot some kind of long grid of white and black elements?
+            pl.figure()
+
+    class BinaryCode(Code):
+        """Quantizes the spike train into a binary signal with a given time resolution"""
+        def __init__(self, neuron=None, trange=None, tres=20000):
+            super(Neuron.BinaryCode, self).__init__(neuron=neuron, trange=trange)
+            self.kind = 'binary'
+            self.tres = tres
+        def calc(self):
+            # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. Do the same for the end of the timepoints, but round up. This way, timepoints will line up for different code objects
+            tstart = self.trange[0] - (self.trange[0] % self.tres)
+            tend   = self.trange[1] - (self.trange[1] % self.tres)
+            self.t = np.arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to trange[1] to make t end inclusive
+            s = self.neuron.cut(self.trange) # spike times
+            self.c = np.zeros(len(self.t)) # binary code signal
+            self.c[np.unique(self.t.searchsorted(s)) - 1] = 1 # dec index by 1 so that you get indices that point to the most recent bin edge. For each bin that has 1 or more spikes in it, set its bit to 1
+        def plot(self):
+            super(Neuron.BinaryCode, self).plot()
+            pl.title('neuron %d - binary spike code' % self.neuron.id)
+
     def rate(self, kind='nisi', **kwargs):
-        '''Returns an existing Rate object, or creates a new one if necessary'''
+        """Returns an existing Rate object, or creates a new one if necessary"""
         try:
             self.rates
         except AttributeError: # self.rates doesn't exist yet
@@ -685,7 +765,7 @@ class Neuron(object):
         return ro
 
     class Rate(object):
-        '''Abstract firing rate class'''
+        """Abstract firing rate class"""
         def __init__(self, neuron=None, trange=None):
             self.neuron = neuron
             if trange == None:
@@ -709,26 +789,31 @@ class Neuron(object):
             pl.ylabel('spike rate')
 
     class BinRate(Rate):
-        '''Uses simple binning to calculate firing rate'''
+        """Uses simple binning to calculate firing rate"""
         def __init__(self, neuron=None, trange=None, tres=100000):
             super(Neuron.BinRate, self).__init__(neuron=neuron, trange=trange)
             self.kind = 'bin'
             self.tres = tres
         def calc(self):
-            t = np.arange( self.trange[0], self.trange[1], self.tres ) # t sequence demarcates left bin edges
+            # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. Do the same for the end of the timepoints. This way, timepoints will line up for different code objects
+            tstart = self.trange[0] - (self.trange[0] % self.tres)
+            tend   = self.trange[1] - (self.trange[1] % self.tres)
+            t = np.arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to trange[1] to make t end inclusive
+            s = self.neuron.cut(trange) # spike times
             self.r, self.t = histogramSorted(self.neuron.spikes, bins=t) # assumes spikes are in chrono order
             self.r = self.r / float(self.tres) * 1000000 # spikes/sec
         def plot(self):
             super(Neuron.BinRate, self).plot()
-            pl.title('binned spike rate')
+            pl.title('neuron %d - binned spike rate' % self.neuron.id)
 
     class nISIRate(Rate):
-        '''Uses nisi inter spike intervals to calculate firing rate, with a fixed number of spikes nisi+1 per bin. nisi == 1 is the ISI rate'''
-        def __init__(self, neuron=None, trange=None, nisi=3, tres=50000):
+        """Uses nisi inter spike intervals to calculate firing rate, with a fixed number of spikes nisi+1 per bin. nisi == 1 is the ISI rate"""
+        def __init__(self, neuron=None, trange=None, nisi=3, tres=50000, interp='sah'):
             super(Neuron.nISIRate, self).__init__(neuron=neuron, trange=trange)
             self.kind = 'nisi'
             self.nisi = nisi
             self.tres = tres
+            self.interp = interp
         def calc(self):
             s = self.neuron.cut(self.trange) # spike times
             #n0 = self.n-1 # 0-based n
@@ -738,58 +823,84 @@ class Neuron(object):
             t = s[self.nisi::] # for the corresponding timepoints, pick the spike time at the end of the group of n spikes to keep it causal
             #self.rawr = r
             #self.rawt = t
-            # now interpolate:
-            f = sig.interpolate.interp1d(t, r, kind='linear') # returns an interpolation f'n
-            # or maybe try sig.resample() instead
-            tstart = t[0] - (t[0] % self.tres) + self.tres # make the start of our interpolated timepoints be an even multiple of self.tres. Round up to the nearest multiple. This way, the timepoints will line up, even if different Rates have different starting points, like neuron.rate() vs experiment.rate()
+            if not self.interp:
+                self.t = t
+                self.r = r
+                return
+            # make the start of our interpolated timepoints be an even multiple of self.tres. Round down to the nearest multiple. This way, the timepoints will line up, even if different Rates have different starting points, like neuron.rate() vs experiment.rate()
+            tstart = t[0] - (t[0] % self.tres)
+            # should we have tend = t[-1] + self.tres ?
             self.t = np.arange(tstart, t[-1], self.tres) # new set of timepoints to interpolate over
-            self.r = f(self.t) # interpolate over the new timepoints
+            if self.interp == 'sah':
+                self.r = sah(t, r, self.t, keep=False)
+            elif self.interp == 'linear':
+                f = sig.interpolate.interp1d(t, r, kind='linear') # returns an interpolation f'n
+                self.r = f(self.t) # interpolate over the new timepoints
+                # or maybe try sig.resample() instead
+            else:
+                raise ValueError, 'unknown interpolation method: %s' % self.interp
+
         def plot(self):
             super(Neuron.nISIRate, self).plot()
-            pl.title('%d-inter-spike-interval spike rate' % self.nisi)
+            pl.title('neuron %d - %d-inter-spike-interval spike rate, %s interpolation' % (self.neuron.id, self.nisi, self.interp))
 
     class WnISIRate(Rate):
-        '''Uses a weighted sum of various inter n spike intervals to calculate rate'''
+        """Uses a weighted sum of various n inter spike intervals to calculate rate"""
         pass
         #def plot(self)
 
     class IDPRate(Rate):
-        '''Instantaneous discharge probability. See Pauluis and Baker, 2000'''
+        """Instantaneous discharge probability. See Pauluis and Baker, 2000"""
         def __init__(self, neuron=None, IDP_a=4, tres=50000):
             super(Neuron.IDPRate, self).__init__(neuron=neuron, trange=trange)
             self.kind = 'idp'
             self.tres = tres
         def calc(self):
 
-            # Step 1: generate an ISI rate sampled with sufficiently fine resolution
-            isiro = self.neuron.rate(kind='nisi', nisi=1, tres=self.tres) # ISI rate object
-            # interpolation needs to be sample and hold, not linear
-
-            # Step 2: find sudde
+            # Step 1: find sudden changes in ISI distribution
             Is = diff(self.neuron.spikes) # intervals
-            # find the sudden ISI rate changes:
             # y=gdtrc(a,b,x) returns the integral from x to infinity of the gamma probability density function.  SEE gdtr, gdtri
             b = IDP_a
             increaseOnsets = [] # stores the interval indices of significant sudden increases in ISI rate
             decreaseOnsets = [] # stores the interval indices of significant sudden decreases in ISI rate
             for (n,I) in enumerate(Is):
-                IDP_mu = Is(n+1) # the next interval
-                a = IDP_a / float(IDP_mu)
-                p1 = gdtrc(a,b,I) # integrate from I to infinity
-                IDP_mu = Is(n+2) # the interval after that
-                a = IDP_a / float(IDP_mu)
-                p2 = gdtrc(a,b,I) # integrate from I to infinity
-                if p1 < pthresh and p2 < pthresh: # then this nth interval was a sudden increase in ISI firing rate
-                    inreaseOnsets.append(n)
+                try:
+                    IDP_mu = Is(n+1) # the next interval
+                    a = IDP_a / float(IDP_mu)
+                    p1 = gdtrc(a,b,I) # integrate from I to infinity
+                    IDP_mu = Is(n+2) # the interval after that
+                    a = IDP_a / float(IDP_mu)
+                    p2 = gdtrc(a,b,I) # integrate from I to infinity
+                    if p1 < pthresh and p2 < pthresh: # then this nth interval was a sudden increase in ISI firing rate
+                        inreaseOnsets.append(n)
+                except IndexError:
+                    pass
+                try:
+                    IDP_mu = Is(n-1) # the previous interval
+                    a = IDP_a / float(IDP_mu)
+                    p1 = gdtrc(a,b,I) # integrate from I to infinity
+                    IDP_mu = Is(n-2) # the interval before that
+                    a = IDP_a / float(IDP_mu)
+                    p2 = gdtrc(a,b,I) # integrate from I to infinity
+                    if p1 < pthresh and p2 < pthresh: # then this nth interval was a sudden increase in ISI firing rate
+                        dereaseOnsets.append(n)
+                except IndexError:
+                    pass
 
+            # Step 2: extend back half an ISI from sudden rate increase, and forward half an ISI from sudden rate decrease
 
+            # Step 3: sample our new ISI rate with extended intervals with sufficient resolution
+            isi = self.neuron.rate(kind='nisi', nisi=1, interp=None) # ISI rate object with with no interpolation
+            isi.r
+            isi.t
+            isi = sah(isi)
 
             # use np.piecewise() ?
         pass
         #def plot(self)
 
     class GaussRate(Rate):
-        '''Uses a sliding Gaussian window to calculate firing rate'''
+        """Uses a sliding Gaussian window to calculate firing rate"""
         def __init__(self, neuron=None, trange=None, width=200000):
             super(Neuron.GaussRate, self).__init__(neuron=neuron, trange=trange)
             self.kind = 'gauss'
@@ -801,7 +912,7 @@ class Neuron(object):
             pl.title('Gaussian sliding window spike rate')
 
     class RectRate(Rate):
-        '''Uses a sliding rectangular window to calculate firing rate'''
+        """Uses a sliding rectangular window to calculate firing rate"""
         def __init__(self, neuron=None, trange=None, width=200000):
             super(Neuron.RectRate, self).__init__(neuron=neuron, trange=trange)
             self.kind = 'rect'
@@ -813,7 +924,7 @@ class Neuron(object):
             pl.title('rectangular sliding window spike rate')
 
     def ratepdf(self, **kwargs):
-        '''Returns an existing RatePDF object, or creates a new one if necessary'''
+        """Returns an existing RatePDF object, or creates a new one if necessary"""
         try:
             self.ratepdfs
         except AttributeError: # self.ratepdfs doesn't exist yet
@@ -827,7 +938,7 @@ class Neuron(object):
         return rpdf
 
     class RatePDF(object):
-        '''Firing rate probability distribution function class'''
+        """Firing rate probability distribution function class"""
         def __init__(self, neuron=None, rrange=(0, 200), nbins=100, scale='log', normed=False, **kwargs): # rrange == rate range, ie limits of pdf x axis; nbins == number of rate bins
             self.neuron = neuron
             self.rrange = rrange
@@ -877,7 +988,7 @@ class Neuron(object):
                 raise ValueError, 'Unknown scale: %s' % repr(scale)
             #pl.hist(self.n, bins=self.r, normed=0, bottom=0, width=None, hold=False) # doesn't seem to work
             pl.bar(left=self.r, height=self.n, width=barwidth, bottom=0, color='k', yerr=None, xerr=None, ecolor='k', capsize=3)
-            pl.title('%s spike rate PDF' % self.rate.kind)
+            pl.title('neuron %d - %s spike rate PDF' % (self.neuron.id, self.rate.kind))
             if self.normed:
                 pl.ylabel('probability')
             else:
@@ -891,7 +1002,7 @@ class Neuron(object):
 
 
 class Movie(Dimstim.Movies.Movie): # inherit from Dimstim Movie() class (assumes it's new-style)
-    '''A Movie stimulus object'''
+    """A Movie stimulus object"""
     def __init__(self, name=None, path=DEFAULTMOVIEPATH, parent=None):
         super(Movie, self).__init__() # first run __init__() of inherited Dimstim Movie class
         self.level = 5 # level in the hierarchy
@@ -922,7 +1033,7 @@ class Movie(Dimstim.Movies.Movie): # inherit from Dimstim Movie() class (assumes
         #self.data = numarray.fromfile(f, np.UInt8, (self.nframes,self.ncellshigh,self.ncellswide)) # read it all in
         leftover = f.read() # check if there are any leftover bytes in the file
         if leftover != '':
-            pp(leftover)
+            pprint(leftover)
             print self.nframes,self.ncellshigh,self.ncellswide
             raise RuntimeError, 'There are unread bytes in movie file %s. Width, height, or nframes is incorrect in the movie file header.' % repr(self.name)
         #self.data = self.data[::,::-1,::] # flip the movie frames vertically for OpenGL's bottom left origin
@@ -931,11 +1042,12 @@ class Movie(Dimstim.Movies.Movie): # inherit from Dimstim Movie() class (assumes
 
 
 
-# init some typical movies (but don't load 'em til needed), then just point to them within the appropriate Experiments
+# init some typical movies (but don't load 'em til needed). Then, just point to them within the appropriate Experiments
 MSEQ32 = Movie(name='mseq32.m', parent=None)
 MSEQ16 = Movie(name='mseq16.m', parent=None)
 # shouldn't use sparse bar movies anymore, can access VisionEgg directly now, get the framebuffers to directly do STA
 #sparsebars = Movie(path='C:/data/Cat 15/Track 7c/72 - track 7c sparseexps/', name='72 - track 7c sparseexps.sparsebars.movie');
+
 
 # init and load some neuropy objects:
 #print 'Initing and loading Recording(92):'
@@ -947,3 +1059,5 @@ MSEQ16 = Movie(name='mseq16.m', parent=None)
 print 'Initing and loading Recording(71):'
 r71=Recording(71)
 r71.load()
+
+
