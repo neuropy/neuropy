@@ -252,6 +252,8 @@ class Cat(object):
         self.treebuf.write(string)
         self.d.writetree(string)
     def id2name(self, path, id):
+        if len(str(id)) == 1: # if id is only 1 digit long
+            id = '0'+str(id) # add a leading zero
         name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith('Cat '+str(id)) ]
         if len(name) != 1:
             raise NameError, 'Ambiguous or non-existent Cat id: %s' % id
@@ -363,6 +365,8 @@ class Recording(object):
         self.treebuf.write(string)
         self.t.writetree(string)
     def id2name(self, path, id):
+        if len(str(id)) == 1: # if id is only 1 digit long
+            id = '0'+str(id) # add a leading zero
         name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith(str(id)+' - ') ]
         if len(name) != 1:
             raise NameError, 'Ambiguous or non-existent Recording id: %s' % id
@@ -436,6 +440,8 @@ class Run(object):
         self.treebuf.write(string)
         self.m.writetree(string)
     def id2name(self, path, id):
+        if len(str(id)) == 1: # if id is only 1 digit long
+            id = '0'+str(id) # add a leading zero
         name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith(str(id)+' - ') ]
         if len(name) != 1:
             raise NameError, 'Ambiguous or non-existent Run id: %s' % id
@@ -494,7 +500,7 @@ class Experiment(object):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
         self.r.writetree(string)
-    # doesn't need a id2name or name2id method, neither can really be derived from the other in an easy way (although could use re), the id is just alphabetical order, at least for now
+    # doesn't need a id2name or name2id method, neither can really be derived from the other in an easy way (although could use re), the id is just chronological (which is also alphabetical) order, at least for now
     def load(self):
         f = file(self.path + self.name + '.din', 'rb') # open the din file for reading in binary mode
         self.din = np.fromfile(f, dtype=np.int64).reshape(-1,2) # reshape to nrows x 2 columns
@@ -697,6 +703,8 @@ class Neuron(object):
         self.rip.writetree(string)
     '''
     def id2name(self, path, id):
+        #if len(str(id)) == 1: # if id is only 1 digit long
+        #    id = '0'+str(id) # add a leading zero
         name = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(path) if os.path.isfile(path+fname) and \
                ( fname.find('_t'+str(id)+'.spk')!=-1 or fname.find('_t0'+str(id)+'.spk')!=-1 or fname.find('_t00'+str(id)+'.spk')!=-1 ) ] # have to deal with leading zero ids, go up to 3 digit ids, should really use a re to do this properly...
         if len(name) != 1:
