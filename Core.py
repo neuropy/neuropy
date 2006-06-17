@@ -1,21 +1,24 @@
 r"""Core neuropy functions and classes
 
-          object hierarchy:     level:
+                         object hierarchies:
 
-                Data              0
-                  |
-                 Cat              1
-                  |
-                Track             2
-                  |
-              Recording           3
-             /         \
-       Experiment      Rip        4
-            |           |
-          Movie       Neuron      5
+                                level:
+
+                Data              0             Model
+                  |                               |
+                 Cat              1               |
+                  |                               |
+                Track             2               |
+                  |                               |
+              Recording           3              Run
+             /         \                        /   \
+       Experiment      Rip        4       Experiment \
+            |           |                      |      \
+          Movie       Neuron      5          Movie     Neuron
 """
 
 DEFAULTDATAPATH = 'C:/data/' # the convention in neuropy is that all 'path' var names have a trailing slash
+DEFAULTMODELPATH = 'C:/model/'
 DEFAULTCATID    = 15
 DEFAULTTRACKID  = '7c'
 RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording
@@ -203,6 +206,26 @@ class Data(object): # use 'new-style' classes
         #   self.c = self.c.values[0] # pull it out of the dictionary
 
 
+class Model(Data):
+    """Abstract model data class. Model can have multiple modelling Runs"""
+    def __init__(self, modelPath=DEFAULTMODELPATH):
+        self.level = 0 # level in the hierarchy
+        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.name = 'Model'
+        self.path = modelPath
+    def load(self):
+        treestr = self.level*TAB + self.name + '/'
+        self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
+        self.r = {} # store Runs in a dictionary
+        runNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname[0:2].isdigit() and dirname.count(' - ') == 1 ] # 1st 2 chars in dirname must be digits, must contain exactly 1 occurrence of ' - '
+        for runName in runNames:
+            run = Run(id=None, name=runName, parent=self) # make an instance using just the runName (let it figure out the run id)
+            run.load() # load the Run
+            self.r[run.id] = run # save it
+        #if len(self.r) == 1:
+        #   self.r = self.r.values[0] # pull it out of the dictionary
+
+
 class Cat(object):
     """A Cat can have multiple Tracks"""
     def __init__(self, id=DEFAULTCATID, name=None, parent=Data):
@@ -213,7 +236,7 @@ class Cat(object):
         except TypeError: # parent is an instance, not a class
             self.d = parent # save parent Data object
         if id is not None:
-            name = self.id2name(self.d.path,id) # use the id to get the name
+            name = self.id2name(self.d.path, id) # use the id to get the name
         elif name is not None:
             id = self.name2id(name) # use the name to get the id
         else:
@@ -266,7 +289,7 @@ class Track(object):
         except TypeError: # parent is an instance, not a class
             self.c = parent # save parent Cat object
         if id is not None:
-            name = self.id2name(self.c.path,id) # use the id to get the name
+            name = self.id2name(self.c.path, id) # use the id to get the name
         elif name is not None:
             id = self.name2id(name) # use the name to get the id
         else:
@@ -324,7 +347,7 @@ class Recording(object):
         except TypeError: # parent is an instance, not a class
             self.t = parent # save parent Track object
         if id is not None:
-            name = self.id2name(self.t.path,id) # use the id to get the name
+            name = self.id2name(self.t.path, id) # use the id to get the name
         elif name is not None:
             id = self.name2id(name) # use the name to get the id
         else:
@@ -371,7 +394,7 @@ class Recording(object):
         ripNames = [ dirname[0:dirname.rfind('.rip')] for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.endswith('.rip') ] # returns rip folder names without their .rip extension
         defaultRipNames = [ ripName for ripName in ripNames for ripkeyword in RIPKEYWORDS if ripName.count(ripkeyword) ]
         if len(defaultRipNames) < 1:
-            warn('Couldn''t find a default Rip for Recording(%s)' % self.id)
+            warn('Couldn\'t find a default Rip for Recording(%s)' % self.id)
         if len(defaultRipNames) > 1: # This could just be a warning instead of an exception, but really, some folder renaming is in order
             raise RuntimeError, 'More than one Rip folder in Recording(%s) has a default keyword: %s' %(self.id, defaultRipNames)
         for (ripid, ripName) in enumerate(ripNames): # ripids will be according to alphabetical order of ripNames
@@ -384,6 +407,68 @@ class Recording(object):
                     self.n = self.rip[rip.name].n # make it the default Rip
         #if len(self.rip) == 1:
         #   self.rip = self.rip.values[0] # pull it out of the dictionary
+
+
+class Run(object):
+    """A Run corresponds to a single modelling run. A Run can have multiple Experiments
+    and Neurons"""
+    def __init__(self, id=None, name=None, parent=Model):
+        self.level = 3 # level in the hierarchy
+        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+        try:
+            self.m = parent() # init parent Model object
+        except TypeError: # parent is an instance, not a class
+            self.m = parent # save parent Model object
+        if id is not None:
+            name = self.id2name(self.m.path, id) # use the id to get the name
+        elif name is not None:
+            id = self.name2id(name) # use the name to get the id
+        else:
+            raise ValueError, 'run id and name can\'t both be None'
+        self.id = id
+        self.name = name
+        self.path = self.m.path + self.name + SLASH
+    def tree(self):
+        """Print tree hierarchy"""
+        print self.treebuf.getvalue(),
+    def writetree(self,string):
+        """Write to self's tree buffer and to parent's too"""
+        self.treebuf.write(string)
+        self.m.writetree(string)
+    def id2name(self, path, id):
+        name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith(str(id)+' - ') ]
+        if len(name) != 1:
+            raise NameError, 'Ambiguous or non-existent Run id: %s' % id
+        else:
+            name = name[0] # pull the string out of the list
+        return name
+    def name2id(self, name):
+        try:
+            id = name[0:name.index(' - ')] # everything before the first ' - ', index() raises ValueError if it can't be found
+        except ValueError:
+            raise ValueError, 'Badly formatted Run name: %s' % name
+        try:
+            id = int(id) # convert string to int if possible
+        except ValueError:
+            pass # it's alphanumeric, leave it as a string
+        return id
+    def load(self):
+        treestr = self.level*TAB + self.name + '/'
+        self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
+        self.e = {} # store Experiments in a dictionary
+        experimentNames = [ fname[0:fname.rfind('.din')] for fname in os.listdir(self.path) if os.path.isfile(self.path+fname) and fname.endswith('.din') ] # returns din filenames without their .din extension
+        for (experimentid, experimentName) in enumerate(experimentNames): # experimentids will be according to alphabetical order of experimentNames
+            experiment = Experiment(id=experimentid, name=experimentName, parent=self) # pass both the id and the name
+            experiment.load() # load the Experiment
+            self.e[experiment.id] = experiment # save it
+        #if len(self.e) == 1:
+        #   self.e = self.e.values[0] # pull it out of the dictionary
+        self.n = {} # store Neurons in a dictionary
+        neuronNames = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(self.path) if os.path.isfile(self.path+fname) and fname.endswith('.spk') ] # returns spike filenames without their .spk extension
+        for neuronName in neuronNames:
+            neuron = Neuron(id=None, name=neuronName, parent=self) # make an instance using just the neuron name (let it figure out the neuron id)
+            neuron.load() # load the neuron
+            self.n[neuron.id] = neuron # save it
 
 
 class Experiment(object):
@@ -419,7 +504,12 @@ class Experiment(object):
             self.textheader = f.read() # read it all in
             f.close()
         except IOError:
-            warn('Error reading: <%s.textheader>, text header not loaded' % self.name)
+            if type(self.r) is Recording: # parent is a Recording, which normally have textheaders in their Experiments
+                warn('Error reading: <%s.textheader>, text header not loaded' % self.name)
+            elif type(self.r) is Run: # parent is a Run, which don't have textheaders in their Experiments, so don't print a warning
+                pass
+            else:
+                raise RuntimeError, 'parent is invalid type: %s %s' % (type(self.r), Run)
             self.textheader = '' # set to empty
 
         treestr = self.level*TAB + self.name + '/'
@@ -577,7 +667,7 @@ class Rip(object):
 
 
 class Neuron(object):
-    """A Neuron object''s spike data spans all the Experiments within a Recording.
+    """A Neuron object\'s spike data spans all the Experiments within a Recording.
     If different Recordings have Rips with the same name, you can assume that the
     same spike template was used for all of those Recordings, and that therefore
     the neuron ids are the same"""
@@ -589,7 +679,7 @@ class Neuron(object):
         except TypeError: # parent is an instance, not a class
             self.rip = parent # save parent Rip object
         if id is not None:
-            name = self.id2name(self.rip.path,id) # use the id to get the name
+            name = self.id2name(self.rip.path, id) # use the id to get the name
         elif name is not None:
             id = self.name2id(name) # use the name to get the id
         else:
