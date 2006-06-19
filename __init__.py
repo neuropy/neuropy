@@ -2,14 +2,15 @@
 
 try:
     reload(Core)
-except:
+except NameError:
     import Core
 from Core import *
 
 try:
     reload(Test)
-except:
+except NameError:
     import Test
+from Test import test
 
 __importall__ = [Core] # list of mods imported as "from mod import *"
 __all__ = []

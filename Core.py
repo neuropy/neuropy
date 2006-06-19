@@ -4,24 +4,25 @@ r"""Core neuropy functions and classes
 
                                 level:
 
-                Data              0             Model
-                  |                               |
-                 Cat              1               |
-                  |                               |
-                Track             2               |
-                  |                               |
-              Recording           3              Run
-             /         \                        /   \
-       Experiment      Rip        4       Experiment \
-            |           |                      |      \
+                Data              0                Model
+                  |                                  |
+                 Cat              1               System
+                  |                                  |
+                Track             2                  |
+                  |                                  |
+              Recording           3                 Run
+             /         \                           /   \
+       Experiment      Rip        4       Experiment    Rip
+            |           |                      |         |
           Movie       Neuron      5          Movie     Neuron
 """
 
 DEFAULTDATAPATH = 'C:/data/' # the convention in neuropy is that all 'path' var names have a trailing slash
 DEFAULTMODELPATH = 'C:/model/'
 DEFAULTCATID    = 15
+DEFAULTSYSTEMNAME = 'Cat 15'
 DEFAULTTRACKID  = '7c'
-RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording
+RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording/Run
 SLASH = '/' # use forward slashes instead of having to use double backslashes
 TAB = '    ' # 4 spaces
 
@@ -154,8 +155,8 @@ def histogramSorted(sorteda, bins=10, range=None):
         bins = np.linspace(mn, mx, bins, endpoint=False)
     #n = np.sort(a).searchsorted(bins)
     n = a.searchsorted(bins)
-    n = np.concatenate([n, [len(a)]]) # don't understand what this does
-    n = n[1:]-n[:-1] # and therefore, don't understand this either
+    n = np.concatenate([n, [len(a)]]) # this adds a bin that includes overflow points
+    n = n[1:]-n[:-1] # subtracts a shifted version of itself
     #if normed:
     #   db = bins[1] - bins[0]
     #   return 1.0/(a.size*db) * n, bins # this seems a bit weird
@@ -178,6 +179,12 @@ def sah(t, y, ts, keep=False):
         #print i
     return y[i]
 
+def corr(x,y):
+    """Returns correlation of signals x and y. This should be equivalent to np.corrcoef(),
+    but that one doesn't seem to work for signals with zeros in them. Check how std() works exactly"""
+    x = np.array(x)
+    y = np.array(y)
+    return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std())
 
 class Data(object): # use 'new-style' classes
     """Data can have multiple Cats"""
@@ -216,14 +223,14 @@ class Model(Data):
     def load(self):
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        self.r = {} # store Runs in a dictionary
-        runNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname[0:2].isdigit() and dirname.count(' - ') == 1 ] # 1st 2 chars in dirname must be digits, must contain exactly 1 occurrence of ' - '
-        for runName in runNames:
-            run = Run(id=None, name=runName, parent=self) # make an instance using just the runName (let it figure out the run id)
-            run.load() # load the Run
-            self.r[run.id] = run # save it
-        #if len(self.r) == 1:
-        #   self.r = self.r.values[0] # pull it out of the dictionary
+        self.s = {} # store model Systems in a dictionary
+        systemNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) ] # os.listdir() returns all dirs AND files
+        for systemName in systemNames:
+            system = System(name=systemName, parent=self) # make an instance using the systemName
+            system.load() # load the System
+            self.s[system.name] = system # save it
+        #if len(self.s) == 1:
+        #   self.s = self.s.values[0] # pull it out of the dictionary
 
 
 class Cat(object):
@@ -280,6 +287,40 @@ class Cat(object):
             self.t[track.id] = track # save it
         #if len(self.t) == 1:
         #   self.t = self.t.values[0] # pull it out of the dictionary
+
+
+class System(object):
+    """A model System can have multiple modelling Runs"""
+    def __init__(self, name=DEFAULTSYSTEMNAME, parent=Model):
+        self.level = 1 # level in the hierarchy
+        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+        try:
+            self.m = parent() # init parent Model object
+        except TypeError: # parent is an instance, not a class
+            self.m = parent # save parent Model object
+        self.name = name
+        self.path = self.m.path + self.name + SLASH
+    def tree(self):
+        """Print tree hierarchy"""
+        print self.treebuf.getvalue(),
+    def writetree(self,string):
+        """Write to self's tree buffer and to parent's too"""
+        self.treebuf.write(string)
+        self.m.writetree(string)
+    # doesn't need a id2name or name2id method, since there are no system ids
+    def load(self):
+        if not os.path.isdir(self.path):
+            raise NameError, 'Cannot find System(%s), path %s does not exist' % (repr(self.name), repr(self.path))
+        treestr = self.level*TAB + self.name + '/'
+        self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
+        self.r = {} # store Runs in a dictionary
+        runNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname[0:2].isdigit() and dirname.count(' - ') == 1 ] # 1st 2 chars in dirname must be digits, must contain exactly 1 occurrence of ' - '
+        for runName in runNames:
+            run = Run(id=None, name=runName, parent=self) # make an instance using just the runName (let it figure out the run id)
+            run.load() # load the Run
+            self.r[run.id] = run # save it
+        #if len(self.r) == 1:
+        #   self.r = self.r.values[0] # pull it out of the dictionary
 
 
 class Track(object):
@@ -415,30 +456,27 @@ class Recording(object):
 
 class Run(object):
     """A Run corresponds to a single modelling run. A Run can have multiple Experiments
-    and Neurons"""
-    def __init__(self, id=None, name=None, parent=Model):
+    and modelling Rips (a set of spike times generated with a certain set of modelling parameters)."""
+    def __init__(self, id=None, name=None, parent=System):
         self.level = 3 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         try:
-            self.m = parent() # init parent Model object
+            self.s = parent() # init parent System object
         except TypeError: # parent is an instance, not a class
-            self.m = parent # save parent Model object
+            self.s = parent # save parent System object
         if id is not None:
-            name = self.id2name(self.m.path, id) # use the id to get the name
+            name = self.id2name(self.s.path, id) # use the id to get the name
         elif name is not None:
             id = self.name2id(name) # use the name to get the id
         else:
-            raise ValueError, 'run id and name can\'t both be None'
+            raise ValueError, 'recording id and name can\'t both be None'
         self.id = id
         self.name = name
-        self.path = self.m.path + self.name + SLASH
-    def tree(self):
-        """Print tree hierarchy"""
-        print self.treebuf.getvalue(),
+        self.path = self.s.path + self.name + SLASH
     def writetree(self,string):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
-        self.m.writetree(string)
+        self.s.writetree(string)
     def id2name(self, path, id):
         if len(str(id)) == 1: # if id is only 1 digit long
             id = '0'+str(id) # add a leading zero
@@ -469,12 +507,23 @@ class Run(object):
             self.e[experiment.id] = experiment # save it
         #if len(self.e) == 1:
         #   self.e = self.e.values[0] # pull it out of the dictionary
-        self.n = {} # store Neurons in a dictionary
-        neuronNames = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(self.path) if os.path.isfile(self.path+fname) and fname.endswith('.spk') ] # returns spike filenames without their .spk extension
-        for neuronName in neuronNames:
-            neuron = Neuron(id=None, name=neuronName, parent=self) # make an instance using just the neuron name (let it figure out the neuron id)
-            neuron.load() # load the neuron
-            self.n[neuron.id] = neuron # save it
+        self.rip = {} # store Rips in a dictionary
+        ripNames = [ dirname[0:dirname.rfind('.rip')] for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.endswith('.rip') ] # returns rip folder names without their .rip extension
+        defaultRipNames = [ ripName for ripName in ripNames for ripkeyword in RIPKEYWORDS if ripName.count(ripkeyword) ]
+        if len(defaultRipNames) < 1:
+            warn('Couldn\'t find a default Rip for Run(%s)' % self.id)
+        if len(defaultRipNames) > 1: # This could just be a warning instead of an exception, but really, some folder renaming is in order
+            raise RuntimeError, 'More than one Rip folder in Run(%s) has a default keyword: %s' %(self.id, defaultRipNames)
+        for (ripid, ripName) in enumerate(ripNames): # ripids will be according to alphabetical order of ripNames
+            rip = Rip(id=ripid, name=ripName, parent=self) # pass both the id and the name
+            rip.load() # load the Rip
+            self.rip[rip.name] = rip # save it
+            # make the Neurons from the default Rip (if it exists in the Run path) available in the Run, so you can access them via r.n[nid] instead of having to do r.rip[name].n[nid]. Make them just another pointer to the data in r.rip[ripName].n
+            for ripkeyword in RIPKEYWORDS[::-1]: # reverse the keywords so first one gets processed last
+                if rip.name.count(ripkeyword): # if the keyword is in the ripName
+                    self.n = self.rip[rip.name].n # make it the default Rip
+        #if len(self.rip) == 1:
+        #   self.rip = self.rip.values[0] # pull it out of the dictionary
 
 
 class Experiment(object):
@@ -614,7 +663,7 @@ class Experiment(object):
     def buildsweepranges(self):
         self.sweepranges = []
 
-    def code(self, neuron=0, **kwargs):
+    def code(self, neuron, **kwargs):
         """Returns a Neuron.Code object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
         trange = (self.din[0,0], self.din[-1,0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
         try:
@@ -622,7 +671,63 @@ class Experiment(object):
         except AttributeError:
             return self.r.n[neuron].code(trange=trange, **kwargs) # neuron is probably a Neuron id
 
-    def rate(self, neuron=0, **kwargs):
+    def codecorr(self, neuron1, neuron2, **kwargs):
+        """Calculates the correlation of two Neuron.Code objects"""
+        code1 = self.code(neuron1, **kwargs)
+        code2 = self.code(neuron2, **kwargs)
+        return corr(code1.c, code2.c)
+
+    class CodeCorrPDF(object):
+        def __init__(self, experiment, range=(-1, 1), nbins=100, normed=True, **kwargs):
+            self.e = experiment
+            self.r = self.e.r
+            self.range = range
+            self.nbins = nbins
+            self.normed = normed
+            self.kwargs = kwargs
+        def __eq__(self, other):
+            selfd = self.__dict__.copy()
+            otherd = other.__dict__.copy()
+            # Delete their n and c attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
+            [ d.__delitem__(key) for d in [selfd, otherd] for key in ['n', 'c'] if d.has_key(key) ]
+            if type(self) == type(other) and selfd == otherd:
+                return True
+            else:
+                return False
+        def calc(self):
+            neurons = self.r.n.keys()
+            nneurons = len(neurons)
+            # this is too slow! use np's builtin corrcoef somehow
+            corrs = [ self.e.codecorr(neurons[ni1], neurons[ni2], **self.kwargs) for ni1 in range(0,nneurons) for ni2 in range(ni1,nneurons) if ni1 != ni2 ]
+            self.n, self.c = np.histogram(corrs, bins=self.nbins, normed=self.normed)
+        def plot(self):
+            pl.figure()
+            barwidth = (range[1] - range[0]) / float(self.nbins)
+            #pl.hist(self.n, bins=self.r, normed=0, bottom=0, width=None, hold=False) # doesn't seem to work
+            pl.bar(left=self.c, height=self.n, width=barwidth, bottom=0, color='k', yerr=None, xerr=None, ecolor='k', capsize=3)
+            pl.xlim
+            pl.title('neuron code corrleation pdf - experiment %d - %s' % (self.e.id, self.e.name))
+            if self.normed:
+                pl.ylabel('probability')
+            else:
+                pl.ylabel('count')
+            pl.xlabel('correlation coefficient')
+
+    def codecorrpdf(self, **kwargs):
+        """Returns an existing CodeCorrPDF object, or creates a new one if necessary"""
+        try:
+            self.ccpdfs
+        except AttributeError: # doesn't exist yet
+            self.ccpdfs = [] # create a list that'll hold CodeCorrPDF objects
+        co = self.CodeCorrPDF(experiment=self, **kwargs) # init a new one
+        for ccpdf in self.ccpdfs:
+            if co == ccpdf: # need to define special == method for class CodeCorrPDF()
+                return ccpdf # returns the first object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self.ccpdfs
+        co.calc() # no matching object was found, calculate it
+        self.ccpdfs.append(co) # add it to the object list
+        return co
+
+    def rate(self, neuron, **kwargs):
         """Returns a Neuron.Rate object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
         trange = (self.din[0,0], self.din[-1,0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
         try:
@@ -636,7 +741,8 @@ class Experiment(object):
 class Rip(object):
     """A Rip is a single spike extraction. Generally, Rips of the same name within the same Track
     were generated with the same spike template, though of course Rips in different Tracks must
-    be generated from different templates, even if the Rips have the same name"""
+    be generated from different templates, even if the Rips have the same name. In the context of a
+    Model, a Rip is a set of spike times generated with a certain set of modelling parameters."""
     def __init__(self, id=None, name=None, parent=Recording):
         self.level = 4 # level in the hierarchy
         #self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
@@ -1036,7 +1142,7 @@ class Neuron(object):
         return rpdf
 
     class RatePDF(object):
-        """Firing rate probability distribution function class"""
+        """Firing rate probability distribution function object"""
         def __init__(self, neuron=None, rrange=(0, 200), nbins=100, scale='log', normed=False, **kwargs): # rrange == rate range, ie limits of pdf x axis; nbins == number of rate bins
             self.neuron = neuron
             self.rrange = rrange
@@ -1067,9 +1173,9 @@ class Neuron(object):
                 r = np.linspace(start=self.rrange[0], stop=self.rrange[1], num=self.nbins, endpoint=True)
             else:
                 raise ValueError, 'Unknown scale: %s' % repr(scale)
-            self.n, self.r = np.histogram(self.rate.r, bins=r, normed=False) # don't use histogram()'s normed, not sure what the hell it does
-            if self.normed:
-                self.n = self.n / float(np.sum(self.n)) # do own normalization
+            self.n, self.r = np.histogram(self.rate.r, bins=r, normed=True) # don't use histogram()'s normed, not sure what the hell it does
+            #if self.normed:
+            #    self.n = self.n / float(np.sum(self.n)) # do own normalization
         def plot(self):
             pl.figure()
             if self.scale == 'log':
@@ -1077,11 +1183,11 @@ class Neuron(object):
                 barwidth = list(np.diff(self.r)) # each bar will have a different width, convert to list so you can append
                 # need to add one more entry to barwidth to the end to get nbins of them:
                 #barwidth.append(barwidth[-1]) # not exactly correct
-                logbinwidth = (self.logrrange[1]-self.logrrange[0])/self.nbins
+                logbinwidth = (self.logrrange[1]-self.logrrange[0]) / float(self.nbins)
                 barwidth.append(10**(self.logrrange[1]+logbinwidth)-self.r[-1]) # should be exactly correct
             elif self.scale == 'linear':
                 pl.axes().set_xscale(self.scale)
-                barwidth = (self.rrange[1]-self.rrange[0])/self.nbins
+                barwidth = (self.rrange[1]-self.rrange[0]) / float(self.nbins)
             else:
                 raise ValueError, 'Unknown scale: %s' % repr(scale)
             #pl.hist(self.n, bins=self.r, normed=0, bottom=0, width=None, hold=False) # doesn't seem to work
