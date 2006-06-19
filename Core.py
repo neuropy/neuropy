@@ -678,10 +678,11 @@ class Experiment(object):
         return corr(code1.c, code2.c)
 
     class CodeCorrPDF(object):
-        def __init__(self, experiment, range=(-1, 1), nbins=100, normed=True, **kwargs):
+        def __init__(self, experiment, range=None, nbins=100, normed=True, **kwargs):
             self.e = experiment
             self.r = self.e.r
-            self.range = range
+            if range:
+                self.range = range
             self.nbins = nbins
             self.normed = normed
             self.kwargs = kwargs
@@ -699,13 +700,23 @@ class Experiment(object):
             nneurons = len(neurons)
             # this is too slow! use np's builtin corrcoef somehow
             corrs = [ self.e.codecorr(neurons[ni1], neurons[ni2], **self.kwargs) for ni1 in range(0,nneurons) for ni2 in range(ni1,nneurons) if ni1 != ni2 ]
-            self.n, self.c = np.histogram(corrs, bins=self.nbins, normed=self.normed)
+            try: # figure out the bin edges
+                c = np.linspace(start=self.range[0], stop=self.range[1], num=self.nbins, endpoint=True)
+            except AttributeError: # self.range doesn't exist, let histogram() figure out the bin edges
+                c = self.nbins
+            self.n, self.c = np.histogram(corrs, bins=c, normed=self.normed)
         def plot(self):
             pl.figure()
-            barwidth = (range[1] - range[0]) / float(self.nbins)
+            try:
+                barwidth = (self.range[1] - self.range[0]) / float(self.nbins)
+            except AttributeError: # self.range doesn't exist
+                barwidth = self.c[1] - self.c[0]
             #pl.hist(self.n, bins=self.r, normed=0, bottom=0, width=None, hold=False) # doesn't seem to work
             pl.bar(left=self.c, height=self.n, width=barwidth, bottom=0, color='k', yerr=None, xerr=None, ecolor='k', capsize=3)
-            pl.xlim
+            try:
+                pl.xlim(self.range)
+            except AttributeError: # self.range doesn't exist
+                pass
             pl.title('neuron code corrleation pdf - experiment %d - %s' % (self.e.id, self.e.name))
             if self.normed:
                 pl.ylabel('probability')
@@ -713,7 +724,7 @@ class Experiment(object):
                 pl.ylabel('count')
             pl.xlabel('correlation coefficient')
 
-    def codecorrpdf(self, **kwargs):
+    def ccpdf(self, **kwargs):
         """Returns an existing CodeCorrPDF object, or creates a new one if necessary"""
         try:
             self.ccpdfs
