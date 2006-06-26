@@ -1,6 +1,8 @@
-#from numpy import *
-#from pylab import *
-#from neuropy.Core import *
+"""A test suite for neuropy"""
+
+print 'importing Test'
+
+from Core import *
 
 def test():
 
