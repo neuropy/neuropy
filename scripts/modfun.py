@@ -33,3 +33,18 @@ def refreshmod(mod, importall=False):
         exec 'reload(%s)' % mod.__name__ in globals()
     if importall:
         exec 'from %s import *' % mod.__name__ in globals() # a direct import * is apparently not allowed in a function
+
+
+'''
+# set neuropy's __all__ attrib for designating which names will be imported when
+# you go 'from neuropy import *'
+__importall__ = [Core] # list of mods imported above as "from mod import *"
+__all__ = ['Neuron', 'Experiment', 'test']
+import types
+for mod in __importall__:
+    for key, value in mod.__dict__.iteritems():
+        # don't add modules or special names designated with a leading underscore
+        if type(value) is not types.ModuleType and not key.startswith('_'):
+            #print key
+            __all__.append(key)
+'''

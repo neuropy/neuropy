@@ -63,8 +63,6 @@ class Neuron(object):
         #self.results = {} # a dictionary to store results in
         #treestr = self.level*TAB + self.name + '/'
         #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-    #def poo(i):
-    #    return i
     def cut(self, *args):
         """Returns all of the Neuron's spike times where tstart <= spikes <= tend
 
@@ -190,7 +188,6 @@ class Neuron(object):
 
     def code(self, kind='binary', **kwargs):
         """Returns an existing Code object, or creates a new one if necessary"""
-        print getargstr(self.BinaryCode.__init__)
         try:
             self._codes
         except AttributeError: # self._codes doesn't exist yet
@@ -406,7 +403,7 @@ class Neuron(object):
 
     class RatePDF(object):
         """Firing rate probability distribution function object"""
-        def __init__(self, neuron=None, rrange=(0, 200), nbins=100, scale='log', normed=False, **kwargs):
+        def __init__(self, neuron=None, rrange=(0, 200), nbins=100, scale='log', normed='pmf', **kwargs):
             # rrange == rate range, ie limits of pdf x axis; nbins == number of rate bins
             self.neuron = neuron
             self.rrange = rrange
@@ -437,36 +434,34 @@ class Neuron(object):
                 r = np.linspace(start=self.rrange[0], stop=self.rrange[1], num=self.nbins, endpoint=True)
             else:
                 raise ValueError, 'Unknown scale: %s' % repr(scale)
-            self.n, self.r = np.histogram(self.rate.r, bins=r, normed=True) # don't use histogram()'s normed, not sure what the hell it does
-            #if self.normed:
-            #    self.n = self.n / float(np.sum(self.n)) # do own normalization
+            self.n, self.r = np.histogram(self.rate.r, bins=r, normed=self.normed)
         def plot(self):
             pl.figure()
             if self.scale == 'log':
-                pl.axes().set_xscale(self.scale, basex=10)
                 barwidth = list(np.diff(self.r)) # each bar will have a different width, convert to list so you can append
                 # need to add one more entry to barwidth to the end to get nbins of them:
                 #barwidth.append(barwidth[-1]) # not exactly correct
                 logbinwidth = (self.logrrange[1]-self.logrrange[0]) / float(self.nbins)
                 barwidth.append(10**(self.logrrange[1]+logbinwidth)-self.r[-1]) # should be exactly correct
             elif self.scale == 'linear':
-                pl.axes().set_xscale(self.scale)
                 barwidth = (self.rrange[1]-self.rrange[0]) / float(self.nbins)
             else:
                 raise ValueError, 'Unknown scale: %s' % repr(scale)
             #pl.hist(self.n, bins=self.r, normed=0, bottom=0, width=None, hold=False) # doesn't seem to work
-            pl.bar(left=self.r, height=self.n, width=barwidth, bottom=0, color='k', yerr=None, xerr=None, ecolor='k', capsize=3)
+            pl.bar(left=self.r, height=self.n, width=barwidth)
+            pl.axes().set_xscale(self.scale, basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
             pl.title('neuron %d - %s spike rate PDF' % (self.neuron.id, self.rate.kind))
             if self.normed:
-                pl.ylabel('probability')
+                if self.normed == 'pmf': # it's a probability mass function
+                    pl.ylabel('probability mass')
+                else: # it's a probability density function
+                    pl.ylabel('probability density')
             else:
                 pl.ylabel('count')
             pl.xlabel('spike rate')
 
     def ratepdf(self, **kwargs):
-        """Returns an existing RatePDF object, or creates a new one if necessary
-
-        kwargs: rrange=(0, 200), nbins=100, scale=['log'|'linear'], normed=False"""
+        """Returns an existing RatePDF object, or creates a new one if necessary"""
         try:
             self._ratepdfs
         except AttributeError: # self._ratepdfs doesn't exist yet
@@ -479,6 +474,8 @@ class Neuron(object):
         self._ratepdfs.append(rpdf) # add it to the RatePDF object list
         return rpdf
     ratepdf.__doc__ += '\n\n**kwargs:'
+    ratepdf.__doc__ += '\nRatePDF: '+getargstr(RatePDF.__init__)
+    ratepdf.__doc__ += '\nrate: '+getargstr(rate)
     ratepdf.__doc__ += _rateargs
 
     def raster(self):

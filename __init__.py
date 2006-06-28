@@ -23,7 +23,7 @@ from Recording import Recording
 from Run import Run
 from Experiment import Experiment
 from Rip import Rip
-from Movie import Movie
+from Movie import Movie, MSEQ32, MSEQ16
 from Neuron import Neuron
 
 from Test import test
@@ -38,19 +38,3 @@ from Test import test
 print 'Initing and loading Recording(71):'
 r71=Recording(71)
 r71.load()
-
-
-
-'''
-# set neuropy's __all__ attrib for designating which names will be imported when
-# you go 'from neuropy import *'
-__importall__ = [Core] # list of mods imported above as "from mod import *"
-__all__ = ['Neuron', 'Experiment', 'test']
-import types
-for mod in __importall__:
-    for key, value in mod.__dict__.iteritems():
-        # don't add modules or special names designated with a leading underscore
-        if type(value) is not types.ModuleType and not key.startswith('_'):
-            #print key
-            __all__.append(key)
-'''

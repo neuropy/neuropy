@@ -4,9 +4,9 @@ print 'importing Core'
 
 DEFAULTDATAPATH = 'C:/data/' # the convention in neuropy is that all 'path' var names have a trailing slash
 DEFAULTMODELPATH = 'C:/model/'
-DEFAULTCATID    = 15
+DEFAULTCATID = 15
 DEFAULTSYSTEMNAME = 'Cat 15'
-DEFAULTTRACKID  = '7c'
+DEFAULTTRACKID = '7c'
 RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording/Run
 SLASH = '/' # use forward slashes instead of having to use double backslashes
 TAB = '    ' # 4 spaces

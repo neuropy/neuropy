@@ -10,6 +10,7 @@ class Experiment(object):
     It contains information about the stimulus during that session, including
     the DIN values, the text header, and any Movies that were involved"""
     from Recording import Recording
+    from Neuron import Neuron
     def __init__(self, id=None, name=None, parent=Recording):
         self.level = 4 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
@@ -151,6 +152,9 @@ class Experiment(object):
             return neuron.code(trange=trange, **kwargs) # see if neuron is a Neuron
         except AttributeError:
             return self.r.n[neuron].code(trange=trange, **kwargs) # neuron is probably a Neuron id
+    code.__doc__ += '\n\n**kwargs:'
+    code.__doc__ += '\nNeuron.code: '+getargstr(Neuron.code)
+    code.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__)
 
     def codecorr(self, neuron1, neuron2, **kwargs):
         """Calculates the correlation of two Neuron.Code objects
@@ -158,26 +162,13 @@ class Experiment(object):
         code1 = self.code(neuron1, **kwargs)
         code2 = self.code(neuron2, **kwargs)
         return corr(code1.c, code2.c)
-
-    def codecorrpdf(self, **kwargs):
-        """Returns an existing CodeCorrPDF object, or creates a new one if necessary
-
-        kwargs: crange=None, nbins=100, normed='pmf', kind='binary', tres=20000"""
-        try:
-            self._codecorrpdfs
-        except AttributeError: # doesn't exist yet
-            self._codecorrpdfs = [] # create a list that'll hold CodeCorrPDF objects
-        co = self.CodeCorrPDF(experiment=self, **kwargs) # init a new one
-        for ccpdf in self._codecorrpdfs:
-            if co == ccpdf: # need to define special == method for class CodeCorrPDF()
-                return ccpdf # returns the first object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._codecorrpdfs
-        co.calc() # no matching object was found, calculate it
-        self._codecorrpdfs.append(co) # add it to the object list
-        return co
+    codecorr.__doc__ += '\n\n**kwargs:'
+    codecorr.__doc__ += '\nNeuron.code: '+getargstr(Neuron.code)
+    codecorr.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__)
 
     class CodeCorrPDF(object):
         """A PDF of the corrlelations of the codes of all cell pairs in this Experiment"""
-        def __init__(self, experiment, crange=None, nbins=100, normed='pmf', **kwargs):
+        def __init__(self, experiment=None, crange=None, nbins=100, normed='pmf', **kwargs):
             self.e = experiment
             self.r = self.e.r
             if crange: # range of corrs for pdf to span
@@ -215,7 +206,7 @@ class Experiment(object):
                 pl.xlim(self.crange)
             except AttributeError: # self.crange doesn't exist
                 pass
-            pl.title('neuron code corrleation pdf - experiment %d - %s' % (self.e.id, self.e.name))
+            pl.title('neuron pair code correlation pdf - experiment %d - %s' % (self.e.id, self.e.name))
             if self.normed:
                 if self.normed == 'pmf':
                     pl.ylabel('probability mass')
@@ -225,6 +216,24 @@ class Experiment(object):
                 pl.ylabel('count')
             pl.xlabel('correlation coefficient')
 
+    def codecorrpdf(self, **kwargs):
+        """Returns an existing CodeCorrPDF object, or creates a new one if necessary"""
+        try:
+            self._codecorrpdfs
+        except AttributeError: # doesn't exist yet
+            self._codecorrpdfs = [] # create a list that'll hold CodeCorrPDF objects
+        co = self.CodeCorrPDF(experiment=self, **kwargs) # init a new one
+        for ccpdf in self._codecorrpdfs:
+            if co == ccpdf: # need to define special == method for class CodeCorrPDF()
+                return ccpdf # returns the first object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._codecorrpdfs
+        co.calc() # no matching object was found, calculate it
+        self._codecorrpdfs.append(co) # add it to the object list
+        return co
+    codecorrpdf.__doc__ += '\n\n**kwargs:'
+    codecorrpdf.__doc__ += '\nCodeCorrPDF: '+getargstr(CodeCorrPDF.__init__)
+    codecorrpdf.__doc__ += '\nNeuron.code: '+getargstr(Neuron.code)
+    codecorrpdf.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__)
+
     def rate(self, neuron, **kwargs):
         """Returns a Neuron.Rate object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
         trange = (self.din[0,0], self.din[-1,0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
@@ -232,6 +241,17 @@ class Experiment(object):
             return neuron.rate(trange=trange, **kwargs) # see if neuron is a Neuron
         except AttributeError:
             return self.r.n[neuron].rate(trange=trange, **kwargs) # neuron is probably a Neuron id
+    rate.__doc__ += '\n\n**kwargs:'
+    rate.__doc__ += Neuron._rateargs
 
-    def ratepdf(self):
-        pass
+    def ratepdf(self, neuron, **kwargs):
+        """Returns a Neuron.RatePDF object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
+        trange = (self.din[0,0], self.din[-1,0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
+        try:
+            return neuron.ratepdf(trange=trange, **kwargs) # see if neuron is a Neuron
+        except AttributeError:
+            return self.r.n[neuron].ratepdf(trange=trange, **kwargs) # neuron is probably a Neuron id
+    ratepdf.__doc__ += '\n\n**kwargs:'
+    ratepdf.__doc__ += '\nNeuron.RatePDF: '+getargstr(Neuron.RatePDF.__init__)
+    ratepdf.__doc__ += '\nNeuron.rate: '+getargstr(Neuron.rate)
+    ratepdf.__doc__ += Neuron._rateargs
