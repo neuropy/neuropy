@@ -82,3 +82,27 @@ class Recording(object):
         #if len(self.rip) == 1:
         #   self.rip = self.rip.values[0] # pull it out of the dictionary
 
+    def plotcodeps(self, nbits=10, **kwargs):
+        """Scatterplots expected probabilities of population codes vs observed probabilities"""
+        # set trange from first din of first experiment to last din of last experiment
+        mint = np.inf
+        maxt = 0
+        for exp in self.e.values():
+            print exp
+            if exp.din[0,0] < mint:
+                mint = exp.din[0,0]
+            if exp.din[-1,0] > maxt:
+                maxt = exp.din[-1,0]
+        trange = (mint, maxt+self.e[0].REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
+        # call the intcodes methods bound to the first (or any) experiment, cuz you have to have 'em bound.
+        pobserved, pobservedwords = self.e[0].intcodespdf(nbits=nbits, trange=trange, **kwargs)
+        pexpected, pexpectedwords = self.e[0].intcodesfpdf(nbits=nbits, trange=trange, **kwargs) # expected, assuming independence
+        figure()
+        plot([10**-6, 1], [10**-6, 1], 'b-') # plot an x=y line
+        hold(True)
+        # pl.scatter(pobserved, pexpected), followed by setting the x and y axes to log scale freezes the figure and runs 100% cpu
+        # use loglog() instead
+        loglog(pobserved, pexpected, 'k.')
+        xlabel('observed population code probability')
+        ylabel('expected population code probability')
+        title('population code probabilities - recording %d - %s' % (self.id, self.name))

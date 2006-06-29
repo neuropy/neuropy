@@ -32,6 +32,7 @@ class Experiment(object):
         self.r.writetree(string)
     # doesn't need a id2name or name2id method, neither can really be derived from the other in an easy way (although could use re), the id is just chronological (which is also alphabetical) order, at least for now
     def load(self):
+        from Recording import Recording # not sure why this has to be imported here again (see above), but seems that it does
         from Movie import Movie, MSEQ32, MSEQ16
         f = file(self.path + self.name + '.din', 'rb') # open the din file for reading in binary mode
         self.din = np.fromfile(f, dtype=np.int64).reshape(-1,2) # reshape to nrows x 2 columns
@@ -145,9 +146,10 @@ class Experiment(object):
     def buildsweepranges(self):
         self.sweepranges = []
 
-    def code(self, neuron, **kwargs):
+    def code(self, neuron, trange=None, **kwargs):
         """Returns a Neuron.Code object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
-        trange = (self.din[0,0], self.din[-1,0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
+        if trange == None:
+            trange = (self.din[0,0], self.din[-1,0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
         try:
             return neuron.code(trange=trange, **kwargs) # see if neuron is a Neuron
         except AttributeError:
@@ -155,6 +157,63 @@ class Experiment(object):
     code.__doc__ += '\n\n**kwargs:'
     code.__doc__ += '\nNeuron.code: '+getargstr(Neuron.code)
     code.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__)
+
+    def codes(self, nbits=10, **kwargs):
+        """Returns a 2D array where each row is a neuron code constrained to the time range of this Experiment"""
+        neurons = self.r.n
+        nis = neurons.keys()
+        nis.sort() # make sure they're in increasing order
+        nis = nis[:nbits] # use just the first nbits neurons to make your words
+        codes = []
+        for ni in nis:
+            codes.append( [ self.code(neurons[ni], **kwargs).c ] ) # each is a nested list (ie, 2D)
+        codes = tuple(codes) # required for concatenate
+        return cat(codes)
+
+    def intcodes(self, **kwargs):
+        """Returns an array of the integer rep of the neuronal population code for each time bin"""
+        codes = self.codes(**kwargs) # 2D array of binary words. rows are neuron codes, columns are words for each time bin
+        return binaryarray2int(codes)
+
+    def intcodespdf(self, nbits=10, **kwargs):
+        """Returns the pdf across all possible population code words"""
+        intcodes = self.intcodes(nbits=nbits, **kwargs)
+        p, bins = histogram(intcodes, bins=arange(2**nbits), normed='pmf')
+        return p, bins
+
+    def intcodesfpdf(self, nbits=10, **kwargs):
+        """Returns the probability of getting each population code word, assuming independence between neurons, taking into account each neuron's spike probability"""
+        intcodes = arange(2**nbits)
+        codes = self.codes(nbits=nbits, **kwargs)
+        spikeps = [] # list spike probabilities for all neurons
+        for neuroncode in codes: # for each neuron, ie each row
+            spikeps.append( neuroncode.sum() / float(neuroncode.size) ) # calc the average p of getting a spike for this neuron, within any time bin
+        spikeps = array(spikeps, ndmin = 2)
+        nospikeps = 1 - spikeps
+        print 'spikesps: ', spikeps
+        print 'nospikesps: ', nospikeps
+        pon = getbinarytable(nbits)*spikeps.transpose()
+        poff = (1 - getbinarytable(nbits))*nospikeps.transpose()
+        print 'pon', pon
+        print 'poff', poff
+        x = pon + poff
+        print 'x', x
+        intcodeps = x.prod(axis=0)
+        return intcodeps, intcodes
+
+    def plotcodeps(self, nbits=10, **kwargs):
+        """Scatterplots expected probabilities of population codes vs observed probabilities"""
+        pobserved, pobservedwords = self.intcodespdf(nbits=nbits, **kwargs)
+        pexpected, pexpectedwords = self.intcodesfpdf(nbits=nbits, **kwargs) # expected, assuming independence
+        figure()
+        plot([10**-6, 1], [10**-6, 1], 'b-') # plot an x=y line
+        hold(True)
+        # pl.scatter(pobserved, pexpected), followed by setting the x and y axes to log scale freezes the figure and runs 100% cpu
+        # use loglog() instead
+        loglog(pobserved, pexpected, 'k.')
+        xlabel('observed population code probability')
+        ylabel('expected population code probability')
+        title('population code probabilities - experiment %d - %s' % (self.id, self.name))
 
     def codecorr(self, neuron1, neuron2, **kwargs):
         """Calculates the correlation of two Neuron.Code objects
@@ -193,28 +252,28 @@ class Experiment(object):
                 c = np.linspace(start=self.crange[0], stop=self.crange[1], num=self.nbins, endpoint=True)
             except AttributeError: # self.crange doesn't exist, let histogram() figure out the bin edges
                 c = self.nbins
-            self.n, self.c = np.histogram(corrs, bins=c, normed=self.normed)
+            self.n, self.c = histogram(corrs, bins=c, normed=self.normed)
         def plot(self):
-            pl.figure()
+            figure()
             try:
                 barwidth = (self.crange[1] - self.crange[0]) / float(self.nbins)
             except AttributeError: # self.crange doesn't exist
                 barwidth = self.c[1] - self.c[0]
-            #pl.hist(self.n, bins=self.r, normed=0, bottom=0, width=None, hold=False) # doesn't seem to work
-            pl.bar(left=self.c, height=self.n, width=barwidth, bottom=0, color='k', yerr=None, xerr=None, ecolor='k', capsize=3)
+            #hist(self.n, bins=self.r, normed=0, bottom=0, width=None, hold=False) # doesn't seem to work
+            bar(left=self.c, height=self.n, width=barwidth, bottom=0, color='k', yerr=None, xerr=None, ecolor='k', capsize=3)
             try:
-                pl.xlim(self.crange)
+                xlim(self.crange)
             except AttributeError: # self.crange doesn't exist
                 pass
-            pl.title('neuron pair code correlation pdf - experiment %d - %s' % (self.e.id, self.e.name))
+            title('neuron pair code correlation pdf - experiment %d - %s' % (self.e.id, self.e.name))
             if self.normed:
                 if self.normed == 'pmf':
-                    pl.ylabel('probability mass')
+                    ylabel('probability mass')
                 else:
-                    pl.ylabel('probability density')
+                    ylabel('probability density')
             else:
-                pl.ylabel('count')
-            pl.xlabel('correlation coefficient')
+                ylabel('count')
+            xlabel('correlation coefficient')
 
     def codecorrpdf(self, **kwargs):
         """Returns an existing CodeCorrPDF object, or creates a new one if necessary"""

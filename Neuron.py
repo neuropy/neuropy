@@ -63,12 +63,12 @@ class Neuron(object):
         #self.results = {} # a dictionary to store results in
         #treestr = self.level*TAB + self.name + '/'
         #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-    def cut(self, *args):
+    def cut(self, *args, **kwargs):
         """Returns all of the Neuron's spike times where tstart <= spikes <= tend
 
-        args can be: nothing (returns all spikes), tstart, or (tstart, tend)
-        None and 0 are shorthand for 'from first spike'
-        None and -1 are shorthand for 'to last spike'"""
+        *args can be: nothing (returns all spikes), None, tstart, or (tstart, tend)
+        None and 0 for tstart are shorthand for 'from first spike'
+        None and -1 for tend are shorthand for 'to last spike'"""
         tstart = None
         tend = None
         if len(args) == 0: # passed nothing
@@ -93,6 +93,11 @@ class Neuron(object):
             tstart = self.spikes[0]
         if tend in [None, -1]: # shorthand for "to last spike" - would be problematic if a spike existed at t=-1
             tend = self.spikes[-1]
+        try:
+            returntstart = kwargs['returntstart']
+        except KeyError:
+            returntstart = False
+
         '''
         # this is what we're trying to do:
         return self.spikes[ (self.spikes >= tstart) & (self.spikes <= tend) ]
@@ -103,50 +108,38 @@ class Neuron(object):
         if tend  == self.spikes[min(hi, self.nspikes-1)]: # if tend matches a spike (protect from going out of index bounds when checking)
             hi += 1 # inc to include a spike if it happens to exactly equal tend. This gives us end inclusion
             hi = min(hi, self.nspikes) # limit hi to max slice index (==max value index + 1)
-        return self.spikes[ lo : hi ] # slice it
+        cutspikes = self.spikes[ lo : hi ] # slice it
+        if not returntstart:
+            return cutspikes
+        else:
+            return cutspikes, tstart
 
     def cutrel(self, *args):
         """Cuts Neuron spike times and returns them relative to tstart"""
-        if len(args) == 0: # passed nothing
-            tstart = self.spikes[0]
-            tend = self.spikes[-1]
-        elif len(args) == 1: # passed None or a tuple
-            if args[0] == None:
-                tstart = self.spikes[0]
-                tend = self.spikes[-1]
-            else: # it's a tuple
-                tstart = args[0][0]
-                tend = args[0][1]
-        elif len(args) == 2: # passed tstart and tend as separate args
-            tstart = args[0]
-            tend = args[1]
-        else:
-            raise RuntimeError, 'Too many arguments'
-        #if tstart == 0: # shorthand for "from first spike"
-        #   tstart = self.spikes[0]
-        if tend == -1: # shorthand for "to last spike"
-            tend = self.spikes[-1]
+        cutspikes, tstart = self.cut(*args, **{'returntstart':True})
         tstart = np.int64(round(tstart)) # let's keep all the returned spikes as integers, us is more than accurate enough
-        return self.cut(tstart, tend) - tstart
+        return cutspikes - tstart
 
     def isi(self, trange=None):
         """Returns the inter-spike interval of the Neuron's spike train in trange"""
         #try:
         #    return self._isi # see if it's already been calculated
         #except AttributeError:
-        #    self._isi = np.diff(self.spikes) # store it
+        #    self._isi = diff(self.spikes) # store it
         #    return self._isi
-        return np.diff(self.cut(trange))
+        return diff(self.cut(trange))
 
     def iisii(self, trange=None):
         """Returns the inter-ISI interval (the differences between consecutive ISIs)
-        of the Neuron's spike train in trange"""
+        of the Neuron's spike train in trange
+
+        see delta def'n in: 2002 Segev, et al - Long term behavior of lithographically..."""
         #try:
         #    return self._iisii # see if it's already been calculated
         #except AttributeError:
-        #    self._iisii = np.diff(self.isi()) # store it
+        #    self._iisii = diff(self.isi()) # store it
         #    return self._iisii
-        return np.diff(self.isi(trange))
+        return diff(self.isi(trange))
 
     class Code(object):
         """Abstract spike code class"""
@@ -166,7 +159,7 @@ class Neuron(object):
                 return False
         def plot(self):
             # plot some kind of long grid of white and black elements?
-            pl.figure()
+            figure()
 
     class BinaryCode(Code):
         """Quantizes the spike train into a binary signal with a given time resolution"""
@@ -178,13 +171,13 @@ class Neuron(object):
             # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. Do the same for the end of the timepoints, but round up. This way, timepoints will line up for different code objects
             tstart = self.trange[0] - (self.trange[0] % self.tres)
             tend   = self.trange[1] - (self.trange[1] % self.tres)
-            self.t = np.arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to trange[1] to make t end inclusive
+            self.t = arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to trange[1] to make t end inclusive
             s = self.neuron.cut(self.trange) # spike times
-            self.c = np.zeros(len(self.t)) # binary code signal
+            self.c = zeros(len(self.t)) # binary code signal
             self.c[np.unique(self.t.searchsorted(s)) - 1] = 1 # dec index by 1 so that you get indices that point to the most recent bin edge. For each bin that has 1 or more spikes in it, set its bit to 1
         def plot(self):
             super(Neuron.BinaryCode, self).plot()
-            pl.title('neuron %d - binary spike code' % self.neuron.id)
+            title('neuron %d - binary spike code' % self.neuron.id)
 
     def code(self, kind='binary', **kwargs):
         """Returns an existing Code object, or creates a new one if necessary"""
@@ -222,12 +215,12 @@ class Neuron(object):
             else:
                 return False
         def plot(self):
-            pl.figure()
-            pl.plot(self.t, self.r)
+            figure()
+            plot(self.t, self.r)
             # diagnostic for comparing interpolated to raw nisi rate:
-            #pl.plot(self.rawt, self.rawr, 'r+')
-            pl.xlabel('t')
-            pl.ylabel('spike rate')
+            #plot(self.rawt, self.rawr, 'r+')
+            xlabel('t')
+            ylabel('spike rate')
 
     class BinRate(Rate):
         """Uses simple binning to calculate firing rate"""
@@ -239,13 +232,13 @@ class Neuron(object):
             # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. Do the same for the end of the timepoints. This way, timepoints will line up for different code objects
             tstart = self.trange[0] - (self.trange[0] % self.tres)
             tend   = self.trange[1] - (self.trange[1] % self.tres)
-            t = np.arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to trange[1] to make t end inclusive
+            t = arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to trange[1] to make t end inclusive
             s = self.neuron.cut(trange) # spike times
             self.r, self.t = histogramSorted(self.neuron.spikes, bins=t) # assumes spikes are in chrono order
             self.r = self.r / float(self.tres) * 1000000 # spikes/sec
         def plot(self):
             super(Neuron.BinRate, self).plot()
-            pl.title('neuron %d - binned spike rate' % self.neuron.id)
+            title('neuron %d - binned spike rate' % self.neuron.id)
 
     class nISIRate(Rate):
         """Uses nisi inter spike intervals to calculate firing rate, with a fixed number of spikes nisi+1 per bin. nisi == 1 is the ISI rate"""
@@ -271,7 +264,7 @@ class Neuron(object):
             # make the start of our interpolated timepoints be an even multiple of self.tres. Round down to the nearest multiple. This way, the timepoints will line up, even if different Rates have different starting points, like neuron.rate() vs experiment.rate()
             tstart = t[0] - (t[0] % self.tres)
             # should we have tend = t[-1] + self.tres ?
-            self.t = np.arange(tstart, t[-1], self.tres) # new set of timepoints to interpolate over
+            self.t = arange(tstart, t[-1], self.tres) # new set of timepoints to interpolate over
             if self.interp == 'sah':
                 self.r = sah(t, r, self.t, keep=False)
             elif self.interp == 'linear':
@@ -283,7 +276,7 @@ class Neuron(object):
 
         def plot(self):
             super(Neuron.nISIRate, self).plot()
-            pl.title('neuron %d - %d-inter-spike-interval spike rate, %s interpolation' % (self.neuron.id, self.nisi, self.interp))
+            title('neuron %d - %d-inter-spike-interval spike rate, %s interpolation' % (self.neuron.id, self.nisi, self.interp))
 
     class WnISIRate(Rate):
         """Uses a weighted sum of various n inter spike intervals to calculate rate"""
@@ -352,7 +345,7 @@ class Neuron(object):
             pass
         def plot(self):
             super(Neuron.GaussRate, self).plot()
-            pl.title('Gaussian sliding window spike rate')
+            title('Gaussian sliding window spike rate')
 
     class RectRate(Rate):
         """Uses a sliding rectangular window to calculate firing rate"""
@@ -364,7 +357,7 @@ class Neuron(object):
             pass
         def plot(self):
             super(Neuron.RectRate, self).plot()
-            pl.title('rectangular sliding window spike rate')
+            title('rectangular sliding window spike rate')
 
     def rate(self, kind='nisi', **kwargs):
         """Returns an existing Rate object, or creates a new one if necessary"""
@@ -427,18 +420,18 @@ class Neuron(object):
                 for (i,r) in enumerate(safe):
                     if r == 0:
                         safe[i] = 0.1 # set to 0.1 Hz
-                self.logrrange = np.log10(tuple(safe)) # convert back to tuple, is now safe to take log
+                self.logrrange = log10(tuple(safe)) # convert back to tuple, is now safe to take log
                 # r sequence demarcates left rate bin edges
                 r = np.logspace(start=self.logrrange[0], stop=self.logrrange[1], num=self.nbins, endpoint=True, base=10.0)
             elif self.scale == 'linear':
                 r = np.linspace(start=self.rrange[0], stop=self.rrange[1], num=self.nbins, endpoint=True)
             else:
                 raise ValueError, 'Unknown scale: %s' % repr(scale)
-            self.n, self.r = np.histogram(self.rate.r, bins=r, normed=self.normed)
+            self.n, self.r = histogram(self.rate.r, bins=r, normed=self.normed)
         def plot(self):
-            pl.figure()
+            figure()
             if self.scale == 'log':
-                barwidth = list(np.diff(self.r)) # each bar will have a different width, convert to list so you can append
+                barwidth = list(diff(self.r)) # each bar will have a different width, convert to list so you can append
                 # need to add one more entry to barwidth to the end to get nbins of them:
                 #barwidth.append(barwidth[-1]) # not exactly correct
                 logbinwidth = (self.logrrange[1]-self.logrrange[0]) / float(self.nbins)
@@ -447,18 +440,18 @@ class Neuron(object):
                 barwidth = (self.rrange[1]-self.rrange[0]) / float(self.nbins)
             else:
                 raise ValueError, 'Unknown scale: %s' % repr(scale)
-            #pl.hist(self.n, bins=self.r, normed=0, bottom=0, width=None, hold=False) # doesn't seem to work
-            pl.bar(left=self.r, height=self.n, width=barwidth)
-            pl.axes().set_xscale(self.scale, basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
-            pl.title('neuron %d - %s spike rate PDF' % (self.neuron.id, self.rate.kind))
+            #hist(self.n, bins=self.r, normed=0, bottom=0, width=None, hold=False) # doesn't seem to work
+            bar(left=self.r, height=self.n, width=barwidth)
+            axes().set_xscale(self.scale, basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
+            title('neuron %d - %s spike rate PDF' % (self.neuron.id, self.rate.kind))
             if self.normed:
                 if self.normed == 'pmf': # it's a probability mass function
-                    pl.ylabel('probability mass')
+                    ylabel('probability mass')
                 else: # it's a probability density function
-                    pl.ylabel('probability density')
+                    ylabel('probability density')
             else:
-                pl.ylabel('count')
-            pl.xlabel('spike rate')
+                ylabel('count')
+            xlabel('spike rate')
 
     def ratepdf(self, **kwargs):
         """Returns an existing RatePDF object, or creates a new one if necessary"""

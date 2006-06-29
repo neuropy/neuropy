@@ -25,6 +25,8 @@ import sys
 import numpy as np
 import pylab as pl
 import scipy.signal as sig
+from numpy import arange, array, asarray, log, log10, rand, randn, zeros, ones, diff, concatenate, concatenate as cat, histogram
+from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gca, axes, hold
 
 # Nah!: Rips should really have ids to make them easier to reference to: r[83].rip[0] instead of r[83].rip['conservative spikes'] - this means adding id prefixes to rip folder names (or maybe suffixes: 'conservative spikes.0.rip', 'liberal spikes.1.rip', etc...). Prefixes would be better cuz they'd force sorting by id in explorer (which uses alphabetical order) - ids should be 0-based of course
 # worry about conversion of ids to strings: some may be only 1 digit and may have a leading zero!
@@ -119,15 +121,15 @@ def approx(a, b, rtol=1.e-14, atol=1.e-14):
     The absolute error atol comes into play for those elements of y that are very
     small or zero; it says how small x must be also. Copied and modified from
     numpy.allclose()"""
-    x = np.array(a, copy=False)
-    y = np.array(b, copy=False)
+    x = array(a, copy=False)
+    y = array(b, copy=False)
     print x.shape
     print y.shape
     return np.less(np.absolute(x-y), atol + rtol * np.absolute(y))
 
 def histogramSorted(sorteda, bins=10, range=None):
     """Builds a histogram, stolen from numpy.histogram(), modified to assume sorted input"""
-    a = np.asarray(sorteda).ravel()
+    a = asarray(sorteda).ravel()
     if not iterable(bins):
         if range is None:
             range = (a.min(), a.max())
@@ -138,7 +140,7 @@ def histogramSorted(sorteda, bins=10, range=None):
         bins = np.linspace(mn, mx, bins, endpoint=False)
     #n = np.sort(a).searchsorted(bins)
     n = a.searchsorted(bins)
-    n = np.concatenate([n, [len(a)]]) # this adds a bin that includes overflow points
+    n = cat([n, [len(a)]]) # this adds a bin that includes overflow points
     n = n[1:]-n[:-1] # subtracts a shifted version of itself
     #if normed:
     #   db = bins[1] - bins[0]
@@ -155,7 +157,7 @@ def sah(t, y, ts, keep=False):
     '''this has an issue of not keeping the original data point where ts == t'''
     if keep:
         # The following ensures that the original data point is kept when ts == t, doesn't really work if the shortest ISI is less than tres in ts
-        di = np.diff(i).nonzero()[0] # find changes in i, nonzero() method returns a tuple, pick the result for the first dim with [0] index
+        di = diff(i).nonzero()[0] # find changes in i, nonzero() method returns a tuple, pick the result for the first dim with [0] index
         si = approx(t[1::], ts[di]) # check at those change indices if t ~= ts (ignoring potential floating point representational inaccuracies). If so, inc i at that point so you keep y at that point.
         #print i
         i[di[si]] += 1
@@ -165,8 +167,8 @@ def sah(t, y, ts, keep=False):
 def corr(x,y):
     """Returns correlation of signals x and y. This should be equivalent to np.corrcoef(),
     but that one doesn't seem to work for signals with zeros in them. Check how std() works exactly"""
-    x = np.array(x)
-    y = np.array(y)
+    x = array(x)
+    y = array(y)
     return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std())
 
 def getargstr(obj):
@@ -187,14 +189,52 @@ def getargstr(obj):
         argstr = '()'
     return argstr
 
+def binaryarray2int(bin):
+    """Takes a binary array (only 1s and 0s) and returns the base 10 integer representations"""
+    #assert type(bin) == type(array)
+    nbits = bin.shape[0] # length of the highest (first) dimension (the rows)
+    nd = bin.ndim
+    multiplier = []
+    for i in range(nbits):
+        multiplier.append(2**i)
+    multiplier = array(multiplier, ndmin=nd).transpose()
+    #print multiplier
+    x = bin*multiplier
+    #print x
+    return x.sum(axis=0) # sum over the lowest dimension (the columns)
 
-
-
-
-
-
-
-
+def getbinarytable(nbits=8):
+    """Generates a 2D binary table containing all possible words for nbits, with bits in the rows and words in the columns (msb at bottomest row)"""
+    rowlength = 2**nbits
+    '''
+    x = zeros((nbits, 2**nbits)) # init an array
+    for bit in range(nbits):
+        pattern = [0]*2**bit
+        pattern.extend([1]*2**bit)
+        npatterns = rowlength / len(pattern) # == 2**nbits / len(pattern) == 2**nbits / 2**(bit+1) == 2**(nbits-bit-1)
+        row = pattern*npatterns
+        x[bit]=row
+    return x
+    '''
+    '''
+    x = zeros((nbits, 2**nbits), dtype=np.int8) # init an array
+    for bit in range(nbits): # one row at a time
+        pattern = array(0, dtype=np.int8).repeat(2**bit)
+        pattern = cat((pattern, array(1, dtype=np.int8).repeat(2**bit)))
+        npatterns = rowlength / len(pattern) # == 2**nbits / len(pattern) == 2**nbits / 2**(bit+1) == 2**(nbits-bit-1)
+        row = np.repmat(pattern, 1, npatterns)
+        x[bit::,::] = row
+    return x
+    '''
+    # this seems to be the fastest method:
+    x = []
+    for bit in range(nbits): # one row at a time
+        pattern = array(0, dtype=np.int8).repeat(2**bit)
+        pattern = cat((pattern, array(1, dtype=np.int8).repeat(2**bit)))
+        npatterns = rowlength / len(pattern) # == 2**nbits / len(pattern) == 2**nbits / 2**(bit+1) == 2**(nbits-bit-1)
+        row = np.repmat(pattern, 1, npatterns)
+        x.append(row)
+    return cat(x)
 
 
 class Data(object): # use 'new-style' classes
