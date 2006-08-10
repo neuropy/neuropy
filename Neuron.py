@@ -1,6 +1,4 @@
-"""Defines the Neuron class"""
-
-# set the self.trange attribe in Base class for Neuron, Experiment, and Recording
+"""Defines the Neuron class and all of its support classes"""
 
 print 'importing Neuron'
 
@@ -65,6 +63,8 @@ class BaseNeuron(object):
         #self.results = {} # a dictionary to store results in
         #treestr = self.level*TAB + self.name + '/'
         #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
+        self.trange = self.spikes[0], self.spikes[-1]
+
     def cut(self, *args, **kwargs):
         """Returns all of the Neuron's spike times where tstart <= spikes <= tend
 
@@ -91,6 +91,7 @@ class BaseNeuron(object):
             tend = args[1]
         else:
             raise ValueError, 'too many arguments'
+
         if tstart in [None, 0]: # shorthand for "from first spike" - would be problematic if a spike existed at t=0
             tstart = self.spikes[0]
         if tend in [None, -1]: # shorthand for "to last spike" - would be problematic if a spike existed at t=-1
@@ -144,13 +145,14 @@ class BaseNeuron(object):
         return diff(self.isi(trange))
 
 
-class BaseCode(object): # or inherit from BaseNeuron?
+class BaseCode(object):
     """Abstract spike code class"""
     def __init__(self, neuron=None, trange=None):
         self.neuron = neuron
         if trange == None:
-            trange = self.neuron.spikes[0], self.neuron.spikes[-1]
-        self.trange = trange
+            self.trange = self.neuron.trange
+        else:
+            self.trange = trange
     def __eq__(self, other):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
@@ -162,7 +164,7 @@ class BaseCode(object): # or inherit from BaseNeuron?
             return False
     def plot(self):
         # plot some kind of long grid of white and black elements?
-        figure()
+        pass
 
 
 class BinaryCode(BaseCode):
@@ -184,13 +186,36 @@ class BinaryCode(BaseCode):
         title('neuron %d - binary spike code' % self.neuron.id)
 
 
-class BaseRate(BaseNeuron):
+class NeuronCode(BaseNeuron):
+    """Defines the spike code related Neuron methods"""
+    def code(self, kind='binary', **kwargs):
+        """Returns an existing Code object, or creates a new one if necessary"""
+        try:
+            self._codes
+        except AttributeError: # self._codes doesn't exist yet
+            self._codes = [] # create a list that'll hold Code objects
+        if kind == 'binary':
+            co = BinaryCode(neuron=self, **kwargs) # init a new BinaryCode object
+        else:
+            raise ValueError, 'Unknown kind: %s' % repr(self.kind)
+        for code in self._codes:
+            if co == code: # need to define special == method for class Code()
+                return code # returns the first Code object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._codes
+        co.calc() # no matching Rate was found, calculate it
+        self._codes.append(co) # add it to the Code object list
+        return co
+    code.__doc__ += '\n\n**kwargs:'
+    code.__doc__ += '\nbinary: '+getargstr(BinaryCode.__init__)
+
+
+class BaseRate(object):
     """Abstract firing rate class"""
     def __init__(self, neuron=None, trange=None):
         self.neuron = neuron
         if trange == None:
-            trange = self.neuron.spikes[0], self.neuron.spikes[-1]
-        self.trange = trange
+            self.trange = self.neuron.trange
+        else:
+            self.trange = trange
     def __eq__(self, other):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
@@ -210,28 +235,28 @@ class BaseRate(BaseNeuron):
 
 
 class BinRate(BaseRate):
-        """Uses simple binning to calculate firing rate"""
-        def __init__(self, neuron=None, trange=None, tres=100000):
-            super(Neuron.BinRate, self).__init__(neuron=neuron, trange=trange)
-            self.kind = 'bin'
-            self.tres = tres
-        def calc(self):
-            # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. Do the same for the end of the timepoints. This way, timepoints will line up for different code objects
-            tstart = self.trange[0] - (self.trange[0] % self.tres)
-            tend   = self.trange[1] - (self.trange[1] % self.tres)
-            t = arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to trange[1] to make t end inclusive
-            s = self.neuron.cut(trange) # spike times
-            self.r, self.t = histogramSorted(self.neuron.spikes, bins=t) # assumes spikes are in chrono order
-            self.r = self.r / float(self.tres) * 1000000 # spikes/sec
-        def plot(self):
-            super(Neuron.BinRate, self).plot()
-            title('neuron %d - binned spike rate' % self.neuron.id)
+    """Uses simple binning to calculate firing rate"""
+    def __init__(self, neuron=None, trange=None, tres=100000):
+        super(BinRate, self).__init__(neuron=neuron, trange=trange)
+        self.kind = 'bin'
+        self.tres = tres
+    def calc(self):
+        # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. Do the same for the end of the timepoints. This way, timepoints will line up for different code objects
+        tstart = self.trange[0] - (self.trange[0] % self.tres)
+        tend   = self.trange[1] - (self.trange[1] % self.tres)
+        t = arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to trange[1] to make t end inclusive
+        s = self.neuron.cut(trange) # spike times
+        self.r, self.t = histogramSorted(self.neuron.spikes, bins=t) # assumes spikes are in chrono order
+        self.r = self.r / float(self.tres) * 1000000 # spikes/sec
+    def plot(self):
+        super(BinRate, self).plot()
+        title('neuron %d - binned spike rate' % self.neuron.id)
 
 
 class nISIRate(BaseRate):
     """Uses nisi inter spike intervals to calculate firing rate, with a fixed number of spikes nisi+1 per bin. nisi == 1 is the ISI rate"""
     def __init__(self, neuron=None, trange=None, nisi=3, tres=50000, interp='sah'):
-        super(Neuron.nISIRate, self).__init__(neuron=neuron, trange=trange)
+        super(nISIRate, self).__init__(neuron=neuron, trange=trange)
         self.kind = 'nisi'
         self.nisi = nisi
         self.tres = tres
@@ -262,7 +287,7 @@ class nISIRate(BaseRate):
         else:
             raise ValueError, 'unknown interpolation method: %s' % self.interp
     def plot(self):
-        super(Neuron.nISIRate, self).plot()
+        super(nISIRate, self).plot()
         title('neuron %d - %d-inter-spike-interval spike rate, %s interpolation' % (self.neuron.id, self.nisi, self.interp))
 
 
@@ -275,7 +300,7 @@ class WnISIRate(BaseRate):
 class IDPRate(BaseRate):
     """Instantaneous discharge probability. See Pauluis and Baker, 2000"""
     def __init__(self, neuron=None, IDP_a=4, tres=50000):
-        super(Neuron.IDPRate, self).__init__(neuron=neuron, trange=trange)
+        super(IDPRate, self).__init__(neuron=neuron, trange=trange)
         self.kind = 'idp'
         self.tres = tres
     def calc(self):
@@ -328,26 +353,26 @@ class IDPRate(BaseRate):
 class GaussRate(BaseRate):
     """Uses a sliding Gaussian window to calculate firing rate"""
     def __init__(self, neuron=None, trange=None, width=200000):
-        super(Neuron.GaussRate, self).__init__(neuron=neuron, trange=trange)
+        super(GaussRate, self).__init__(neuron=neuron, trange=trange)
         self.kind = 'gauss'
         self.width = width
     def calc(self):
         pass
     def plot(self):
-        super(Neuron.GaussRate, self).plot()
+        super(GaussRate, self).plot()
         title('Gaussian sliding window spike rate')
 
 
 class RectRate(BaseRate):
     """Uses a sliding rectangular window to calculate firing rate"""
     def __init__(self, neuron=None, trange=None, width=200000):
-        super(Neuron.RectRate, self).__init__(neuron=neuron, trange=trange)
+        super(RectRate, self).__init__(neuron=neuron, trange=trange)
         self.kind = 'rect'
         self.width = width
     def calc(self):
         pass
     def plot(self):
-        super(Neuron.RectRate, self).plot()
+        super(RectRate, self).plot()
         title('rectangular sliding window spike rate')
 
 
@@ -410,27 +435,8 @@ class RatePDF(object):
             ylabel('count')
         xlabel('spike rate')
 
-
-class Neuron(BaseNeuron):
-    def code(self, kind='binary', **kwargs):
-        """Returns an existing Code object, or creates a new one if necessary"""
-        try:
-            self._codes
-        except AttributeError: # self._codes doesn't exist yet
-            self._codes = [] # create a list that'll hold Code objects
-        if kind == 'binary':
-            co = BinaryCode(neuron=self, **kwargs) # init a new BinaryCode object
-        else:
-            raise ValueError, 'Unknown kind: %s' % repr(self.kind)
-        for code in self._codes:
-            if co == code: # need to define special == method for class Code()
-                return code # returns the first Code object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._codes
-        co.calc() # no matching Rate was found, calculate it
-        self._codes.append(co) # add it to the Code object list
-        return co
-    code.__doc__ += '\n\n**kwargs:'
-    code.__doc__ += '\nbinary: '+getargstr(BinaryCode.__init__)
-
+class NeuronRate(BaseNeuron):
+    """Defines the spike rate related Neuron methods"""
     def rate(self, kind='nisi', **kwargs):
         """Returns an existing Rate object, or creates a new one if necessary"""
         try:
@@ -484,6 +490,23 @@ class Neuron(BaseNeuron):
     ratepdf.__doc__ += '\nrate: '+getargstr(rate)
     ratepdf.__doc__ += _rateargs
 
+class NeuronRevCorr(BaseNeuron):
+    """Defines the reverse correlation related Neuron methods"""
+    def sta(self, experiment=None, **kwargs):
+        try:
+            return experiment.sta(neuron=self, **kwargs)
+        except AttributeError: # no Experiment was passed, use the first experiment this Neuron was involved in
+            return self.rip.r.e[0].sta(neuron=self, **kwargs)
+
+    def stc(self, experiment=None, **kwargs):
+        try:
+            return experiment.stc(neuron=self, **kwargs)
+        except AttributeError: # no Experiment was passed, use the first experiment this Neuron was involved in
+            return self.rip.r.e[0].stc(neuron=self, **kwargs)
+
+
+class Neuron(NeuronRevCorr, NeuronRate, NeuronCode, BaseNeuron):
+    """Inherit all the Neuron objects into a single Neuron class"""
     def raster(self):
         # use pylab.vlines()
         pass

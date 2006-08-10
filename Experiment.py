@@ -1,14 +1,10 @@
-"""Defines the Experiment class.  This could be split up into multiple base classes
-(one for basic init and loading ExperimentBase), one for rates (ExperimentRate), one for codes (ExperimentCodes), etc...), and then combined
-using multiple inheritance into a single child Class called Experiment"""
+"""Defines the Experiment class and all of its support classes."""
 
 print 'importing Experiment'
 
 from Core import *
 from Dimstim.Core import buildSweepTable
 import Neuron
-
-DEFAULTCODEWORDLENGTH = 10
 
 class BaseExperiment(object):
     """An Experiment corresponds to a single contiguous VisionEgg stimulus session.
@@ -64,7 +60,7 @@ class BaseExperiment(object):
 
         if self.textheader: # if it isn't empty
             names1 = locals().copy() # namespace before execing the textheader
-            exec(self.textheader) # execute the textheader as Python code, maybe add some checks here to prevent changes to filesystem from accidental code, unload the os or sys modules or something?
+            exec(self.textheader) # execute the textheader as Python code. TODO: maybe add some checks here to prevent changes to filesystem from accidental code, unload the os or sys modules or something? But that wouldn't prevent 'accidental' code from 'accidentally' re-importing such modules
             names2 = locals().copy() # namespace after
             newnames = [ n2 for n2 in names2 if not names1.has_key(n2) and n2 != 'names1' ] # names that were added to the namespace, excluding the 'names1' name itself
             for newname in newnames:
@@ -155,7 +151,8 @@ class BaseExperiment(object):
         self.trange = (self.din[0,0], self.din[-1,0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
 
     def buildsweepranges(self):
-        self.sweepranges = []
+        print 'INCOMPLETE!!!!!!!!!!!!!!!!'
+        self.sweepranges = {}
 
 
 class CodeCorrPDF(object):
@@ -212,7 +209,8 @@ class CodeCorrPDF(object):
 class Codes(object):
     """Returns a 2D array where each row is a neuron code"""
     def __init__(self, neurons=None, trange=None, **kwargs):
-        self.trange = trange
+        if trange != None:
+            self.trange = trange
         self.neurons = neurons
     def calc(self):
         neurons = self.r.n
@@ -222,7 +220,12 @@ class Codes(object):
         self.c = tuple(self.c) # required for concatenate
 
 
-class Something(object):
+class CodeWords(object):
+    """What's this supposed to do?"""
+    pass
+
+
+class Schneidmann(object):
     """see 2006 Schneidmann figs 1e and 1f"""
     def intcodes(self, nis, **kwargs):
         """Returns an array of the integer representation of the neuronal population code for each time bin"""
@@ -312,7 +315,8 @@ class Something(object):
             pass
 
 
-class Experiment(BaseExperiment):
+class ExperimentCode(BaseExperiment):
+    """Defines the spike code related Experiment methods"""
     def code(self, neuron=None, **kwargs):
         """Returns a Neuron.Code object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
         try:
@@ -334,8 +338,6 @@ class Experiment(BaseExperiment):
     code.__doc__ += '\n\n**kwargs:'
     code.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code)
     code.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__)
-
-
 
     def codecorr(self, neuron1, neuron2, **kwargs):
         """Calculates the correlation of two Neuron.Code objects
@@ -370,6 +372,9 @@ class Experiment(BaseExperiment):
         cw.calc()
         return cw
 
+
+class ExperimentRate(BaseExperiment):
+    """Defines the spike rate related Experiment methods"""
     def rate(self, neuron, **kwargs):
         """Returns a Neuron.Rate object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
         try:
@@ -381,41 +386,159 @@ class Experiment(BaseExperiment):
 
     def ratepdf(self, neuron, **kwargs):
         """Returns a Neuron.RatePDF object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
-        trange = (self.din[0,0], self.din[-1,0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
         try:
-            return neuron.ratepdf(trange=trange, **kwargs) # see if neuron is a Neuron
+            return neuron.ratepdf(trange=self.trange, **kwargs) # see if neuron is a Neuron
         except AttributeError:
-            return self.r.n[neuron].ratepdf(trange=trange, **kwargs) # neuron is probably a Neuron id
+            return self.r.n[neuron].ratepdf(trange=self.trange, **kwargs) # neuron is probably a Neuron id
     ratepdf.__doc__ += '\n\n**kwargs:'
     ratepdf.__doc__ += '\nNeuron.RatePDF: '+getargstr(Neuron.RatePDF.__init__)
     ratepdf.__doc__ += '\nNeuron.rate: '+getargstr(Neuron.Neuron.rate)
     ratepdf.__doc__ += Neuron.Neuron._rateargs
 
 
+class RevCorr(object):
+    """Base class for doing reverse correlation of spikes to simulus"""
+    def __init__(self, neuron=None, experiment=None, trange=None, nt=10):
+        self.experiment = experiment
+        if type(neuron) == Neuron.Neuron:
+            self.neuron = neuron
+        else: # neuron is probably a Neuron id
+            self.neuron = self.experiment.r.n[neuron]
+        if trange == None:
+            self.trange = self.experiment.trange
+        else:
+            self.trange = trange
+        # for now, only do revcorr if experiment.stims has only one entry
+        # TODO: multiple (different) movies in self.stims (and hence also in experiment.playlist), sparse noise stims
+        assert len(self.experiment.stims) == 1
+        self.movie = self.experiment.stims[0]
+        self.nt = nt # number of revcorr timepoints
+        self.tis = range(0, nt, 1) # revcorr timepoint indices
+        self.t = [ int(round(ti * self.movie.sweeptimeMsec)) for ti in self.tis ] #list(array(self.tis) * self.movie.sweeptimeMsec) # revcorr timepoint values, convert to array to do elementwise muliplication, then convert back to list. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
+        self.ndinperframe = int(round(self.movie.sweeptimeMsec / float(self.experiment.REFRESHTIME / 1000.)))
+        self.width = self.movie.data.shape[-1]
+        self.height = self.movie.data.shape[-2]
+    def __eq__(self, other):
+        selfd = self.__dict__.copy()
+        otherd = other.__dict__.copy()
+        # Delete their rcdini and rf attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
+        [ d.__delitem__(key) for d in [selfd, otherd] for key in ['rcdini', 'rf'] if d.has_key(key) ]
+        if type(self) == type(other) and selfd == otherd:
+            return True
+        else:
+            return False
+    def calc(self):
+        spikes = self.neuron.cut(self.trange)
+        self.rcdini = self.experiment.din[:,0].searchsorted(spikes) - 1 # revcorr dini. Find where the spike times fall in the din, dec so you get indices that point to the most recent din value for each spike
+        #self.din = self.experiment.din[rcdini,1] # get the din (frame indices) at the rcdini
+    def plot(self, interp='nearest', normed=True):
+        """Plots the RFs as images, returns all the image objects"""
+        mpl.rcParams['interactive'] = False
+        #mpl.rcParams['toolbar'] = None # turn off toolbars for this figure. There's gotta be a more OO way...
+        figure(figsize=[9, 1.5]) # in inches
+        gcfm().frame.GetStatusBar().Hide()
+        gcfm().frame.GetToolBar().Hide()
+        gcfm().frame.Fit()
+        #gcf().set_figsize_inches([8, 0.8])
+        #as = [] # stores axes handles
+        ias = [] # stores image axes handles
+        hspace = 0.01
+        vborder = 0.03
+        width = (1.0 - hspace*(self.nt-1) - vborder*2) / self.nt
+        height = 0.89
+        bottom = 0.0
+        if normed:
+            vmin, vmax = self.rf.min(), self.rf.max()
+        else:
+            vmin, vmax = None, None
+        for ti, t in zip(self.tis, self.t):
+            left = (width + hspace)*ti + vborder
+            a = axes([left, bottom, width, height])
+            ia = imshow(self.rf[ti], vmin=vmin, vmax=vmax, interpolation=interp)
+            ia.axes.axison = False # turns off x and y axis
+            ias.append(ia)
+            gcf().text(left, 0.98, '%dms' % t, horizontalalignment='center', verticalalignment='top')
+        mpl.rcParams['interactive'] = True
+        pl.show()
+        #mpl.rcParams['toolbar'] = 'toolbar2' # turn toolbars back on for subsequent figures
+        return ias
+        # use gcf().canvas.Refresh() to update the window, if it doesn't do so automatically when you modify its contents
 
-'''
+
+class STA(RevCorr):
+    """Spike-triggered average revcorr object"""
+    def calc(self):
+        super(STA, self).calc() # run the base calc() steps first
+        self.rf = zeros([self.nt, self.height, self.width], dtype=np.float64) # init a 3D matrix to store the STA at each timepoint. rf == 'receptive field'
+        for ti in self.tis:
+            rcdini = self.rcdini - ti*self.ndinperframe # this can unintentionally introduce -ve valued indices: some frames can exist at early revcorr timepoints but not at later ones
+            rcdini = rcdini[rcdini >= 0] # remove any -ve valued indices. Is this the most efficient way to do this?
+            #print ti
+            #print rcdini
+            frameis = self.experiment.din[rcdini,1] # get the din values (frame indices) at the rcdini for this timepoint
+            # in Cat 15, we erroneously duplicated the first frame of the mseq movies at the end, giving us one more frame (0 to 65535 for mseq32) than we should have had (0 to 65534 for mseq32). We're now using the correct movies, but the din for Cat 15 mseq experiments still have those erroneous frame indices (65535 and 16383 for mseq32 and mseq16 respectively), so we'll just ignore 'em for revcorr purposes.
+            if self.movie.oname == 'mseq32':
+                frameis = frameis[frameis != 65535] # remove all occurences of 65535
+            elif self.movie.oname == 'mseq16':
+                frameis = frameis[frameis != 16383] # remove all occurences of 16383
+            #print frameis
+            self.rf[ti] = self.movie.data[frameis].mean(axis=0) # average all the frames for this timepoint
+    def plot(self, interp='nearest', normed=True):
+        vals = super(STA, self).plot(interp, normed)
+        gcfm().window.SetTitle('STA: n[%d], e[%d], r[%d]' % (self.neuron.id, self.experiment.id, self.experiment.r.id)) # assumes WxAgg backend
+        return vals
+    plot.__doc__ = RevCorr.plot.__doc__
 
 
-in Experiment.py:
-
-class BaseExperiment(object):
-    def load(): # at end of method
-        self.trange = (self.din[0,0], self.din[-1,0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
-
-class ExperimentCodes(BaseExperiment)
-class ExperimentRate(BaseExperiment)
-
-
-class CodeCorrPDF():
-class CodeWords():
+class STC(RevCorr):
+    """Spike-triggered correlation revcorr object"""
+    def calc(self):
+        print 'INCOMPLETE'
+        super(STC, self).calc() # run the general calc() steps
+    def plot(self):
+        print 'INCOMPLETE'
+        vals = super(STC, self).plot()
+        return vals
+    plot.__doc__ = RevCorr.plot.__doc__
 
 
-class Experiment(BaseExperiment,   ):
-    def code():
-    self.codes =
-    codecorrpdf()
-    def rate(self, neuron, **kwargs):
-        neuron.rate(trange=trange, **kwargs)
-    ratepdf()
+class ExperimentRevCorr(BaseExperiment):
+    """Defines the reverse correlation related Experiment methods"""
+    def sta(self, neuron, **kwargs):
+        """Returns an existing STA RevCorr object, or creates a new one if necessary"""
+        try:
+            self._stas
+        except AttributeError: # self._stas doesn't exist yet
+            self._stas = [] # create a list that'll hold STA objects
+        stao = STA(neuron=neuron, experiment=self, **kwargs) # init a new STA object
 
-'''
+        for sta in self._stas:
+            if stao == sta: # need to define special == method for class STA()
+                return sta # returns the first STA object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._stas
+        stao.calc() # no matching STA was found, calculate it
+        self._stas.append(stao) # add it to the STA object list
+        return stao
+    sta.__doc__ += '\n\n**kwargs:\n'
+    sta.__doc__ += getargstr(STA.__init__)
+
+    def stc(self, neuron, **kwargs):
+        """Returns an existing STC RevCorr object, or creates a new one if necessary"""
+        try:
+            self._stcs
+        except AttributeError: # self._stcs doesn't exist yet
+            self._stcs = [] # create a list that'll hold STC objects
+        stco = STC(neuron=neuron, experiment=self, **kwargs) # init a new STC object
+
+        for stc in self._stcs:
+            if stco == stc: # need to define special == method for class STC()
+                return stc # returns the first STC object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._stcs
+        stco.calc() # no matching STC was found, calculate it
+        self._stcs.append(stco) # add it to the STC object list
+        return stco
+    stc.__doc__ += '\n\n**kwargs:\n'
+    stc.__doc__ += getargstr(STC.__init__)
+
+
+class Experiment(ExperimentRevCorr, ExperimentRate, ExperimentCode, BaseExperiment):
+    """Inherit all the Experiment objects into a single Experiment class"""
+    pass

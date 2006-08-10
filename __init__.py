@@ -38,3 +38,6 @@ from Test import test
 print 'Initing and loading Recording(71):'
 r71=Recording(71)
 r71.load()
+print 'Initing and loading Recording(92):'
+r92=Recording(92)
+r92.load()

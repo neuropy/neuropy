@@ -24,7 +24,7 @@ class Movie(Dimstim.Movies.Movie): # inherit from Dimstim Movie() class (assumes
             (self.ncellswide,) = struct.unpack('H', f.read(2)) # 'H'== unsigned short int == 2 bytes on this PC
             (self.ncellshigh,) = struct.unpack('H', f.read(2))
             (self.nframes,) = struct.unpack('H', f.read(2))
-            if self.nframes == 0: # this was used in Cat 15 mseq movies to indicate 2**16 frames
+            if self.nframes == 0: # this was used in Cat 15 mseq movies to indicate 2**16 frames, shouldn't really worry about this, cuz we're using slightly modified mseq movies now that don't have the extra frame at the end that the Cat 15 movies had (see comment in Experiment module), and therefore never have a need to indicate 2**16 frames
                 self.nframes = 2**16
             offset = 11 # header is this long
         else: # there's no header at the start of the file, set the file pointer back to the beginning and use these hard coded values:
@@ -33,14 +33,14 @@ class Movie(Dimstim.Movies.Movie): # inherit from Dimstim Movie() class (assumes
             self.nframes = 6000
             offset = 0 # header is this long
         # read in all of the frames
-        self.data = np.fromfile(f, np.uint8, count=self.nframes*self.ncellshigh*self.ncellswide).reshape(self.nframes,self.ncellshigh,self.ncellswide) # read it all in
-        #self.data = numarray.fromfile(f, np.UInt8, (self.nframes,self.ncellshigh,self.ncellswide)) # read it all in
+        self.data = np.fromfile(f, np.uint8, count=self.nframes*self.ncellshigh*self.ncellswide).reshape(self.nframes,self.ncellshigh,self.ncellswide)
+        #self.data = numarray.fromfile(f, np.UInt8, (self.nframes,self.ncellshigh,self.ncellswide))
         leftover = f.read() # check if there are any leftover bytes in the file
         if leftover != '':
             pprint(leftover)
             print self.nframes,self.ncellshigh,self.ncellswide
             raise RuntimeError, 'There are unread bytes in movie file %s. Width, height, or nframes is incorrect in the movie file header.' % repr(self.name)
-        #self.data = self.data[::,::-1,::] # flip the movie frames vertically for OpenGL's bottom left origin
+        #self.data = self.data[::,::-1,::] # flip the movie frames vertically for OpenGL's bottom left origin, don't need to do this cuz we're not using OpenGL here, we're not actually displaying the whole movie, unlike in Dimstim
         f.close() # close the movie file
 
 # init some typical movies (but don't load 'em til needed). Then, just point to them within the appropriate Experiments

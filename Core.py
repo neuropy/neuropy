@@ -13,7 +13,8 @@ TAB = '    ' # 4 spaces
 
 DEFAULTMOVIEPATH = 'C:/pub/Movies/'
 DEFAULTMOVIENAME = 'mseq32.m'
-DEFAULTCODEBITLENGTH = 10
+
+DEFAULTCODEWORDLENGTH = 10
 
 import os
 import types
@@ -26,9 +27,11 @@ import random
 
 import numpy as np
 import pylab as pl
+import matplotlib as mpl
+import scipy as sp
 import scipy.signal as sig
 from numpy import arange, array, asarray, log, log10, rand, randn, zeros, ones, diff, concatenate, concatenate as cat, histogram
-from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, axes, hold
+from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
 
 # Nah!: Rips should really have ids to make them easier to reference to: r[83].rip[0] instead of r[83].rip['conservative spikes'] - this means adding id prefixes to rip folder names (or maybe suffixes: 'conservative spikes.0.rip', 'liberal spikes.1.rip', etc...). Prefixes would be better cuz they'd force sorting by id in explorer (which uses alphabetical order) - ids should be 0-based of course
 # worry about conversion of ids to strings: some may be only 1 digit and may have a leading zero!
@@ -254,7 +257,7 @@ def randomize(ip):
 
 
 class Data(object): # use 'new-style' classes
-    """Data can have multiple Cats"""
+    """Abstract data class. Data can have multiple Cats"""
     def __init__(self, dataPath=DEFAULTDATAPATH):
         self.level = 0 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
@@ -281,7 +284,7 @@ class Data(object): # use 'new-style' classes
 
 
 class Model(Data):
-    """Abstract model data class. Model can have multiple modelling Runs"""
+    """Abstract model class. Model can have multiple model Systems"""
     def __init__(self, modelPath=DEFAULTMODELPATH):
         self.level = 0 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to

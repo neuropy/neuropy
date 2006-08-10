@@ -2,6 +2,8 @@
 (one for basic init and loading RecordingBase), one for rates (RecordingRate), one for codes (RecordingCodes), etc...), and then combined
 using multiple inheritance into a single child Class called Recording"""
 
+# set the self.trange attribe in Base class for Recording, to be consistent with Neuron and Experiment
+
 print 'importing Recording'
 
 from Core import *
@@ -84,7 +86,7 @@ class Recording(object):
         #if len(self.rip) == 1:
         #   self.rip = self.rip.values[0] # pull it out of the dictionary
 
-    def plot_codeProbScatter(self, nbits=DEFAULTCODEBITLENGTH, randomneurons=False, **kwargs):
+    def plot_codeProbScatter(self, nbits=DEFAULTCODEWORDLENGTH, randomneurons=False, **kwargs):
         """Scatterplots the expected probabilities of all possible population codes (y axis) vs their observed probabilities (x axis)"""
         neurons = self.n
         nis = neurons.keys()
