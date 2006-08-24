@@ -1,15 +1,20 @@
 import os
 import sys
 import types
-import copy
 import __main__
 from pprint import pprint
+printraw = sys.stdout.write # useful for raw printing
 
 import numpy as np
 import pylab as pl
 import matplotlib as mpl
-from numpy import arange, array, asarray, log, rand, randn, zeros, ones, diff, concatenate, concatenate as cat, histogram
-from pylab import figure, plot, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gca
+import scipy as sp
+import scipy.signal as sig
+from numpy import arange, array, array as ar, asarray, log, log10, rand, randn, zeros, ones, diff, concatenate, concatenate as cat, histogram
+from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
+
+mpl.use('WXAgg')
+mpl.interactive(True)
 
 # set some numpy options
 np.set_printoptions(precision=8)
@@ -33,7 +38,7 @@ def whos():
 
 def cd(path):
     """Change directories"""
-    path = path.replace('~', 'C:/home/mspacek') # '~' is a shortcut to home
+    path = path.replace('~', 'C:/home/mspacek') # make '~' a shortcut to my home
     if path == '..': # go down one directory
         path = '\\'.join(os.getcwd().split('\\')[0:-1])
     try:
@@ -72,10 +77,15 @@ def src(obj):
     print
     print source
 
-clr = shell.clear
+try:
+    clr = shell.clear
+except NameError: # we're running in some environment where shell isn't defined, like ipython
+    pass
 
 def refresh(modname):
-    """Deletes all modules with 'modname' in their file path (mod.__file__ attrib), then re-imports the module"""
+    """Deletes all modules with 'modname' in their file path (mod.__file__), then re-imports 'modname' as a module.
+    'modname' need not have been previously imported.
+     WARNING: Seems to cause problems in IPython"""
     print 'refreshing %s' % modname
     for key, mod in sys.modules.items():
         try:
@@ -87,15 +97,20 @@ def refresh(modname):
     __import__(modname, globals(), locals(), []) # this is equivalent to "import modname", yet accepts a string for modname
     print '%s refreshed' % modname
 
+def r():
+    """Refreshes neuropy.
+    WARNING: Seems to cause problems in IPython"""
+    refresh('neuropy')
+
 def cf():
     """Closes all figures"""
     pl.close('all')
     print 'all figures closed'
 
 def c():
-    """Clears all names added to the namespace after the '_original' point"""
+    """Clears all names added to the namespace after the '_original' point.
+    Don't try running this in IPython!"""
     import __main__
-    import copy
     md = __main__.__dict__
     for key in md.keys():
         if key not in _original and key != '_original':
@@ -103,9 +118,7 @@ def c():
             #print 'deleted md key:', key
     print 'namespace cleared'
 
-import neuropy
-
 _original = __main__.__dict__.keys()
 
+import neuropy
 from neuropy import *
-

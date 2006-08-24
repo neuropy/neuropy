@@ -396,147 +396,73 @@ class ExperimentRate(BaseExperiment):
     ratepdf.__doc__ += Neuron.Neuron._rateargs
 
 
-class RevCorr(object):
-    """Base class for doing reverse correlation of spikes to simulus"""
-    def __init__(self, neuron=None, experiment=None, trange=None, nt=10):
+class RevCorrs(object):
+    """Base class for doing reverse correlation of multiple neurons to a simulus"""
+    def __init__(self, neurons=None, experiment=None, trange=None, nt=10):
+        self.neurons = neurons
         self.experiment = experiment
-        if type(neuron) == Neuron.Neuron:
-            self.neuron = neuron
-        else: # neuron is probably a Neuron id
-            self.neuron = self.experiment.r.n[neuron]
         if trange == None:
             self.trange = self.experiment.trange
         else:
             self.trange = trange
-        # for now, only do revcorr if experiment.stims has only one entry
-        # TODO: multiple (different) movies in self.stims (and hence also in experiment.playlist), sparse noise stims
-        assert len(self.experiment.stims) == 1
         self.movie = self.experiment.stims[0]
         self.nt = nt # number of revcorr timepoints
         self.tis = range(0, nt, 1) # revcorr timepoint indices
-        self.t = [ int(round(ti * self.movie.sweeptimeMsec)) for ti in self.tis ] #list(array(self.tis) * self.movie.sweeptimeMsec) # revcorr timepoint values, convert to array to do elementwise muliplication, then convert back to list. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
-        self.ndinperframe = int(round(self.movie.sweeptimeMsec / float(self.experiment.REFRESHTIME / 1000.)))
-        self.width = self.movie.data.shape[-1]
-        self.height = self.movie.data.shape[-2]
-    def __eq__(self, other):
-        selfd = self.__dict__.copy()
-        otherd = other.__dict__.copy()
-        # Delete their rcdini and rf attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
-        [ d.__delitem__(key) for d in [selfd, otherd] for key in ['rcdini', 'rf'] if d.has_key(key) ]
-        if type(self) == type(other) and selfd == otherd:
-            return True
-        else:
-            return False
+        self.t = [ int(round(ti * self.movie.sweeptimeMsec)) for ti in self.tis ] #list(array(self.tis) * self.movie.sweeptimeMsec) # revcorr timepoint values,
+    def plot(self, interp='nearest', normed=True, title='ReceptiveFieldFrame', scale=2, **kwargs):
+        """Plots the RFs as bitmaps in a wx.Frame. normed = 'global'|True|False"""
+        rfs = [] # list of receptive fields to pass to ReceptiveFieldFrame object
+        if normed == 'global': # normalize across all timepoints for all neurons
+            vmin = min([ sta.rf.min() for sta in self.stas ]) # global min
+            vmax = max([ sta.rf.max() for sta in self.stas ]) # global max
+        for ni, sta in enumerate(self.stas):
+            if normed == True: # normalize only across the timepoints for this neuron
+                vmin, vmax = sta.rf.min(), sta.rf.max()
+            elif normed == False: # don't normalize at all
+                vmin, vmax = None, None
+            rfs.append(sta.rf)
+            '''
+            for ti, t in zip(self.tis, self.t):
+                ia = imshow(sta.rf[ti], vmin=vmin, vmax=vmax, interpolation=interp)
+            '''
+        frame = ReceptiveFieldFrame(title=title, rfs=rfs, neurons=self.neurons, t=self.t, scale=scale, **kwargs)
+        frame.Show()
+
+class STAs(RevCorrs):
+    """Just a container class for multiple Neuron.STA objects. The plot() method is unique
+    though: it plots all the Neuron.STA objects in a single figure"""
     def calc(self):
-        spikes = self.neuron.cut(self.trange)
-        self.rcdini = self.experiment.din[:,0].searchsorted(spikes) - 1 # revcorr dini. Find where the spike times fall in the din, dec so you get indices that point to the most recent din value for each spike
-        #self.din = self.experiment.din[rcdini,1] # get the din (frame indices) at the rcdini
-    def plot(self, interp='nearest', normed=True):
-        """Plots the RFs as images, returns all the image objects"""
-        mpl.rcParams['interactive'] = False
-        #mpl.rcParams['toolbar'] = None # turn off toolbars for this figure. There's gotta be a more OO way...
-        figure(figsize=[9, 1.5]) # in inches
-        gcfm().frame.GetStatusBar().Hide()
-        gcfm().frame.GetToolBar().Hide()
-        gcfm().frame.Fit()
-        #gcf().set_figsize_inches([8, 0.8])
-        #as = [] # stores axes handles
-        ias = [] # stores image axes handles
-        hspace = 0.01
-        vborder = 0.03
-        width = (1.0 - hspace*(self.nt-1) - vborder*2) / self.nt
-        height = 0.89
-        bottom = 0.0
-        if normed:
-            vmin, vmax = self.rf.min(), self.rf.max()
-        else:
-            vmin, vmax = None, None
-        for ti, t in zip(self.tis, self.t):
-            left = (width + hspace)*ti + vborder
-            a = axes([left, bottom, width, height])
-            ia = imshow(self.rf[ti], vmin=vmin, vmax=vmax, interpolation=interp)
-            ia.axes.axison = False # turns off x and y axis
-            ias.append(ia)
-            gcf().text(left, 0.98, '%dms' % t, horizontalalignment='center', verticalalignment='top')
-        mpl.rcParams['interactive'] = True
-        pl.show()
-        #mpl.rcParams['toolbar'] = 'toolbar2' # turn toolbars back on for subsequent figures
-        return ias
-        # use gcf().canvas.Refresh() to update the window, if it doesn't do so automatically when you modify its contents
-
-
-class STA(RevCorr):
-    """Spike-triggered average revcorr object"""
-    def calc(self):
-        super(STA, self).calc() # run the base calc() steps first
-        self.rf = zeros([self.nt, self.height, self.width], dtype=np.float64) # init a 3D matrix to store the STA at each timepoint. rf == 'receptive field'
-        for ti in self.tis:
-            rcdini = self.rcdini - ti*self.ndinperframe # this can unintentionally introduce -ve valued indices: some frames can exist at early revcorr timepoints but not at later ones
-            rcdini = rcdini[rcdini >= 0] # remove any -ve valued indices. Is this the most efficient way to do this?
-            #print ti
-            #print rcdini
-            frameis = self.experiment.din[rcdini,1] # get the din values (frame indices) at the rcdini for this timepoint
-            # in Cat 15, we erroneously duplicated the first frame of the mseq movies at the end, giving us one more frame (0 to 65535 for mseq32) than we should have had (0 to 65534 for mseq32). We're now using the correct movies, but the din for Cat 15 mseq experiments still have those erroneous frame indices (65535 and 16383 for mseq32 and mseq16 respectively), so we'll just ignore 'em for revcorr purposes.
-            if self.movie.oname == 'mseq32':
-                frameis = frameis[frameis != 65535] # remove all occurences of 65535
-            elif self.movie.oname == 'mseq16':
-                frameis = frameis[frameis != 16383] # remove all occurences of 16383
-            #print frameis
-            self.rf[ti] = self.movie.data[frameis].mean(axis=0) # average all the frames for this timepoint
-    def plot(self, interp='nearest', normed=True):
-        vals = super(STA, self).plot(interp, normed)
-        gcfm().window.SetTitle('STA: n[%d], e[%d], r[%d]' % (self.neuron.id, self.experiment.id, self.experiment.r.id)) # assumes WxAgg backend
-        return vals
-    plot.__doc__ = RevCorr.plot.__doc__
-
-
-class STC(RevCorr):
-    """Spike-triggered correlation revcorr object"""
-    def calc(self):
-        print 'INCOMPLETE'
-        super(STC, self).calc() # run the general calc() steps
-    def plot(self):
-        print 'INCOMPLETE'
-        vals = super(STC, self).plot()
-        return vals
-    plot.__doc__ = RevCorr.plot.__doc__
+        self.stas = [] # store STAs in a list
+        for neuron in self.neurons:
+            stao = neuron.sta(experiment=self.experiment, trange=self.trange, nt=self.nt)
+            self.stas.append(stao)
+    def plot(self, interp='nearest', normed=True, **kwargs):
+        super(STAs, self).plot(interp=interp, normed=normed,
+                               title='STA: r[%d], e[%d], interp=%s, normed=%s' %
+                               (self.experiment.r.id, self.experiment.id, repr(interp), repr(normed)), **kwargs)
+    plot.__doc__ = RevCorrs.plot.__doc__
 
 
 class ExperimentRevCorr(BaseExperiment):
     """Defines the reverse correlation related Experiment methods"""
-    def sta(self, neuron, **kwargs):
-        """Returns an existing STA RevCorr object, or creates a new one if necessary"""
-        try:
-            self._stas
-        except AttributeError: # self._stas doesn't exist yet
-            self._stas = [] # create a list that'll hold STA objects
-        stao = STA(neuron=neuron, experiment=self, **kwargs) # init a new STA object
-
-        for sta in self._stas:
-            if stao == sta: # need to define special == method for class STA()
-                return sta # returns the first STA object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._stas
-        stao.calc() # no matching STA was found, calculate it
-        self._stas.append(stao) # add it to the STA object list
-        return stao
+    def sta(self, neurons=None, **kwargs):
+        """Returns an STAs RevCorrs object and plots it"""
+        if neurons == None: # no Neurons were passed, use all the Neurons from the default Rip for this experiment's Recording
+            keyvals = self.r.n.items() # get key val pairs in a list of tuples
+            keyvals.sort() # make sure they're sorted by key
+            neurons = []
+            for key, val in keyvals:
+                neurons.append(val)
+        else:
+            try: # assume neurons is a list of Neuron ids, get the associated Neuron objects from the default Rip for this experiment's Recording
+                neurons = [ self.r.n[ni] for ni in neurons ]
+            except KeyError: # neurons is probably a list of Neuron objects
+                pass
+        staso = STAs(neurons=neurons, experiment=self, **kwargs) # init a new STAs object
+        staso.calc()
+        return staso
     sta.__doc__ += '\n\n**kwargs:\n'
-    sta.__doc__ += getargstr(STA.__init__)
-
-    def stc(self, neuron, **kwargs):
-        """Returns an existing STC RevCorr object, or creates a new one if necessary"""
-        try:
-            self._stcs
-        except AttributeError: # self._stcs doesn't exist yet
-            self._stcs = [] # create a list that'll hold STC objects
-        stco = STC(neuron=neuron, experiment=self, **kwargs) # init a new STC object
-
-        for stc in self._stcs:
-            if stco == stc: # need to define special == method for class STC()
-                return stc # returns the first STC object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._stcs
-        stco.calc() # no matching STC was found, calculate it
-        self._stcs.append(stco) # add it to the STC object list
-        return stco
-    stc.__doc__ += '\n\n**kwargs:\n'
-    stc.__doc__ += getargstr(STC.__init__)
+    sta.__doc__ += getargstr(STAs.__init__)
 
 
 class Experiment(ExperimentRevCorr, ExperimentRate, ExperimentCode, BaseExperiment):

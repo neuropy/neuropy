@@ -17,21 +17,28 @@ DEFAULTMOVIENAME = 'mseq32.m'
 DEFAULTCODEWORDLENGTH = 10
 
 import os
+import sys
+import time
 import types
-from pprint import pprint
 import struct
 import re
 import StringIO
-import sys
 import random
+from pprint import pprint
+printraw = sys.stdout.write # useful for raw printing
 
 import numpy as np
 import pylab as pl
 import matplotlib as mpl
 import scipy as sp
 import scipy.signal as sig
-from numpy import arange, array, asarray, log, log10, rand, randn, zeros, ones, diff, concatenate, concatenate as cat, histogram
+from numpy import arange, array, array as ar, asarray, log, log10, rand, randn, zeros, ones, diff, concatenate, concatenate as cat, histogram
 from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
+import wx
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
+
+mpl.use('WXAgg')
+mpl.interactive(True)
 
 # Nah!: Rips should really have ids to make them easier to reference to: r[83].rip[0] instead of r[83].rip['conservative spikes'] - this means adding id prefixes to rip folder names (or maybe suffixes: 'conservative spikes.0.rip', 'liberal spikes.1.rip', etc...). Prefixes would be better cuz they'd force sorting by id in explorer (which uses alphabetical order) - ids should be 0-based of course
 # worry about conversion of ids to strings: some may be only 1 digit and may have a leading zero!
@@ -254,6 +261,120 @@ def randomize(ip):
     for i in range(0, len(ip)):
         op.append(random.choice(ip))
     return op
+'''
+def barefigure(*args, **kwargs):
+    """Creates a bare figure with no toolbar or statusbar"""
+    figure(*args, **kwargs)
+    gcfm().frame.GetStatusBar().Hide()
+    gcfm().frame.GetToolBar().Hide()
+barefigure.__doc__ += '\n' + figure.__doc__
+'''
+
+class CanvasFrame(wx.Frame):
+    """A minimal wx.Frame containing a matplotlib figure"""
+    def __init__(self):
+        wx.Frame.__init__(self, None, -1, 'frame', size=(550,350))
+        self.SetBackgroundColour(wx.NamedColor("WHITE"))
+        self.figure = mpl.figure.Figure(figsize=(5,4), dpi=100)
+        #self.axes = self.figure.add_subplot(111)
+        #t = arange(0.0,3.0,0.01)
+        #s = sin(2*pi*t)
+        #self.axes.plot(t,s)
+        self.canvas = FigureCanvasWxAgg(self, -1, self.figure)
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.sizer.Add(self.canvas, 1, wx.TOP | wx.LEFT | wx.EXPAND)
+
+        # Capture the paint message, slows frame down a little, can be commented out
+        #wx.EVT_PAINT(self, self.OnPaint)
+        self.Bind(wx.EVT_PAINT, self.OnPaint)
+
+        self.SetSizer(self.sizer)
+        self.Fit()
+    def OnPaint(self, event):
+        self.canvas.draw()
+        event.Skip()
+'''
+class App(wx.App):
+    def OnInit(self):
+        'Create the main window and insert the custom frame'
+        frame = CanvasFrame()
+        frame.Show(True)
+        return true
+
+def barefigure():
+    app = App(0)
+    app.MainLoop()
+'''
+def frame():
+    """Returns a CanvasFrame object"""
+    frame = CanvasFrame()
+    frame.Show(True)
+    return frame
+frame.__doc__ += '\n' + CanvasFrame.__doc__
+
+
+class ReceptiveFieldFrame(wx.Frame):
+    '''A wx.Frame for plotting a scrollable 2D grid of receptive fields, with neuron and time labels
+    rfs is a list of (nt, width, height) sized receptive fields'''
+    def __init__(self, parent=None, id=-1, title='ReceptiveFieldFrame', rfs=None, neurons=None, t=None, scale=2, **kwargs):
+        self.rfs = rfs
+        self.neurons = neurons
+        self.t = t
+        self.title = title
+        kwargs["style"] = wx.DEFAULT_FRAME_STYLE
+        wx.Frame.__init__(self, parent=parent, id=id, title=title, **kwargs)
+        self.panel_1 = wx.ScrolledWindow(self, -1, style=wx.TAB_TRAVERSAL)
+
+        self.bitmaps = {}
+        for ni, n in enumerate(self.neurons):
+            self.bitmaps[n.id] = {}
+            for ti, t in enumerate(self.t):
+                rf = self.rfs[ni][ti].round().astype(np.uint8) # downcast from float to uint8 for feeding to a wx.Image
+                im = wx.ImageFromData(width=rf.shape[0], height=rf.shape[1], data=rf.repeat(3, axis=1).data) # repeate luminance values to get RGB
+                im = im.Scale(width=im.GetWidth()*scale, height=im.GetHeight()*scale)
+                self.bitmaps[n.id][t] = wx.StaticBitmap(parent=self.panel_1, bitmap=im.ConvertToBitmap())
+
+        #self.Bind(wx.EVT_PAINT, self.OnPaint)
+        self.__set_properties()
+        self.__do_layout()
+    '''
+    def OnPaint(self, event):
+        #self.canvas.draw()
+        event.Skip()
+    '''
+    def __set_properties(self):
+        self.SetTitle(self.title)
+        self.panel_1.SetScrollRate(10, 10)
+
+    def __do_layout(self):
+        sizer_1 = wx.GridSizer(1, 1, 0, 0)
+        grid_sizer_1 = wx.FlexGridSizer(rows=len(self.neurons)+1, cols=len(self.t)+1, vgap=2, hgap=2) # add an extra row and column for the text labels
+        grid_sizer_1.Add((1, 1), 0, wx.ADJUST_MINSIZE, 0) # spacer in top left corner
+        for t in self.t:
+            grid_sizer_1.Add(wx.StaticText(self.panel_1, -1, "%sms" % t), 0, wx.ADJUST_MINSIZE, 0) # text row along top
+        for n in self.neurons:
+            grid_sizer_1.Add(wx.StaticText(self.panel_1, -1, "n%d" % n.id), 0, wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL|wx.ADJUST_MINSIZE, 0) # text down left side
+            for t in self.t:
+                grid_sizer_1.Add(self.bitmaps[n.id][t], 1, wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL, 0)
+        self.panel_1.SetAutoLayout(True)
+        self.panel_1.SetSizer(grid_sizer_1)
+        grid_sizer_1.Fit(self.panel_1)
+        #grid_sizer_1.SetSizeHints(self.panel_1) # prevents the panel from being resized to something smaller than the above fit size
+        '''
+        # might be a more direct way to set these:
+        for rowi in range(1, len(self.ns)+1):
+            print 'rowi:', rowi
+            grid_sizer_1.AddGrowableRow(rowi)
+        for coli in range(1, len(self.ts)+1):
+            print 'coli:', coli
+            grid_sizer_1.AddGrowableCol(coli)
+        '''
+        sizer_1.Add(self.panel_1, 1, wx.ADJUST_MINSIZE|wx.EXPAND, 0)
+        self.SetAutoLayout(True)
+        self.SetSizer(sizer_1)
+        sizer_1.Fit(self)
+        #sizer_1.SetSizeHints(self) # prevents the frame from being resized to something smaller than the above fit size
+        self.Layout()
 
 
 class Data(object): # use 'new-style' classes

@@ -435,6 +435,7 @@ class RatePDF(object):
             ylabel('count')
         xlabel('spike rate')
 
+
 class NeuronRate(BaseNeuron):
     """Defines the spike rate related Neuron methods"""
     def rate(self, kind='nisi', **kwargs):
@@ -490,19 +491,195 @@ class NeuronRate(BaseNeuron):
     ratepdf.__doc__ += '\nrate: '+getargstr(rate)
     ratepdf.__doc__ += _rateargs
 
+
+class RevCorr(object):
+    """Base class for doing reverse correlation of spikes to simulus"""
+    def __init__(self, neuron=None, experiment=None, trange=None, nt=10):
+        self.neuron = neuron
+        self.experiment = experiment
+        if trange == None:
+            self.trange = self.experiment.trange
+        else:
+            self.trange = trange
+        # for now, only do revcorr if experiment.stims has only one entry
+        # TODO: multiple (different) movies in self.stims (and hence also in experiment.playlist), sparse noise stims
+        assert len(self.experiment.stims) == 1
+        self.movie = self.experiment.stims[0]
+        self.nt = nt # number of revcorr timepoints
+        self.tis = range(0, nt, 1) # revcorr timepoint indices
+        self.t = [ int(round(ti * self.movie.sweeptimeMsec)) for ti in self.tis ] #list(array(self.tis) * self.movie.sweeptimeMsec) # revcorr timepoint values, convert to array to do elementwise muliplication, then convert back to list. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
+        self.ndinperframe = int(round(self.movie.sweeptimeMsec / float(self.experiment.REFRESHTIME / 1000.)))
+        self.width = self.movie.data.shape[-1]
+        self.height = self.movie.data.shape[-2]
+        self.done = False # hasn't yet successfully completed its calc() method
+    def __eq__(self, other):
+        selfd = self.__dict__.copy()
+        otherd = other.__dict__.copy()
+        # Delete their rcdini and rf attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
+        [ d.__delitem__(key) for d in [selfd, otherd] for key in ['rcdini', 'rf', 'done'] if d.has_key(key) ]
+        if type(self) == type(other) and selfd == otherd:
+            return True
+        else:
+            return False
+    def calc(self):
+        spikes = self.neuron.cut(self.trange)
+        self.rcdini = self.experiment.din[:,0].searchsorted(spikes) - 1 # revcorr dini. Find where the spike times fall in the din, dec so you get indices that point to the most recent din value for each spike
+        #self.din = self.experiment.din[rcdini,1] # get the din (frame indices) at the rcdini
+    def plot(self, interp='nearest', normed=True):
+        """Plots the RFs as images, returns all the image objects"""
+        mpl.rcParams['interactive'] = False # there's gotta be a figure or frame object attribute you can set instead of having to change the global rcParams
+        #mpl.rcParams['toolbar'] = None # turn off toolbars for this figure. There's gotta be a more OO way...
+        nt = self.nt
+        figure(figsize=(nt*0.9, 1.5)) # in inches
+        gcfm().frame.GetStatusBar().Hide()
+        gcfm().frame.GetToolBar().Hide()
+        gcfm().frame.Fit()
+        #frame()
+        # looks like the minimum frame width in Windows is 112 pixels, minimum height is 27 pix
+        # with no toolbar, menubar, statusbar, a
+        # (112, 112) frame has usable area (104, 85), which means (8, 27) are used by border and caption regions
+        frameedgepix = (8, 27)
+        framewidthpix = 100*nt+frameedgepix[0]
+        frameheightpix = 20+100+frameedgepix[1]
+        gcfm().frame.SetSize((framewidthpix, frameheightpix)) # hack
+        # look up wxSizers to see how to get around stupid mpl problems and size stuff properly
+        #gcfm().frame.Fit()
+        #gcf().set_figsize_inches([8, 0.8])
+        #as = [] # stores axes handles
+        ias = [] # stores image axes handles
+        hspace = 0.01
+        hborder = 0.15
+        vborder = 0.03
+        width = (1.0 - hspace*(nt-1) - vborder*2) / nt
+        height = 1 - hborder*2
+        bottom = hborder
+        if normed:
+            vmin, vmax = self.rf.min(), self.rf.max()
+        else:
+            vmin, vmax = None, None
+        for ti, t in zip(self.tis, self.t):
+            left = (width + hspace)*ti + vborder
+            a = axes([left, bottom, width, height])
+            # should there be something in here to ensure the image uses up the whole axes space with no borders?
+            ia = imshow(self.rf[ti], vmin=vmin, vmax=vmax, interpolation=interp)
+            ia.axes.axison = False # turns off x and y axis
+            ias.append(ia)
+            gcf().text(left, 1-hborder/2.0, '%dms' % t, horizontalalignment='center', verticalalignment='center') # the -0.06 is a hack, verticalalignment is off, cuz of hidden statusbar/toolbar?
+        mpl.rcParams['interactive'] = True
+        pl.show()
+        #mpl.rcParams['toolbar'] = 'toolbar2' # turn toolbars back on for subsequent figures
+        #return ias # this prints a whole bunch to screen if not bound to a var, kinda annoying, not too useful anyway
+        # use gcf().canvas.Refresh() to update the window, if it doesn't do so automatically when you modify its contents. maybe use gcf().draw() instead
+
+
+class STA(RevCorr):
+    """Spike-triggered average revcorr object"""
+    def calc(self):
+        super(STA, self).calc() # run the base calc() steps first
+        #sys.stdout.write('n%d' % self.neuron.id) # prevents trailing space and newline
+        self.rf = zeros([self.nt, self.height, self.width], dtype=np.float64) # init a 3D matrix to store the STA at each timepoint. rf == 'receptive field'
+        #self.rf = []
+        #data = np.float64(self.movie.data) # converting from uint8 to float64 seems to speed up mean() method a bit
+        data = self.movie.data
+        tstart = time.clock()
+        pd = wx.ProgressDialog(title='n%d STA progress' % self.neuron.id, message='', maximum=self.tis[-1], style=1)
+        for ti in self.tis:
+            cancel = not pd.Update(ti-1, newmsg='timepoint: %dms\nelapsed: %.1fs' % (self.t[ti], time.clock()-tstart))
+            if cancel:
+                #self.rf = zeros([self.nt, self.height, self.width], dtype=np.float64) # set back to zeros
+                pd.Destroy()
+                self.done = False
+                return
+            rcdini = self.rcdini - ti*self.ndinperframe # this can unintentionally introduce -ve valued indices
+            rcdini = rcdini[rcdini >= 0] # remove any -ve valued indices. Is this the most efficient way to do this?
+            frameis = self.experiment.din[rcdini,1] # get the din values (frame indices) at the rcdini for this timepoint
+            # in Cat 15, we erroneously duplicated the first frame of the mseq movies at the end, giving us one more frame (0 to 65535 for mseq32) than we should have had (0 to 65534 for mseq32). We're now using the correct movies, but the din for Cat 15 mseq experiments still have those erroneous frame indices (65535 and 16383 for mseq32 and mseq16 respectively), so we'll just ignore them for revcorr purposes.
+            if self.movie.oname == 'mseq32':
+                frameis = frameis[frameis != 65535] # remove all occurences of 65535
+            elif self.movie.oname == 'mseq16':
+                frameis = frameis[frameis != 16383] # remove all occurences of 16383
+            #t5 = time.clock()
+            # TODO: this could use some profiling!!!!!!!!
+            self.rf[ti] = data[frameis].mean(axis=0) # average all the frames for this timepoint
+            #self.rf.append(data[frameis].mean(axis=0)) # average all the frames for this timepoint
+            #t6 = time.clock()
+            #sys.stdout.write(' %fsec .' % (t6-t5))
+        #print
+        #pd.Close()
+        pd.Destroy()
+        self.done = True
+    def plot(self, interp='nearest', normed=True):
+        vals = super(STA, self).plot(interp=interp, normed=normed)
+        gcfm().window.SetTitle('STA: r[%d], e[%d], n[%d], interp=%s, normed=%s' %
+            (self.experiment.r.id, self.experiment.id, self.neuron.id, repr(interp), repr(normed))) # assumes WxAgg backend
+        return vals
+    plot.__doc__ = RevCorr.plot.__doc__
+
+
+class STC(RevCorr):
+    """Spike-triggered correlation revcorr object"""
+    def calc(self):
+        print 'INCOMPLETE'
+        super(STC, self).calc() # run the general calc() steps
+    def plot(self):
+        print 'INCOMPLETE'
+        vals = super(STC, self).plot()
+        return vals
+    plot.__doc__ = RevCorr.plot.__doc__
+
+
 class NeuronRevCorr(BaseNeuron):
     """Defines the reverse correlation related Neuron methods"""
     def sta(self, experiment=None, **kwargs):
+        """Returns an existing STA RevCorr object, or creates a new one if necessary"""
         try:
-            return experiment.sta(neuron=self, **kwargs)
-        except AttributeError: # no Experiment was passed, use the first experiment this Neuron was involved in
-            return self.rip.r.e[0].sta(neuron=self, **kwargs)
+            self._stas
+        except AttributeError: # self._stas doesn't exist yet
+            self._stas = [] # create a list that'll hold STA objects
+        if experiment == None: # no Experiment was passed, use the first experiment this Neuron was involved in
+            experiment = self.rip.r.e[0]
+        else:
+            try: # assume experiment is an Experiment id, get the associated object
+                experiment = self.rip.r.e[experiment]
+            except KeyError: # experiment is probably an Experiment object
+                pass
+        stao = STA(neuron=self, experiment=experiment, **kwargs) # init a new STA object
+        for sta in self._stas:
+            if stao == sta: # need to define special == method for RevCorr class
+                if sta.done:
+                    return sta # returns the first STA object whose attributes match what's desired, and whose calculation done flag is set. This saves on calc() time and avoids wasting memory with unnecessary sta objects
+                else:
+                    sta.calc() # re-run its calc()
+                    return sta
+        stao.calc() # no matching STA was found, calculate it
+        if stao.done: # if calc() was allowed to go to completion
+            self._stas.append(stao) # add it to the STA object list
+        return stao # return it, even if it isn't done
+    sta.__doc__ += '\n\n**kwargs:\n'
+    sta.__doc__ += getargstr(STA.__init__)
 
     def stc(self, experiment=None, **kwargs):
+        """Returns an existing STC RevCorr object, or creates a new one if necessary"""
         try:
-            return experiment.stc(neuron=self, **kwargs)
-        except AttributeError: # no Experiment was passed, use the first experiment this Neuron was involved in
-            return self.rip.r.e[0].stc(neuron=self, **kwargs)
+            self._stcs
+        except AttributeError: # self._stcs doesn't exist yet
+            self._stcs = [] # create a list that'll hold STC objects
+        if experiment == None: # no Experiment was passed, use the first experiment this Neuron was involved in
+            experiment = self.rip.r.e[0]
+        else:
+            try: # assume experiment is an Experiment id, get the associated object
+                experiment = self.rip.r.e[experiment]
+            except KeyError: # experiment is probably an Experiment object
+                pass
+        stco = STC(neuron=self, experiment=experiment, **kwargs) # init a new STC object
+        for stc in self._stcs:
+            if stco == stc: # need to define special == method for class STC
+                return stc # returns the first STC object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._stcs
+        stco.calc() # no matching STC was found, calculate it
+        self._stcs.append(stco) # add it to the STC object list
+        return stco
+    stc.__doc__ += '\n\n**kwargs:\n'
+    stc.__doc__ += getargstr(STC.__init__)
 
 
 class Neuron(NeuronRevCorr, NeuronRate, NeuronCode, BaseNeuron):

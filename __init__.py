@@ -1,4 +1,4 @@
-r"""Tools for analyzing neuronal and stimulus data in python
+r"""Tools for analyzing experimental and model neuronal and stimulus data in python
 
                          object hierarchies:
 
@@ -16,6 +16,9 @@ r"""Tools for analyzing neuronal and stimulus data in python
             |           |                      |         |
           Movie       Neuron      5          Movie     Neuron
 """
+
+__author__ = "Martin Spacek"
+
 print 'importing neuropy'
 
 from Core import *
@@ -29,9 +32,6 @@ from Neuron import Neuron
 from Test import test
 
 # init and load some neuropy objects:
-#print 'Initing and loading Recording(92):'
-#r92=Recording(92)
-#r92.load()
 #print 'Initing and loading Track(\'7c\'):'
 #t=Track('7c')
 #t.load
