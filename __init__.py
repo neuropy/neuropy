@@ -33,11 +33,11 @@ from Test import test
 
 # init and load some neuropy objects:
 #print 'Initing and loading Track(\'7c\'):'
-#t=Track('7c')
+#t = Track('7c')
 #t.load
 print 'Initing and loading Recording(71):'
-r71=Recording(71)
+r71 = Recording(71)
 r71.load()
 print 'Initing and loading Recording(92):'
-r92=Recording(92)
+r92 = Recording(92)
 r92.load()

@@ -314,25 +314,25 @@ frame.__doc__ += '\n' + CanvasFrame.__doc__
 
 
 class ReceptiveFieldFrame(wx.Frame):
-    '''A wx.Frame for plotting a scrollable 2D grid of receptive fields, with neuron and time labels
-    rfs is a list of (nt, width, height) sized receptive fields'''
-    def __init__(self, parent=None, id=-1, title='ReceptiveFieldFrame', rfs=None, neurons=None, t=None, scale=2, **kwargs):
+    """A wx.Frame for plotting a scrollable 2D grid of receptive fields, with neuron and time labels
+    rfs is a list of (nt, width, height) sized receptive fields made up of uint8 RGB data"""
+    def __init__(self, parent=None, id=-1, title='ReceptiveFieldFrame', rfs=None, neurons=None, t=None, scale=2.0, **kwargs):
         self.rfs = rfs
         self.neurons = neurons
         self.t = t
         self.title = title
-        kwargs["style"] = wx.DEFAULT_FRAME_STYLE
+        kwargs['style'] = wx.DEFAULT_FRAME_STYLE
         wx.Frame.__init__(self, parent=parent, id=id, title=title, **kwargs)
         self.panel_1 = wx.ScrolledWindow(self, -1, style=wx.TAB_TRAVERSAL)
 
         self.bitmaps = {}
         for ni, n in enumerate(self.neurons):
-            self.bitmaps[n.id] = {}
+            self.bitmaps[ni] = {}
             for ti, t in enumerate(self.t):
-                rf = self.rfs[ni][ti].round().astype(np.uint8) # downcast from float to uint8 for feeding to a wx.Image
-                im = wx.ImageFromData(width=rf.shape[0], height=rf.shape[1], data=rf.repeat(3, axis=1).data) # repeate luminance values to get RGB
+                rf = self.rfs[ni][ti]
+                im = wx.ImageFromData(width=rf.shape[0], height=rf.shape[1], data=rf.data) # expose rf as databuffer
                 im = im.Scale(width=im.GetWidth()*scale, height=im.GetHeight()*scale)
-                self.bitmaps[n.id][t] = wx.StaticBitmap(parent=self.panel_1, bitmap=im.ConvertToBitmap())
+                self.bitmaps[ni][t] = wx.StaticBitmap(parent=self.panel_1, bitmap=im.ConvertToBitmap())
 
         #self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.__set_properties()
@@ -344,6 +344,7 @@ class ReceptiveFieldFrame(wx.Frame):
     '''
     def __set_properties(self):
         self.SetTitle(self.title)
+        self.panel_1.SetBackgroundColour(wx.Colour(255, 255, 255))
         self.panel_1.SetScrollRate(10, 10)
 
     def __do_layout(self):
@@ -352,10 +353,10 @@ class ReceptiveFieldFrame(wx.Frame):
         grid_sizer_1.Add((1, 1), 0, wx.ADJUST_MINSIZE, 0) # spacer in top left corner
         for t in self.t:
             grid_sizer_1.Add(wx.StaticText(self.panel_1, -1, "%sms" % t), 0, wx.ADJUST_MINSIZE, 0) # text row along top
-        for n in self.neurons:
+        for ni, n in enumerate(self.neurons):
             grid_sizer_1.Add(wx.StaticText(self.panel_1, -1, "n%d" % n.id), 0, wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL|wx.ADJUST_MINSIZE, 0) # text down left side
             for t in self.t:
-                grid_sizer_1.Add(self.bitmaps[n.id][t], 1, wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL, 0)
+                grid_sizer_1.Add(self.bitmaps[ni][t], 1, wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL, 0)
         self.panel_1.SetAutoLayout(True)
         self.panel_1.SetSizer(grid_sizer_1)
         grid_sizer_1.Fit(self.panel_1)

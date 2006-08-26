@@ -409,22 +409,28 @@ class RevCorrs(object):
         self.nt = nt # number of revcorr timepoints
         self.tis = range(0, nt, 1) # revcorr timepoint indices
         self.t = [ int(round(ti * self.movie.sweeptimeMsec)) for ti in self.tis ] #list(array(self.tis) * self.movie.sweeptimeMsec) # revcorr timepoint values,
-    def plot(self, interp='nearest', normed=True, title='ReceptiveFieldFrame', scale=2, **kwargs):
+    def plot(self, interp='nearest', normed=True, title='ReceptiveFieldFrame', scale=2.0, **kwargs):
         """Plots the RFs as bitmaps in a wx.Frame. normed = 'global'|True|False"""
         rfs = [] # list of receptive fields to pass to ReceptiveFieldFrame object
         if normed == 'global': # normalize across all timepoints for all neurons
             vmin = min([ sta.rf.min() for sta in self.stas ]) # global min
             vmax = max([ sta.rf.max() for sta in self.stas ]) # global max
         for ni, sta in enumerate(self.stas):
-            if normed == True: # normalize only across the timepoints for this neuron
-                vmin, vmax = sta.rf.min(), sta.rf.max()
-            elif normed == False: # don't normalize at all
-                vmin, vmax = None, None
-            rfs.append(sta.rf)
-            '''
-            for ti, t in zip(self.tis, self.t):
-                ia = imshow(sta.rf[ti], vmin=vmin, vmax=vmax, interpolation=interp)
-            '''
+            rf = sta.rf.copy() # create a copy to manipulate for display purposes, (nt, width, height)
+            if normed: # either 'global' or True
+                if normed == True: # normalize across the timepoints for this Neuron
+                    vmin, vmax = rf.min(), rf.max()
+                norm = mpl.colors.normalize(vmin=vmin, vmax=vmax, clip=True) # create a single normalization object to map luminance
+                rf = norm(rf) # normalize the rf the same way across all timepoints
+            else: # don't normalize across timepoints, leave each one to autoscale
+                for ti in range(self.nt):
+                    norm = mpl.colors.normalize(vmin=None, vmax=None, clip=True) # create a normalization object to map luminance to the range [0,1], autoscale
+                    rf[ti] = norm(rf[ti]) # normalize the rf separately at each timepoint
+            cmap = mpl.cm.jet # get a colormap object
+            rf = cmap(rf)[::,::,::,0:3] # convert normalized luminance to RGB via the colormap, throw away alpha channel (not used for now in ReceptiveFieldFrame)
+            rf = rf * 255 # scale up to 8 bit values
+            rf = rf.round().astype(np.uint8) # downcast from float to uint8 for feeding to ReceptiveFieldFrame
+            rfs.append(rf)
         frame = ReceptiveFieldFrame(title=title, rfs=rfs, neurons=self.neurons, t=self.t, scale=scale, **kwargs)
         frame.Show()
 
@@ -436,10 +442,12 @@ class STAs(RevCorrs):
         for neuron in self.neurons:
             stao = neuron.sta(experiment=self.experiment, trange=self.trange, nt=self.nt)
             self.stas.append(stao)
-    def plot(self, interp='nearest', normed=True, **kwargs):
+    def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
         super(STAs, self).plot(interp=interp, normed=normed,
-                               title='STA: r[%d], e[%d], interp=%s, normed=%s' %
-                               (self.experiment.r.id, self.experiment.id, repr(interp), repr(normed)), **kwargs)
+                               title='STA: r[%d], e[%d], interp=%s, normed=%s, scale=%s' %
+                               (self.experiment.r.id, self.experiment.id, repr(interp), repr(normed), repr(scale)),
+                               scale=scale,
+                               **kwargs)
     plot.__doc__ = RevCorrs.plot.__doc__
 
 

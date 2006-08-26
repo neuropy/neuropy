@@ -525,7 +525,24 @@ class RevCorr(object):
         spikes = self.neuron.cut(self.trange)
         self.rcdini = self.experiment.din[:,0].searchsorted(spikes) - 1 # revcorr dini. Find where the spike times fall in the din, dec so you get indices that point to the most recent din value for each spike
         #self.din = self.experiment.din[rcdini,1] # get the din (frame indices) at the rcdini
-    def plot(self, interp='nearest', normed=True):
+    def plot(self, interp='nearest', normed=True, title='ReceptiveFieldFrame', scale=2.0, **kwargs):
+        """Plots the spatio-temporal RF as bitmaps in a wx.Frame"""
+        rf = self.rf.copy() # create a copy to manipulate for display purposes, (nt, width, height)
+        if normed: # normalize across the timepoints for this RevCorr
+            norm = mpl.colors.normalize(vmin=rf.min(), vmax=rf.max(), clip=True) # create a single normalization object to map luminance to the range [0,1]
+            rf = norm(rf) # normalize the rf the same way across all timepoints
+        else: # don't normalize across timepoints, leave each one to autoscale
+            for ti in range(self.nt):
+                norm = mpl.colors.normalize(vmin=None, vmax=None, clip=True) # create a normalization object to map luminance to the range [0,1], autoscale
+                rf[ti] = norm(rf[ti]) # normalize the rf separately at each timepoint
+        cmap = mpl.cm.jet # get a colormap object
+        rf = cmap(rf)[::,::,::,0:3] # convert luminance to RGB via the colormap, throw away alpha channel (not used for now in ReceptiveFieldFrame)
+        rf = rf * 255 # scale up to 8 bit values
+        rf = rf.round().astype(np.uint8) # downcast from float to uint8 for feeding to ReceptiveFieldFrame
+        frame = ReceptiveFieldFrame(title=title, rfs=[rf], neurons=[self.neuron], t=self.t, scale=scale, **kwargs)
+        frame.Show()
+    '''
+    def oldplot(self, interp='nearest', normed=True):
         """Plots the RFs as images, returns all the image objects"""
         mpl.rcParams['interactive'] = False # there's gotta be a figure or frame object attribute you can set instead of having to change the global rcParams
         #mpl.rcParams['toolbar'] = None # turn off toolbars for this figure. There's gotta be a more OO way...
@@ -570,7 +587,7 @@ class RevCorr(object):
         #mpl.rcParams['toolbar'] = 'toolbar2' # turn toolbars back on for subsequent figures
         #return ias # this prints a whole bunch to screen if not bound to a var, kinda annoying, not too useful anyway
         # use gcf().canvas.Refresh() to update the window, if it doesn't do so automatically when you modify its contents. maybe use gcf().draw() instead
-
+    '''
 
 class STA(RevCorr):
     """Spike-triggered average revcorr object"""
@@ -578,7 +595,6 @@ class STA(RevCorr):
         super(STA, self).calc() # run the base calc() steps first
         #sys.stdout.write('n%d' % self.neuron.id) # prevents trailing space and newline
         self.rf = zeros([self.nt, self.height, self.width], dtype=np.float64) # init a 3D matrix to store the STA at each timepoint. rf == 'receptive field'
-        #self.rf = []
         #data = np.float64(self.movie.data) # converting from uint8 to float64 seems to speed up mean() method a bit
         data = self.movie.data
         tstart = time.clock()
@@ -600,19 +616,21 @@ class STA(RevCorr):
                 frameis = frameis[frameis != 16383] # remove all occurences of 16383
             #t5 = time.clock()
             # TODO: this could use some profiling!!!!!!!!
-            self.rf[ti] = data[frameis].mean(axis=0) # average all the frames for this timepoint
-            #self.rf.append(data[frameis].mean(axis=0)) # average all the frames for this timepoint
+            #temp = data[frameis])
             #t6 = time.clock()
-            #sys.stdout.write(' %fsec .' % (t6-t5))
+            self.rf[ti] = data[frameis].mean(axis=0) # average all the frames for this timepoint
+            #t7 = time.clock()
+            #sys.stdout.write(' %fsec, %fsec .' % (t6-t5,t7-t6))
         #print
         #pd.Close()
         pd.Destroy()
         self.done = True
-    def plot(self, interp='nearest', normed=True):
-        vals = super(STA, self).plot(interp=interp, normed=normed)
-        gcfm().window.SetTitle('STA: r[%d], e[%d], n[%d], interp=%s, normed=%s' %
-            (self.experiment.r.id, self.experiment.id, self.neuron.id, repr(interp), repr(normed))) # assumes WxAgg backend
-        return vals
+    def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
+        super(STA, self).plot(interp=interp, normed=normed,
+                              title='STA: r[%d], e[%d], n[%d], interp=%s, normed=%s, scale=%s' %
+                              (self.experiment.r.id, self.experiment.id, self.neuron.id, repr(interp), repr(normed), repr(scale)),
+                              scale=scale,
+                              **kwargs)
     plot.__doc__ = RevCorr.plot.__doc__
 
 

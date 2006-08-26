@@ -103,7 +103,8 @@ def r():
     refresh('neuropy')
 
 def cf():
-    """Closes all figures"""
+    """Closes all figures. This needs to be extended to include all neuropy generate wx.Frames,
+    not just matplotlib figures"""
     pl.close('all')
     print 'all figures closed'
 
