@@ -615,12 +615,15 @@ class STA(RevCorr):
             elif self.movie.oname == 'mseq16':
                 frameis = frameis[frameis != 16383] # remove all occurences of 16383
             #t5 = time.clock()
-            # TODO: this could use some profiling!!!!!!!!
-            #temp = data[frameis])
+            frames = data.take(frameis.astype(np.int32), axis=0) # collect the relevant frames for this timepoint, take is much faster than direct indexing, but have to typecast indices to int32, maybe cuz this machine is 32bit?
             #t6 = time.clock()
-            self.rf[ti] = data[frameis].mean(axis=0) # average all the frames for this timepoint
+            # take the mean of all the frames at this timepoint
+            # slow way:
+            #self.rf[ti] = frames.mean(axis=0) # average all the frames for this timepoint,
+            # much faster way:
+            self.rf[ti] = mean_accum(frames)
             #t7 = time.clock()
-            #sys.stdout.write(' %fsec, %fsec .' % (t6-t5,t7-t6))
+            #sys.stdout.write(' %fsec .' % (t7-t5))
         #print
         #pd.Close()
         pd.Destroy()

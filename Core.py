@@ -261,6 +261,16 @@ def randomize(ip):
     for i in range(0, len(ip)):
         op.append(random.choice(ip))
     return op
+
+def mean_accum(data):
+    """Takes mean by accumulating over 0th axis in data,
+    much faster than numpy's mean() method because it avoids making any copies of the data
+    Suggested by Tim Hochberg"""
+    result = np.zeros(data[0].shape, np.float64) # init output array
+    for dataslice in data: # amazingly, this for loop isn't such a bad thing for some reason
+        result += dataslice
+    result /= len(data)
+    return result
 '''
 def barefigure(*args, **kwargs):
     """Creates a bare figure with no toolbar or statusbar"""
