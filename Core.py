@@ -267,10 +267,21 @@ def mean_accum(data):
     much faster than numpy's mean() method because it avoids making any copies of the data
     Suggested by Tim Hochberg"""
     result = np.zeros(data[0].shape, np.float64) # init output array
-    for dataslice in data: # amazingly, this for loop isn't such a bad thing for some reason
+    for dataslice in data: # this for loop isn't such a bad thing cuz the massive add step inside the loop is the limiting factor
         result += dataslice
     result /= len(data)
     return result
+
+def mean_accum2(data, indices):
+    """A variant of mean_accum(), where you provide the all the data and the indices into it
+    to average over. This was Tim Hochberg's version"""
+    result = np.zeros(data[0].shape, np.float64)
+    for i in indices:
+        result += data[i]
+    result /= len(indices)
+    return result
+
+
 '''
 def barefigure(*args, **kwargs):
     """Creates a bare figure with no toolbar or statusbar"""
@@ -333,7 +344,7 @@ class ReceptiveFieldFrame(wx.Frame):
         self.title = title
         kwargs['style'] = wx.DEFAULT_FRAME_STYLE
         wx.Frame.__init__(self, parent=parent, id=id, title=title, **kwargs)
-        self.panel_1 = wx.ScrolledWindow(self, -1, style=wx.TAB_TRAVERSAL)
+        self.panel = wx.ScrolledWindow(self, -1, style=wx.TAB_TRAVERSAL)
 
         self.bitmaps = {}
         for ni, n in enumerate(self.neurons):
@@ -342,7 +353,7 @@ class ReceptiveFieldFrame(wx.Frame):
                 rf = self.rfs[ni][ti]
                 im = wx.ImageFromData(width=rf.shape[0], height=rf.shape[1], data=rf.data) # expose rf as databuffer
                 im = im.Scale(width=im.GetWidth()*scale, height=im.GetHeight()*scale)
-                self.bitmaps[ni][t] = wx.StaticBitmap(parent=self.panel_1, bitmap=im.ConvertToBitmap())
+                self.bitmaps[ni][t] = wx.StaticBitmap(parent=self.panel, bitmap=im.ConvertToBitmap())
 
         #self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.__set_properties()
@@ -354,23 +365,23 @@ class ReceptiveFieldFrame(wx.Frame):
     '''
     def __set_properties(self):
         self.SetTitle(self.title)
-        self.panel_1.SetBackgroundColour(wx.Colour(255, 255, 255))
-        self.panel_1.SetScrollRate(10, 10)
+        self.panel.SetBackgroundColour(wx.Colour(255, 255, 255))
+        self.panel.SetScrollRate(10, 10)
 
     def __do_layout(self):
         sizer_1 = wx.GridSizer(1, 1, 0, 0)
         grid_sizer_1 = wx.FlexGridSizer(rows=len(self.neurons)+1, cols=len(self.t)+1, vgap=2, hgap=2) # add an extra row and column for the text labels
         grid_sizer_1.Add((1, 1), 0, wx.ADJUST_MINSIZE, 0) # spacer in top left corner
         for t in self.t:
-            grid_sizer_1.Add(wx.StaticText(self.panel_1, -1, "%sms" % t), 0, wx.ADJUST_MINSIZE, 0) # text row along top
+            grid_sizer_1.Add(wx.StaticText(self.panel, -1, "%sms" % t), 0, wx.ADJUST_MINSIZE, 0) # text row along top
         for ni, n in enumerate(self.neurons):
-            grid_sizer_1.Add(wx.StaticText(self.panel_1, -1, "n%d" % n.id), 0, wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL|wx.ADJUST_MINSIZE, 0) # text down left side
+            grid_sizer_1.Add(wx.StaticText(self.panel, -1, "n%d" % n.id), 0, wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL|wx.ADJUST_MINSIZE, 0) # text down left side
             for t in self.t:
                 grid_sizer_1.Add(self.bitmaps[ni][t], 1, wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL, 0)
-        self.panel_1.SetAutoLayout(True)
-        self.panel_1.SetSizer(grid_sizer_1)
-        grid_sizer_1.Fit(self.panel_1)
-        #grid_sizer_1.SetSizeHints(self.panel_1) # prevents the panel from being resized to something smaller than the above fit size
+        self.panel.SetAutoLayout(True)
+        self.panel.SetSizer(grid_sizer_1)
+        grid_sizer_1.Fit(self.panel)
+        #grid_sizer_1.SetSizeHints(self.panel) # prevents the panel from being resized to something smaller than the above fit size
         '''
         # might be a more direct way to set these:
         for rowi in range(1, len(self.ns)+1):
@@ -380,7 +391,7 @@ class ReceptiveFieldFrame(wx.Frame):
             print 'coli:', coli
             grid_sizer_1.AddGrowableCol(coli)
         '''
-        sizer_1.Add(self.panel_1, 1, wx.ADJUST_MINSIZE|wx.EXPAND, 0)
+        sizer_1.Add(self.panel, 1, wx.ADJUST_MINSIZE|wx.EXPAND, 0)
         self.SetAutoLayout(True)
         self.SetSizer(sizer_1)
         sizer_1.Fit(self)
