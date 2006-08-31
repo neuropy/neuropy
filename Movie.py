@@ -7,13 +7,10 @@ import Dimstim.Movies
 
 class Movie(Dimstim.Movies.Movie): # inherit from Dimstim Movie() class (assumes it's new-style)
     """A Movie stimulus object"""
-    def __init__(self, name=None, path=DEFAULTMOVIEPATH, parent=None):
+    def __init__(self, name=None, path=DEFAULTMOVIEPATH, parent=None): # movies don't need parents, they can just exist on their own and be used by anyone
         super(Movie, self).__init__() # first run __init__() of inherited Dimstim Movie class
         self.level = 5 # level in the hierarchy
-        try:
-            self.e = parent() # init parent Experiment object
-        except TypeError: # parent is an instance, not a class
-            self.e = parent # save parent Experiment object
+        self.e = parent # save parent Experiment object
         self.name = name
         self.path = path
     def load(self):

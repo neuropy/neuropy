@@ -3,26 +3,34 @@
 print 'importing Run'
 
 from Core import *
+from Core import _model # ensure it's imported, in spite of leading _
 
 class Run(object):
     """A Run corresponds to a single modelling run. A Run can have multiple Experiments
     and modelling Rips (a set of spike times generated with a certain set of modelling parameters)."""
-    def __init__(self, id=None, name=None, parent=System):
+    def __init__(self, id=None, name=None, parent=None):
         self.level = 3 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
-        try:
-            self.s = parent() # init parent System object
-        except TypeError: # parent is an instance, not a class
+        if parent == None:
+            try:
+                self.s = _model.s[DEFAULTSYSTEMNAME] # see if the default System has already been init'd
+            except KeyError:
+                self.s = System() # init the default System...
+                _model.s[s.name] = self.s  # ...and add it to the default Model object's list of System
+        else:
             self.s = parent # save parent System object
         if id is not None:
             name = self.id2name(self.s.path, id) # use the id to get the name
         elif name is not None:
             id = self.name2id(name) # use the name to get the id
         else:
-            raise ValueError, 'recording id and name can\'t both be None'
+            raise ValueError, 'Run id and name can\'t both be None'
         self.id = id
         self.name = name
         self.path = self.s.path + self.name + SLASH
+        self.s.r[self.id] = self # add/overwrite this Run to its parent's dict of Runs, in case this Run wasn't loaded by its parent
+        self.e = {} # store Experiments in a dictionary
+        self.rip = {} # store Rips in a dictionary
     def writetree(self,string):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)

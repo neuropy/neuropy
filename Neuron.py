@@ -22,7 +22,7 @@ class BaseNeuron(object):
         elif name is not None:
             id = self.name2id(name) # use the name to get the id
         else:
-            raise ValueError, 'neuron id and name can\'t both be None'
+            raise ValueError, 'Neuron id and name can\'t both be None'
         self.id = id
         self.name = name
         self.path = self.rip.path
@@ -123,8 +123,31 @@ class BaseNeuron(object):
         tstart = np.int64(round(tstart)) # let's keep all the returned spikes as integers, us is more than accurate enough
         return cutspikes - tstart
 
+    def copy(self):
+        """Returns a copy of the Neuron"""
+        return copy(self)
+
+    def append(self, neuron):
+        """Appends the spike times of the two neurons and returns a copy of the uberneuron.
+        Both neurons must have the same id and be of the same Track. The user needs to ensure
+        that the same template was used to rip """
+        assert self.id == neuron.id, 'Neuron ids are different'
+        #assert self.rip == neuron.rip, 'Rips are different' # forget this, only the user can really know
+        assert self.rip.r.t == neuron.rip.r.t, 'Tracks are different'
+        uberneuron = self.copy() # create a copy of self
+        #uberneuron.spikes.append(neuron.spikes) # soon, numpy will support this
+        uberneuron.spikes = cat( (self.spikes, neuron.spikes) ) # clumsy
+        uberneuron.nspikes = len(uberneuron.spikes) # update it
+        uberneuron.spikes.sort() # make sure spiketimes remain sorted
+        uberneuron.trange = uberneuron.spikes[0], uberneuron.spikes[-1]
+        uberneuron.name += ', ' + neuron.name # keep it as a single string
+        uberneuron.path += ', ' + neuron.path # keep it as a single string
+        #uberneuron.path = [self.path, neuron.path] # convert to list
+        uberneuron.rip = [self.rip, neuron.rip] # convert to list
+        return uberneuron
+
     def isi(self, trange=None):
-        """Returns the inter-spike interval of the Neuron's spike train in trange"""
+        """Returns the inter-spike intervals of the Neuron's spike train in trange"""
         #try:
         #    return self._isi # see if it's already been calculated
         #except AttributeError:
@@ -133,7 +156,7 @@ class BaseNeuron(object):
         return diff(self.cut(trange))
 
     def iisii(self, trange=None):
-        """Returns the inter-ISI interval (the differences between consecutive ISIs)
+        """Returns the inter-ISI intervals (the differences between consecutive ISIs)
         of the Neuron's spike train in trange
 
         see delta def'n in: 2002 Segev, et al - Long term behavior of lithographically..."""

@@ -7,28 +7,36 @@ using multiple inheritance into a single child Class called Recording"""
 print 'importing Recording'
 
 from Core import *
+from Core import _data # ensure it's imported, in spite of leading _
 
 class Recording(object):
     """A Recording corresponds to a single SURF file, ie everything recorded between when
     the user hits record and when the user hits stop and closes the SURF file, including any
     pauses in between Experiments within that Recording. A Recording can have multiple Experiments,
     and multiple spike extractions, called Rips"""
-    def __init__(self, id=None, name=None, parent=Track):
+    def __init__(self, id=None, name=None, parent=None):
         self.level = 3 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
-        try:
-            self.t = parent() # init parent Track object
-        except TypeError: # parent is an instance, not a class
+        if parent == None:
+            try:
+                self.t = _data.c[DEFAULTCATID].t[DEFAULTTRACKID] # see if the default Track has already been init'd
+            except KeyError:
+                self.t = Track() # init the default Track...
+                _data.c[DEFAULTCATID].t[self.t.id] = self.t  # ...and add it to the default Cat object's list of Tracks
+        else:
             self.t = parent # save parent Track object
         if id is not None:
             name = self.id2name(self.t.path, id) # use the id to get the name
         elif name is not None:
             id = self.name2id(name) # use the name to get the id
         else:
-            raise ValueError, 'recording id and name can\'t both be None'
+            raise ValueError, 'Recording id and name can\'t both be None'
         self.id = id
         self.name = name
         self.path = self.t.path + self.name + SLASH
+        self.t.r[self.id] = self # add/overwrite this Recording to its parent's dict of Recordings, in case this Recording wasn't loaded by its parent
+        self.e = {} # store Experiments in a dictionary
+        self.rip = {} # store Rips in a dictionary
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
@@ -60,7 +68,6 @@ class Recording(object):
         from Rip import Rip
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        self.e = {} # store Experiments in a dictionary
         experimentNames = [ fname[0:fname.rfind('.din')] for fname in os.listdir(self.path) if os.path.isfile(self.path+fname) and fname.endswith('.din') ] # returns din filenames without their .din extension
         for (experimentid, experimentName) in enumerate(experimentNames): # experimentids will be according to alphabetical order of experimentNames
             experiment = Experiment(id=experimentid, name=experimentName, parent=self) # pass both the id and the name

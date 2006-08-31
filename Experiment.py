@@ -24,7 +24,7 @@ class BaseExperiment(object):
         except TypeError: # parent is an instance, not a class
             self.r = parent # save parent Recording object
         if name is None:
-            raise ValueError, 'experiment name can\'t be None'
+            raise ValueError, 'Experiment name can\'t be None'
         self.id = id # not really used by the Experiment class, just there for user's info
         self.name = name
         self.path = self.r.path
@@ -207,7 +207,7 @@ class CodeCorrPDF(object):
 
 
 class Codes(object):
-    """Returns a 2D array where each row is a neuron code"""
+    """A 2D array where each row is a neuron code"""
     def __init__(self, neurons=None, trange=None, **kwargs):
         if trange != None:
             self.trange = trange

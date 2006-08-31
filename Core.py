@@ -24,6 +24,7 @@ import struct
 import re
 import StringIO
 import random
+from copy import copy
 from pprint import pprint
 printraw = sys.stdout.write # useful for raw printing
 
@@ -40,10 +41,6 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 mpl.use('WXAgg')
 mpl.interactive(True)
 
-# Nah!: Rips should really have ids to make them easier to reference to: r[83].rip[0] instead of r[83].rip['conservative spikes'] - this means adding id prefixes to rip folder names (or maybe suffixes: 'conservative spikes.0.rip', 'liberal spikes.1.rip', etc...). Prefixes would be better cuz they'd force sorting by id in explorer (which uses alphabetical order) - ids should be 0-based of course
-# worry about conversion of ids to strings: some may be only 1 digit and may have a leading zero!
-# maybe make two load() f'ns for Experiment and Neuron: one from files, and a future one from a database
-# make a save() f'n that pickles the object (including any of its results, like its STA, tuning curve points, etc)? - just use IPython's %store
 
 '''
 def str2(data):
@@ -78,7 +75,7 @@ def renameSpikeFiles(path, newname):
                 print newfname
                 os.rename(path+SLASH+fname, path+SLASH+newfname)
 
-def warn(msg,level=2,exit_val=1):
+def warn(msg, level=2, exit_val=1):
     """Standard warning printer. Gives formatting consistency. Stolen from IPython.genutils"""
     if level>0:
         header = ['','','WARNING: ','ERROR: ','FATAL ERROR: ']
@@ -184,6 +181,7 @@ def corr(x,y):
     return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std())
 
 def getargstr(obj):
+    """Returns object's argument list as a string. Stolen from wx.py?"""
     import inspect
     argstr = apply(inspect.formatargspec, inspect.getargspec(obj))
     if inspect.isfunction(obj):
@@ -281,7 +279,6 @@ def mean_accum2(data, indices):
     result /= len(indices)
     return result
 
-
 '''
 def barefigure(*args, **kwargs):
     """Creates a bare figure with no toolbar or statusbar"""
@@ -293,8 +290,8 @@ barefigure.__doc__ += '\n' + figure.__doc__
 
 class CanvasFrame(wx.Frame):
     """A minimal wx.Frame containing a matplotlib figure"""
-    def __init__(self):
-        wx.Frame.__init__(self, None, -1, 'frame', size=(550,350))
+    def __init__(self, title='frame', size=(550,350)):
+        wx.Frame.__init__(self, None, -1, title=title, size=size)
         self.SetBackgroundColour(wx.NamedColor("WHITE"))
         self.figure = mpl.figure.Figure(figsize=(5,4), dpi=100)
         #self.axes = self.figure.add_subplot(111)
@@ -326,12 +323,13 @@ def barefigure():
     app = App(0)
     app.MainLoop()
 '''
-def frame():
+def frame(**kwargs):
     """Returns a CanvasFrame object"""
-    frame = CanvasFrame()
+    frame = CanvasFrame(**kwargs)
     frame.Show(True)
     return frame
 frame.__doc__ += '\n' + CanvasFrame.__doc__
+frame.__doc__ += '\n\n**kwargs:\n' + getargstr(CanvasFrame.__init__)
 
 
 class ReceptiveFieldFrame(wx.Frame):
@@ -356,6 +354,7 @@ class ReceptiveFieldFrame(wx.Frame):
                 self.bitmaps[ni][t] = wx.StaticBitmap(parent=self.panel, bitmap=im.ConvertToBitmap())
 
         #self.Bind(wx.EVT_PAINT, self.OnPaint)
+        #self.Bind(wx.EVT_MOUSEWHEEL, self.OnMouseWheel)
         self.__set_properties()
         self.__do_layout()
     '''
@@ -363,11 +362,12 @@ class ReceptiveFieldFrame(wx.Frame):
         #self.canvas.draw()
         event.Skip()
     '''
+    def OnMouseWheel(self, event):
+        pass
     def __set_properties(self):
         self.SetTitle(self.title)
         self.panel.SetBackgroundColour(wx.Colour(255, 255, 255))
         self.panel.SetScrollRate(10, 10)
-
     def __do_layout(self):
         sizer_1 = wx.GridSizer(1, 1, 0, 0)
         grid_sizer_1 = wx.FlexGridSizer(rows=len(self.neurons)+1, cols=len(self.t)+1, vgap=2, hgap=2) # add an extra row and column for the text labels
@@ -406,6 +406,7 @@ class Data(object): # use 'new-style' classes
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         self.name = 'Data'
         self.path = dataPath
+        self.c = {} # store Cats in a dictionary
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
@@ -416,7 +417,6 @@ class Data(object): # use 'new-style' classes
     def load(self):
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        self.c = {} # store Cats in a dictionary
         catNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.startswith('Cat ') ] # os.listdir() returns all dirs AND files
         for catName in catNames:
             cat = Cat(id=None, name=catName, parent=self) # make an instance using just the catName (let it figure out the cat id)
@@ -424,6 +424,8 @@ class Data(object): # use 'new-style' classes
             self.c[cat.id] = cat # save it
         #if len(self.c) == 1:
         #   self.c = self.c.values[0] # pull it out of the dictionary
+
+_data = Data() # init a default Data object to use as a container for everything that falls under the data object hierarchy
 
 
 class Model(Data):
@@ -433,10 +435,10 @@ class Model(Data):
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         self.name = 'Model'
         self.path = modelPath
+        self.s = {} # store model Systems in a dictionary
     def load(self):
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        self.s = {} # store model Systems in a dictionary
         systemNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) ] # os.listdir() returns all dirs AND files
         for systemName in systemNames:
             system = System(name=systemName, parent=self) # make an instance using the systemName
@@ -445,25 +447,26 @@ class Model(Data):
         #if len(self.s) == 1:
         #   self.s = self.s.values[0] # pull it out of the dictionary
 
+_model = Model() # init a default Model object to use as a container for everything that falls under the model object hierarchy
+
 
 class Cat(object):
     """A Cat can have multiple Tracks"""
-    def __init__(self, id=DEFAULTCATID, name=None, parent=Data):
+    def __init__(self, id=DEFAULTCATID, name=None, parent=_data):
         self.level = 1 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
-        try:
-            self.d = parent() # init parent Data object
-        except TypeError: # parent is an instance, not a class
-            self.d = parent # save parent Data object
+        self.d = parent # save the parent Data object
         if id is not None:
             name = self.id2name(self.d.path, id) # use the id to get the name
         elif name is not None:
             id = self.name2id(name) # use the name to get the id
         else:
-            raise ValueError, 'cat id and name can\'t both be None'
+            raise ValueError, 'Cat id and name can\'t both be None'
         self.id = id
         self.name = name
         self.path = self.d.path + self.name + SLASH
+        self.d.c[self.id] = self # add/overwrite this Cat to its parent's dict of Cats, in case this Cat wasn't loaded by its parent
+        self.t = {} # store Tracks in a dictionary
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
@@ -492,7 +495,6 @@ class Cat(object):
     def load(self):
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        self.t = {} # store Tracks in a dictionary
         trackNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.startswith('Track ') ]
         for trackName in trackNames:
             track = Track(id=None, name=trackName, parent=self) # make an instance using just the track name (let it figure out the track id)
@@ -504,15 +506,14 @@ class Cat(object):
 
 class System(object):
     """A model System can have multiple modelling Runs"""
-    def __init__(self, name=DEFAULTSYSTEMNAME, parent=Model):
+    def __init__(self, name=DEFAULTSYSTEMNAME, parent=_model):
         self.level = 1 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
-        try:
-            self.m = parent() # init parent Model object
-        except TypeError: # parent is an instance, not a class
-            self.m = parent # save parent Model object
+        self.m = parent # save parent Model object
         self.name = name
         self.path = self.m.path + self.name + SLASH
+        self.r = {} # store Runs in a dictionary
+        self.m.s[self.name] = self # add this System to its parent's dict of Systems, in case this System wasn't loaded by its parent
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
@@ -526,7 +527,6 @@ class System(object):
             raise NameError, 'Cannot find System(%s), path %s does not exist' % (repr(self.name), repr(self.path))
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        self.r = {} # store Runs in a dictionary
         runNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname[0:2].isdigit() and dirname.count(' - ') == 1 ] # 1st 2 chars in dirname must be digits, must contain exactly 1 occurrence of ' - '
         for runName in runNames:
             run = Run(id=None, name=runName, parent=self) # make an instance using just the runName (let it figure out the run id)
@@ -538,22 +538,28 @@ class System(object):
 
 class Track(object):
     """A Track can have multiple Recordings"""
-    def __init__(self, id=DEFAULTTRACKID, name=None, parent=Cat):
+    def __init__(self, id=DEFAULTTRACKID, name=None, parent=None):
         self.level = 2 # level in the hierarchy
-        try:
-            self.c = parent() # init parent Cat object
-        except TypeError: # parent is an instance, not a class
+        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+        if parent == None:
+            try:
+                self.c = _data.c[DEFAULTCATID] # see if the default Cat has already been init'd
+            except KeyError:
+                self.c = Cat() # init the default Cat...
+                _data.c[self.c.id] = self.c  # ...and add it to the default Data object's list of Cats
+        else:
             self.c = parent # save parent Cat object
         if id is not None:
             name = self.id2name(self.c.path, id) # use the id to get the name
         elif name is not None:
             id = self.name2id(name) # use the name to get the id
         else:
-            raise ValueError, 'track id and name can\'t both be None'
-        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+            raise ValueError, 'Track id and name can\'t both be None'
         self.id = id
         self.name = name
         self.path = self.c.path + self.name + SLASH
+        self.c.t[self.id] = self # add/overwrite this Track to its parent's dict of Tracks, in case this Track wasn't loaded by its parent
+        self.r = {} # store Recordings in a dictionary
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
@@ -581,7 +587,6 @@ class Track(object):
         from Recording import Recording
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        self.r = {} # store Recordings in a dictionary
         recordingNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname[0:2].isdigit() and dirname.count(' - ') == 1 ] # 1st 2 chars in dirname must be digits, must contain exactly 1 occurrence of ' - '
         for recordingName in recordingNames:
             recording = Recording(id=None, name=recordingName, parent=self) # make an instance using just the recording name (let it figure out the recording id)

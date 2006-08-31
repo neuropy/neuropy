@@ -23,6 +23,7 @@ class Rip(object):
         self.id = id # not really used by the Rip class, just there for user's info
         self.name = name
         self.path = self.r.path + self.name + '.rip' + SLASH # have to add .rip extension to rip name to get its actual folder name
+        self.n = {} # store Neurons in a dictionary
     '''
     def tree(self):
         """Print tree hierarchy"""
@@ -36,7 +37,6 @@ class Rip(object):
         from Neuron import Neuron
         #treestr = self.level*TAB + self.name + '/'
         #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        self.n = {} # store Neurons in a dictionary
         neuronNames = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(self.path) if os.path.isfile(self.path+fname) and fname.endswith('.spk') ] # returns spike filenames without their .spk extension
         for neuronName in neuronNames:
             neuron = Neuron(id=None, name=neuronName, parent=self) # make an instance using just the neuron name (let it figure out the neuron id)

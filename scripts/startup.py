@@ -2,6 +2,7 @@ import os
 import sys
 import types
 import __main__
+from copy import copy
 from pprint import pprint
 printraw = sys.stdout.write # useful for raw printing
 
