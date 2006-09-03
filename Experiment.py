@@ -316,7 +316,7 @@ class Schneidmann(object):
 
 
 class ExperimentCode(BaseExperiment):
-    """Defines the spike code related Experiment methods"""
+    """Mix-in class that defines the spike code related Experiment methods"""
     def code(self, neuron=None, **kwargs):
         """Returns a Neuron.Code object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
         try:
@@ -374,7 +374,7 @@ class ExperimentCode(BaseExperiment):
 
 
 class ExperimentRate(BaseExperiment):
-    """Defines the spike rate related Experiment methods"""
+    """Mix-in class that defines the spike rate related Experiment methods"""
     def rate(self, neuron, **kwargs):
         """Returns a Neuron.Rate object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
         try:
@@ -452,7 +452,7 @@ class STAs(RevCorrs):
 
 
 class ExperimentRevCorr(BaseExperiment):
-    """Defines the reverse correlation related Experiment methods"""
+    """Mix-in class that defines the reverse correlation related Experiment methods"""
     def sta(self, neurons=None, **kwargs):
         """Returns an STAs RevCorrs object and plots it"""
         if neurons == None: # no Neurons were passed, use all the Neurons from the default Rip for this experiment's Recording

@@ -127,23 +127,23 @@ class BaseNeuron(object):
         """Returns a copy of the Neuron"""
         return copy(self)
 
-    def append(self, neuron):
+    def append(self, other):
         """Appends the spike times of the two neurons and returns a copy of the uberneuron.
         Both neurons must have the same id and be of the same Track. The user needs to ensure
         that the same template was used to rip """
-        assert self.id == neuron.id, 'Neuron ids are different'
-        #assert self.rip == neuron.rip, 'Rips are different' # forget this, only the user can really know
-        assert self.rip.r.t == neuron.rip.r.t, 'Tracks are different'
+        assert self.id == other.id, 'Neuron ids are different'
+        #assert self.rip == other.rip, 'Rips are different' # forget this, only the user can really know
+        assert self.rip.r.t == other.rip.r.t, 'Tracks are different'
         uberneuron = self.copy() # create a copy of self
-        #uberneuron.spikes.append(neuron.spikes) # soon, numpy will support this
-        uberneuron.spikes = cat( (self.spikes, neuron.spikes) ) # clumsy
+        #uberneuron.spikes.append(other.spikes) # soon, numpy will support this
+        uberneuron.spikes = cat( (self.spikes, other.spikes) ) # clumsy
         uberneuron.nspikes = len(uberneuron.spikes) # update it
         uberneuron.spikes.sort() # make sure spiketimes remain sorted
         uberneuron.trange = uberneuron.spikes[0], uberneuron.spikes[-1]
-        uberneuron.name += ', ' + neuron.name # keep it as a single string
-        uberneuron.path += ', ' + neuron.path # keep it as a single string
-        #uberneuron.path = [self.path, neuron.path] # convert to list
-        uberneuron.rip = [self.rip, neuron.rip] # convert to list
+        uberneuron.name += ', ' + other.name # keep it as a single string
+        uberneuron.path += ', ' + other.path # keep it as a single string
+        #uberneuron.path = [self.path, other.path] # convert to list
+        uberneuron.rip = [self.rip, other.rip] # convert to list
         return uberneuron
 
     def isi(self, trange=None):
@@ -166,6 +166,21 @@ class BaseNeuron(object):
         #    self._iisii = diff(self.isi()) # store it
         #    return self._iisii
         return diff(self.isi(trange))
+
+    def xcorr(self, other=None, range=(-100000, 100000)):
+        """Calculates the cross-correlation of all of self's spikes with all the spikes
+        of another neuron, constrained to the time width specified by range.
+        Other can be either a Neuron or a Neuron id from the same Rip as self"""
+        try: # assume other is a Neuron id from the same Rip as self, get the associated Neuron object
+            other = self.rip.n[other]
+        except KeyError: # other is probably a Neuron object
+            pass
+        dts = []
+        for spike in self.spikes:
+            rangei = other.spikes.searchsorted(spike+range) # find where the range around this spike would fit in other.spikes
+            dt = other.spikes[rangei[0]:rangei[1]] - spike # find dt between this spike and only those other.spikes that are in range of this spike
+            dts.extend(dt)
+        return array(dts)
 
 
 class BaseCode(object):
@@ -197,20 +212,20 @@ class BinaryCode(BaseCode):
         self.kind = 'binary'
         self.tres = tres
     def calc(self):
-        # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. Do the same for the end of the timepoints, but round up. This way, timepoints will line up for different code objects
+        # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. Do the same for the end of the timepoints. This way, timepoints will line up for different code objects
         tstart = self.trange[0] - (self.trange[0] % self.tres)
         tend   = self.trange[1] - (self.trange[1] % self.tres)
-        self.t = arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to trange[1] to make t end inclusive
+        self.t = arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to tend to make t end inclusive
         s = self.neuron.cut(self.trange) # spike times
-        self.c = zeros(len(self.t)) # binary code signal
-        self.c[np.unique(self.t.searchsorted(s)) - 1] = 1 # dec index by 1 so that you get indices that point to the most recent bin edge. For each bin that has 1 or more spikes in it, set its bit to 1
+        self.c = zeros(len(self.t), dtype=np.uint8) # binary code signal
+        self.c[np.unique(self.t.searchsorted(s)) - 1] = 1 # dec index by 1 so that you get indices that point to the most recent bin edge. For each bin that has 1 or more spikes in it, set its value to 1
     def plot(self):
         super(BinaryCode, self).plot()
         title('neuron %d - binary spike code' % self.neuron.id)
 
 
 class NeuronCode(BaseNeuron):
-    """Defines the spike code related Neuron methods"""
+    """Mix-in class that defines the spike code related Neuron methods"""
     def code(self, kind='binary', **kwargs):
         """Returns an existing Code object, or creates a new one if necessary"""
         try:
@@ -460,7 +475,7 @@ class RatePDF(object):
 
 
 class NeuronRate(BaseNeuron):
-    """Defines the spike rate related Neuron methods"""
+    """Mix-in class that defines the spike rate related Neuron methods"""
     def rate(self, kind='nisi', **kwargs):
         """Returns an existing Rate object, or creates a new one if necessary"""
         try:
@@ -675,7 +690,7 @@ class STC(RevCorr):
 
 
 class NeuronRevCorr(BaseNeuron):
-    """Defines the reverse correlation related Neuron methods"""
+    """Mix-in class that defines the reverse correlation related Neuron methods"""
     def sta(self, experiment=None, **kwargs):
         """Returns an existing STA RevCorr object, or creates a new one if necessary"""
         try:

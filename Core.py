@@ -271,7 +271,7 @@ def mean_accum(data):
     return result
 
 def mean_accum2(data, indices):
-    """A variant of mean_accum(), where you provide the all the data and the indices into it
+    """A variant of mean_accum(), where you provide all the data and the indices into it
     to average over. This was Tim Hochberg's version"""
     result = np.zeros(data[0].shape, np.float64)
     for i in indices:
@@ -310,19 +310,7 @@ class CanvasFrame(wx.Frame):
         self.Fit()
     def OnPaint(self, event):
         self.canvas.draw()
-        event.Skip()
-'''
-class App(wx.App):
-    def OnInit(self):
-        'Create the main window and insert the custom frame'
-        frame = CanvasFrame()
-        frame.Show(True)
-        return true
 
-def barefigure():
-    app = App(0)
-    app.MainLoop()
-'''
 def frame(**kwargs):
     """Returns a CanvasFrame object"""
     frame = CanvasFrame(**kwargs)
