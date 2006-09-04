@@ -33,6 +33,7 @@ import pylab as pl
 import matplotlib as mpl
 import scipy as sp
 import scipy.signal as sig
+import scipy.weave as weave
 from numpy import arange, array, array as ar, asarray, log, log10, rand, randn, zeros, ones, diff, concatenate, concatenate as cat, histogram
 from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
 import wx
@@ -279,14 +280,13 @@ def mean_accum2(data, indices):
     result /= len(indices)
     return result
 
-'''
 def barefigure(*args, **kwargs):
     """Creates a bare figure with no toolbar or statusbar"""
     figure(*args, **kwargs)
     gcfm().frame.GetStatusBar().Hide()
     gcfm().frame.GetToolBar().Hide()
 barefigure.__doc__ += '\n' + figure.__doc__
-'''
+
 
 class CanvasFrame(wx.Frame):
     """A minimal wx.Frame containing a matplotlib figure"""

@@ -167,20 +167,71 @@ class BaseNeuron(object):
         #    return self._iisii
         return diff(self.isi(trange))
 
-    def xcorr(self, other=None, range=(-100000, 100000)):
-        """Calculates the cross-correlation of all of self's spikes with all the spikes
-        of another neuron, constrained to the time width specified by range.
-        Other can be either a Neuron or a Neuron id from the same Rip as self"""
+    def xcorr2(self, other=None, trange=(-100000, 100000)):
         try: # assume other is a Neuron id from the same Rip as self, get the associated Neuron object
             other = self.rip.n[other]
         except KeyError: # other is probably a Neuron object
             pass
+        selfspikes = self.spikes
+        otherspikes = other.spikes
+        nspikes = len(selfspikes)
+        code = """
+               #line 193 "Neuron.py" (This is only useful for debugging)
+               double tmp, err, diff;
+               err = 0.0;
+               for (int spikei=0; spikei<=nspikes; i++) {
+                   trangei = otherspikes.searchsorted(spike+trange(0), spike+trange(1))
+                   out = trangei
+               }
+               return_val = out;
+               """
+        # compiler keyword only needed on windows with MSVC installed
+        out = weave.inline(code,
+                           [selfspikes, otherspikes, nspikes, trange],
+                           type_converters=weave.converters.blitz,
+                           compiler = 'gcc')
+
+class XCorr(object):
+    def __init__(self, n1=None, n2=None, trange=(-100000, 100000)):
+        """Cross-correlation object. n1 has to be a Neuron, n2 can be a Neuron or a Neuron id"""
+        self.n1 = n1
+        try: # assume n2 is a Neuron id from the same Rip as n1, get the associated Neuron object
+            n2 = self.n1.rip.n[n2]
+        except KeyError: # n2 is probably a Neuron object
+            pass
+        self.n2 = n2
+        self.trange = trange
+    def calc(self):
         dts = []
-        for spike in self.spikes:
-            rangei = other.spikes.searchsorted(spike+range) # find where the range around this spike would fit in other.spikes
-            dt = other.spikes[rangei[0]:rangei[1]] - spike # find dt between this spike and only those other.spikes that are in range of this spike
+        for spike in self.n1.spikes:
+            trangei = self.n2.spikes.searchsorted(spike+self.trange) # find where the trange around this spike would fit in other.spikes
+            dt = self.n2.spikes[trangei[0]:trangei[1]] - spike # find dt between this spike and only those other.spikes that are in trange of this spike
             dts.extend(dt)
-        return array(dts)
+        self.dts = array(dts)
+        return self.dts
+    def plot(self):
+        f = figure(figsize=(6.5, 6.5))
+        a = f.add_subplot(111)
+        a.hist(self.dts, bins=100)
+        a.set_title('n%d spikes relative to n%d spikes' % (self.n2.id, self.n1.id))
+        a.set_xlabel('time (msec)')
+        a.set_ylabel('bin count')
+        gcfm().frame.SetTitle('r%d.n[%d].xcorr(%d)' % (self.n1.rip.r.id, self.n1.id, self.n2.id))
+        xticks = a.get_xticks() / 1000.0 # convert from us to ms
+        xticklabels = []
+        [ xticklabels.append('%d' % xtick) for xtick in xticks ] # truncate floats into ints
+        a.set_xticklabels(xticklabels)
+
+
+class NeuronXCorr(BaseNeuron):
+    """Mix-in class that defines the xcorr Neuron method"""
+    def xcorr(self, other=None, **kwargs):
+        """Returns a cross-correlation object"""
+        xco = XCorr(n1=self, n2=other, **kwargs)
+        xco.calc()
+        return xco
+    xcorr.__doc__ += '\n\n**kwargs:'
+    xcorr.__doc__ += '\n'+getargstr(XCorr.__init__)
 
 
 class BaseCode(object):
@@ -743,7 +794,7 @@ class NeuronRevCorr(BaseNeuron):
     stc.__doc__ += getargstr(STC.__init__)
 
 
-class Neuron(NeuronRevCorr, NeuronRate, NeuronCode, BaseNeuron):
+class Neuron(NeuronRevCorr, NeuronRate, NeuronCode, NeuronXCorr, BaseNeuron):
     """Inherit all the Neuron objects into a single Neuron class"""
     def raster(self):
         # use pylab.vlines()
