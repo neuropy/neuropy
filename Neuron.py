@@ -127,44 +127,41 @@ class BaseNeuron(object):
         """Returns a copy of the Neuron"""
         return copy(self)
 
-    def append(self, other):
-        """Appends the spike times of the two neurons and returns a copy of the uberneuron.
-        Both neurons must have the same id and be of the same Track. The user needs to ensure
-        that the same template was used to rip """
-        assert self.id == other.id, 'Neuron ids are different'
-        #assert self.rip == other.rip, 'Rips are different' # forget this, only the user can really know
-        assert self.rip.r.t == other.rip.r.t, 'Tracks are different'
+    def append(self, others):
+        """Appends the spike times of self and other Neurons and returns a copy of the uberneuron.
+        All Neurons must have the same id and be of the same Track. The user needs to ensure
+        that the same template was used to rip all the Neurons"""
+        if not iterable(others):
+            others = [others]
+        for other in others:
+            assert self.id == other.id, 'Neuron ids are different'
+            #assert self.rip == other.rip, 'Rips are different' # forget this, only the user can really know if they use the same template
+            assert self.rip.r.t == other.rip.r.t, 'Tracks are different'
         uberneuron = self.copy() # create a copy of self
         #uberneuron.spikes.append(other.spikes) # soon, numpy will support this
-        uberneuron.spikes = cat( (self.spikes, other.spikes) ) # clumsy
+        #uberneuron.spikes = cat( (self.spikes, other.spikes) ) # clumsy
+        spikes = list(uberneuron.spikes)
+        [ spikes.extend(other.spikes) for other in others ]
+        uberneuron.spikes = array(spikes)
         uberneuron.nspikes = len(uberneuron.spikes) # update it
         uberneuron.spikes.sort() # make sure spiketimes remain sorted
         uberneuron.trange = uberneuron.spikes[0], uberneuron.spikes[-1]
-        uberneuron.name += ', ' + other.name # keep it as a single string
-        uberneuron.path += ', ' + other.path # keep it as a single string
-        #uberneuron.path = [self.path, other.path] # convert to list
-        uberneuron.rip = [self.rip, other.rip] # convert to list
+        uberneuron.rip = [uberneuron.rip] # convert to list
+        #uberneuron.r = [uberneuron.r] # convert to list
+        for other in others:
+            uberneuron.name += ', ' + other.name # keep it as a single string
+            uberneuron.path += ', ' + other.path # keep it as a single string
+            uberneuron.rip.append(other.rip)
         return uberneuron
 
     def isi(self, trange=None):
         """Returns the inter-spike intervals of the Neuron's spike train in trange"""
-        #try:
-        #    return self._isi # see if it's already been calculated
-        #except AttributeError:
-        #    self._isi = diff(self.spikes) # store it
-        #    return self._isi
         return diff(self.cut(trange))
 
     def iisii(self, trange=None):
         """Returns the inter-ISI intervals (the differences between consecutive ISIs)
-        of the Neuron's spike train in trange
-
-        see delta def'n in: 2002 Segev, et al - Long term behavior of lithographically..."""
-        #try:
-        #    return self._iisii # see if it's already been calculated
-        #except AttributeError:
-        #    self._iisii = diff(self.isi()) # store it
-        #    return self._iisii
+        of the Neuron's spike train in trange.
+        See delta def'n in: 2002 Segev, et al - Long term behavior of lithographically..."""
         return diff(self.isi(trange))
 
     def xcorr2(self, other=None, trange=(-100000, 100000)):
@@ -191,6 +188,7 @@ class BaseNeuron(object):
                            type_converters=weave.converters.blitz,
                            compiler = 'gcc')
 
+
 class XCorr(object):
     def __init__(self, n1=None, n2=None, trange=(-100000, 100000)):
         """Cross-correlation object. n1 has to be a Neuron, n2 can be a Neuron or a Neuron id"""
@@ -209,14 +207,23 @@ class XCorr(object):
             dts.extend(dt)
         self.dts = array(dts)
         return self.dts
-    def plot(self):
-        f = figure(figsize=(6.5, 6.5))
+    def plot(self, nbins=100, figsize=(6.5, 6.5), style='count'):
+        f = figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.hist(self.dts, bins=100)
+        n, t = histogram(self.dts, bins=nbins)
+        self.n = n
+        self.t = t
+        barwidth = (t.max()-t.min())/float(nbins)
+        if style == 'rate':
+            n = n / float(barwidth)
+        bar(left=t, height=n, width=barwidth)
+        gcfm().frame.SetTitle('r%d.n[%d].xcorr(%d)' % (self.n1.rip.r.id, self.n1.id, self.n2.id))
         a.set_title('n%d spikes relative to n%d spikes' % (self.n2.id, self.n1.id))
         a.set_xlabel('time (msec)')
-        a.set_ylabel('bin count')
-        gcfm().frame.SetTitle('r%d.n[%d].xcorr(%d)' % (self.n1.rip.r.id, self.n1.id, self.n2.id))
+        if style == 'rate':
+            a.set_ylabel('spike rate (Hz)')
+        else:
+            a.set_ylabel('bin count')
         xticks = a.get_xticks() / 1000.0 # convert from us to ms
         xticklabels = []
         [ xticklabels.append('%d' % xtick) for xtick in xticks ] # truncate floats into ints
@@ -615,7 +622,7 @@ class RevCorr(object):
         self.rcdini = self.experiment.din[:,0].searchsorted(spikes) - 1 # revcorr dini. Find where the spike times fall in the din, dec so you get indices that point to the most recent din value for each spike
         #self.din = self.experiment.din[rcdini,1] # get the din (frame indices) at the rcdini
     def plot(self, interp='nearest', normed=True, title='ReceptiveFieldFrame', scale=2.0, **kwargs):
-        """Plots the spatio-temporal RF as bitmaps in a wx.Frame"""
+        """Plots the spatiotemporal RF as bitmaps in a wx.Frame"""
         rf = self.rf.copy() # create a copy to manipulate for display purposes, (nt, width, height)
         if normed: # normalize across the timepoints for this RevCorr
             norm = mpl.colors.normalize(vmin=rf.min(), vmax=rf.max(), clip=True) # create a single normalization object to map luminance to the range [0,1]

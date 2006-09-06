@@ -34,7 +34,7 @@ import matplotlib as mpl
 import scipy as sp
 import scipy.signal as sig
 import scipy.weave as weave
-from numpy import arange, array, array as ar, asarray, log, log10, rand, randn, zeros, ones, diff, concatenate, concatenate as cat, histogram
+from numpy import arange, array, array as ar, asarray, log, log10, rand, randn, zeros, ones, diff, concatenate, concatenate as cat
 from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
 import wx
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
@@ -137,8 +137,33 @@ def approx(a, b, rtol=1.e-14, atol=1.e-14):
     print y.shape
     return np.less(np.absolute(x-y), atol + rtol * np.absolute(y))
 
-def histogramSorted(sorteda, bins=10, range=None):
-    """Builds a histogram, stolen from numpy.histogram(), modified to assume sorted input"""
+def histogram(a, bins=10, range=None, normed=False):
+    """Builds a histogram, stolen from numpy.histogram(), modified to allow
+    normed='pdf' or normed='pmf' (prob mass function)"""
+    a = asarray(a).ravel()
+    if not iterable(bins):
+        if range is None:
+            range = (a.min(), a.max())
+        mn, mx = [mi+0.0 for mi in range]
+        if mn == mx:
+            mn -= 0.5
+            mx += 0.5
+        bins = np.linspace(mn, mx, bins, endpoint=False)
+    n = np.sort(a).searchsorted(bins)
+    n = concatenate([n, [len(a)]])
+    n = n[1:]-n[:-1]
+    if normed:
+        if normed == 'pdf':
+            db = bins[1] - bins[0]
+            return 1.0/(a.size*db) * n, bins
+        elif normed == 'pmf':
+            return n/float(sum(n)), bins
+    else:
+        return n, bins
+
+def histogramSorted(sorteda, bins=10, range=None, normed=False):
+    """Builds a histogram, stolen from numpy.histogram(), modified to assume
+    sorted input and to allow normed='pdf' or normed='pmf' (prob mass function)"""
     a = asarray(sorteda).ravel()
     if not iterable(bins):
         if range is None:
@@ -150,13 +175,16 @@ def histogramSorted(sorteda, bins=10, range=None):
         bins = np.linspace(mn, mx, bins, endpoint=False)
     #n = np.sort(a).searchsorted(bins)
     n = a.searchsorted(bins)
-    n = cat([n, [len(a)]]) # this adds a bin that includes overflow points
+    n = concatenate([n, [len(a)]]) # this adds a bin that includes overflow points
     n = n[1:]-n[:-1] # subtracts a shifted version of itself
-    #if normed:
-    #   db = bins[1] - bins[0]
-    #   return 1.0/(a.size*db) * n, bins # this seems a bit weird
-    #else:
-    return n, bins
+    if normed:
+        if normed == 'pdf':
+            db = bins[1] - bins[0]
+            return 1.0/(a.size*db) * n, bins
+        elif normed == 'pmf':
+            return n/float(sum(n)), bins
+    else:
+        return n, bins
 
 def sah(t, y, ts, keep=False):
     """Resample using sample and hold. Returns resampled values at ts given the original points (t,y)
@@ -174,8 +202,8 @@ def sah(t, y, ts, keep=False):
         #print i
     return y[i]
 
-def corr(x,y):
-    """Returns correlation of signals x and y. This should be equivalent to np.corrcoef(),
+def corrcoef(x, y):
+    """Returns correlation coefficient of signals x and y. This should be equivalent to np.corrcoef(),
     but that one doesn't seem to work for signals with zeros in them. Check how std() works exactly"""
     x = array(x)
     y = array(y)
@@ -200,8 +228,18 @@ def getargstr(obj):
         argstr = '()'
     return argstr
 
+def bin(i):
+    """Return the binary representation of an integer.
+    Stolen from Andrew Gaul <andrew@gaul.org> off the web"""
+    l = ['0000', '0001', '0010', '0011', '0100', '0101', '0110', '0111',
+         '1000', '1001', '1010', '1011', '1100', '1101', '1110', '1111']
+    s = ''.join(map(lambda x, l=l: l[int(x, 16)], hex(i)[2:]))
+    if s[0] == '1' and i > 0:
+        s = '0000' + s
+    return s
+
 def binaryarray2int(bin):
-    """Takes a binary array (only 1s and 0s) and returns the base 10 integer representations"""
+    """Takes a 2D binary array (only 1s and 0s) and returns the base 10 integer representations of the columns"""
     #assert type(bin) == type(array)
     nbits = bin.shape[0] # length of the highest (first) dimension (the rows)
     nd = bin.ndim

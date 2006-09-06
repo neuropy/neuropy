@@ -49,6 +49,13 @@ t.load
 print 'Initing and loading Recording(71):'
 r71 = Recording(71)
 r71.load()
+print 'Initing and loading Recording(71):'
+r75 = Recording(75)
+r75.load()
+r75.e[0].trange=(15344078, 3214034518)
+print 'Initing and loading Recording(76):'
+r76 = Recording(76)
+r76.load()
 print 'Initing and loading Recording(92):'
 r92 = Recording(92)
 r92.load()
