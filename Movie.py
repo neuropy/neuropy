@@ -1,6 +1,6 @@
 """Defines the Movie class"""
 
-print 'importing Movie'
+#print 'importing Movie'
 
 from Core import *
 import Dimstim.Movies

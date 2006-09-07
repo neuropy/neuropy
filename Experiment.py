@@ -1,6 +1,6 @@
 """Defines the Experiment class and all of its support classes."""
 
-print 'importing Experiment'
+#print 'importing Experiment'
 
 from Core import *
 from Dimstim.Core import buildSweepTable
@@ -10,11 +10,8 @@ class BaseExperiment(object):
     """An Experiment corresponds to a single contiguous VisionEgg stimulus session.
     It contains information about the stimulus during that session, including
     the DIN values, the text header, and any Movies that were involved"""
+
     from Recording import Recording
-    #import Neuron
-    #from Neuron import Neuron
-    #from Neuron import BinaryCode
-    #from Neuron import RatePDF
 
     def __init__(self, id=None, name=None, parent=Recording):
         self.level = 4 # level in the hierarchy
@@ -31,14 +28,18 @@ class BaseExperiment(object):
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
-    def writetree(self,string):
+    def writetree(self, string):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
         self.r.writetree(string)
+
     # doesn't need a id2name or name2id method, neither can really be derived from the other in an easy way (although could use re), the id is just chronological (which is also alphabetical) order, at least for now
+
     def load(self):
-        from Recording import Recording # not sure why this has to be imported here again (see above), but seems that it does
+
+        from Recording import Recording
         from Movie import Movie, MSEQ32, MSEQ16
+
         f = file(self.path + self.name + '.din', 'rb') # open the din file for reading in binary mode
         self.din = np.fromfile(f, dtype=np.int64).reshape(-1,2) # reshape to nrows x 2 columns
         f.close()

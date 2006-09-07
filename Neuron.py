@@ -1,15 +1,17 @@
 """Defines the Neuron class and all of its support classes"""
 
-print 'importing Neuron'
+#print 'importing Neuron'
 
 from Core import *
 
 class BaseNeuron(object):
-    """A Neuron object\'s spike data spans all the Experiments within a Recording.
+    """A Neuron object's spike data spans all the Experiments within a Recording.
     If different Recordings have Rips with the same name, you can assume that the
     same spike template was used for all of those Recordings, and that therefore
     the neuron ids are the same"""
+
     from Rip import Rip
+
     def __init__(self, id=None, name=None, parent=Rip): # neuron names don't include the '.spk' ending, although neuron filenames do
         self.level = 5 # level in the hierarchy
         #self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to

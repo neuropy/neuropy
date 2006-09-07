@@ -4,7 +4,7 @@ using multiple inheritance into a single child Class called Recording"""
 
 # set the self.trange attribe in Base class for Recording, to be consistent with Neuron and Experiment
 
-print 'importing Recording'
+#print 'importing Recording'
 
 from Core import *
 from Core import _data # ensure it's imported, in spite of leading _
@@ -15,6 +15,9 @@ class Recording(object):
     pauses in between Experiments within that Recording. A Recording can have multiple Experiments,
     and multiple spike extractions, called Rips"""
     def __init__(self, id=None, name=None, parent=None):
+
+        from Track import Track
+
         self.level = 3 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         if parent == None:
@@ -40,7 +43,7 @@ class Recording(object):
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
-    def writetree(self,string):
+    def writetree(self, string):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
         self.t.writetree(string)

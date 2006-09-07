@@ -1,6 +1,6 @@
 """Defines the Run class"""
 
-print 'importing Run'
+#print 'importing Run'
 
 from Core import *
 from Core import _model # ensure it's imported, in spite of leading _
@@ -9,6 +9,9 @@ class Run(object):
     """A Run corresponds to a single modelling run. A Run can have multiple Experiments
     and modelling Rips (a set of spike times generated with a certain set of modelling parameters)."""
     def __init__(self, id=None, name=None, parent=None):
+
+        from System import System
+
         self.level = 3 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         if parent == None:
@@ -55,8 +58,10 @@ class Run(object):
             pass # it's alphanumeric, leave it as a string
         return id
     def load(self):
+
         from Experiment import Experiment
         from Rip import Rip
+
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
         self.e = {} # store Experiments in a dictionary

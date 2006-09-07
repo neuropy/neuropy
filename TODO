@@ -1,0 +1,19 @@
+Schneidman stuff:
+	- for the time bins, try lots of different phases, see if this changes things at all
+		- look if the most common states remain the most common
+	- since Recordings are fairly short, either combine lots of Recordings into one (or their Experiments), or use a shorter CODEWORDLENGTH to get better stat significance for all possible words
+	- for common states, and see if there's a gradual falloff of probs of being 1 bit, 2bit 3 bit off of that state as you move away from it in bitspace
+	- look for check cells
+	- do the maximum entropy Ising model
+	- see if cortical data extrapolates to the same sort of ideal network size, ~200 neurons
+
+- multi trial and multineuron raster plots
+- tuning curves
+- STC
+- revcorr to sparse bars, or any stimulus really, by directly sampling VisionEgg's framebuffer
+
+- make PyShell/PyCrust log user input to a file
+- Nah!: Rips should really have ids to make them easier to reference to: r[83].rip[0] instead of r[83].rip['conservative spikes'] - this means adding id prefixes to rip folder names (or maybe suffixes: 'conservative spikes.0.rip', 'liberal spikes.1.rip', etc...). Prefixes would be better cuz they'd force sorting by id in explorer (which uses alphabetical order) - ids should be 0-based of course
+- worry about conversion of ids to strings: some may be only 1 digit and may have a leading zero!
+- maybe make two load() f'ns for Experiment and Neuron: one from files, and a future one from a database
+- make a save() f'n that pickles the object (including any of its results, like its STA, tuning curve points, etc)? - just use IPython's %store

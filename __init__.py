@@ -19,18 +19,13 @@ r"""Tools for analyzing experimental and model neuronal and stimulus data in pyt
 
 __author__ = "Martin Spacek"
 
-'''
-TODO:
-
-- Nah!: Rips should really have ids to make them easier to reference to: r[83].rip[0] instead of r[83].rip['conservative spikes'] - this means adding id prefixes to rip folder names (or maybe suffixes: 'conservative spikes.0.rip', 'liberal spikes.1.rip', etc...). Prefixes would be better cuz they'd force sorting by id in explorer (which uses alphabetical order) - ids should be 0-based of course
-- worry about conversion of ids to strings: some may be only 1 digit and may have a leading zero!
-- maybe make two load() f'ns for Experiment and Neuron: one from files, and a future one from a database
-- make a save() f'n that pickles the object (including any of its results, like its STA, tuning curve points, etc)? - just use IPython's %store
-'''
-
-print 'importing neuropy'
+#print 'importing neuropy'
 
 from Core import *
+
+from Cat import Cat
+from System import System
+from Track import Track
 from Recording import Recording
 from Run import Run
 from Experiment import Experiment
@@ -49,13 +44,16 @@ t.load
 print 'Initing and loading Recording(71):'
 r71 = Recording(71)
 r71.load()
-print 'Initing and loading Recording(71):'
+'''
+print 'Initing and loading Recording(75):'
 r75 = Recording(75)
 r75.load()
 r75.e[0].trange=(15344078, 3214034518)
+''''''
 print 'Initing and loading Recording(76):'
 r76 = Recording(76)
 r76.load()
+'''
 print 'Initing and loading Recording(92):'
 r92 = Recording(92)
 r92.load()

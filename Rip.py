@@ -1,6 +1,6 @@
 """Defines the Rip class"""
 
-print 'importing Rip'
+#print 'importing Rip'
 
 from Core import *
 
@@ -9,7 +9,9 @@ class Rip(object):
     were generated with the same spike template, though of course Rips in different Tracks must
     be generated from different templates, even if the Rips have the same name. In the context of a
     Model, a Rip is a set of spike times generated with a certain set of modelling parameters."""
+
     from Recording import Recording
+
     def __init__(self, id=None, name=None, parent=Recording):
         self.level = 4 # level in the hierarchy
         #self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
@@ -28,13 +30,15 @@ class Rip(object):
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
-    def writetree(self,string):
+    def writetree(self, string):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
         self.r.writetree(string)
     '''
     def load(self):
+
         from Neuron import Neuron
+
         #treestr = self.level*TAB + self.name + '/'
         #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
         neuronNames = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(self.path) if os.path.isfile(self.path+fname) and fname.endswith('.spk') ] # returns spike filenames without their .spk extension

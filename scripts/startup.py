@@ -12,7 +12,8 @@ import matplotlib as mpl
 import scipy as sp
 import scipy.signal as sig
 import scipy.weave as weave
-from numpy import arange, array, array as ar, asarray, log, log10, rand, randn, zeros, ones, diff, concatenate, concatenate as cat
+# what happened to numpy.rand and numpy.randn?
+from numpy import arange, array, array as ar, asarray, log, log10, zeros, ones, diff, concatenate, concatenate as cat
 from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
 
 mpl.use('WXAgg')
@@ -92,7 +93,7 @@ def refresh(modname):
     for key, mod in sys.modules.items():
         try:
             if mod.__file__.count(modname):
-                print 'deleting', mod
+                #print 'deleting', mod
                 del sys.modules[key]
         except AttributeError: # some modules don't have a .__file__ attrib
             pass
@@ -123,5 +124,6 @@ def c():
 
 _original = __main__.__dict__.keys()
 
+print 'importing neuropy'
 import neuropy
 from neuropy import *
