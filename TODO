@@ -7,7 +7,9 @@ Schneidman stuff:
 	- do the maximum entropy Ising model
 	- see if cortical data extrapolates to the same sort of ideal network size, ~200 neurons
 
-- multi trial and multineuron raster plots
+- add append() method to Experiment
+- multi trial raster plots
+- add neuron id as a popup or something on mouseover on population raster plot
 - tuning curves
 - STC
 - revcorr to sparse bars, or any stimulus really, by directly sampling VisionEgg's framebuffer

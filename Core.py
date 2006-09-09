@@ -34,7 +34,8 @@ import matplotlib as mpl
 import scipy as sp
 import scipy.signal as sig
 import scipy.weave as weave
-# what happened to numpy.rand and numpy.randn?
+import numpy.random as random
+from numpy.random import rand, randn, randint
 from numpy import arange, array, array as ar, asarray, log, log10, zeros, ones, diff, concatenate, concatenate as cat
 from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
 import wx

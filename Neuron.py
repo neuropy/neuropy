@@ -684,7 +684,7 @@ class RevCorr(object):
         pl.show()
         #mpl.rcParams['toolbar'] = 'toolbar2' # turn toolbars back on for subsequent figures
         #return ias # this prints a whole bunch to screen if not bound to a var, kinda annoying, not too useful anyway
-        # use gcf().canvas.Refresh() to update the window, if it doesn't do so automatically when you modify its contents. maybe use gcf().draw() instead
+        # use wx's gcf().canvas.Refresh() to update the window, if it doesn't do so automatically when you modify its contents. Or, you can use matplotlib's pl.draw() command instead
     '''
 
 class STA(RevCorr):
@@ -803,8 +803,10 @@ class NeuronRevCorr(BaseNeuron):
     stc.__doc__ += getargstr(STC.__init__)
 
 
-class Neuron(NeuronRevCorr, NeuronRate, NeuronCode, NeuronXCorr, BaseNeuron):
-    """Inherit all the Neuron objects into a single Neuron class"""
-    def raster(self):
-        # use pylab.vlines()
-        pass
+class Neuron(NeuronRevCorr,
+             NeuronRate,
+             NeuronCode,
+             NeuronXCorr,
+             BaseNeuron):
+    """Inherit all the Neuron classes into a single Neuron class"""
+    pass

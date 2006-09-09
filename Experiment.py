@@ -492,6 +492,23 @@ class STAs(RevCorrs):
     plot.__doc__ = RevCorrs.plot.__doc__
 
 
+class STCs(RevCorrs):
+    """Just a container class for multiple Neuron.STC objects. The plot() method is unique
+    though: it plots all the Neuron.STC objects in a single figure"""
+    def calc(self):
+        self.stcs = [] # store STCs in a list
+        for neuron in self.neurons:
+            stco = neuron.stc(experiment=self.experiment, trange=self.trange, nt=self.nt)
+            self.stcs.append(stco)
+    def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
+        super(STCs, self).plot(interp=interp, normed=normed,
+                               title='STC: r[%d], e[%d], interp=%s, normed=%s, scale=%s' %
+                               (self.experiment.r.id, self.experiment.id, repr(interp), repr(normed), repr(scale)),
+                               scale=scale,
+                               **kwargs)
+    plot.__doc__ = RevCorrs.plot.__doc__
+
+
 class ExperimentRevCorr(BaseExperiment):
     """Mix-in class that defines the reverse correlation related Experiment methods"""
     def sta(self, neurons=None, **kwargs):
@@ -513,7 +530,106 @@ class ExperimentRevCorr(BaseExperiment):
     sta.__doc__ += '\n\n**kwargs:\n'
     sta.__doc__ += getargstr(STAs.__init__)
 
+    def stc(self, neurons=None, **kwargs):
+        """Returns an STCs RevCorrs object and plots it"""
+        if neurons == None: # no Neurons were passed, use all the Neurons from the default Rip for this experiment's Recording
+            keyvals = self.r.n.items() # get key val pairs in a list of tuples
+            keyvals.sort() # make sure they're sorted by key
+            neurons = []
+            for key, val in keyvals:
+                neurons.append(val)
+        else:
+            try: # assume neurons is a list of Neuron ids, get the associated Neuron objects from the default Rip for this experiment's Recording
+                neurons = [ self.r.n[ni] for ni in neurons ]
+            except KeyError: # neurons is probably a list of Neuron objects
+                pass
+        stcso = STCs(neurons=neurons, experiment=self, **kwargs) # init a new STCs object
+        stcso.calc()
+        return stcso
+    stc.__doc__ += '\n\n**kwargs:\n'
+    stc.__doc__ += getargstr(STCs.__init__)
 
-class Experiment(ExperimentRevCorr, ExperimentRate, ExperimentCode, BaseExperiment):
-    """Inherit all the Experiment objects into a single Experiment class"""
+
+class PopulationRaster(object):
+    """A population spike raster plot"""
+    def __init__(self, experiment):
+        self.e = experiment
+        self.f = figure(figsize=(14, 6))
+        self.a = self.f.add_subplot(111)
+        self.t0 = self.e.din[0, 0]
+        gcfm().frame.SetTitle('r%d.e[%d].raster()' % (self.e.r.id, self.e.id))
+        self.a.set_xlabel('time (msec)')
+        #self.a.set_ylabel('neuron id')
+        self.a.set_yticks([]) # turn off y axis
+        self.a.autoscale_view(scaley=True)
+        nis = self.e.r.n.keys() # neuron ids
+        self.a.set_ylim(nis[0]-0.5, nis[-1]+0.5)
+        self.a.set_position([0.02, 0.1, 0.96, 0.88])
+        #a.set_title('')
+        #xticks = self.a.get_xticks() / 1000.0 # convert from us to ms
+        #xticklabels = []
+        #[ xticklabels.append('%d' % xtick) for xtick in xticks ] # truncate floats into ints
+        #self.a.set_xticklabels(xticklabels)
+        #self.a.set_yticklabels(yticklabels)
+        #pl.connect('motion_notify_event', self.onmotion)
+        pl.connect('key_press_event', self.onkeypress)
+    def plot(self, left=0, width=200000):
+        """Plots the raster, units are us"""
+        self.left = left
+        self.width = width
+        # these could also be sorted by criteria other than neuron id
+        for nii, (ni, neuron) in enumerate(self.e.r.n.items()):
+            x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / 1000.0 # make spike times always relative to t0, convert from us to ms
+            self.a.vlines(x=x, ymin=nii-0.5, ymax=nii+0.5, fmt='k-')
+        self.a.set_xlim(left/1000.0, (left+width)/1000.0) # convert from us to ms
+    def onmotion(self, event):
+        """Called during mouse motion over figure"""
+        pass
+    def panx(self, nsteps):
+        """Pans the raster along the x axis"""
+        # first, delete any vlines that fall outside of the new xlims
+        #for line in self.a.lines:
+            # if line.get_xdata is outside of new bounds
+            # del line
+        self.a.lines=[] # first, clear all the vlines, this is a bit innefficient, since we'll be redrawing most of the ones we just cleared
+        self.plot(left=self.left+self.width*nsteps, width=self.width)
+        pl.draw() # redraw the current figure
+    def zoomx(self, nsteps):
+        """Zooms the raster along the x axis"""
+        self.a.lines=[] # first, clear all the vlines, this is a bit innefficient, since we'll be redrawing most of the ones we just cleared
+        self.plot(left=self.left+self.width*nsteps, width=self.width-2*self.width*nsteps)
+        pl.draw() # redraw the current figure
+    def onkeypress(self, event):
+        """Called during a figure keypress"""
+        print event.key
+        if event.key == 'right':
+            self.panx(+0.1)
+        elif event.key == 'left':
+            self.panx(-0.1)
+        elif event.key == 'up':
+            self.zoomx(+0.1)
+        elif event.key == 'down':
+            self.zoomx(-0.1)
+        elif event.key == '.': # page right
+            self.panx(+1)
+        elif event.key == ',': # page left
+            self.panx(-1)
+
+
+class ExperimentRaster(BaseExperiment):
+    """Mix-in class that defines the raster related Experiment methods"""
+    def raster(self):
+        """Creates a population raster plot"""
+        pr = PopulationRaster(experiment=self)
+        pr.plot()
+
+
+class Experiment(ExperimentRaster,
+                 ExperimentRevCorr,
+                 ExperimentRate,
+                 ExperimentCode,
+                 BaseExperiment):
+    """Inherits all the Experiment classes into a single Experiment class"""
     pass
+
+
