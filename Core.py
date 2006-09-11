@@ -377,6 +377,9 @@ def sah(t, y, ts, keep=False):
     i = np.searchsorted(t, ts) - 1 # find where ts falls in t, dec so you get indices that point to the most recent value in y
     i = np.where(i < 0, 0, i) # handle the cases where ts is smaller than the first point.
     '''this has an issue of not keeping the original data point where ts == t'''
+
+    ###NOTE: can probably get around having to do this by using searchsorted's new 'side' keyword
+
     if keep:
         # The following ensures that the original data point is kept when ts == t, doesn't really work if the shortest ISI is less than tres in ts
         di = diff(i).nonzero()[0] # find changes in i, nonzero() method returns a tuple, pick the result for the first dim with [0] index

@@ -551,13 +551,15 @@ class ExperimentRevCorr(BaseExperiment):
 
 
 class PopulationRaster(object):
-    """A population spike raster plot"""
-    def __init__(self, experiment):
+    """A population spike raster plot. 'sortby' is the neuron attribute name to sort the raster by.
+    Useful attributes to sort by: 'id', 'nspikes', 'trange'"""
+    def __init__(self, experiment, sortby=None):
         self.e = experiment
+        self.sortby = sortby
         self.f = figure(figsize=(14, 6))
         self.a = self.f.add_subplot(111)
         self.t0 = self.e.din[0, 0]
-        gcfm().frame.SetTitle('r%d.e[%d].raster()' % (self.e.r.id, self.e.id))
+        gcfm().frame.SetTitle('r%d.e[%d].raster(sortby=%s)' % (self.e.r.id, self.e.id, repr(self.sortby)))
         self.a.set_xlabel('time (msec)')
         #self.a.set_ylabel('neuron id')
         self.a.set_yticks([]) # turn off y axis
@@ -571,14 +573,17 @@ class PopulationRaster(object):
         #[ xticklabels.append('%d' % xtick) for xtick in xticks ] # truncate floats into ints
         #self.a.set_xticklabels(xticklabels)
         #self.a.set_yticklabels(yticklabels)
-        #pl.connect('motion_notify_event', self.onmotion)
+        pl.connect('motion_notify_event', self.onmotion)
         pl.connect('key_press_event', self.onkeypress)
     def plot(self, left=0, width=200000):
         """Plots the raster, units are us"""
         self.left = left
         self.width = width
-        # these could also be sorted by criteria other than neuron id
-        for nii, (ni, neuron) in enumerate(self.e.r.n.items()):
+        neurons = list(self.e.r.n.values()) # convert to a list to allow sorting
+        if self.sortby != None:
+            neurons.sort(key=lambda n: n.__getattribute__(self.sortby)) # sort the list of neurons according to the specified attribute
+            print 'sort by %s: %s' % (self.sortby, repr([ n.__getattribute__(self.sortby) for n in neurons ]))
+        for nii, neuron in enumerate(neurons):
             x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / 1000.0 # make spike times always relative to t0, convert from us to ms
             self.a.vlines(x=x, ymin=nii-0.5, ymax=nii+0.5, fmt='k-')
         self.a.set_xlim(left/1000.0, (left+width)/1000.0) # convert from us to ms
@@ -618,10 +623,16 @@ class PopulationRaster(object):
 
 class ExperimentRaster(BaseExperiment):
     """Mix-in class that defines the raster related Experiment methods"""
-    def raster(self):
-        """Creates a population raster plot"""
-        pr = PopulationRaster(experiment=self)
-        pr.plot()
+    def raster(self, **kwargs):
+        """Creates a population spike raster plot"""
+        sortby = kwargs.pop('sortby', None)
+        pr = PopulationRaster(experiment=self, sortby=sortby)
+        pr.plot(**kwargs)
+    raster.__doc__ += '\n\n'+PopulationRaster.__doc__
+    raster.__doc__ += '\n\n**kwargs:'
+    raster.__doc__ += '\n__init__: '+'(sortby=None)'
+    #raster.__doc__ += '\n__init__: '+getargstr(PopulationRaster.__init__)
+    raster.__doc__ += '\n    plot: '+getargstr(PopulationRaster.plot)
 
 
 class Experiment(ExperimentRaster,

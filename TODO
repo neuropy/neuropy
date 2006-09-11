@@ -14,6 +14,9 @@ Schneidman stuff:
 - STC
 - revcorr to sparse bars, or any stimulus really, by directly sampling VisionEgg's framebuffer
 
+- figure out how to grab the last command types at the interpreter, so you can set that as the figure caption, makes things nice and explicit. Current code in various gcfm().frame.SetTitle calls that sets the caption sort of guesses what was typed is a hack
+- add popup tooltip for neuron ids in population raster plot
+
 - make PyShell/PyCrust log user input to a file
 - Nah!: Rips should really have ids to make them easier to reference to: r[83].rip[0] instead of r[83].rip['conservative spikes'] - this means adding id prefixes to rip folder names (or maybe suffixes: 'conservative spikes.0.rip', 'liberal spikes.1.rip', etc...). Prefixes would be better cuz they'd force sorting by id in explorer (which uses alphabetical order) - ids should be 0-based of course
 - worry about conversion of ids to strings: some may be only 1 digit and may have a leading zero!
