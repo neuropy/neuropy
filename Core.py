@@ -20,10 +20,13 @@ import os
 import sys
 import time
 import types
+import __main__
 import struct
 import re
 import StringIO
 import random
+import math
+
 from copy import copy
 from pprint import pprint
 printraw = sys.stdout.write # useful for raw printing
@@ -485,4 +488,43 @@ def mean_accum2(data, indices):
         result += data[i]
     result /= len(indices)
     return result
+
+
+class neuropyScalarFormatter(mpl.ticker.ScalarFormatter):
+    """Overloaded from mpl.ticker.ScalarFormatter for 4 reasons:
+    1) turn off stupid offset
+    2) increase maximum possible number sigfigs
+    3) increase +ve and -ve order of magnitude thresholds before switching to scientific notation
+    4) keep exponents in engineering notation, ie multiples of 3"""
+    def __init__(self, useOffset=False, useMathText=False):
+        # useOffset allows plotting small data ranges with large offsets:
+        # for example: [1+1e-9,1+2e-9,1+3e-9]
+        # useMathText will render the offset an scientific notation in mathtext
+        #super(neuropyScalarFormatter, self).__init__(useOffset=useOffset, useMathText=useMathText) # can't use this, cuz derived from an old-style class
+        mpl.ticker.ScalarFormatter.__init__(self, useOffset=useOffset, useMathText=useMathText)
+
+    def _set_orderOfMagnitude(self, range):
+        # if scientific notation is to be used, find the appropriate exponent
+        # if using an numerical offset, find the exponent after applying the offset
+        locs = np.absolute(self.locs)
+        if self.offset: oom = math.floor(math.log10(range))
+        else:
+            if locs[0] > locs[-1]: val = locs[0]
+            else: val = locs[-1]
+            if val == 0: oom = 0
+            else: oom = math.floor(math.log10(val))
+        if oom < -3: # decreased -ve threshold for sci notation
+            self.orderOfMagnitude = (oom // 3)*3 # stick to engineering notation, multiples of 3
+        elif oom > 6: # increased +ve threshold for sci notation
+            self.orderOfMagnitude = (oom // 3)*3 # stick to engineering notation, multiples of 3
+        else:
+            self.orderOfMagnitude = 0
+
+    def _set_format(self):
+        # set the format string to format all the ticklabels
+        locs = (array(self.locs)-self.offset) / 10**self.orderOfMagnitude+1e-15
+        sigfigs = [len(str('%1.10f'% loc).split('.')[1].rstrip('0')) for loc in locs] # '%1.3f' changed to '%1.10f' to increase maximum number of possible sigfigs
+        sigfigs.sort()
+        self.format = '%1.' + str(sigfigs[-1]) + 'f'
+        if self._usetex or self._useMathText: self.format = '$%s$'%self.format
 

@@ -1,7 +1,14 @@
 import os
 import sys
+import time
 import types
 import __main__
+import struct
+import re
+import StringIO
+import random
+import math
+
 from copy import copy
 from pprint import pprint
 printraw = sys.stdout.write # useful for raw printing
@@ -16,6 +23,8 @@ import numpy.random as random
 from numpy.random import rand, randn, randint
 from numpy import arange, array, array as ar, asarray, log, log10, zeros, ones, diff, concatenate, concatenate as cat
 from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
+import wx
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 
 mpl.use('WXAgg')
 mpl.interactive(True)
