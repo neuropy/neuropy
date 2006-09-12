@@ -560,7 +560,8 @@ class PopulationRaster(object):
         self.sort()
         self.f = figure(figsize=(14, 6))
         self.a = self.f.add_subplot(111)
-        self.a.xaxis.set_major_formatter(neuropyScalarFormatter()) # better behaved axis label formatting
+        self.a.xaxis.set_major_locator(neuropyAutoLocator()) # better behaved tick locator
+        self.a.xaxis.set_major_formatter(neuropyScalarFormatter()) # better behaved tick label formatter
         self.t0 = self.e.trange[0]
         gcfm().frame.SetTitle('r%d.e[%d].raster(sortby=%s)' % (self.e.r.id, self.e.id, repr(self.sortby)))
         self.a.set_xlabel('time (msec)')

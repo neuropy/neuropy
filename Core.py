@@ -495,7 +495,8 @@ class neuropyScalarFormatter(mpl.ticker.ScalarFormatter):
     1) turn off stupid offset
     2) increase maximum possible number sigfigs
     3) increase +ve and -ve order of magnitude thresholds before switching to scientific notation
-    4) keep exponents in engineering notation, ie multiples of 3"""
+    4) keep exponents in engineering notation, ie multiples of 3
+    """
     def __init__(self, useOffset=False, useMathText=False):
         # useOffset allows plotting small data ranges with large offsets:
         # for example: [1+1e-9,1+2e-9,1+3e-9]
@@ -527,4 +528,11 @@ class neuropyScalarFormatter(mpl.ticker.ScalarFormatter):
         sigfigs.sort()
         self.format = '%1.' + str(sigfigs[-1]) + 'f'
         if self._usetex or self._useMathText: self.format = '$%s$'%self.format
+
+
+class neuropyAutoLocator(mpl.ticker.MaxNLocator):
+    """A tick autolocator that generates more ticks than the standard mpl autolocator"""
+    def __init__(self):
+        #mpl.ticker.MaxNLocator.__init__(self, nbins=9, steps=[1, 2, 5, 10]) # standard autolocator
+        mpl.ticker.MaxNLocator.__init__(self) # use MaxNLocator's defaults instead
 
