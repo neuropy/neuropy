@@ -15,6 +15,7 @@ Schneidman stuff:
 - revcorr to sparse bars, or any stimulus really, by directly sampling VisionEgg's framebuffer
 
 - figure out how to grab the last command types at the interpreter, so you can set that as the figure caption, makes things nice and explicit. Current code in various gcfm().frame.SetTitle calls that sets the caption sort of guesses what was typed is a hack
+- figure out how to get rid of stupid +1.2432e6 crap on some MPL axes. x1e3 or x1e6 and stuff is fine.
 - add popup tooltip for neuron ids in population raster plot
 
 - make PyShell/PyCrust log user input to a file

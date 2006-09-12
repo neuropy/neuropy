@@ -556,16 +556,18 @@ class PopulationRaster(object):
     def __init__(self, experiment, sortby=None):
         self.e = experiment
         self.sortby = sortby
+        self.neurons = list(self.e.r.n.values()) # convert to a list to allow sorting
+        self.sort()
         self.f = figure(figsize=(14, 6))
         self.a = self.f.add_subplot(111)
-        self.t0 = self.e.din[0, 0]
+        self.t0 = self.e.trange[0]
         gcfm().frame.SetTitle('r%d.e[%d].raster(sortby=%s)' % (self.e.r.id, self.e.id, repr(self.sortby)))
         self.a.set_xlabel('time (msec)')
         #self.a.set_ylabel('neuron id')
         self.a.set_yticks([]) # turn off y axis
-        self.a.autoscale_view(scaley=True)
-        nis = self.e.r.n.keys() # neuron ids
-        self.a.set_ylim(nis[0]-0.5, nis[-1]+0.5)
+        self.yrange = (-0.5, len(self.neurons)-1+0.5)
+        self.a.set_ylim(self.yrange[0], self.yrange[1])
+        #self.a.autoscale_view(scaley=True)
         self.a.set_position([0.02, 0.1, 0.96, 0.88])
         #a.set_title('')
         #xticks = self.a.get_xticks() / 1000.0 # convert from us to ms
@@ -573,40 +575,45 @@ class PopulationRaster(object):
         #[ xticklabels.append('%d' % xtick) for xtick in xticks ] # truncate floats into ints
         #self.a.set_xticklabels(xticklabels)
         #self.a.set_yticklabels(yticklabels)
-        pl.connect('motion_notify_event', self.onmotion)
-        pl.connect('key_press_event', self.onkeypress)
+        self.f.canvas.mpl_connect('motion_notify_event', self.onmotion)
+        self.f.canvas.mpl_connect('key_press_event', self.onkeypress)
+    def sort(self):
+        if self.sortby != None:
+            self.neurons.sort(key=lambda n: n.__getattribute__(self.sortby)) # sort the list of neurons according to the specified attribute
+            print 'sort by %s: %s' % (self.sortby, repr([ n.__getattribute__(self.sortby) for n in self.neurons ]))
     def plot(self, left=0, width=200000):
-        """Plots the raster, units are us"""
+        """Plots the raster, units are us wrt beginning of experiment"""
         self.left = left
         self.width = width
-        neurons = list(self.e.r.n.values()) # convert to a list to allow sorting
-        if self.sortby != None:
-            neurons.sort(key=lambda n: n.__getattribute__(self.sortby)) # sort the list of neurons according to the specified attribute
-            print 'sort by %s: %s' % (self.sortby, repr([ n.__getattribute__(self.sortby) for n in neurons ]))
-        for nii, neuron in enumerate(neurons):
-            x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / 1000.0 # make spike times always relative to t0, convert from us to ms
+        self.a.vlines(x=0/1000.0, ymin=self.yrange[0], ymax=self.yrange[1], fmt='r--') # marks beginning of experiment, convert to ms
+        self.a.vlines(x=(self.e.trange[1]-self.t0)/1000.0, ymin=self.yrange[0], ymax=self.yrange[1], fmt='r--') # marks end of experiment, convert to ms
+        for nii, neuron in enumerate(self.neurons):
+            x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / 1000.0 # make spike times always relative to t0, convert to ms
             self.a.vlines(x=x, ymin=nii-0.5, ymax=nii+0.5, fmt='k-')
         self.a.set_xlim(left/1000.0, (left+width)/1000.0) # convert from us to ms
     def onmotion(self, event):
         """Called during mouse motion over figure"""
         pass
-    def panx(self, nsteps):
+    def panx(self, nsteps=None, left=None):
         """Pans the raster along the x axis"""
         # first, delete any vlines that fall outside of the new xlims
         #for line in self.a.lines:
             # if line.get_xdata is outside of new bounds
             # del line
         self.a.lines=[] # first, clear all the vlines, this is a bit innefficient, since we'll be redrawing most of the ones we just cleared
-        self.plot(left=self.left+self.width*nsteps, width=self.width)
-        pl.draw() # redraw the current figure
+        if left != None: # use left
+            self.plot(left=left, width=self.width)
+        else: # use nsteps instead
+            self.plot(left=self.left+self.width*nsteps, width=self.width)
+        self.f.canvas.draw() # redraw the figure
     def zoomx(self, nsteps):
         """Zooms the raster along the x axis"""
         self.a.lines=[] # first, clear all the vlines, this is a bit innefficient, since we'll be redrawing most of the ones we just cleared
         self.plot(left=self.left+self.width*nsteps, width=self.width-2*self.width*nsteps)
-        pl.draw() # redraw the current figure
+        self.f.canvas.draw() # redraw the figure
     def onkeypress(self, event):
         """Called during a figure keypress"""
-        print event.key
+        #print event.key
         if event.key == 'right':
             self.panx(+0.1)
         elif event.key == 'left':
@@ -619,6 +626,10 @@ class PopulationRaster(object):
             self.panx(+1)
         elif event.key == ',': # page left
             self.panx(-1)
+        elif event.key == '[': # go to start of Experiment
+            self.panx(left=0)
+        elif event.key == ']': # go to end of Experiment
+            self.panx(left=self.e.trange[1]-self.t0-self.width)
 
 
 class ExperimentRaster(BaseExperiment):

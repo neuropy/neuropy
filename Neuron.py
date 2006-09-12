@@ -684,7 +684,7 @@ class RevCorr(object):
         pl.show()
         #mpl.rcParams['toolbar'] = 'toolbar2' # turn toolbars back on for subsequent figures
         #return ias # this prints a whole bunch to screen if not bound to a var, kinda annoying, not too useful anyway
-        # use wx's gcf().canvas.Refresh() to update the window, if it doesn't do so automatically when you modify its contents. Or, you can use matplotlib's pl.draw() command instead
+        # use wx's gcf().canvas.Refresh() to update the window, if it doesn't do so automatically when you modify its contents. Or, you can use matplotlib's pl.draw() command instead, better yet, use fig.canvas.draw() explicitly
     '''
 
 class STA(RevCorr):
