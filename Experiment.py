@@ -613,22 +613,24 @@ class PopulationRaster(object):
         self.f.canvas.draw() # redraw the figure
     def onkeypress(self, event):
         """Called during a figure keypress"""
-        #print event.key
-        if event.key == 'right':
+        key = event.guiEvent.GetKeyCode() # wx dependent
+        # you can also just use the backend-neutral event.key, but that doesn't recognize as many keypresses, like pgup, pgdn, etc.
+        #print key
+        if key == wx.WXK_RIGHT:
             self.panx(+0.1)
-        elif event.key == 'left':
+        elif key == wx.WXK_LEFT:
             self.panx(-0.1)
-        elif event.key == 'up':
+        elif key == wx.WXK_UP:
             self.zoomx(+0.1)
-        elif event.key == 'down':
+        elif key == wx.WXK_DOWN:
             self.zoomx(-0.1)
-        elif event.key == '.': # page right
+        elif key == wx.WXK_NEXT: # PGDN (page right)
             self.panx(+1)
-        elif event.key == ',': # page left
+        elif key == wx.WXK_PRIOR: # PGUP (page left)
             self.panx(-1)
-        elif event.key == '[': # go to start of Experiment
+        elif key == wx.WXK_HOME: # go to start of Experiment
             self.panx(left=0)
-        elif event.key == ']': # go to end of Experiment
+        elif key == wx.WXK_END: # go to end of Experiment
             self.panx(left=self.e.trange[1]-self.t0-self.width)
 
 
