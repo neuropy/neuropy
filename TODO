@@ -2,20 +2,20 @@ Schneidman stuff:
 	- for the time bins, try lots of different phases, see if this changes things at all
 		- look if the most common states remain the most common
 	- since Recordings are fairly short, either combine lots of Recordings into one (or their Experiments), or use a shorter CODEWORDLENGTH to get better stat significance for all possible words
-	- for common states, and see if there's a gradual falloff of probs of being 1 bit, 2bit 3 bit off of that state as you move away from it in bitspace
+		- add append() method to Experiment
+	- for common states, see if there's a gradual falloff of probs of being 1 bit, 2bit 3 bit off of that state as you move away from it in bitspace
 	- look for check cells
 	- do the maximum entropy Ising model
 	- see if cortical data extrapolates to the same sort of ideal network size, ~200 neurons
 
-- add append() method to Experiment
-- multi trial raster plots
+- multi trial single neuron raster plots
 - add neuron id as a popup or something on mouseover on population raster plot
 - tuning curves
 - STC
-- revcorr to sparse bars, or any stimulus really, by directly sampling VisionEgg's framebuffer - easy! just use screen.get_framebuffer_as_array - see r72 makesparsemovie file
+- revcorr to sparse bars, or any stimulus really, by directly sampling VisionEgg's framebuffer - easy! just use screen.get_framebuffer_as_array - see r72 makesparsemovie file. Need to refactor Dimstim (new version, call it lowercase dimstim?) into more OOP to really do this nicely
 
-- figure out how to grab the last command types at the interpreter, so you can set that as the figure caption, makes things nice and explicit. Current code in various gcfm().frame.SetTitle calls that sets the caption sort of guesses what was typed is a hack
-- add popup tooltip for neuron ids in population raster plot
+- figure out how to grab the last command typed at the interpreter, so you can set that as the figure caption, makes things nice and explicit. Current code in various gcfm().frame.SetTitle calls that sets the caption sort of guesses what was typed is a hack
+- increase precision of x, y coord display in statusbar of MPL figures
 
 - make PyShell/PyCrust log user input to a file
 - Nah!: Rips should really have ids to make them easier to reference to: r[83].rip[0] instead of r[83].rip['conservative spikes'] - this means adding id prefixes to rip folder names (or maybe suffixes: 'conservative spikes.0.rip', 'liberal spikes.1.rip', etc...). Prefixes would be better cuz they'd force sorting by id in explorer (which uses alphabetical order) - ids should be 0-based of course

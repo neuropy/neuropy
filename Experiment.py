@@ -553,7 +553,7 @@ class ExperimentRevCorr(BaseExperiment):
 class PopulationRaster(object):
     """A population spike raster plot. 'sortby' is the neuron attribute name to sort the raster by.
     Useful attributes to sort by: 'id', 'nspikes', 'trange'"""
-    def __init__(self, experiment, sortby=None):
+    def __init__(self, experiment, sortby='id'):
         self.e = experiment
         self.sortby = sortby
         self.neurons = list(self.e.r.n.values()) # convert to a list to allow sorting
@@ -564,20 +564,21 @@ class PopulationRaster(object):
         self.a.xaxis.set_major_formatter(neuropyScalarFormatter()) # better behaved tick label formatter
         self.t0 = self.e.trange[0]
         gcfm().frame.SetTitle('r%d.e[%d].raster(sortby=%s)' % (self.e.r.id, self.e.id, repr(self.sortby)))
+        self.tooltip = wx.ToolTip(tip='') # create an empty tooltip
+        self.tooltip.SetDelay(500) # set popup delay in ms
+        gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
         self.a.set_xlabel('time (msec)')
-        #self.a.set_ylabel('neuron id')
         self.a.set_yticks([]) # turn off y axis
-        self.yrange = (-0.5, len(self.neurons)-1+0.5)
-        self.a.set_ylim(self.yrange[0], self.yrange[1])
-        #self.a.autoscale_view(scaley=True)
+        self.yrange = (0, len(self.neurons))
+        self.a.set_ylim(self.yrange)
         self.a.set_position([0.02, 0.1, 0.96, 0.88])
         self.f.canvas.mpl_connect('motion_notify_event', self.onmotion)
         self.f.canvas.mpl_connect('key_press_event', self.onkeypress)
     def sort(self):
-        """Sorts self.neurons according to self.sortby"""
+        """Sorts self.neurons according to their attribute specified by self.sortby"""
         if self.sortby != None:
             self.neurons.sort(key=lambda n: n.__getattribute__(self.sortby))
-            print 'sort by %s: %s' % (self.sortby, repr([ n.__getattribute__(self.sortby) for n in self.neurons ]))
+            print 'sorted by %s: %s' % (self.sortby, repr([ n.__getattribute__(self.sortby) for n in self.neurons ]))
     def plot(self, left=0, width=200000):
         """Plots the raster, units are us wrt beginning of experiment"""
         self.left = left
@@ -586,7 +587,7 @@ class PopulationRaster(object):
         self.a.vlines(x=(self.e.trange[1]-self.t0)/1000.0, ymin=self.yrange[0], ymax=self.yrange[1], fmt='r--') # marks end of experiment, convert to ms
         for nii, neuron in enumerate(self.neurons):
             x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / 1000.0 # make spike times always relative to t0, convert to ms
-            self.a.vlines(x=x, ymin=nii-0.5, ymax=nii+0.5, fmt='k-')
+            self.a.vlines(x=x, ymin=nii, ymax=nii+1, fmt='k-')
         self.a.set_xlim(left/1000.0, (left+width)/1000.0) # convert from us to ms
     def panx(self, nsteps=None, left=None):
         """Pans the raster along the x axis"""
@@ -602,9 +603,12 @@ class PopulationRaster(object):
         self.plot(left=self.left+self.width*nsteps, width=self.width-2*self.width*nsteps)
         self.f.canvas.draw() # redraw the figure
     def onmotion(self, event):
-        """Called during mouse motion over figure, this should pop up
-        the neuron id in a tooltip when hovering over a spike, or over its row"""
-        pass
+        """Called during mouse motion over figure, pops up neuron info
+        in a tooltip when hovering over a neuron row"""
+        #self.tip = wx.TipWindow(gcfm().window, 'hello world')
+        if event.xdata != None and event.ydata != None:
+            nii = int(math.floor(event.ydata)) # use ydata to get index into sorted list of neurons
+            self.tooltip.SetTip(tip='n%d: %d spikes' % (self.neurons[nii].id, self.neurons[nii].nspikes))
     def onkeypress(self, event):
         """Called during a figure keypress"""
         key = event.guiEvent.GetKeyCode() # wx dependent
@@ -632,13 +636,12 @@ class ExperimentRaster(BaseExperiment):
     """Mix-in class that defines the raster related Experiment methods"""
     def raster(self, **kwargs):
         """Creates a population spike raster plot"""
-        sortby = kwargs.pop('sortby', None)
+        sortby = kwargs.pop('sortby', 'id')
         pr = PopulationRaster(experiment=self, sortby=sortby)
         pr.plot(**kwargs)
     raster.__doc__ += '\n\n'+PopulationRaster.__doc__
     raster.__doc__ += '\n\n**kwargs:'
-    raster.__doc__ += '\n__init__: '+'(sortby=None)'
-    #raster.__doc__ += '\n__init__: '+getargstr(PopulationRaster.__init__)
+    raster.__doc__ += '\n__init__: '+getargstr(PopulationRaster.__init__)
     raster.__doc__ += '\n    plot: '+getargstr(PopulationRaster.plot)
 
 
