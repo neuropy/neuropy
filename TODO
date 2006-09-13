@@ -8,11 +8,13 @@ Schneidman stuff:
 	- do the maximum entropy Ising model
 	- see if cortical data extrapolates to the same sort of ideal network size, ~200 neurons
 
+- 2D matrix of cross-correlograms - see the README.wx file in mpl/examples for embedding in wx
 - multi trial single neuron raster plots
 - add neuron id as a popup or something on mouseover on population raster plot
 - tuning curves
 - STC
 - revcorr to sparse bars, or any stimulus really, by directly sampling VisionEgg's framebuffer - easy! just use screen.get_framebuffer_as_array - see r72 makesparsemovie file. Need to refactor Dimstim (new version, call it lowercase dimstim?) into more OOP to really do this nicely
+- maybe change experiment names to include only everything after the exp id in the .srf filename, prevents cluttery repetition of recording name. In case there's only one experiment, use the full .srf filename less the leading recording id and - at the start?
 
 - figure out how to grab the last command typed at the interpreter, so you can set that as the figure caption, makes things nice and explicit. Current code in various gcfm().frame.SetTitle calls that sets the caption sort of guesses what was typed is a hack
 - increase precision of x, y coord display in statusbar of MPL figures

@@ -1,3 +1,5 @@
+"""Runs on PyShell/PyCrust startup, as well as IPython startup"""
+
 import os
 import sys
 import time

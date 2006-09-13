@@ -535,4 +535,3 @@ class neuropyAutoLocator(mpl.ticker.MaxNLocator):
     def __init__(self):
         #mpl.ticker.MaxNLocator.__init__(self, nbins=9, steps=[1, 2, 5, 10]) # standard autolocator
         mpl.ticker.MaxNLocator.__init__(self) # use MaxNLocator's defaults instead
-

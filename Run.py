@@ -64,7 +64,6 @@ class Run(object):
 
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        self.e = {} # store Experiments in a dictionary
         experimentNames = [ fname[0:fname.rfind('.din')] for fname in os.listdir(self.path) if os.path.isfile(self.path+fname) and fname.endswith('.din') ] # returns din filenames without their .din extension
         for (experimentid, experimentName) in enumerate(experimentNames): # experimentids will be according to alphabetical order of experimentNames
             experiment = Experiment(id=experimentid, name=experimentName, parent=self) # pass both the id and the name
@@ -72,7 +71,6 @@ class Run(object):
             self.e[experiment.id] = experiment # save it
         #if len(self.e) == 1:
         #   self.e = self.e.values[0] # pull it out of the dictionary
-        self.rip = {} # store Rips in a dictionary
         ripNames = [ dirname[0:dirname.rfind('.rip')] for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.endswith('.rip') ] # returns rip folder names without their .rip extension
         defaultRipNames = [ ripName for ripName in ripNames for ripkeyword in RIPKEYWORDS if ripName.count(ripkeyword) ]
         if len(defaultRipNames) < 1:

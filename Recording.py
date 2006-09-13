@@ -1,6 +1,4 @@
-"""Defines the Recording class. If need be,  This could be split up into multiple base classes
-(one for basic init and loading RecordingBase), one for rates (RecordingRate), one for codes (RecordingCodes), etc...), and then combined
-using multiple inheritance into a single child Class called Recording"""
+"""Defines the Recording class and all of its support classes"""
 
 # set the self.trange attribe in Base class for Recording, to be consistent with Neuron and Experiment
 
@@ -9,7 +7,7 @@ using multiple inheritance into a single child Class called Recording"""
 from Core import *
 from Core import _data # ensure it's imported, in spite of leading _
 
-class Recording(object):
+class BaseRecording(object):
     """A Recording corresponds to a single SURF file, ie everything recorded between when
     the user hits record and when the user hits stop and closes the SURF file, including any
     pauses in between Experiments within that Recording. A Recording can have multiple Experiments,
@@ -78,7 +76,6 @@ class Recording(object):
             self.e[experiment.id] = experiment # save it
         #if len(self.e) == 1:
         #   self.e = self.e.values[0] # pull it out of the dictionary
-        self.rip = {} # store Rips in a dictionary
         ripNames = [ dirname[0:dirname.rfind('.rip')] for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.endswith('.rip') ] # returns rip folder names without their .rip extension
         defaultRipNames = [ ripName for ripName in ripNames for ripkeyword in RIPKEYWORDS if ripName.count(ripkeyword) ]
         if len(defaultRipNames) < 1:
@@ -95,6 +92,12 @@ class Recording(object):
                     self.n = self.rip[rip.name].n # make it the default Rip
         #if len(self.rip) == 1:
         #   self.rip = self.rip.values[0] # pull it out of the dictionary
+        firstexp = min(self.e.keys())
+        lastexp = max(self.e.keys())
+        self.trange = self.e[0].trange[firstexp], self.e[lastexp].trange[1] # start of the first experiment to end of the last one
+
+    '''
+    # What should be done with this????????????
 
     def plot_codeProbScatter(self, nbits=DEFAULTCODEWORDLENGTH, randomneurons=False, **kwargs):
         """Scatterplots the expected probabilities of all possible population codes (y axis) vs their observed probabilities (x axis)"""
@@ -132,3 +135,126 @@ class Recording(object):
         xlabel('observed population code probability')
         ylabel('expected population code probability')
         title('population code probabilities - recording %d - %s' % (self.id, self.name))
+    '''
+
+class PopulationRaster(object):
+    """A population spike raster plot. 'sortby' is the neuron attribute name to sort the raster by.
+    Useful attributes to sort by: 'id', 'nspikes', 'trange'"""
+    def __init__(self, recording, sortby='id'):
+        self.r = recording
+        self.e = recording.e # dictionary
+        self.sortby = sortby
+        self.neurons = list(self.r.n.values()) # convert to a list to allow sorting
+        self.sort()
+        self.f = figure(figsize=(14, 6))
+        self.a = self.f.add_subplot(111)
+        self.a.xaxis.set_major_locator(neuropyAutoLocator()) # better behaved tick locator
+        self.a.xaxis.set_major_formatter(neuropyScalarFormatter()) # better behaved tick label formatter
+        self.t0 = self.r.trange[0]
+        gcfm().frame.SetTitle('r%d.raster(sortby=%s)' % (self.r.id, repr(self.sortby)))
+        self.tooltip = wx.ToolTip(tip='tip with a looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong line and a newline\n') # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
+        self.tooltip.SetDelay(500) # set popup delay in ms
+        gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
+        self.a.set_xlabel('time (msec)')
+        self.a.set_yticks([]) # turn off y axis
+        self.yrange = (0, len(self.neurons))
+        self.a.set_ylim(self.yrange)
+        self.a.set_position([0.02, 0.1, 0.96, 0.88])
+        self.f.canvas.mpl_connect('motion_notify_event', self.onmotion)
+        self.f.canvas.mpl_connect('key_press_event', self.onkeypress)
+    def sort(self):
+        """Sorts self.neurons according to their attribute specified by self.sortby"""
+        if self.sortby != None:
+            self.neurons.sort(key=lambda n: n.__getattribute__(self.sortby))
+            print 'sorted by %s: %s' % (self.sortby, repr([ n.__getattribute__(self.sortby) for n in self.neurons ]))
+    def plot(self, left=0, width=200000):
+        """Plots the raster, units are us wrt beginning of first experiment"""
+        self.left = left
+        self.width = width
+        # plot experiment start and endpoints
+        for e in self.e.values():
+            estart = e.trange[0]-self.t0
+            eend = e.trange[1]-self.t0
+            if left <=  estart and estart <= left+width: # experiment start point is within view
+                startlines = self.a.vlines(x=estart/1000.0, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k--') # marks exp start, convert to ms
+                startlines[0].set_color((0, 1, 0)) # set to bright green
+            if left <= eend and eend <= left+width: # experiment end point is within view
+                endlines = self.a.vlines(x=eend/1000.0, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k--') # marks exp end, convert to ms
+                endlines[0].set_color((1, 0, 0)) # set to bright red
+        # plot the rasters
+        for nii, neuron in enumerate(self.neurons):
+            x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / 1000.0 # make spike times always relative to t0, convert to ms
+            self.a.vlines(x=x, ymin=nii, ymax=nii+1, fmt='k-')
+        self.a.set_xlim(left/1000.0, (left+width)/1000.0) # convert from us to ms
+    def panx(self, nsteps=None, left=None):
+        """Pans the raster along the x axis"""
+        self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll be redrawing most of the ones we just cleared
+        if left != None: # use left
+            self.plot(left=left, width=self.width)
+        else: # use nsteps instead
+            self.plot(left=self.left+self.width*nsteps, width=self.width)
+        self.f.canvas.draw() # redraw the figure
+    def zoomx(self, nsteps):
+        """Zooms the raster along the x axis"""
+        self.a.lines=[] # first, clear all the vlines, this is a bit innefficient, since we'll be redrawing most of the ones we just cleared
+        self.plot(left=self.left+self.width*nsteps, width=self.width-2*self.width*nsteps)
+        self.f.canvas.draw() # redraw the figure
+    def onmotion(self, event):
+        """Called during mouse motion over figure, pops up neuron info
+        in a tooltip when hovering over a neuron row.
+        TODO: display which experiment you're hovering over"""
+        if event.xdata != None and event.ydata != None:
+            nii = int(math.floor(event.ydata)) # use ydata to get index into sorted list of neurons
+            currentexp = None
+            for e in self.e.values():
+                estart = (e.trange[0]-self.t0)/1000.0
+                eend = (e.trange[1]-self.t0)/1000.0
+                if estart < event.xdata and event.xdata < eend:
+                    currentexp = e
+                    break # don't need to check any of the other experiments
+            tip = 'n%d: %d spikes ' % (self.neurons[nii].id, self.neurons[nii].nspikes)
+            if currentexp == None:
+                tip += '\nno experiment'
+            else:
+                tip += '\nexperiment %s: %s' % (currentexp.id, repr(currentexp.name))
+            self.tooltip.SetTip(tip)
+    def onkeypress(self, event):
+        """Called during a figure keypress"""
+        key = event.guiEvent.GetKeyCode() # wx dependent
+        # you can also just use the backend-neutral event.key, but that doesn't recognize as many keypresses, like pgup, pgdn, etc.
+        #print key
+        if key == wx.WXK_RIGHT:
+            self.panx(+0.1)
+        elif key == wx.WXK_LEFT:
+            self.panx(-0.1)
+        elif key == wx.WXK_UP:
+            self.zoomx(+0.1)
+        elif key == wx.WXK_DOWN:
+            self.zoomx(-0.1)
+        elif key == wx.WXK_NEXT: # PGDN (page right)
+            self.panx(+1)
+        elif key == wx.WXK_PRIOR: # PGUP (page left)
+            self.panx(-1)
+        elif key == wx.WXK_HOME: # go to start of Experiment
+            self.panx(left=0)
+        elif key == wx.WXK_END: # go to end of Experiment
+            self.panx(left=self.r.trange[1]-self.t0-self.width)
+
+
+class RecordingRaster(BaseRecording):
+    """Mix-in class that defines the raster related Recording methods"""
+    def raster(self, **kwargs):
+        """Creates a population spike raster plot"""
+        sortby = kwargs.pop('sortby', 'id')
+        pr = PopulationRaster(recording=self, sortby=sortby)
+        pr.plot(**kwargs)
+    raster.__doc__ += '\n\n'+PopulationRaster.__doc__
+    raster.__doc__ += '\n\n**kwargs:'
+    raster.__doc__ += '\n__init__: '+getargstr(PopulationRaster.__init__)
+    raster.__doc__ += '\n    plot: '+getargstr(PopulationRaster.plot)
+
+
+class Recording(RecordingRaster,
+                BaseRecording):
+    """Inherits all the Recording classes into a single Recording class"""
+    pass

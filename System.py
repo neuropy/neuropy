@@ -13,8 +13,8 @@ class System(object):
         self.m = parent # save parent Model object
         self.name = name
         self.path = self.m.path + self.name + SLASH
-        self.r = {} # store Runs in a dictionary
         self.m.s[self.name] = self # add this System to its parent's dict of Systems, in case this System wasn't loaded by its parent
+        self.r = {} # store Runs in a dictionary
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),

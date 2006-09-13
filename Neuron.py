@@ -210,6 +210,7 @@ class XCorr(object):
         self.dts = array(dts)
         return self.dts
     def plot(self, nbins=100, figsize=(6.5, 6.5), style='count'):
+        """style can be 'count' or 'rate'"""
         f = figure(figsize=figsize)
         a = f.add_subplot(111)
         n, t = histogram(self.dts, bins=nbins)
