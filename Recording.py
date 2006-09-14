@@ -152,8 +152,8 @@ class PopulationRaster(object):
         self.a.xaxis.set_major_formatter(neuropyScalarFormatter()) # better behaved tick label formatter
         self.t0 = self.r.trange[0]
         gcfm().frame.SetTitle('r%d.raster(sortby=%s)' % (self.r.id, repr(self.sortby)))
-        self.tooltip = wx.ToolTip(tip='tip with a looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong line and a newline\n') # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
-        self.tooltip.SetDelay(500) # set popup delay in ms
+        self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
+        self.tooltip.SetDelay(0) # set popup delay in ms
         gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
         self.a.set_xlabel('time (msec)')
         self.a.set_yticks([]) # turn off y axis
@@ -203,7 +203,7 @@ class PopulationRaster(object):
         """Called during mouse motion over figure, pops up neuron info
         in a tooltip when hovering over a neuron row.
         TODO: display which experiment you're hovering over"""
-        if event.xdata != None and event.ydata != None:
+        if event.xdata != None and event.ydata != None: # if mouse is inside the axes
             nii = int(math.floor(event.ydata)) # use ydata to get index into sorted list of neurons
             currentexp = None
             for e in self.e.values():
@@ -217,8 +217,11 @@ class PopulationRaster(object):
                 tip += '\nno experiment'
             else:
                 tip += '\nexperiment %s: %s' % (currentexp.id, repr(currentexp.name))
-            self.tooltip.SetTip(tip)
-    def onkeypress(self, event):
+            self.tooltip.SetTip(tip) # update the tooltip
+            self.tooltip.Enable(True) # make sure it's enabled
+        else:
+            self.tooltip.Enable(False) # disable the tooltip
+    def onkeypress(self, event): # mouse is outside the axes
         """Called during a figure keypress"""
         key = event.guiEvent.GetKeyCode() # wx dependent
         # you can also just use the backend-neutral event.key, but that doesn't recognize as many keypresses, like pgup, pgdn, etc.
