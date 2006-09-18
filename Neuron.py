@@ -57,18 +57,20 @@ class BaseNeuron(object):
         except ValueError:
             pass # it's alphanumeric, leave it as a string
         return id
-    def load(self): # or loadspikes()?
+    def load(self):
+        #treestr = self.level*TAB + self.name + '/'
+        #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
         f = file(self.path + self.name + '.spk', 'rb') # open the spike file for reading in binary mode
         self.spikes = np.fromfile(f, dtype=np.int64) # read in all spike times in us
         f.close()
         self.nspikes = len(self.spikes)
         #self.results = {} # a dictionary to store results in
-        #treestr = self.level*TAB + self.name + '/'
-        #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
         self.trange = self.spikes[0], self.spikes[-1]
+        # then, maybe add something that loads the template for this neuron, as well as its modelled (or just guesstimated) location in 3D (or just 2D) coordinates in um, as well as cell type potentially
+
 
     def cut(self, *args, **kwargs):
-        """Returns all of the Neuron's spike times where tstart <= spikes <= tend
+        """Returns a view of the Neuron's spike times where tstart <= spikes <= tend
 
         *args can be: nothing (returns all spikes), None, tstart, or (tstart, tend)
         None and 0 for tstart are shorthand for 'from first spike'
@@ -166,30 +168,6 @@ class BaseNeuron(object):
         See delta def'n in: 2002 Segev, et al - Long term behavior of lithographically..."""
         return diff(self.isi(trange))
 
-    def xcorr2(self, other=None, trange=(-100000, 100000)):
-        try: # assume other is a Neuron id from the same Rip as self, get the associated Neuron object
-            other = self.rip.n[other]
-        except KeyError: # other is probably a Neuron object
-            pass
-        selfspikes = self.spikes
-        otherspikes = other.spikes
-        nspikes = len(selfspikes)
-        code = """
-               #line 193 "Neuron.py" (This is only useful for debugging)
-               double tmp, err, diff;
-               err = 0.0;
-               for (int spikei=0; spikei<=nspikes; i++) {
-                   trangei = otherspikes.searchsorted(spike+trange(0), spike+trange(1))
-                   out = trangei
-               }
-               return_val = out;
-               """
-        # compiler keyword only needed on windows with MSVC installed
-        out = weave.inline(code,
-                           [selfspikes, otherspikes, nspikes, trange],
-                           type_converters=weave.converters.blitz,
-                           compiler = 'gcc')
-
 
 class XCorr(object):
     def __init__(self, n1=None, n2=None, trange=(-100000, 100000)):
@@ -209,6 +187,25 @@ class XCorr(object):
             dts.extend(dt)
         self.dts = array(dts)
         return self.dts
+
+        # could use some weave code to speed this up
+        '''
+        code = """
+               #line 193 "Neuron.py" (This is only useful for debugging)
+               double tmp, err, diff;
+               err = 0.0;
+               for (int spikei=0; spikei<=nspikes; i++) {
+                   trangei = otherspikes.searchsorted(spike+trange(0), spike+trange(1))
+                   out = trangei
+               }
+               return_val = out;
+               """
+        # compiler keyword only needed on windows with MSVC installed
+        out = weave.inline(code,
+                           [selfspikes, otherspikes, nspikes, trange],
+                           type_converters=weave.converters.blitz,
+                           compiler = 'gcc')
+        '''
     def plot(self, nbins=100, figsize=(6.5, 6.5), style='count'):
         """style can be 'count' or 'rate'"""
         f = figure(figsize=figsize)
@@ -731,8 +728,8 @@ class STA(RevCorr):
         self.done = True
     def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
         super(STA, self).plot(interp=interp, normed=normed,
-                              title='STA: r[%d], e[%d], n[%d], interp=%s, normed=%s, scale=%s' %
-                              (self.experiment.r.id, self.experiment.id, self.neuron.id, repr(interp), repr(normed), repr(scale)),
+                              title='r%d.n[%d].sta().plot(interp=%s, normed=%s, scale=%s)' %
+                              (self.experiment.r.id, self.neuron.id, repr(interp), repr(normed), repr(scale)),
                               scale=scale,
                               **kwargs)
     plot.__doc__ = RevCorr.plot.__doc__
@@ -811,3 +808,21 @@ class Neuron(NeuronRevCorr,
              BaseNeuron):
     """Inherit all the Neuron classes into a single Neuron class"""
     pass
+
+
+class ConstrainedNeuron(Neuron):
+    """A Neuron with its spike times constrained to only those periods of
+    time in its (grand)parent Recording during which an Experiment is in progress"""
+    def load(self):
+        super(ConstrainedNeuron, self).load()
+        cspikes = array([], dtype=np.int64) # init a temporary array
+        #self.tranges = np.empty((len(self.r.e), 2), dtype=np.int64) # give it shape(numexps, 2)
+        self.tranges = []
+        for exp in self.rip.r.e.values():
+            cspikes = np.append(cspikes, self.cut(exp.trange), axis=0)
+            self.tranges.append(exp.trange)
+        cspikes.sort() # make sure they're sorted, in case experiments weren't in temporal order for some reason
+        self.tranges.sort() # ditto
+        self.spikes = cspikes # save 'em
+        self.nspikes = len(self.spikes)
+        self.trange = (self.spikes[0], self.spikes[-1])

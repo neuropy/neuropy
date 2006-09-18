@@ -87,4 +87,3 @@ class Run(object):
                     self.n = self.rip[rip.name].n # make it the default Rip
         #if len(self.rip) == 1:
         #   self.rip = self.rip.values[0] # pull it out of the dictionary
-

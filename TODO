@@ -2,13 +2,21 @@ Schneidman stuff:
 	- for the time bins, try lots of different phases, see if this changes things at all
 		- look if the most common states remain the most common
 	- since Recordings are fairly short, either combine lots of Recordings into one (or their Experiments), or use a shorter CODEWORDLENGTH to get better stat significance for all possible words
-		- add append() method to Experiment
+		- add append() method to Experiment?
 	- for common states, see if there's a gradual falloff of probs of being 1 bit, 2bit 3 bit off of that state as you move away from it in bitspace
 	- look for check cells
 	- do the maximum entropy Ising model
 	- see if cortical data extrapolates to the same sort of ideal network size, ~200 neurons
 
+- cross-correlograms
+	- faster
+	- add p values to peaks (% of ticks within the peak, out of all the ticks in the window)
+	- do both types of shuffle correction (those would be ?)
+- PSTHs
+	- look more closely for 5 ms peaks. Also, looks at data recorded at lower screen refresh rates
+
 - 2D matrix of cross-correlograms - see the README.wx file in mpl/examples for embedding in wx
+
 - multi trial single neuron raster plots
 - add neuron id as a popup or something on mouseover on population raster plot
 - tuning curves
@@ -24,3 +32,13 @@ Schneidman stuff:
 - worry about conversion of ids to strings: some may be only 1 digit and may have a leading zero!
 - maybe make two load() f'ns for Experiment and Neuron: one from files, and a future one from a database
 - make a save() f'n that pickles the object (including any of its results, like its STA, tuning curve points, etc)? - just use IPython's %store
+
+- more detailed experimental info:
+	- Recordings
+		- maybe add other info about the Recording, stored in the same folder, like skull coordinates, angles, polytrode name and type...
+	- Rips
+		- then, maybe add something that loads info about the rip, say from some file describing the template used, and all the thresholds, exported to the same folder by SURF
+        - maybe also load the template file used for the rip, perhaps also stored in the same folder
+	- Neurons
+		- then, maybe add something that loads the template for this neuron, as well as its modelled (or just guesstimated) location in 3D (or just 2D) coordinates in um, as well as cell type potentially
+

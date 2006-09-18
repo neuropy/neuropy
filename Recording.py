@@ -65,8 +65,10 @@ class BaseRecording(object):
             pass # it's alphanumeric, leave it as a string
         return id
     def load(self):
+
         from Experiment import Experiment
         from Rip import Rip
+
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
         experimentNames = [ fname[0:fname.rfind('.din')] for fname in os.listdir(self.path) if os.path.isfile(self.path+fname) and fname.endswith('.din') ] # returns din filenames without their .din extension
@@ -90,11 +92,14 @@ class BaseRecording(object):
             for ripkeyword in RIPKEYWORDS[::-1]: # reverse the keywords so first one gets processed last
                 if rip.name.count(ripkeyword): # if the keyword is in the ripName
                     self.n = self.rip[rip.name].n # make it the default Rip
+                    self.cn = self.rip[rip.name].cn # make it the default Rip for ConstrainedNeurons too
         #if len(self.rip) == 1:
         #   self.rip = self.rip.values[0] # pull it out of the dictionary
         firstexp = min(self.e.keys())
         lastexp = max(self.e.keys())
         self.trange = self.e[0].trange[firstexp], self.e[lastexp].trange[1] # start of the first experiment to end of the last one
+
+        # then, maybe add other info about the Recording, stored in the same folder, like skull coordinates, angles, polytrode name and type...
 
     '''
     # What should be done with this????????????
@@ -153,6 +158,7 @@ class PopulationRaster(object):
         self.t0 = self.r.trange[0]
         gcfm().frame.SetTitle('r%d.raster(sortby=%s)' % (self.r.id, repr(self.sortby)))
         self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
+        self.tooltip.Enable(False) # leave disabled for now
         self.tooltip.SetDelay(0) # set popup delay in ms
         gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
         self.a.set_xlabel('time (msec)')
@@ -200,28 +206,27 @@ class PopulationRaster(object):
         self.plot(left=self.left+self.width*nsteps, width=self.width-2*self.width*nsteps)
         self.f.canvas.draw() # redraw the figure
     def onmotion(self, event):
-        """Called during mouse motion over figure, pops up neuron info
-        in a tooltip when hovering over a neuron row.
-        TODO: display which experiment you're hovering over"""
+        """Called during mouse motion over figure. Pops up neuron and
+        experiment info in a tooltip when hovering over a neuron row."""
         if event.xdata != None and event.ydata != None: # if mouse is inside the axes
             nii = int(math.floor(event.ydata)) # use ydata to get index into sorted list of neurons
             currentexp = None
-            for e in self.e.values():
+            for e in self.e.values(): # for all experiments
                 estart = (e.trange[0]-self.t0)/1000.0
                 eend = (e.trange[1]-self.t0)/1000.0
                 if estart < event.xdata and event.xdata < eend:
                     currentexp = e
                     break # don't need to check any of the other experiments
-            tip = 'n%d: %d spikes ' % (self.neurons[nii].id, self.neurons[nii].nspikes)
+            tip = 'n%d: %d spikes' % (self.neurons[nii].id, self.neurons[nii].nspikes)
             if currentexp == None:
                 tip += '\nno experiment'
             else:
                 tip += '\nexperiment %s: %s' % (currentexp.id, repr(currentexp.name))
             self.tooltip.SetTip(tip) # update the tooltip
             self.tooltip.Enable(True) # make sure it's enabled
-        else:
+        else: # mouse is outside the axes
             self.tooltip.Enable(False) # disable the tooltip
-    def onkeypress(self, event): # mouse is outside the axes
+    def onkeypress(self, event):
         """Called during a figure keypress"""
         key = event.guiEvent.GetKeyCode() # wx dependent
         # you can also just use the backend-neutral event.key, but that doesn't recognize as many keypresses, like pgup, pgdn, etc.

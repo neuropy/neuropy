@@ -298,9 +298,19 @@ def unique(objlist):
 '''
 def iterable(y):
     """Check if the input is iterable, stolen from numpy.iterable()"""
-    try: iter(y)
-    except: return 0
+    try:
+        iter(y)
+    except:
+        return 0
     return 1
+
+def makeiter(y):
+    """If input isn't iterable, returns it in a list. Otherwise, just
+    returns the input"""
+    if iterable(y):
+        return y
+    else:
+        return [y]
 '''
 def tolist(obj):
     """Takes either scalar or sequence input and returns a list,

@@ -256,13 +256,13 @@ class Schneidman(object):
         intcodeps = x.prod(axis=0)
         return intcodeps, intcodes
 
-    def scatter(self, nbits=DEFAULTCODEWORDLENGTH, randomize=False, **kwargs):
+    def scatter(self, nbits=DEFAULTCODEWORDLENGTH, randomneurons=False, shufflecodes=False, **kwargs):
         """Scatterplots the expected probabilities of all possible population codes (y axis) vs their observed probabilities (x axis)"""
         # pick which and how many cells to include
         nis = self.neurons.keys()
         if nbits == None: # use all cells
             nbits = len(nis)
-        if randomize:
+        if randomneurons:
             nis = random.sample(nis, nbits) # randomly sample nbits of the nis
         else:
             nis.sort() # make sure they're in increasing order
@@ -294,7 +294,7 @@ class Schneidman(object):
         loglog(pobserved3, pexpected3, 'c.')
         loglog(pobserved2, pexpected2, 'y.')
         loglog(pobserved1, pexpected1, 'r.')
-        gcfm().frame.SetTitle('r%d.e[%d].schneidman.scatter(nbits=%s, randomize=%s)' % (self.e.r.id, self.e.id, nbits, randomize))
+        gcfm().frame.SetTitle('r%d.e[%d].schneidman.scatter(nbits=%s, randomneurons=%s, shufflecodes=%s)' % (self.e.r.id, self.e.id, nbits, randomneurons, shufflecodes))
         title('neurons: %s' % repr(nis))
         xlabel('observed population code probability')
         ylabel('expected population code probability')
@@ -464,7 +464,7 @@ class STAs(RevCorrs):
             self.stas.append(stao)
     def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
         super(STAs, self).plot(interp=interp, normed=normed,
-                               title='STA: r[%d], e[%d], interp=%s, normed=%s, scale=%s' %
+                               title='r%d.e[%d].sta().plot(interp=%s, normed=%s, scale=%s)' %
                                (self.experiment.r.id, self.experiment.id, repr(interp), repr(normed), repr(scale)),
                                scale=scale,
                                **kwargs)
@@ -491,7 +491,7 @@ class STCs(RevCorrs):
 class ExperimentRevCorr(BaseExperiment):
     """Mix-in class that defines the reverse correlation related Experiment methods"""
     def sta(self, neurons=None, **kwargs):
-        """Returns an STAs RevCorrs object and plots it"""
+        """Returns an STAs RevCorrs object"""
         if neurons == None: # no Neurons were passed, use all the Neurons from the default Rip for this experiment's Recording
             keyvals = self.r.n.items() # get key val pairs in a list of tuples
             keyvals.sort() # make sure they're sorted by key
@@ -499,8 +499,8 @@ class ExperimentRevCorr(BaseExperiment):
             for key, val in keyvals:
                 neurons.append(val)
         else:
-            try: # assume neurons is a list of Neuron ids, get the associated Neuron objects from the default Rip for this experiment's Recording
-                neurons = [ self.r.n[ni] for ni in neurons ]
+            try: # assume neurons is a Neuron id or list of Neuron ids, get the associated Neuron objects from the default Rip for this experiment's Recording
+                neurons = [ self.r.n[ni] for ni in makeiter(neurons) ]
             except KeyError: # neurons is probably a list of Neuron objects
                 pass
         staso = STAs(neurons=neurons, experiment=self, **kwargs) # init a new STAs object
@@ -510,7 +510,7 @@ class ExperimentRevCorr(BaseExperiment):
     sta.__doc__ += getargstr(STAs.__init__)
 
     def stc(self, neurons=None, **kwargs):
-        """Returns an STCs RevCorrs object and plots it"""
+        """Returns an STCs RevCorrs object"""
         if neurons == None: # no Neurons were passed, use all the Neurons from the default Rip for this experiment's Recording
             keyvals = self.r.n.items() # get key val pairs in a list of tuples
             keyvals.sort() # make sure they're sorted by key
@@ -519,7 +519,7 @@ class ExperimentRevCorr(BaseExperiment):
                 neurons.append(val)
         else:
             try: # assume neurons is a list of Neuron ids, get the associated Neuron objects from the default Rip for this experiment's Recording
-                neurons = [ self.r.n[ni] for ni in neurons ]
+                neurons = [ self.r.n[ni] for ni in makeiter(neurons) ]
             except KeyError: # neurons is probably a list of Neuron objects
                 pass
         stcso = STCs(neurons=neurons, experiment=self, **kwargs) # init a new STCs object

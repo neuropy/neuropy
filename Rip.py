@@ -26,6 +26,7 @@ class Rip(object):
         self.name = name
         self.path = self.r.path + self.name + '.rip' + SLASH # have to add .rip extension to rip name to get its actual folder name
         self.n = {} # store Neurons in a dictionary
+        self.cn = {} # store ConstrainedNeurons in a dictionary
     '''
     def tree(self):
         """Print tree hierarchy"""
@@ -37,7 +38,7 @@ class Rip(object):
     '''
     def load(self):
 
-        from Neuron import Neuron
+        from Neuron import Neuron, ConstrainedNeuron
 
         #treestr = self.level*TAB + self.name + '/'
         #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
@@ -46,6 +47,9 @@ class Rip(object):
             neuron = Neuron(id=None, name=neuronName, parent=self) # make an instance using just the neuron name (let it figure out the neuron id)
             neuron.load() # load the neuron
             self.n[neuron.id] = neuron # save it
+            # repeat for ConstrainedNeurons
+            constrainedneuron = ConstrainedNeuron(id=None, name=neuronName, parent=self)
+            constrainedneuron.load()
+            self.cn[neuron.id] = constrainedneuron
         # then, maybe add something that loads info about the rip, say from some file describing the template used, and all the thresholds, exported to the same folder by SURF
-        # maybe also load the template used for the rip, perhaps also stored in the same folder
-
+        # maybe also load the template file used for the rip, perhaps also stored in the same folder
