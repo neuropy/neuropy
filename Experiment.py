@@ -385,7 +385,6 @@ class ExperimentCode(BaseExperiment):
         """Returns a Schneidman object"""
         so = Schneidman(experiment=self)
         return so
-
     '''
     def codewords(self, **kwargs):
         cw = CodeWords(trange=self.trange)

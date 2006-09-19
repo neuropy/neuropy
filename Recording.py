@@ -147,7 +147,13 @@ class PopulationRaster(object):
     Useful attributes to sort by: 'id', 'nspikes', 'trange'"""
     def __init__(self, recording, sortby='id'):
         self.r = recording
+        self.t0 = self.r.trange[0]
         self.e = recording.e # dictionary
+        experimentmarkers = [] # a list of all experiment start and stop times, in sorted order
+        for e in self.e.values():
+            experimentmarkers.extend(e.trange)
+        self.experimentmarkers = asarray(experimentmarkers) - self.t0 # make 'em relative to t0
+        self.experimentmarkers.sort() # just in case exps weren't in sorted order for some reason
         self.sortby = sortby
         self.neurons = list(self.r.n.values()) # convert to a list to allow sorting
         self.sort()
@@ -155,7 +161,6 @@ class PopulationRaster(object):
         self.a = self.f.add_subplot(111)
         self.a.xaxis.set_major_locator(neuropyAutoLocator()) # better behaved tick locator
         self.a.xaxis.set_major_formatter(neuropyScalarFormatter()) # better behaved tick label formatter
-        self.t0 = self.r.trange[0]
         gcfm().frame.SetTitle('r%d.raster(sortby=%s)' % (self.r.id, repr(self.sortby)))
         self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
         self.tooltip.Enable(False) # leave disabled for now
@@ -231,23 +236,33 @@ class PopulationRaster(object):
         key = event.guiEvent.GetKeyCode() # wx dependent
         # you can also just use the backend-neutral event.key, but that doesn't recognize as many keypresses, like pgup, pgdn, etc.
         #print key
-        if key == wx.WXK_RIGHT:
-            self.panx(+0.1)
-        elif key == wx.WXK_LEFT:
-            self.panx(-0.1)
-        elif key == wx.WXK_UP:
-            self.zoomx(+0.1)
-        elif key == wx.WXK_DOWN:
-            self.zoomx(-0.1)
-        elif key == wx.WXK_NEXT: # PGDN (page right)
-            self.panx(+1)
-        elif key == wx.WXK_PRIOR: # PGUP (page left)
-            self.panx(-1)
-        elif key == wx.WXK_HOME: # go to start of Experiment
-            self.panx(left=0)
-        elif key == wx.WXK_END: # go to end of Experiment
-            self.panx(left=self.r.trange[1]-self.t0-self.width)
-
+        #import pdb; pdb.set_trace()
+        if not event.guiEvent.ControlDown(): # wx dependent
+            if key == wx.WXK_RIGHT:
+                self.panx(+0.1)
+            elif key == wx.WXK_LEFT:
+                self.panx(-0.1)
+            elif key == wx.WXK_UP:
+                self.zoomx(+0.1)
+            elif key == wx.WXK_DOWN:
+                self.zoomx(-0.1)
+            elif key == wx.WXK_NEXT: # PGDN (page right)
+                self.panx(+1)
+            elif key == wx.WXK_PRIOR: # PGUP (page left)
+                self.panx(-1)
+            elif key == wx.WXK_HOME: # go to start of first Experiment
+                self.panx(left=0)
+            elif key == wx.WXK_END: # go to end of last Experiment
+                self.panx(left=self.r.trange[1]-self.t0-self.width)
+        else: # Ctrl key is down, skip forward or back to next experiment marker
+            if key == wx.WXK_LEFT:
+                i = self.experimentmarkers.searchsorted(self.left, side='left') # current position of left edge of the window in experimentmarkers list
+                i = max(0, i-1) # decrement by 1, do bounds checking
+                self.panx(left=self.experimentmarkers[i])
+            if key == wx.WXK_RIGHT:
+                i = self.experimentmarkers.searchsorted(self.left, side='right') # current position of left edge of the window in experimentmarkers list
+                i = min(i, len(self.experimentmarkers)-1) # bounds checking
+                self.panx(left=self.experimentmarkers[i])
 
 class RecordingRaster(BaseRecording):
     """Mix-in class that defines the raster related Recording methods"""
