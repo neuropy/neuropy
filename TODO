@@ -3,6 +3,8 @@ Schneidman stuff:
 		- look if the most common states remain the most common
 	- since Recordings are fairly short, either combine lots of Recordings into one (or their Experiments), or use a shorter CODEWORDLENGTH to get better stat significance for all possible words
 		- add append() method to Experiment?
+		- better to add append() to Recording?
+		- best to just use append() in Neuron? make .spikes 2d array?
 	- for common states, see if there's a gradual falloff of probs of being 1 bit, 2bit 3 bit off of that state as you move away from it in bitspace
 	- look for check cells
 	- do the maximum entropy Ising model
@@ -17,8 +19,10 @@ Schneidman stuff:
 
 - 2D matrix of cross-correlograms - see the README.wx file in mpl/examples for embedding in wx
 
-- multi trial single neuron raster plots
-- add neuron id as a popup or something on mouseover on population raster plot
+- rasters
+	- multi trial single neuron raster plots
+	- make rasters faster when large number of spikes on screen (instead of deleting and recreating all vlines, do so just for ones that disappear and appear?)
+
 - tuning curves
 - STC
 - revcorr to sparse bars, or any stimulus really, by directly sampling VisionEgg's framebuffer - easy! just use screen.get_framebuffer_as_array - see r72 makesparsemovie file. Need to refactor Dimstim (new version, call it lowercase dimstim?) into more OOP to really do this nicely
@@ -42,3 +46,17 @@ Schneidman stuff:
 	- Neurons
 		- then, maybe add something that loads the template for this neuron, as well as its modelled (or just guesstimated) location in 3D (or just 2D) coordinates in um, as well as cell type potentially
 
+
+
+
+
+
+DONE:
+
+- STAs
+- codes, some Schneidman stuff
+- cross-correlograms
+- population rasters
+	- add neuron id as a popup or something on mouseover on population raster plot
+- various rate methods, ratePDFs
+- lots of other stuff I've forgotten about

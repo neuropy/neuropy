@@ -132,6 +132,14 @@ def barefigure(*args, **kwargs):
 barefigure.__doc__ += '\n' + figure.__doc__
 
 
+def lastcmd():
+    """Returns a string containing the last command entered at the PyShell prompt.
+    Maybe this could be expanded to work with other shells too?"""
+    try:
+        return __main__.shell.lastcmd
+    except:
+        return 'unknown'
+
 class CanvasFrame(wx.Frame):
     """A minimal wx.Frame containing a matplotlib figure"""
     def __init__(self, title='frame', size=(550,350)):
@@ -296,21 +304,21 @@ def unique(objlist):
             if i != j and obj1 == obj2:
                 del objlist[j]
 '''
-def iterable(y):
+def iterable(x):
     """Check if the input is iterable, stolen from numpy.iterable()"""
     try:
-        iter(y)
+        iter(x)
     except:
         return 0
     return 1
 
-def makeiter(y):
+def makeiter(x):
     """If input isn't iterable, returns it in a list. Otherwise, just
     returns the input"""
-    if iterable(y):
-        return y
+    if iterable(x):
+        return x
     else:
-        return [y]
+        return [x]
 '''
 def tolist(obj):
     """Takes either scalar or sequence input and returns a list,
@@ -405,6 +413,7 @@ def sah(t, y, ts, keep=False):
 def corrcoef(x, y):
     """Returns correlation coefficient of signals x and y. This should be equivalent to np.corrcoef(),
     but that one doesn't seem to work for signals with zeros in them. Check how std() works exactly"""
+    assert len(x) == len(y), 'arrays need to be of equal length'
     x = array(x)
     y = array(y)
     return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std())
@@ -466,19 +475,19 @@ def getbinarytable(nbits=8):
         x.append(row)
     return cat(x)
 
-def shuffle(ip):
-    """Takes an input list and returns a shuffled (without replacement) copy, its only benefit
-    over and above random.sample() is that you don't have to pass a second argument len(ip)
+def shuffle(x):
+    """Takes an input list x and returns a shuffled (without replacement) copy. Its only benefit
+    over and above random.sample() is that you don't have to pass a second argument len(x)
     every time you use it"""
-    return random.sample(ip, len(ip))
+    return random.sample(x, len(x))
 
-def randomize(ip):
-    """Takes an input list and returns a randomized (with replacement) output list of
+def randomize(x):
+    """Takes an input list x and returns a randomized (with replacement) output list of
     the same length, sampled from the input sequence"""
-    op = [] # init output list
-    for i in range(0, len(ip)):
-        op.append(random.choice(ip))
-    return op
+    y = [] # init output list
+    for i in range(0, len(x)):
+        y.append(random.choice(x))
+    return y
 
 def mean_accum(data):
     """Takes mean by accumulating over 0th axis in data,

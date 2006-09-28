@@ -5,7 +5,7 @@
 from Core import *
 from Dimstim.Core import buildSweepTable
 import Neuron
-from Recording import PopulationRaster
+from Recording import PopulationRaster, Codes, CodeCorrPDF, Schneidman
 
 class BaseExperiment(object):
     """An Experiment corresponds to a single contiguous VisionEgg stimulus session.
@@ -135,207 +135,14 @@ class BaseExperiment(object):
         self.sweepranges = {}
 
 
-class CodeCorrPDF(object):
-    """A PDF of the correlations of the codes of all cell pairs in this Experiment
-    See 2006 Schneidman fig 1d"""
-    def __init__(self, experiment=None, **kwargs):
-        self.e = experiment
-        self.r = self.e.r
-        self.kwargs = kwargs
-    def __eq__(self, other):
-        selfd = self.__dict__.copy()
-        otherd = other.__dict__.copy()
-        # Delete their n and c attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
-        [ d.__delitem__(key) for d in [selfd, otherd] for key in ['corrs', 'n', 'c', 'crange', 'nbins', 'normed'] if d.has_key(key) ]
-        if type(self) == type(other) and selfd == otherd:
-            return True
-        else:
-            return False
-    def calc(self):
-        neurons = self.r.n.keys()
-        nneurons = len(neurons)
-        self.corrs = [ self.e.codecorr(neurons[ni1], neurons[ni2], **self.kwargs) for ni1 in range(0,nneurons) for ni2 in range(ni1,nneurons) if ni1 != ni2 ]
-    def plot(self, figsize=(7.5, 6.5), crange=None, nbins=100, normed='pdf'):
-        self.crange = crange
-        self.nbins = nbins
-        self.normed = normed
-        f = figure(figsize=figsize)
-        a = f.add_subplot(111)
-        try: # figure out the bin edges
-            c = np.linspace(start=self.crange[0], stop=self.crange[1], num=self.nbins, endpoint=True)
-        except TypeError: # self.crange is None, let histogram() figure out the bin edges
-            c = self.nbins
-        self.n, self.c = histogram(self.corrs, bins=c, normed=self.normed)
-        try:
-            barwidth = (self.crange[1] - self.crange[0]) / float(self.nbins)
-        except TypeError: # self.crange is None, take width of first bin in self.c
-            barwidth = self.c[1] - self.c[0]
-        a.bar(left=self.c, height=self.n, width=barwidth, bottom=0, color='k', yerr=None, xerr=None, ecolor='k', capsize=3)
-        try:
-            a.set_xlim(self.crange)
-        except TypeError: # self.crange is None
-            pass
-        gcfm().frame.SetTitle('r%d.e[%d].codecorrpdf(nbins=%d)' % (self.r.id, self.e.id, self.nbins))
-        a.set_title('neuron pair code correlation pdf')
-        if self.normed:
-            if self.normed == 'pmf':
-                a.set_ylabel('probability mass')
-            else:
-                a.set_ylabel('probability density')
-        else:
-            a.set_ylabel('count')
-        a.set_xlabel('correlation coefficient')
-
-
-class Codes(object):
-    """A 2D array where each row is a neuron code, and each column
-    is a binary population word for that time bin"""
-    def __init__(self, neurons=None, trange=None, **kwargs):
-        self.trange = trange
-        self.neurons = neurons
-        self.kwargs = kwargs
-    def calc(self):
-        self.c = []
-        for neuron in self.neurons.values():
-            self.c.append( [ neuron.code(trange=self.trange, **self.kwargs).c ] ) # each is a nested list (ie, 2D)
-        self.c = tuple(self.c) # required for concatenate
-        self.c = cat(self.c)
-        #self.c.reshape(len(self.neurons), -1) # reshape to 2D array
-'''
-class CodeWords(object):
-    """What's this supposed to do?"""
-    pass
-'''
-
-class Schneidman(object):
-    """see 2006 Schneidman figs 1e and 1f"""
-    def __init__(self, experiment=None):
-        self.e = experiment
-        self.neurons = self.e.r.n
-
-    def intcodes(self, nis=None, **kwargs):
-        """Returns an array of the integer representation of the neuronal population code for each time bin"""
-        if nis == None:
-            nis = self.neurons.keys()
-        neurons = {}
-        [ neurons.__setitem__(ni, self.neurons[ni]) for ni in nis ]
-        codeso = self.e.codes(neurons=neurons, **kwargs) # 2D array of binary words. rows are neuron codes, columns are words for each time bin
-        return binaryarray2int(codeso.c)
-
-    def intcodesPDF(self, nis=None, **kwargs):
-        """Returns the pdf across all possible population code words"""
-        if nis == None:
-            nis = self.neurons.keys()
-        intcodes = self.intcodes(nis=nis, **kwargs)
-        nbits = len(nis)
-        p, bins = histogram(intcodes, bins=arange(2**nbits), normed='pmf')
-        return p, bins
-
-    def intcodesFPDF(self, nis=None, **kwargs):
-        """Returns the probability of getting each population code word, assuming independence between neurons, taking into account each neuron's spike probability"""
-        if nis == None:
-            nis = self.neurons.keys()
-        nbits = len(nis)
-        intcodes = arange(2**nbits)
-        neurons = {}
-        [ neurons.__setitem__(ni, self.neurons[ni]) for ni in nis ]
-        codeso = self.e.codes(neurons=neurons, **kwargs)
-        spikeps = [] # list spike probabilities for all neurons
-        for neuroncode in codeso.c: # for each neuron, ie each row
-            spikeps.append( neuroncode.sum() / float(neuroncode.size) ) # calc the average p of getting a spike for this neuron, within any time bin
-        spikeps = array(spikeps, ndmin = 2)
-        nospikeps = 1 - spikeps
-        #print 'spikesps: ', spikeps
-        #print 'nospikesps: ', nospikeps
-        pon = getbinarytable(nbits)*spikeps.transpose()
-        poff = (1 - getbinarytable(nbits))*nospikeps.transpose()
-        #print 'pon', pon
-        #print 'poff', poff
-        x = pon + poff
-        #print 'x', x
-        intcodeps = x.prod(axis=0)
-        return intcodeps, intcodes
-
-    def scatter(self, nbits=DEFAULTCODEWORDLENGTH, randomneurons=False, shufflecodes=False, **kwargs):
-        """Scatterplots the expected probabilities of all possible population codes (y axis) vs their observed probabilities (x axis)"""
-        # pick which and how many cells to include
-        nis = self.neurons.keys()
-        if nbits == None: # use all cells
-            nbits = len(nis)
-        if randomneurons:
-            nis = random.sample(nis, nbits) # randomly sample nbits of the nis
-        else:
-            nis.sort() # make sure they're in increasing order
-            nis = nis[:nbits] # use just the first nbits neurons to make your words
-        print 'neurons:', nis
-        pobserved, observedwords = self.intcodesPDF(nis=nis, **kwargs)
-        pexpected, expectedwords = self.intcodesFPDF(nis=nis, **kwargs) # expected, assuming independence
-        figure()
-        plot([10**-6, 1], [10**-6, 1], 'b-') # plot an x=y line
-        hold(True)
-        # pl.scatter(pobserved, pexpected), followed by setting the x and y axes to log scale freezes the figure and runs 100% cpu
-        # gca().set_xscale('log')
-        # gca().set_yscale('log')
-        # use loglog() instead
-        inds = []
-        for nspikes in range(0,5):
-            inds.append([])
-            [ inds[nspikes].append(i) for i in range(0,2**nbits) if bin(i).count('1') == nspikes ]
-        pobserved1 = pobserved[inds[1]]; pexpected1 = pexpected[inds[1]]
-        pobserved2 = pobserved[inds[2]]; pexpected2 = pexpected[inds[2]]
-        pobserved3 = pobserved[inds[3]]; pexpected3 = pexpected[inds[3]]
-        pobserved4 = pobserved[inds[4]]; pexpected4 = pexpected[inds[4]]
-        pobserved[inds[1]], pexpected[inds[1]] = None, None # remove all these
-        pobserved[inds[2]], pexpected[inds[2]] = None, None
-        pobserved[inds[3]], pexpected[inds[3]] = None, None
-        pobserved[inds[4]], pexpected[inds[4]] = None, None
-        loglog(pobserved, pexpected, 'k.') # plots what's left in black
-        loglog(pobserved4, pexpected4, 'm.')
-        loglog(pobserved3, pexpected3, 'c.')
-        loglog(pobserved2, pexpected2, 'y.')
-        loglog(pobserved1, pexpected1, 'r.')
-        gcfm().frame.SetTitle('r%d.e[%d].schneidman.scatter(nbits=%s, randomneurons=%s, shufflecodes=%s)' % (self.e.r.id, self.e.id, nbits, randomneurons, shufflecodes))
-        title('neurons: %s' % repr(nis))
-        xlabel('observed population code probability')
-        ylabel('expected population code probability')
-
-    def nspikingPDF(self, nbits=None, **kwargs):
-        """Returns the PDF of observing n cells spiking in the same population code time bin"""
-        print 'INCOMPLETE!!!!!!!!!!!!!!!!!!!!!!!!'
-        pobserved, observedwords = self.intcodesPDF(nbits=nbits, **kwargs)
-        nspiking = [] # collect observances of the number of cells spiking for each pop code time bin
-        for observedword in observedwords: # slow hack
-            nspiking.append( np.binary_repr(observedword).count('1') ) # convert words to binary, count the number of 1s in each
-        pnspiking, bins = histogram(nspiking, bins=arange(nbits), normed='pmf') # histogram 'em
-        return pnspiking, bins
-
-    def nspikingFPDF(self, nbits=None, **kwargs):
-        """Returns the PDF of observing n cells spiking in the same population code time bin, assuming independence by shuffling each cell's code train"""
-        print 'INCOMPLETE!!!!!!!!!!!!!!!!!!!!!!!!'
-        pass
-
-    def plot_pdf(self, nbits=None, **kwargs):
-        """Plots nspikingPDF and nspikingFPDF together. See 2006 Schneidman fig 1e"""
-        print 'INCOMPLETE!!!!!!!!!!!!!!!!!!!!!!!!'
-        nspikingPDF
-        nspikingFPDF
-    '''
-    class plot(object):
-        """Would allow you to do r92.e[0].schneidman().plot().scatter()"""
-        def scatter():
-            pass
-        def pdf():
-            pass
-    '''
-
 class ExperimentCode(BaseExperiment):
     """Mix-in class that defines the spike code related Experiment methods"""
     def code(self, neuron=None, **kwargs):
         """Returns a Neuron.Code object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
         try:
-            return neuron.code(trange=self.trange, **kwargs) # see if neuron is a Neuron
+            return neuron.code(tranges=[self.trange], **kwargs) # see if neuron is a Neuron
         except AttributeError:
-            return self.r.n[neuron].code(trange=self.trange, **kwargs) # neuron is probably a Neuron id
+            return self.r.n[neuron].code(tranges=[self.trange], **kwargs) # neuron is probably a Neuron id
     code.__doc__ += '\n\n**kwargs:'
     code.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code)
     code.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__)
@@ -345,7 +152,7 @@ class ExperimentCode(BaseExperiment):
         INCOMPLETE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"""
         if neurons == None:
             neurons = self.r.n
-        codeso = Codes(neurons=neurons, trange=self.trange, **kwargs)
+        codeso = self.r.codes(neurons=neurons, tranges=[self.trange], **kwargs)
         codeso.calc()
         return codeso
     code.__doc__ += '\n\n**kwargs:'
@@ -369,7 +176,7 @@ class ExperimentCode(BaseExperiment):
             self._codecorrpdfs
         except AttributeError: # doesn't exist yet
             self._codecorrpdfs = [] # create a list that'll hold CodeCorrPDF objects
-        cco = CodeCorrPDF(experiment=self, **kwargs) # init a new one
+        cco = self.r.codecorrpdf(experiments={self.id: self}, **kwargs) # init a new one
         for ccpdf in self._codecorrpdfs:
             if cco == ccpdf: # need to define special == method for class CodeCorrPDF()
                 return ccpdf # returns the first object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._codecorrpdfs
@@ -463,8 +270,9 @@ class STAs(RevCorrs):
             self.stas.append(stao)
     def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
         super(STAs, self).plot(interp=interp, normed=normed,
-                               title='r%d.e[%d].sta().plot(interp=%s, normed=%s, scale=%s)' %
-                               (self.experiment.r.id, self.experiment.id, repr(interp), repr(normed), repr(scale)),
+                               title=lastcmd(),
+                               #title='r%d.e[%d].sta().plot(interp=%s, normed=%s, scale=%s)' %
+                               #(self.experiment.r.id, self.experiment.id, repr(interp), repr(normed), repr(scale)),
                                scale=scale,
                                **kwargs)
     plot.__doc__ = RevCorrs.plot.__doc__
@@ -480,8 +288,9 @@ class STCs(RevCorrs):
             self.stcs.append(stco)
     def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
         super(STCs, self).plot(interp=interp, normed=normed,
-                               title='STC: r[%d], e[%d], interp=%s, normed=%s, scale=%s' %
-                               (self.experiment.r.id, self.experiment.id, repr(interp), repr(normed), repr(scale)),
+                               title=lastcmd(),
+                               #title='STC: r[%d], e[%d], interp=%s, normed=%s, scale=%s' %
+                               #(self.experiment.r.id, self.experiment.id, repr(interp), repr(normed), repr(scale)),
                                scale=scale,
                                **kwargs)
     plot.__doc__ = RevCorrs.plot.__doc__
@@ -531,10 +340,8 @@ class ExperimentRevCorr(BaseExperiment):
 class ExperimentPopulationRaster(PopulationRaster):
     """A population raster limited to a single Experiment"""
     def __init__(self, experiment, sortby='id'):
-        super(ExperimentPopulationRaster, self).__init__(recording=experiment.r, sortby=sortby)
-        self.e = {experiment.id: experiment} # overwrite its e dictionary with just this experiment
-        self.t0 = experiment.trange[0] # overwrite t0
-        gcfm().frame.SetTitle('r%d.e[%d].raster(sortby=%s)' % (experiment.r.id, experiment.id, repr(self.sortby))) # set appropriate caption
+        super(ExperimentPopulationRaster, self).__init__(recording=experiment.r, experiments={experiment.id: experiment}, sortby=sortby)
+        #gcfm().frame.SetTitle('r%d.e[%d].raster(sortby=%s)' % (experiment.r.id, experiment.id, repr(self.sortby))) # set appropriate caption
 
 
 class ExperimentRaster(BaseExperiment):
@@ -557,5 +364,3 @@ class Experiment(ExperimentRaster,
                  BaseExperiment):
     """Inherits all the Experiment classes into a single Experiment class"""
     pass
-
-

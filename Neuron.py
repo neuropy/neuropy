@@ -64,6 +64,8 @@ class BaseNeuron(object):
         self.spikes = np.fromfile(f, dtype=np.int64) # read in all spike times in us
         f.close()
         self.nspikes = len(self.spikes)
+        if self.nspikes == 0: # this Neuron has no spikes, not much of a Neuron as far as this Recording is concerened
+            self.spikes = np.append(self.nspikes, None) # add None to empty spike list
         #self.results = {} # a dictionary to store results in
         self.trange = self.spikes[0], self.spikes[-1]
         # then, maybe add something that loads the template for this neuron, as well as its modelled (or just guesstimated) location in 3D (or just 2D) coordinates in um, as well as cell type potentially
@@ -135,8 +137,8 @@ class BaseNeuron(object):
         """Appends the spike times of self and other Neurons and returns a copy of the uberneuron.
         All Neurons must have the same id and be of the same Track. The user needs to ensure
         that the same template was used to rip all the Neurons"""
-        if not iterable(others):
-            others = [others]
+        print 'This is dangerous, cuz you can''t simply append neuron spike times, need to add some kind of huge ass time offset between Recordings'
+        others = makeiter(others)
         for other in others:
             assert self.id == other.id, 'Neuron ids are different'
             #assert self.rip == other.rip, 'Rips are different' # forget this, only the user can really know if they use the same template
@@ -151,11 +153,10 @@ class BaseNeuron(object):
         uberneuron.spikes.sort() # make sure spiketimes remain sorted
         uberneuron.trange = uberneuron.spikes[0], uberneuron.spikes[-1]
         uberneuron.rip = [uberneuron.rip] # convert to list
-        #uberneuron.r = [uberneuron.r] # convert to list
         for other in others:
             uberneuron.name += ', ' + other.name # keep it as a single string
             uberneuron.path += ', ' + other.path # keep it as a single string
-            uberneuron.rip.append(other.rip)
+            uberneuron.rip.append(other.rip) # concatenate all rips into a list
         return uberneuron
 
     def isi(self, trange=None):
@@ -217,7 +218,8 @@ class XCorr(object):
         if style == 'rate':
             n = n / float(barwidth)
         bar(left=t, height=n, width=barwidth)
-        gcfm().frame.SetTitle('r%d.n[%d].xcorr(%d)' % (self.n1.rip.r.id, self.n1.id, self.n2.id))
+        gcfm().frame.SetTitle(lastcmd())
+        #gcfm().frame.SetTitle('r%d.n[%d].xcorr(%d)' % (self.n1.rip.r.id, self.n1.id, self.n2.id))
         a.set_title('n%d spikes relative to n%d spikes' % (self.n2.id, self.n1.id))
         a.set_xlabel('time (msec)')
         if style == 'rate':
@@ -242,18 +244,19 @@ class NeuronXCorr(BaseNeuron):
 
 
 class BaseCode(object):
-    """Abstract spike code class"""
-    def __init__(self, neuron=None, trange=None):
+    """Abstract spike code class. tranges is a list of time ranges to use
+    when generating the code"""
+    def __init__(self, neuron=None, tranges=None):
         self.neuron = neuron
-        if trange == None:
-            self.trange = self.neuron.trange
+        if tranges == None:
+            self.tranges = [ self.neuron.trange ]
         else:
-            self.trange = trange
+            self.tranges = makeiter(tranges)
     def __eq__(self, other):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
         # Delete their c and t attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
-        [ d.__delitem__(key) for d in [selfd, otherd] for key in ['c', 't'] if d.has_key(key) ]
+        [ d.__delitem__(key) for d in [selfd, otherd] for key in ['c', 't', 's'] if d.has_key(key) ]
         if type(self) == type(other) and selfd == otherd:
             return True
         else:
@@ -265,18 +268,23 @@ class BaseCode(object):
 
 class BinaryCode(BaseCode):
     """Quantizes the spike train into a binary signal with a given time resolution"""
-    def __init__(self, neuron=None, trange=None, tres=20000):
-        super(BinaryCode, self).__init__(neuron=neuron, trange=trange)
+    def __init__(self, neuron=None, tranges=None, tres=20000):
+        super(BinaryCode, self).__init__(neuron=neuron, tranges=tranges)
         self.kind = 'binary'
         self.tres = tres
     def calc(self):
-        # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. Do the same for the end of the timepoints. This way, timepoints will line up for different code objects
-        tstart = self.trange[0] - (self.trange[0] % self.tres)
-        tend   = self.trange[1] - (self.trange[1] % self.tres)
-        self.t = arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to tend to make t end inclusive
-        s = self.neuron.cut(self.trange) # spike times
+        self.t = []
+        self.s = []
+        self.c = []
+        for trange in self.tranges:
+            # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. Do the same for the end of the timepoints. This way, timepoints will line up for different code objects
+            tstart = trange[0] - (trange[0] % self.tres)
+            tend   = trange[1] - (trange[1] % self.tres)
+            self.t = np.append(self.t, arange(tstart, tend+self.tres, self.tres)) # t sequence demarcates left bin edges, add tres to tend to make t end inclusive
+            self.s = np.append(self.s, self.neuron.cut(trange)) # spike times
         self.c = zeros(len(self.t), dtype=np.uint8) # binary code signal
-        self.c[np.unique(self.t.searchsorted(s)) - 1] = 1 # dec index by 1 so that you get indices that point to the most recent bin edge. For each bin that has 1 or more spikes in it, set its value to 1
+        self.c[np.unique(self.t.searchsorted(self.s)) - 1] = 1 # dec index by 1 so that you get indices that point to the most recent bin edge. For each bin that has 1 or more spikes in it, set its value to 1
+
     def plot(self):
         super(BinaryCode, self).plot()
         title('neuron %d - binary spike code' % self.neuron.id)
@@ -818,11 +826,14 @@ class ConstrainedNeuron(Neuron):
         cspikes = array([], dtype=np.int64) # init a temporary array
         #self.tranges = np.empty((len(self.r.e), 2), dtype=np.int64) # give it shape(numexps, 2)
         self.tranges = []
-        for exp in self.rip.r.e.values():
-            cspikes = np.append(cspikes, self.cut(exp.trange), axis=0)
-            self.tranges.append(exp.trange)
-        cspikes.sort() # make sure they're sorted, in case experiments weren't in temporal order for some reason
-        self.tranges.sort() # ditto
-        self.spikes = cspikes # save 'em
-        self.nspikes = len(self.spikes)
-        self.trange = (self.spikes[0], self.spikes[-1])
+        if self.rip.r.e != {}: # if it ain't empty, ie if there are Experiments in this Rip's Recording
+            for exp in self.rip.r.e.values():
+                cspikes = np.append(cspikes, self.cut(exp.trange), axis=0)
+                self.tranges.append(exp.trange)
+            cspikes.sort() # make sure they're sorted, in case Experiments weren't in temporal order for some reason
+            self.tranges.sort() # ditto
+            self.spikes = cspikes # save 'em
+            self.nspikes = len(self.spikes) # update it
+            if self.nspikes == 0: # this Neuron has no spikes, not much of a Neuron as far as this Recording is concerened
+                self.spikes = np.append(self.nspikes, None) # add None to empty spike list
+            self.trange = (self.spikes[0], self.spikes[-1]) # overwrite inherited self.trange
