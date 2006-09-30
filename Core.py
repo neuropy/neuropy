@@ -136,6 +136,8 @@ def lastcmd():
     """Returns a string containing the last command entered at the PyShell prompt.
     Maybe this could be expanded to work with other shells too?"""
     try:
+        # PyShell's shell.py was hacked to save the last command
+        # as an attrib in Shell.push()
         return __main__.shell.lastcmd
     except:
         return 'unknown'
@@ -488,6 +490,12 @@ def randomize(x):
     for i in range(0, len(x)):
         y.append(random.choice(x))
     return y
+
+def sortby(objs, attrib):
+    """Returns objects list sorted according to the specified object attribute.
+    attrib should be passed as a string"""
+    objs.sort(key=lambda obj: obj.__getattribute__(attrib)) # sort in-place
+    return objs
 
 def mean_accum(data):
     """Takes mean by accumulating over 0th axis in data,

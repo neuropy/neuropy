@@ -136,27 +136,49 @@ class BaseNeuron(object):
     def append(self, others):
         """Appends the spike times of self and other Neurons and returns a copy of the uberneuron.
         All Neurons must have the same id and be of the same Track. The user needs to ensure
-        that the same template was used to rip all the Neurons"""
+        that the same template was used to rip all the Neurons
+
+        If you want to recover the original spike times so as to compare with stimuli,
+        you need to cut the spikes with the appropriate trange in tranges, and then subtract
+        the appropriate offset in offsets.
+        """
         print 'This is dangerous, cuz you can''t simply append neuron spike times, need to add some kind of huge ass time offset between Recordings'
+        print 'Also need to have tranges instead of just a trange, to skip over get around the huge ass time offset. Or maybe just have a 1 us offset tween consecutive Recordings?'
+        print 'HOW THE HELL DO YOU FIND THE INDEX OF A VALUE IN A NP ARRAY? a==5 gives you a long boolean array, how do you find the indices where that boolean is True? use .nonzero() or np.where()'
         others = makeiter(others)
+        neurons = [self]
+        neurons.extend(others) # put self and all others into a single list of Neurons
         for other in others:
             assert self.id == other.id, 'Neuron ids are different'
-            #assert self.rip == other.rip, 'Rips are different' # forget this, only the user can really know if they use the same template
+            #assert self.rip == other.rip, 'Rips are different' # forget this, only the user can really know if they used the same template
             assert self.rip.r.t == other.rip.r.t, 'Tracks are different'
         uberneuron = self.copy() # create a copy of self
-        #uberneuron.spikes.append(other.spikes) # soon, numpy will support this
-        #uberneuron.spikes = cat( (self.spikes, other.spikes) ) # clumsy
-        spikes = list(uberneuron.spikes)
-        [ spikes.extend(other.spikes) for other in others ]
-        uberneuron.spikes = array(spikes)
-        uberneuron.nspikes = len(uberneuron.spikes) # update it
+        uberneuron.spikes = array([], dtype=np.int64) # clear its spikes attrib
+        uberneuron.name = '' # clear it
+        uberneuron.path = '' # clear it
+        uberneuron.rip = [] # clear, and init a list
+        # sort the Neurons according to their Recording id
+        rids = [ (n.rip.r.id, i) for i, n in enumerate(neurons) ]
+        rids.sort() # sorts according to first entry in each tuple
+        sortedis = [ i for r, i in rids ]
+        neurons = [ neurons[i] for i in sortedis ]
+        offset = 0
+        uberneuron.offsets = [] # new field to store the offsets that have been added to the spike times for each Recording
+        uberneuron.tranges = [] # new field to store the tranges of all the neurons appended to make the uberneuron
+        for n in neurons:
+            print offset
+            uberneuron.offsets.append(offset)
+            uberneuron.spikes = np.append(uberneuron.spikes, n.spikes+offset)
+            uberneuron.tranges.append(n.trange)
+            uberneuron.name += n.name + ', ' # keep it as a single string
+            uberneuron.path += n.path + ', ' # keep it as a single string
+            uberneuron.rip.append(n.rip) # concatenate all rips into a list
+            offset += n.spikes[-1] # for next Recordings spikes, inc offset by the last spike in this Recording
         uberneuron.spikes.sort() # make sure spiketimes remain sorted
-        uberneuron.trange = uberneuron.spikes[0], uberneuron.spikes[-1]
-        uberneuron.rip = [uberneuron.rip] # convert to list
-        for other in others:
-            uberneuron.name += ', ' + other.name # keep it as a single string
-            uberneuron.path += ', ' + other.path # keep it as a single string
-            uberneuron.rip.append(other.rip) # concatenate all rips into a list
+        uberneuron.nspikes = len(uberneuron.spikes) # update it
+        uberneuron.trange = uberneuron.spikes[0], uberneuron.spikes[-1] # update it
+        uberneuron.name = uberneuron.name[0:-2] # get rid of trailing ', '
+        uberneuron.path = uberneuron.path[0:-2]
         return uberneuron
 
     def isi(self, trange=None):
