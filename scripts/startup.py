@@ -34,7 +34,7 @@ mpl.interactive(True)
 # set some numpy options
 np.set_printoptions(precision=8)
 np.set_printoptions(threshold=1000)
-np.set_printoptions(edgeitems=5)
+np.set_printoptions(edgeitems=10)
 np.set_printoptions(linewidth=150)
 np.set_printoptions(suppress=True)
 

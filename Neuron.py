@@ -134,17 +134,33 @@ class BaseNeuron(object):
         return copy(self)
 
     def append(self, others):
-        """Appends the spike times of self and other Neurons and returns a copy of the uberneuron.
+        """Maybe should split this up into an .append() and an .extend() method.
+
+        Appends the spike times of self and other Neurons and returns a copy of the uberneuron.
+
+        MAYBE I SHOULD MAKE THIS AN IN-PLACE operation, as self.append() would imply. In other words,
+        don't return a copy? But that would modify the original Neuron. Maybe it should be up to you
+        to make a copy of the Neuron before appending other Neurons to it. That sounds best.
+
         All Neurons must have the same id and be of the same Track. The user needs to ensure
         that the same template was used to rip all the Neurons
 
         If you want to recover the original spike times so as to compare with stimuli,
         you need to cut the spikes with the appropriate trange in tranges, and then subtract
         the appropriate offset in offsets.
-        """
-        print 'This is dangerous, cuz you can''t simply append neuron spike times, need to add some kind of huge ass time offset between Recordings'
-        print 'Also need to have tranges instead of just a trange, to skip over get around the huge ass time offset. Or maybe just have a 1 us offset tween consecutive Recordings?'
-        print 'HOW THE HELL DO YOU FIND THE INDEX OF A VALUE IN A NP ARRAY? a==5 gives you a long boolean array, how do you find the indices where that boolean is True? use .nonzero() or np.where()'
+
+        You can't simply append neuron spike times, need to add some kind of huge ass time offset between Recordings?
+        Also need to have tranges instead of just a trange, to skip over/get around the huge ass time offset.
+        Or maybe just have a 1 us offset tween consecutive Recordings? In the end, I decided to make the spike times from the nth
+        Recording to be the sum of the last spike times of all the 0 to n-1 Recordings preceding it. This is like pretending
+        that each consecutive Recording started immediately after the preceding one ended.
+
+        HOW THE HELL DO YOU FIND THE INDEX OF A VALUE IN A NUMPY ARRAY? a==5 gives you a long boolean array,
+        how do you find the indices where that boolean is True? use .nonzero() or np.where()
+
+        AS OF OCT 11, 2006, DOESN'T LOOK LIKE THIS METHOD IS ACTUALLY BEING USED YET. WILL BE USEFUL ONCE I START
+        DOING ANALYSES OVER MULTIPLE RECORDINGS TO INCREASE STATS SIGNIFICANCE"""
+
         others = makeiter(others)
         neurons = [self]
         neurons.extend(others) # put self and all others into a single list of Neurons
@@ -166,10 +182,14 @@ class BaseNeuron(object):
         uberneuron.offsets = [] # new field to store the offsets that have been added to the spike times for each Recording
         uberneuron.tranges = [] # new field to store the tranges of all the neurons appended to make the uberneuron
         for n in neurons:
-            print offset
-            uberneuron.offsets.append(offset)
             uberneuron.spikes = np.append(uberneuron.spikes, n.spikes+offset)
-            uberneuron.tranges.append(n.trange)
+            # don't forget to add offset to tranges as well!
+            try: # neuron is a ConstrainedNeuron with a tranges attrib
+                uberneuron.tranges.extend([ (trange[0]+offset, trange[1]+offset) for trange in n.tranges ])
+                uberneuron.offsets.extend(offset*len(n.tranges)) # add n.tranges copies of offset to offset list, one for each trange in this ConstrainedNeuron
+            except AttributeError: # no tranges attrib, neuron is a normal Neuron
+                uberneuron.tranges.append((n.trange[0]+offset, n.trange[1]+offset))
+                uberneuron.offsets.append(offset)
             uberneuron.name += n.name + ', ' # keep it as a single string
             uberneuron.path += n.path + ', ' # keep it as a single string
             uberneuron.rip.append(n.rip) # concatenate all rips into a list
@@ -273,7 +293,7 @@ class BaseCode(object):
         if tranges == None:
             self.tranges = [ self.neuron.trange ]
         else:
-            self.tranges = makeiter(tranges)
+            self.tranges = tolist(tranges)
     def __eq__(self, other):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
@@ -289,19 +309,25 @@ class BaseCode(object):
 
 
 class BinaryCode(BaseCode):
-    """Quantizes the spike train into a binary signal with a given time resolution"""
-    def __init__(self, neuron=None, tranges=None, tres=20000):
+    """Quantizes the spike train, cut according to tranges, into a binary signal with a given time resolution.
+    phase in us specifies where to start the codetrain in time, relative to the nearest multiple of tres before each trange.
+    -ve phase is leading (codetrain start earlier in time), +ve is lagging (codetrain starts later in time)
+
+    phase thing is untested so far!!!!!!!!!!!!!!!!!!!!!!
+    """
+    def __init__(self, neuron=None, tranges=None, tres=20000, phase=0):
         super(BinaryCode, self).__init__(neuron=neuron, tranges=tranges)
         self.kind = 'binary'
         self.tres = tres
+        self.phase = phase
     def calc(self):
         self.t = []
         self.s = []
         self.c = []
         for trange in self.tranges:
             # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. Do the same for the end of the timepoints. This way, timepoints will line up for different code objects
-            tstart = trange[0] - (trange[0] % self.tres)
-            tend   = trange[1] - (trange[1] % self.tres)
+            tstart = trange[0] - (trange[0] % self.tres) + self.phase # left edge of first code bin
+            tend   = trange[1] - (trange[1] % self.tres) + self.phase # left edge of last code bin. The span of this last bin includes trange[1]
             self.t = np.append(self.t, arange(tstart, tend+self.tres, self.tres)) # t sequence demarcates left bin edges, add tres to tend to make t end inclusive
             self.s = np.append(self.s, self.neuron.cut(trange)) # spike times
         self.c = zeros(len(self.t), dtype=np.uint8) # binary code signal
@@ -327,7 +353,7 @@ class NeuronCode(BaseNeuron):
         for code in self._codes:
             if co == code: # need to define special == method for class Code()
                 return code # returns the first Code object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._codes
-        co.calc() # no matching Rate was found, calculate it
+        co.calc() # no matching Code was found, calculate it
         self._codes.append(co) # add it to the Code object list
         return co
     code.__doc__ += '\n\n**kwargs:'
@@ -758,8 +784,9 @@ class STA(RevCorr):
         self.done = True
     def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
         super(STA, self).plot(interp=interp, normed=normed,
-                              title='r%d.n[%d].sta().plot(interp=%s, normed=%s, scale=%s)' %
-                              (self.experiment.r.id, self.neuron.id, repr(interp), repr(normed), repr(scale)),
+                              title=lastcmd(),
+                              #title='r%d.n[%d].sta().plot(interp=%s, normed=%s, scale=%s)' %
+                              #(self.experiment.r.id, self.neuron.id, repr(interp), repr(normed), repr(scale)),
                               scale=scale,
                               **kwargs)
     plot.__doc__ = RevCorr.plot.__doc__
@@ -858,4 +885,4 @@ class ConstrainedNeuron(Neuron):
             self.nspikes = len(self.spikes) # update it
             if self.nspikes == 0: # this Neuron has no spikes, not much of a Neuron as far as this Recording is concerened
                 self.spikes = np.append(self.nspikes, None) # add None to empty spike list
-            self.trange = (self.spikes[0], self.spikes[-1]) # overwrite inherited self.trange
+            self.trange = (self.tranges[0][0], self.tranges[-1][1]) # overwrite inherited self.trange, use start of first trange and end of last trange

@@ -292,19 +292,37 @@ class RecordingRaster(BaseRecording):
 
 class Codes(object):
     """A 2D array where each row is a neuron code, and each column
-    is a binary population word for that time bin"""
+    is a binary population word for that time bin, sorted LSB to MSB from top to bottom.
+    neurons is a list of Neurons. Order in neurons is preserved."""
     def __init__(self, neurons=None, tranges=None, **kwargs):
-        self.tranges = tranges
+        self.tranges = tolist(tranges)
         self.neurons = neurons
         self.kwargs = kwargs
     def calc(self):
-        self.c = []
-        for neuron in self.neurons.values():
+        self.c = [] # stores the 2D array
+        # append neurons in their order in self.neurons, from top to bottom (LSB to MSB right to left if you tilt your head to the left)
+        for neuron in self.neurons:
             self.c.append( [ neuron.code(tranges=self.tranges, **self.kwargs).c ] ) # each is a nested list (ie, 2D)
         self.c = tuple(self.c) # required for concatenate
         self.c = cat(self.c)
         #self.c.reshape(len(self.neurons), -1) # reshape to 2D array
-
+    def copy(self):
+        """Returns a copy of the Codes object"""
+        return copy(self)
+    '''
+    # needs some testing:
+    def append(self, others):
+        """Adds other Codes objects appended in time (horizontally) to this Codes object.
+        Useful for appending Codes objects across Recordings ? (don't really need it
+        for appending across Experiments)"""
+        others = tolist(others)
+        for other in others:
+            assert other.neurons == self.neurons
+        codesos = [self] # list of codes objects
+        codesos.extend(others)
+        self.tranges = [ trange for codeso in codesos for trange in codeso.tranges ] # this tranges potentially holds multiple tranges from each codes objects, times the number of codes objects
+        self.calc() # recalculate this code with its new set of tranges
+    '''
 '''
 class CodeWords(object):
     """What's this supposed to do?"""
@@ -334,6 +352,8 @@ class CodeCorrPDF(object):
         else:
             return False
     def calc(self):
+        """Works on ConstrainedNeurons, but is constrained even further if experiments
+        were passed and their tranges were used to generate self.tranges (see __init__)"""
         cnis = self.r.cn.keys() # ConstrainedNeuron indices
         ncneurons = len(cnis)
         self.corrs = [ self.r.codecorr(cnis[cnii1], cnis[cnii2], tranges=self.tranges, **self.kwargs)
@@ -386,22 +406,37 @@ class RecordingCode(BaseRecording):
             return cneuron.code(**kwargs) # see if cneuron is a ConstrainedNeuron
         except AttributeError:
             return self.cn[cneuron].code(**kwargs) # cneuron is probably a ConstrainedNeuron id
-    code.__doc__ += '\n\n**kwargs:'
+    #code.__doc__ += '\n\n**kwargs:'
     #code.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code) # causes import problems
     #code.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__) # causes import problems
 
-    def codes(self, neurons=None, **kwargs):
-        """Returns a 2D array where each row is a neuron code constrained to the time range of this Experiment
-        INCOMPLETE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"""
-        if neurons == None:
-            neurons = self.n
-        codeso = Codes(neurons=neurons, tranges=self.tranges, **kwargs)
+    def codes(self, neurons=None, experiments=None, **kwargs):
+        """Returns a 2D array where each row is a neuron code constrained to the time range of this Recording"""
+        if neurons != None:
+            if neurons.__class__ == list: # is a list of neuron ids, preserve their order
+                neurons = [ self.n[ni] for ni in neurons ] # build up list of Neurons, ordered according to the id list in neurons
+            else: # assume neurons is a dict of neurons
+                neurons = list(neurons.values()) # convert to list of Neurons
+        else:
+            neurons = list(self.n.values()) # list of Neurons
+        if experiments != None:
+            # need to preserve order of expids as specified
+            if experiments.__class__ == list:
+                try:  # assume is a list of Experiment ids?
+                    tranges = [ self.e[ei].trange for ei in experiments ]
+                except: # assume is a list of Experiments
+                    tranges = [ e.trange for e in experiments ]
+            else: # assume experiments is a dict of Experiments
+                tranges = [ e.trange for e in experiments.values() ]
+        else: # no experiments specified, use whole Recording trange
+            tranges = [self.trange]
+        codeso = Codes(neurons=neurons, tranges=tranges, **kwargs)
         codeso.calc()
         return codeso
-    code.__doc__ += '\n\n**kwargs:'
-    code.__doc__ += '\nCodes: '+getargstr(Codes.__init__)
-    #code.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code) # causes import problems
-    #code.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__) # causes import problems
+    codes.__doc__ += '\n\n**kwargs:'
+    codes.__doc__ += '\nCodes: '+getargstr(Codes.__init__)
+    #codes.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code) # causes import problems
+    #codes.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__) # causes import problems
 
     def codecorr(self, neuron1, neuron2, **kwargs):
         """Calculates the correlation of two Neuron.Code (or ConstrainedNeuron.Code)
@@ -441,18 +476,30 @@ class RecordingCode(BaseRecording):
 
 class Schneidman(object):
     """see 2006 Schneidman figs 1e and 1f"""
-    def __init__(self, experiment=None):
-        self.e = experiment
-        self.neurons = self.e.r.n
+    def __init__(self, recording, experiments=None):
+        self.r = recording
+        if experiments == None:
+            self.tranges = [self.r.trange] # or should we check to see if this Recording has a tranges field due to appending Neurons?
+        else:
+            if experiments.__class__ == list: # experiments is a list of exp ids
+                self.tranges = [ self.r.e[ei].trange for ei in experiments ]
+                #experiments = dict( (ei, self.r.e[ei]) for ei in experiments ) # convert to dict
+                experiments = [ self.r.e[ei] for ei in experiments ] # convert to list of Experiments, this maintains order. Ignore indices, use .id attrib
+            else: # assume experiments is a dict
+                experiments = list(experiments) # convert to list to be consistent with above
+                self.tranges = [ e.trange for (ei, e) in experiments ]
+        self.e = experiments
+        self.neurons = self.r.n
+
+    def codes(self, nis=None, **kwargs):
+        """Returns the appropriate Codes object, depending on the recording
+        and experiments defined for this Schneidman object"""
+        return self.r.codes(neurons=nis, experiments=self.e, **kwargs)
 
     def intcodes(self, nis=None, **kwargs):
-        """Returns an array of the integer representation of the neuronal population code for each time bin"""
-        if nis == None:
-            nis = self.neurons.keys()
-        neurons = {}
-        [ neurons.__setitem__(ni, self.neurons[ni]) for ni in nis ]
-        codeso = self.e.codes(neurons=neurons, **kwargs) # 2D array of binary words. rows are neuron codes, columns are words for each time bin
-        return binaryarray2int(codeso.c)
+        """Given neuron indices (ordered LSB to MSB), returns an array of the integer representation
+        of the neuronal population code for each time bin"""
+        return binaryarray2int(self.codes(nis=nis).c)
 
     def intcodesPDF(self, nis=None, **kwargs):
         """Returns the pdf across all possible population code words"""
@@ -469,8 +516,9 @@ class Schneidman(object):
             nis = self.neurons.keys()
         nbits = len(nis)
         intcodes = arange(2**nbits)
-        neurons = {}
-        [ neurons.__setitem__(ni, self.neurons[ni]) for ni in nis ]
+        #neurons = dict( (ni, self.neurons[ni]) for ni in nis )
+        codeso = self.codes(nis=nis)
+
         codeso = self.e.codes(neurons=neurons, **kwargs)
         spikeps = [] # list spike probabilities for all neurons
         for neuroncode in codeso.c: # for each neuron, ie each row
@@ -565,9 +613,7 @@ class RecordingSchneidman(BaseRecording):
     """Mix-in class that defines the spike code related Schneidman methods"""
     def schneidman(self, experiments=None):
         """Returns a Schneidman object"""
-        if experiments == None:
-            experiments = self.e # all experiments in this Recording
-        so = Schneidman(experiments=experiments)
+        so = Schneidman(recording=self, experiments=experiments)
         return so
 
 

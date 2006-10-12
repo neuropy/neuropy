@@ -310,17 +310,27 @@ def iterable(x):
     """Check if the input is iterable, stolen from numpy.iterable()"""
     try:
         iter(x)
+        return True
     except:
-        return 0
-    return 1
+        return False
 
-def makeiter(x):
-    """If input isn't iterable, returns it in a list. Otherwise, just
-    returns the input"""
+def toiter(x):
+    """Convert to iterable. If input is iterable, returns it. Otherwise returns it in a list"""
     if iterable(x):
         return x
     else:
         return [x]
+
+def tolist(x):
+    """Convert to list. If input is a dict, returns its values. If it's already a list, returns it.
+    Otherwise, input is returned in a list."""
+    if x.__class__ == dict:
+        return list(x.values())
+    elif x.__class__ == list:
+        return x
+    else:
+        return [x] # stick it in a list
+
 '''
 def tolist(obj):
     """Takes either scalar or sequence input and returns a list,
@@ -431,9 +441,10 @@ def bin(i):
     return s
 
 def binaryarray2int(bin):
-    """Takes a 2D binary array (only 1s and 0s) and returns the base 10 integer representations of the columns"""
+    """Takes a 2D binary array (only 1s and 0s, with rows MSB to LSB from bottom to top)
+    and returns the base 10 integer representations of the columns"""
     #assert type(bin) == type(array)
-    nbits = bin.shape[0] # length of the highest (first) dimension (the rows)
+    nbits = bin.shape[0] # length of the highest (first) dimension, ie the number of rows
     nd = bin.ndim
     multiplier = []
     for i in range(nbits):
@@ -491,11 +502,14 @@ def randomize(x):
         y.append(random.choice(x))
     return y
 
-def sortby(objs, attrib):
+'''
+# this f'n isn't really needed, just use objlist.sort(key=lambda obj: obj.attrib)
+def sortby(objs, attrib, cmp=None, reverse=False):
     """Returns objects list sorted according to the specified object attribute.
     attrib should be passed as a string"""
-    objs.sort(key=lambda obj: obj.__getattribute__(attrib)) # sort in-place
+    objs.sort(key=lambda obj: obj.__getattribute__(attrib), cmp=cmp, reverse=reverse) # sort in-place
     return objs
+'''
 
 def mean_accum(data):
     """Takes mean by accumulating over 0th axis in data,
@@ -520,7 +534,7 @@ def mean_accum2(data, indices):
 class neuropyScalarFormatter(mpl.ticker.ScalarFormatter):
     """Overloaded from mpl.ticker.ScalarFormatter for 4 reasons:
     1) turn off stupid offset
-    2) increase maximum possible number sigfigs
+    2) increase maximum possible number of sigfigs
     3) increase +ve and -ve order of magnitude thresholds before switching to scientific notation
     4) keep exponents in engineering notation, ie multiples of 3
     """

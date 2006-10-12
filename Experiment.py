@@ -148,17 +148,16 @@ class ExperimentCode(BaseExperiment):
     code.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__)
 
     def codes(self, neurons=None, **kwargs):
-        """Returns a 2D array where each row is a neuron code constrained to the time range of this Experiment
-        INCOMPLETE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"""
+        """Returns a 2D array where each row is a neuron code constrained to the time range of this Experiment"""
         if neurons == None:
             neurons = self.r.n
-        codeso = self.r.codes(neurons=neurons, tranges=[self.trange], **kwargs)
+        codeso = self.r.codes(neurons=neurons, experiments=[self], **kwargs)
         codeso.calc()
         return codeso
-    code.__doc__ += '\n\n**kwargs:'
-    code.__doc__ += '\nCodes: '+getargstr(Codes.__init__)
-    code.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code)
-    code.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__)
+    codes.__doc__ += '\n\n**kwargs:'
+    codes.__doc__ += '\nCodes: '+getargstr(Codes.__init__)
+    codes.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code)
+    codes.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__)
 
     def codecorr(self, neuron1, neuron2, **kwargs):
         """Calculates the correlation of two Neuron.Code objects
@@ -308,7 +307,7 @@ class ExperimentRevCorr(BaseExperiment):
                 neurons.append(val)
         else:
             try: # assume neurons is a Neuron id or list of Neuron ids, get the associated Neuron objects from the default Rip for this experiment's Recording
-                neurons = [ self.r.n[ni] for ni in makeiter(neurons) ]
+                neurons = [ self.r.n[ni] for ni in tolist(neurons) ]
             except KeyError: # neurons is probably a list of Neuron objects
                 pass
         staso = STAs(neurons=neurons, experiment=self, **kwargs) # init a new STAs object
@@ -326,8 +325,8 @@ class ExperimentRevCorr(BaseExperiment):
             for key, val in keyvals:
                 neurons.append(val)
         else:
-            try: # assume neurons is a list of Neuron ids, get the associated Neuron objects from the default Rip for this experiment's Recording
-                neurons = [ self.r.n[ni] for ni in makeiter(neurons) ]
+            try: # assume neurons is a Neuron id or list of Neuron ids, get the associated Neuron objects from the default Rip for this experiment's Recording
+                neurons = [ self.r.n[ni] for ni in tolist(neurons) ]
             except KeyError: # neurons is probably a list of Neuron objects
                 pass
         stcso = STCs(neurons=neurons, experiment=self, **kwargs) # init a new STCs object

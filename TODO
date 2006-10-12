@@ -2,22 +2,30 @@ Schneidman stuff:
 	- for the time bins, try lots of different phases, see if this changes things at all
 		- look if the most common states remain the most common
 	- since Recordings are fairly short, either combine lots of Recordings into one (or their Experiments), or use a shorter CODEWORDLENGTH to get better stat significance for all possible words
-		- add append() method to Experiment?
-		- better to add append() to Recording?
-		- best to just use append() in Neuron? make .spikes 2d array?
+		- add append() method to Experiment? no. din values have different meaning between Experiments
+		- better to add append() to Recording? yes.
+		- best to just use append() in Neuron? yes. Recording.append() will make use of this. make .spikes 2d array? no, offsets have been added
 	- for common states, see if there's a gradual falloff of probs of being 1 bit, 2bit 3 bit off of that state as you move away from it in bitspace
+		- maybe map out some kind of attractors in bitspace
 	- look for check cells
 	- do the maximum entropy Ising model
 	- see if cortical data extrapolates to the same sort of ideal network size, ~200 neurons
+	- maybe mess around with higher bit codes than just binary, like trinary, quaternary, which reflect more accurately the number of spikes in each bin for each neuron
+	- make Neuron.append() in place, and ensure whenever it's used, that's it's used on a copied Neuron
+	- do analyses across Recordings, using Neuron.append(), to increase significance
 
 - cross-correlograms
-	- faster
+	- make it faster
 	- add p values to peaks (% of ticks within the peak, out of all the ticks in the window)
 	- do both types of shuffle correction (those would be ?)
 - PSTHs
 	- look more closely for 5 ms peaks. Also, looks at data recorded at lower screen refresh rates
 
+- spike interval histograms with log scale (see Lundstrom + Fairhall 2006)
+
 - 2D matrix of cross-correlograms - see the README.wx file in mpl/examples for embedding in wx
+
+- LFPs! how to export them from surfbawd, and handle them in neuropy?
 
 - rasters
 	- multi trial single neuron raster plots
