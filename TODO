@@ -30,6 +30,7 @@ Schneidman stuff:
 - rasters
 	- multi trial single neuron raster plots
 	- make rasters faster when large number of spikes on screen (instead of deleting and recreating all vlines, do so just for ones that disappear and appear?)
+	- get scrolly wheel detection to zoom in and out (not possible using mpl events? have to go to wx events?)
 
 - tuning curves
 - STC

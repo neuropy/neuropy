@@ -131,7 +131,6 @@ def barefigure(*args, **kwargs):
     gcfm().frame.GetToolBar().Hide()
 barefigure.__doc__ += '\n' + figure.__doc__
 
-
 def lastcmd():
     """Returns a string containing the last command entered at the PyShell prompt.
     Maybe this could be expanded to work with other shells too?"""
@@ -258,24 +257,43 @@ def txtdin2binarydin(fin, fout):
         nruns = 18
         line[1] = int(line[1]) % nruns
         '''
-        fo.write( struct.pack('@qq',int(line[0]),int(line[1])) ) # read both values in as a C long longs, using the system's native ('@') byte order
+        fo.write( struct.pack('@qq', int(line[0]), int(line[1])) ) # read both values in as a C long longs, using the system's native ('@') byte order
     fi.close()
     fo.close()
-    print 'Converted ascii din: ', fin, ' to binary din: ', fout
+    print 'Converted ascii din: ' + repr(fin) + ' to binary din: ' + repr(fout)
+
+def convertalltxtdin2binarydin(path=None):
+    """Converts all text .csv din files in path (or cwd) to 64 bit binary .din files of the same name"""
+    if path == None:
+        path = os.getcwd()
+
+    listing = os.listdir(os.getcwd())
+    dinfnames = []
+
+    for fname in listing:
+        if fname.endswith('.csv'):
+            dinfnames.append(fname.rstrip('.csv')) # text din filenames without the .csv extension
+
+    for dinfname in dinfnames:
+        fin = path + '\\' + dinfname + '.csv'
+        fout = path + '\\' + dinfname + '.din'
+        #os.rename(fout, fin) # rename the csv .din file to .din.txt extension
+        txtdin2binarydin(fin, fout) # convert the text .csv file to binary .din file
+        #os.remove(fin) # delete the .din.txt file
 
 def renameSpikeFiles(path, newname):
     """Renames all .spk files in path to newname, retaining their '_t##.spk' ending"""
     for fname in os.listdir(path):
         if fname.endswith('.spk'):
-            i=fname.find('_t')
-            if i!=-1:
+            i = fname.find('_t')
+            if i != -1:
                 newfname = newname+fname[i::]
                 print newfname
                 os.rename(path+SLASH+fname, path+SLASH+newfname)
 
 def warn(msg, level=2, exit_val=1):
     """Standard warning printer. Gives formatting consistency. Stolen from IPython.genutils"""
-    if level>0:
+    if level > 0:
         header = ['','','WARNING: ','ERROR: ','FATAL ERROR: ']
         print >> sys.stderr, '%s%s' % (header[level],msg)
         if level == 4:
@@ -424,7 +442,9 @@ def sah(t, y, ts, keep=False):
 
 def corrcoef(x, y):
     """Returns correlation coefficient of signals x and y. This should be equivalent to np.corrcoef(),
-    but that one doesn't seem to work for signals with zeros in them. Check how std() works exactly"""
+    but that one doesn't seem to work for signals with zeros in them. Check how std() works exactly
+
+    THIS IS REAL DAMN SLOW, cuz it's pure Python"""
     assert len(x) == len(y), 'arrays need to be of equal length'
     x = array(x)
     y = array(y)

@@ -231,7 +231,8 @@ class PopulationRaster(object):
                 if estart < event.xdata  < eend:
                     currentexp = e
                     break # don't need to check any of the other experiments
-            tip = 'n%d: %d spikes' % (self.neurons[nii].id, self.neurons[nii].nspikes)
+            tip = 't: %.3f ms\n' % event.xdata # print timepoint down to nearest us, in units of ms
+            tip += 'n%d: %d spikes' % (self.neurons[nii].id, self.neurons[nii].nspikes)
             if currentexp == None:
                 tip += '\nno experiment'
             else:
@@ -299,13 +300,16 @@ class Codes(object):
         self.neurons = neurons
         self.kwargs = kwargs
     def calc(self):
-        self.c = [] # stores the 2D array
+        self.s = [] # stores the corresponding spike times for each neuron, just for reference
+        self.c = [] # stores the 2D code array
         # append neurons in their order in self.neurons, from top to bottom (LSB to MSB right to left if you tilt your head to the left)
         for neuron in self.neurons:
-            self.c.append( [ neuron.code(tranges=self.tranges, **self.kwargs).c ] ) # each is a nested list (ie, 2D)
+            codeo = neuron.code(tranges=self.tranges, **self.kwargs)
+            self.s.append(codeo.s) # each is a nested list (ie, 2D), each row will have different length
+            self.c.append( [ codeo.c ] ) # each is a nested list (ie, 2D)
+        self.t = codeo.t # stores the bin edges, just for reference. all timepoints should be the same for all neurons, cuz they're all given the same trange. use the timepoints of last neuron
         self.c = tuple(self.c) # required for concatenate
         self.c = cat(self.c)
-        #self.c.reshape(len(self.neurons), -1) # reshape to 2D array
     def copy(self):
         """Returns a copy of the Codes object"""
         return copy(self)
@@ -406,7 +410,7 @@ class RecordingCode(BaseRecording):
             return cneuron.code(**kwargs) # see if cneuron is a ConstrainedNeuron
         except AttributeError:
             return self.cn[cneuron].code(**kwargs) # cneuron is probably a ConstrainedNeuron id
-    #code.__doc__ += '\n\n**kwargs:'
+    code.__doc__ += '\n\n**kwargs:'
     #code.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code) # causes import problems
     #code.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__) # causes import problems
 
@@ -491,10 +495,10 @@ class Schneidman(object):
         self.e = experiments
         self.neurons = self.r.n
 
-    def codes(self, nis=None, **kwargs):
+    def codes(self, nis=None, tres=20000, phase=0, **kwargs):
         """Returns the appropriate Codes object, depending on the recording
         and experiments defined for this Schneidman object"""
-        return self.r.codes(neurons=nis, experiments=self.e, **kwargs)
+        return self.r.codes(neurons=nis, experiments=self.e,tres=tres, phase=phase, **kwargs)
 
     def intcodes(self, nis=None, **kwargs):
         """Given neuron indices (ordered LSB to MSB), returns an array of the integer representation

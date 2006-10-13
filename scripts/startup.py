@@ -64,18 +64,21 @@ def cd(path):
 cd('c:/home/mspacek/Desktop')
 
 def pwd():
-    """Print working directory"""
-    print os.getcwd()
+    """Returns working directory"""
+    return os.getcwd()
 
 def ls():
-    """List directory contents"""
-    pwd()
-    print os.listdir(os.getcwd())
+    """Returns directory contents in a list"""
+    print pwd()
+    return os.listdir(os.getcwd())
 
 def ll():
-    """Long-list directory contents"""
-    pwd()
+    """Returns long-list directory contents in a list"""
+    print pwd()
     pprint(os.listdir(os.getcwd()))
+    #buf = StringIO.StringIO()
+    #pprint(os.listdir(os.getcwd()), stream=buf)
+    #return buf.getvalue()
 
 def src(obj):
     """Print object's source code"""
