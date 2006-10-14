@@ -297,7 +297,7 @@ class BaseCode(object):
     def __eq__(self, other):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
-        # Delete their c and t attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
+        # Delete their c, t, and s attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
         [ d.__delitem__(key) for d in [selfd, otherd] for key in ['c', 't', 's'] if d.has_key(key) ]
         if type(self) == type(other) and selfd == otherd:
             return True
@@ -311,27 +311,24 @@ class BaseCode(object):
 class BinaryCode(BaseCode):
     """Quantizes the spike train, cut according to tranges, into a binary signal with a given time resolution.
     phase in us specifies where to start the codetrain in time, relative to the nearest multiple of tres before each trange.
-    -ve phase is leading (codetrain start earlier in time), +ve is lagging (codetrain starts later in time)
-
-    phase thing is untested so far!!!!!!!!!!!!!!!!!!!!!!
-    """
+    Phase is in degrees of a single bin period. -ve phase is leading (codetrain starts earlier in time),
+    +ve is lagging (codetrain starts later in time)"""
     def __init__(self, neuron=None, tranges=None, tres=20000, phase=0):
         super(BinaryCode, self).__init__(neuron=neuron, tranges=tranges)
         self.kind = 'binary'
         self.tres = tres
-        self.phase = phase
+        self.phase = phase # in degrees of tres
     def calc(self):
-        self.t = array([], dtype=np.int64) # set up arrays with correct dtypes (otherwise they'd default to float64s)
+        self.t = array([], dtype=np.int64) # set up empty arrays with correct dtypes (otherwise, when appending to them later, they'd default to float64s)
         self.s = array([], dtype=np.int64)
         self.c = array([], dtype=np.uint8)
         for trange in self.tranges:
-            # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. This way, timepoints will line up for different code objects
+            # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. This way, timepoints will line up for different code objects. Finally, add phase offset relative to this
             tstart = trange[0] - (trange[0] % self.tres) + self.phase/360.0*self.tres # left edge of first code bin
-            tend   = trange[1] # left edge of last code bin. The span of this last bin includes trange[1]
-            t = np.int64(np.round(arange(tstart, tend+self.tres, self.tres))) # t sequence demarcates left bin edges, add tres to tend to make t tend inclusive, keep 'em in us integers
-            s = self.neuron.cut(trange) # spike times
+            t = np.int64(np.round(arange(tstart, trange[1]+self.tres, self.tres))) # t sequence demarcates left bin edges, add extra tres to end to make t end inclusive, keep 'em in us integers
+            s = self.neuron.cut(trange) # spike times, cut over originally specified trange, not from start to end of newly generated code bin timepoints
             c = zeros(len(t), dtype=np.uint8) # init binary code signal
-            # searchsorted returns indices where s fits into t. Sometimes more than one spike will fit into the same time bin, which means searchsorted will return multiple occurences of the same index. You can set c at these indices to 1 a multiple number of times, or prolly more efficient, do a np.unique on it to only set each index to 1 once.
+            # searchsorted returns indices where s fits into t. Sometimes more than one spike will fit into the same time bin, which means searchsorted will return multiple occurences of the same index. You can set c at these indices to 1 a multiple number of times, or prolly more efficient, do an np.unique on it to only set each index to 1 once.
             c[np.unique(t.searchsorted(s)) - 1] = 1 # dec index by 1 so that you get indices that point to the most recent bin edge. For each bin that has at least 1 spike in it, set its value to 1
             self.t = np.append(self.t, t) # save 'em
             self.s = np.append(self.s, s)
@@ -343,14 +340,14 @@ class BinaryCode(BaseCode):
 
 class NeuronCode(BaseNeuron):
     """Mix-in class that defines the spike code related Neuron methods"""
-    def code(self, kind='binary', **kwargs):
+    def code(self, kind='binary', tranges=None, tres=20000, phase=0):
         """Returns an existing Code object, or creates a new one if necessary"""
         try:
             self._codes
         except AttributeError: # self._codes doesn't exist yet
             self._codes = [] # create a list that'll hold Code objects
         if kind == 'binary':
-            co = BinaryCode(neuron=self, **kwargs) # init a new BinaryCode object
+            co = BinaryCode(neuron=self, tranges=tranges, tres=tres, phase=phase) # init a new BinaryCode object
         else:
             raise ValueError, 'Unknown kind: %s' % repr(self.kind)
         for code in self._codes:
@@ -359,8 +356,7 @@ class NeuronCode(BaseNeuron):
         co.calc() # no matching Code was found, calculate it
         self._codes.append(co) # add it to the Code object list
         return co
-    code.__doc__ += '\n\n**kwargs:'
-    code.__doc__ += '\nbinary: '+getargstr(BinaryCode.__init__)
+    code.__doc__ += '\n\nbinary:\n' + BinaryCode.__doc__
 
 
 class BaseRate(object):

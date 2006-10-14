@@ -295,16 +295,18 @@ class Codes(object):
     """A 2D array where each row is a neuron code, and each column
     is a binary population word for that time bin, sorted LSB to MSB from top to bottom.
     neurons is a list of Neurons. Order in neurons is preserved."""
-    def __init__(self, neurons=None, tranges=None, **kwargs):
-        self.tranges = tolist(tranges)
+    def __init__(self, neurons=None, kind='binary', tranges=None, tres=20000, phase=0):
         self.neurons = neurons
-        self.kwargs = kwargs
+        self.kind = kind
+        self.tranges = tolist(tranges)
+        self.tres = tres
+        self.phase = phase
     def calc(self):
         self.s = [] # stores the corresponding spike times for each neuron, just for reference
         self.c = [] # stores the 2D code array
         # append neurons in their order in self.neurons, from top to bottom (LSB to MSB right to left if you tilt your head to the left)
         for neuron in self.neurons:
-            codeo = neuron.code(tranges=self.tranges, **self.kwargs)
+            codeo = neuron.code(kind=self.kind, tranges=self.tranges, tres=self.tres, phase=self.phase)
             self.s.append(codeo.s) # each is a nested list (ie, 2D), each row will have different length
             self.c.append( [ codeo.c ] ) # each is a nested list (ie, 2D)
         self.t = codeo.t # stores the bin edges, just for reference. all timepoints should be the same for all neurons, cuz they're all given the same trange. use the timepoints of last neuron
@@ -402,20 +404,18 @@ class CodeCorrPDF(object):
 
 class RecordingCode(BaseRecording):
     """Mix-in class that defines the spike code related Recording methods"""
-    def code(self, cneuron=None, **kwargs):
+    def code(self, cneuron=None, kind='binary', tranges=None, tres=20000, phase=0):
         """Returns a ConstrainedNeuron.Code object, constrained to the time
         ranges of the Experiments in this Recording, as well as by tranges. Takes either a
         ConstrainedNeuron object or just a ConstrainedNeuron id"""
         try:
-            return cneuron.code(**kwargs) # see if cneuron is a ConstrainedNeuron
+            return cneuron.code(kind='binary', tranges=None, tres=20000, phase=0) # see if cneuron is a ConstrainedNeuron
         except AttributeError:
-            return self.cn[cneuron].code(**kwargs) # cneuron is probably a ConstrainedNeuron id
-    code.__doc__ += '\n\n**kwargs:'
-    #code.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code) # causes import problems
-    #code.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__) # causes import problems
+            return self.cn[cneuron].code(kind='binary', tranges=None, tres=20000, phase=0) # cneuron is probably a ConstrainedNeuron id
 
-    def codes(self, neurons=None, experiments=None, **kwargs):
-        """Returns a 2D array where each row is a neuron code constrained to the time range of this Recording"""
+    def codes(self, neurons=None, experiments=None, kind='binary', tres=20000, phase=0):
+        """Returns a Codes object, a 2D array where each row is a neuron code constrained to the time range of this Recording,
+        or if specified, to the time ranges of Experiments in this Recording"""
         if neurons != None:
             if neurons.__class__ == list: # is a list of neuron ids, preserve their order
                 neurons = [ self.n[ni] for ni in neurons ] # build up list of Neurons, ordered according to the id list in neurons
@@ -434,13 +434,10 @@ class RecordingCode(BaseRecording):
                 tranges = [ e.trange for e in experiments.values() ]
         else: # no experiments specified, use whole Recording trange
             tranges = [self.trange]
-        codeso = Codes(neurons=neurons, tranges=tranges, **kwargs)
+        codeso = Codes(neurons=neurons, kind=kind, tranges=tranges, tres=tres, phase=phase)
         codeso.calc()
         return codeso
-    codes.__doc__ += '\n\n**kwargs:'
-    codes.__doc__ += '\nCodes: '+getargstr(Codes.__init__)
-    #codes.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code) # causes import problems
-    #codes.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__) # causes import problems
+    codes.__doc__ += '\n\nCodes object:\n' + Codes.__doc__
 
     def codecorr(self, neuron1, neuron2, **kwargs):
         """Calculates the correlation of two Neuron.Code (or ConstrainedNeuron.Code)
@@ -485,20 +482,19 @@ class Schneidman(object):
         if experiments == None:
             self.tranges = [self.r.trange] # or should we check to see if this Recording has a tranges field due to appending Neurons?
         else:
-            if experiments.__class__ == list: # experiments is a list of exp ids
-                self.tranges = [ self.r.e[ei].trange for ei in experiments ]
-                #experiments = dict( (ei, self.r.e[ei]) for ei in experiments ) # convert to dict
-                experiments = [ self.r.e[ei] for ei in experiments ] # convert to list of Experiments, this maintains order. Ignore indices, use .id attrib
-            else: # assume experiments is a dict
-                experiments = list(experiments) # convert to list to be consistent with above
-                self.tranges = [ e.trange for (ei, e) in experiments ]
-        self.e = experiments
+            experiments = tolist(experiments)
+            try:
+                self.tranges = [ e.trange for e in experiments ] # is experiments a list of Experiments?
+            except AttributeError:
+                self.tranges = [ self.r.e[ei].trange for ei in experiments ] # assume experiments is a list of experiment ids
+                experiments = [ self.r.e[ei] for ei in experiments ] # convert to a list of Experiments
+        self.experiments = experiments # save list of Experiments
         self.neurons = self.r.n
 
-    def codes(self, nis=None, tres=20000, phase=0, **kwargs):
+    def codes(self, nis=None, kind='binary', tres=20000, phase=0):
         """Returns the appropriate Codes object, depending on the recording
         and experiments defined for this Schneidman object"""
-        return self.r.codes(neurons=nis, experiments=self.e,tres=tres, phase=phase, **kwargs)
+        return self.r.codes(neurons=nis, experiments=self.experiments, kind=kind, tres=tres, phase=phase)
 
     def intcodes(self, nis=None, **kwargs):
         """Given neuron indices (ordered LSB to MSB), returns an array of the integer representation

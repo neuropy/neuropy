@@ -267,7 +267,7 @@ def convertalltxtdin2binarydin(path=None):
     if path == None:
         path = os.getcwd()
 
-    listing = os.listdir(os.getcwd())
+    listing = os.listdir(path)
     dinfnames = []
 
     for fname in listing:
