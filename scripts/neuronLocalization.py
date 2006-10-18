@@ -143,7 +143,7 @@ neuron2chan = {0: 29,
 def chan2pos(polytrode=None, chanid=None):
     SiteLoc = {} # init a dict
     if polytrode == '1a':
-        '''Need to fill it in'''
+        """Need to fill it in"""
         pass
     elif polytrode == '1b':
         SiteLoc[0] = (-43, 900)
@@ -315,7 +315,10 @@ def chan2pos(polytrode=None, chanid=None):
         SiteLoc[53] = (25, 1050)
     else:
         raise ValueError, 'Unknown polytrode type', polytrode
-    return SiteLoc[chanid]
+    try:
+        return SiteLoc[chanid] # return the (x, y) tuple
+    except TypeError: # no chanid was specified, return the whole SiteLoc dict
+        return SiteLoc
 
 print 'neuronid xcoord ycoord'
 for (neuronid,chanid) in neuron2chan.iteritems():

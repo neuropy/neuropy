@@ -21,7 +21,6 @@ import matplotlib as mpl
 import scipy as sp
 import scipy.signal as sig
 import scipy.weave as weave
-import numpy.random as random
 from numpy.random import rand, randn, randint
 from numpy import arange, array, array as ar, asarray, log, log10, zeros, ones, diff, concatenate, concatenate as cat
 from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
@@ -34,7 +33,7 @@ mpl.interactive(True)
 # set some numpy options
 np.set_printoptions(precision=8)
 np.set_printoptions(threshold=1000)
-np.set_printoptions(edgeitems=10)
+np.set_printoptions(edgeitems=5)
 np.set_printoptions(linewidth=150)
 np.set_printoptions(suppress=True)
 

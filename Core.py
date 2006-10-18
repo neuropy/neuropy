@@ -37,7 +37,6 @@ import matplotlib as mpl
 import scipy as sp
 import scipy.signal as sig
 import scipy.weave as weave
-import numpy.random as random
 from numpy.random import rand, randn, randint
 from numpy import arange, array, array as ar, asarray, log, log10, zeros, ones, diff, concatenate, concatenate as cat
 from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
@@ -461,7 +460,7 @@ def bin(i):
     return s
 
 def binaryarray2int(bin):
-    """Takes a 2D binary array (only 1s and 0s, with rows MSB to LSB from bottom to top)
+    """Takes a 2D binary array (only 1s and 0s, with rows LSB to MSB from top to bottom)
     and returns the base 10 integer representations of the columns"""
     #assert type(bin) == type(array)
     nbits = bin.shape[0] # length of the highest (first) dimension, ie the number of rows

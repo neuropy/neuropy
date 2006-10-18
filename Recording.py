@@ -102,46 +102,6 @@ class BaseRecording(object):
             self.trange = min(tranges[:][0]), max(tranges[:][1])
         # then, maybe add other info about the Recording, stored in the same folder, like skull coordinates, angles, polytrode name and type...
 
-    '''
-    # What should be done with this????????????
-
-    def plot_codeProbScatter(self, nbits=DEFAULTCODEWORDLENGTH, randomneurons=False, **kwargs):
-        """Scatterplots the expected probabilities of all possible population codes (y axis) vs their observed probabilities (x axis)"""
-        neurons = self.n
-        nis = neurons.keys()
-        if nbits == None: # use all cells
-            nbits = len(nis)
-        if randomneurons:
-            nis = random.sample(nis, nbits) # randomly sample nbits of the nis
-        else:
-            nis.sort() # make sure they're in increasing order
-            nis = nis[:nbits] # use just the first nbits neurons to make your words
-        print 'neurons:', nis
-        print 'try colouring each point in the scatter according to the number of 1s in the spike word'
-        # set trange from first din of first experiment to last din of last experiment
-        mint = np.inf
-        maxt = 0
-        for exp in self.e.values():
-            if exp.din[0,0] < mint:
-                mint = exp.din[0,0]
-            if exp.din[-1,0] > maxt:
-                maxt = exp.din[-1,0]
-        trange = (mint, maxt+self.e[0].REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
-        # call the intcodes methods bound to the first (or any) experiment, cuz you have to have 'em bound.
-        pobserved, observedwords = self.e[0].intcodesPDF(nis=nis, trange=trange, **kwargs)
-        pexpected, expectedwords = self.e[0].intcodesFPDF(nis=nis, trange=trange, **kwargs) # expected, assuming independence
-        figure()
-        plot([10**-6, 1], [10**-6, 1], 'b-') # plot an x=y line
-        hold(True)
-        # pl.scatter(pobserved, pexpected), followed by setting the x and y axes to log scale freezes the figure and runs 100% cpu
-        # gca().set_xscale('log')
-        # gca().set_yscale('log')
-        # use loglog() instead
-        loglog(pobserved, pexpected, 'k.')
-        xlabel('observed population code probability')
-        ylabel('expected population code probability')
-        title('population code probabilities - recording %d - %s' % (self.id, self.name))
-    '''
 
 class PopulationRaster(object):
     """A population spike raster plot. 'sortby' is the neuron attribute name to sort the raster by.
@@ -488,7 +448,7 @@ class Schneidman(object):
             except AttributeError:
                 self.tranges = [ self.r.e[ei].trange for ei in experiments ] # assume experiments is a list of experiment ids
                 experiments = [ self.r.e[ei] for ei in experiments ] # convert to a list of Experiments
-        self.experiments = experiments # save list of Experiments
+        self.experiments = experiments # save list of Experiments (could potentially be None)
         self.neurons = self.r.n
 
     def codes(self, nis=None, kind='binary', tres=20000, phase=0):
@@ -497,12 +457,15 @@ class Schneidman(object):
         return self.r.codes(neurons=nis, experiments=self.experiments, kind=kind, tres=tres, phase=phase)
 
     def intcodes(self, nis=None, **kwargs):
-        """Given neuron indices (ordered LSB to MSB), returns an array of the integer representation
-        of the neuronal population code for each time bin"""
-        return binaryarray2int(self.codes(nis=nis).c)
+        """Given neuron indices (ordered LSB to MSB top to bottom), returns an array of the integer representation
+        of the neuronal population binary code for each time bin"""
+        if nis == None:
+            nis = self.neurons.keys()
+        return binaryarray2int(self.codes(nis=nis, kind='binary', **kwargs).c)
 
     def intcodesPDF(self, nis=None, **kwargs):
-        """Returns the pdf across all possible population code words"""
+        """Returns the pdf across all possible population binary code words,
+        labelled according to their integer representation"""
         if nis == None:
             nis = self.neurons.keys()
         intcodes = self.intcodes(nis=nis, **kwargs)
@@ -511,49 +474,54 @@ class Schneidman(object):
         return p, bins
 
     def intcodesFPDF(self, nis=None, **kwargs):
-        """Returns the probability of getting each population code word, assuming independence between neurons, taking into account each neuron's spike probability"""
+        """Returns the probability of getting each population binary code word, assuming independence between neurons,
+        taking into account each neuron's spike (and no spike) probability"""
         if nis == None:
             nis = self.neurons.keys()
         nbits = len(nis)
         intcodes = arange(2**nbits)
         #neurons = dict( (ni, self.neurons[ni]) for ni in nis )
-        codeso = self.codes(nis=nis)
-
-        codeso = self.e.codes(neurons=neurons, **kwargs)
+        codeso = self.codes(nis=nis, kind='binary', **kwargs)
         spikeps = [] # list spike probabilities for all neurons
         for neuroncode in codeso.c: # for each neuron, ie each row
             spikeps.append( neuroncode.sum() / float(neuroncode.size) ) # calc the average p of getting a spike for this neuron, within any time bin
-        spikeps = array(spikeps, ndmin = 2)
+        spikeps = array(spikeps, ndmin = 2) # convert to an nbits*1 array, make sure it's explicitly treated as a 2D array that can be transposed, or something
         nospikeps = 1 - spikeps
-        #print 'spikesps: ', spikeps
-        #print 'nospikesps: ', nospikeps
-        pon = getbinarytable(nbits)*spikeps.transpose()
-        poff = (1 - getbinarytable(nbits))*nospikeps.transpose()
-        #print 'pon', pon
-        #print 'poff', poff
-        x = pon + poff
-        #print 'x', x
-        intcodeps = x.prod(axis=0)
+        #print 'spikesps: ', spikeps.__repr__()
+        #print 'nospikesps: ', nospikeps.__repr__()
+        binarytable = getbinarytable(nbits)
+        pon = binarytable * spikeps.transpose() # 2D array of probs of having a 1 in the right place for all possible population code words
+        poff = (1 - binarytable) * nospikeps.transpose() # 2D array of probs of having a 0 in the right place for all possible population code words
+        #print 'pon', pon.__repr__()
+        #print 'poff', poff.__repr__()
+        x = pon + poff # add the 2D arrays, each has zero prob values where the other has non-zero prob values
+        #print 'x', x.__repr__()
+        intcodeps = x.prod(axis=0) # take the product along the 0th axis (the columns) to get the prob of each population code word
         return intcodeps, intcodes
 
-    def scatter(self, nbits=DEFAULTCODEWORDLENGTH, randomneurons=False, shufflecodes=False, **kwargs):
-        """Scatterplots the expected probabilities of all possible population codes (y axis) vs their observed probabilities (x axis)"""
+    def scatter(self, nis=None, nbits=DEFAULTCODEWORDLENGTH, randomneurons=False, shufflecodes=False, **kwargs):
+        """Scatterplots the expected probabilities of all possible population codes (y axis) vs their observed probabilities (x axis)
+        See Schneidman Figure 1f"""
+        print 'shufflecodes ain''t implemented yet, eh'
         # pick which and how many cells to include
-        nis = self.neurons.keys()
-        if nbits == None: # use all cells
+        if nis == None:
+            nis = self.neurons.keys()
+            nis.sort() # make sure they're in increasing order
+        if nbits == None: # use all cell ids specified in nis
             nbits = len(nis)
         if randomneurons:
             nis = random.sample(nis, nbits) # randomly sample nbits of the nis
         else:
-            nis.sort() # make sure they're in increasing order
             nis = nis[:nbits] # use just the first nbits neurons to make your words
         print 'neurons:', nis
         pobserved, observedwords = self.intcodesPDF(nis=nis, **kwargs)
         pexpected, expectedwords = self.intcodesFPDF(nis=nis, **kwargs) # expected, assuming independence
-        figure()
-        plot([10**-6, 1], [10**-6, 1], 'b-') # plot an x=y line
-        hold(True)
-        # pl.scatter(pobserved, pexpected), followed by setting the x and y axes to log scale freezes the figure and runs 100% cpu
+        assert (observedwords == expectedwords).all() # make sure we're comparing apples to apples
+        f = figure()
+        a = f.add_subplot(111)
+        a.plot([10**-6, 1], [10**-6, 1], 'b-') # plot an x=y line
+        a.hold(True)
+        # pylab.scatter(pobserved, pexpected), followed by setting the x and y axes to log scale freezes the figure and runs 100% cpu
         # gca().set_xscale('log')
         # gca().set_yscale('log')
         # use loglog() instead

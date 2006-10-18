@@ -673,6 +673,7 @@ class RevCorr(object):
         else:
             return False
     def calc(self):
+        """General calc step that has to be performed for all kinds of reverse correlations"""
         spikes = self.neuron.cut(self.trange)
         self.rcdini = self.experiment.din[:,0].searchsorted(spikes) - 1 # revcorr dini. Find where the spike times fall in the din, dec so you get indices that point to the most recent din value for each spike
         #self.din = self.experiment.din[rcdini,1] # get the din (frame indices) at the rcdini
@@ -749,7 +750,7 @@ class STA(RevCorr):
         #data = np.float64(self.movie.data) # converting from uint8 to float64 seems to speed up mean() method a bit
         data = self.movie.data
         tstart = time.clock()
-        pd = wx.ProgressDialog(title='n%d STA progress' % self.neuron.id, message='', maximum=self.tis[-1], style=1)
+        pd = wx.ProgressDialog(title='n%d STA progress' % self.neuron.id, message='', maximum=self.tis[-1], style=1) # create a progress dialog
         for ti in self.tis:
             cancel = not pd.Update(ti-1, newmsg='timepoint: %dms\nelapsed: %.1fs' % (self.t[ti], time.clock()-tstart))
             if cancel:
