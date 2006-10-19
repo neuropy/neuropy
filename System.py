@@ -25,7 +25,7 @@ class System(object):
     # doesn't need a id2name or name2id method, since there are no system ids
     def load(self):
         if not os.path.isdir(self.path):
-            raise NameError, 'Cannot find System(%s), path %s does not exist' % (repr(self.name), repr(self.path))
+            raise NameError, 'Cannot find System(%r), path %r does not exist' % (self.name, self.path)
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
         runNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname[0:2].isdigit() and dirname.count(' - ') == 1 ] # 1st 2 chars in dirname must be digits, must contain exactly 1 occurrence of ' - '

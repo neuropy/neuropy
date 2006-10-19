@@ -59,7 +59,6 @@ Schneidman stuff:
 
 
 
-
 DONE:
 
 - STAs
@@ -72,3 +71,4 @@ DONE:
 	- add neuron id as a popup or something on mouseover on population raster plot
 - various rate methods, ratePDFs
 - lots of other stuff I've forgotten about
+- can replace all '%s' % repr(x) with just '%r' % x

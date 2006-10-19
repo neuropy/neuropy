@@ -349,7 +349,7 @@ class NeuronCode(BaseNeuron):
         if kind == 'binary':
             co = BinaryCode(neuron=self, tranges=tranges, tres=tres, phase=phase) # init a new BinaryCode object
         else:
-            raise ValueError, 'Unknown kind: %s' % repr(self.kind)
+            raise ValueError, 'Unknown kind: %r' % self.kind
         for code in self._codes:
             if co == code: # need to define special == method for class Code()
                 return code # returns the first Code object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._codes
@@ -559,7 +559,7 @@ class RatePDF(object):
         elif self.scale == 'linear':
             r = np.linspace(start=self.rrange[0], stop=self.rrange[1], num=self.nbins, endpoint=True)
         else:
-            raise ValueError, 'Unknown scale: %s' % repr(scale)
+            raise ValueError, 'Unknown scale: %r' % scale
         self.n, self.r = histogram(self.rate.r, bins=r, normed=self.normed)
     def plot(self):
         figure()
@@ -572,7 +572,7 @@ class RatePDF(object):
         elif self.scale == 'linear':
             barwidth = (self.rrange[1]-self.rrange[0]) / float(self.nbins)
         else:
-            raise ValueError, 'Unknown scale: %s' % repr(scale)
+            raise ValueError, 'Unknown scale: %r' % scale
         #hist(self.n, bins=self.r, normed=0, bottom=0, width=None, hold=False) # doesn't seem to work
         bar(left=self.r, height=self.n, width=barwidth)
         axes().set_xscale(self.scale, basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
@@ -608,7 +608,7 @@ class NeuronRate(BaseNeuron):
         elif kind == 'rect':
             ro = RectRate(neuron=self, **kwargs) # init a new RectRate object
         else:
-            raise ValueError, 'Unknown kind: %s' % repr(self.kind)
+            raise ValueError, 'Unknown kind: %r' % self.kind
         for rate in self._rates:
             if ro == rate: # need to define special == method for class Rate()
                 return rate # returns the first Rate object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._rates
@@ -785,8 +785,8 @@ class STA(RevCorr):
     def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
         super(STA, self).plot(interp=interp, normed=normed,
                               title=lastcmd(),
-                              #title='r%d.n[%d].sta().plot(interp=%s, normed=%s, scale=%s)' %
-                              #(self.experiment.r.id, self.neuron.id, repr(interp), repr(normed), repr(scale)),
+                              #title='r%d.n[%d].sta().plot(interp=%r, normed=%r, scale=%r)' %
+                              #(self.experiment.r.id, self.neuron.id, interp, normed, scale),
                               scale=scale,
                               **kwargs)
     plot.__doc__ = RevCorr.plot.__doc__

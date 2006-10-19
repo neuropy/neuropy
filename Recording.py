@@ -127,7 +127,7 @@ class PopulationRaster(object):
         self.a.xaxis.set_major_locator(neuropyAutoLocator()) # better behaved tick locator
         self.a.xaxis.set_major_formatter(neuropyScalarFormatter()) # better behaved tick label formatter
         gcfm().frame.SetTitle(lastcmd())
-        #gcfm().frame.SetTitle('r%d.raster(sortby=%s)' % (self.r.id, repr(self.sortby)))
+        #gcfm().frame.SetTitle('r%d.raster(sortby=%r)' % (self.r.id, self.sortby))
         self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
         self.tooltip.Enable(False) # leave disabled for now
         self.tooltip.SetDelay(0) # set popup delay in ms
@@ -143,7 +143,7 @@ class PopulationRaster(object):
         """Sorts self.neurons according to the neuron attribute specified by self.sortby"""
         if self.sortby != None:
             self.neurons.sort(key=lambda n: n.__getattribute__(self.sortby))
-            print 'sorted by %s: %s' % (self.sortby, repr([ n.__getattribute__(self.sortby) for n in self.neurons ]))
+            print 'sorted by %s: %r' % (self.sortby, [ n.__getattribute__(self.sortby) for n in self.neurons ])
     def plot(self, left=0, width=200000):
         """Plots the raster, units are us wrt beginning of first experiment"""
         self.left = left
@@ -196,7 +196,7 @@ class PopulationRaster(object):
             if currentexp == None:
                 tip += '\nno experiment'
             else:
-                tip += '\nexperiment %s: %s' % (currentexp.id, repr(currentexp.name))
+                tip += '\nexperiment %s: %r' % (currentexp.id, currentexp.name)
             self.tooltip.SetTip(tip) # update the tooltip
             self.tooltip.Enable(True) # make sure it's enabled
         else: # mouse is outside the axes
@@ -350,7 +350,7 @@ class CodeCorrPDF(object):
         titlestring = 'neuron pair code correlation pdf'
         if self.e != None:
             print self.e
-            titlestring += '\nexperiments: %s' % repr(self.e.keys())
+            titlestring += '\nexperiments: %r' % self.e.keys()
         a.set_title(titlestring)
         if self.normed:
             if self.normed == 'pmf':
@@ -500,7 +500,7 @@ class Schneidman(object):
         return intcodeps, intcodes
 
     def scatter(self, nis=None, nbits=DEFAULTCODEWORDLENGTH, randomneurons=False, shufflecodes=False, **kwargs):
-        """Scatterplots the expected probabilities of all possible population codes (y axis) vs their observed probabilities (x axis)
+        """Scatterplots the expected probabilities, assuming independence, of all possible population codes (y axis) vs their observed probabilities (x axis).
         See Schneidman Figure 1f"""
         print 'shufflecodes ain''t implemented yet, eh'
         if nis == None:
@@ -549,15 +549,28 @@ class Schneidman(object):
         pobserved[inds[2]], pexpected[inds[2]] = None, None
         pobserved[inds[3]], pexpected[inds[3]] = None, None
         pobserved[inds[4]], pexpected[inds[4]] = None, None
+
         a.loglog(pobserved, pexpected, 'k.') # plots what's left in black
         a.loglog(pobserved4, pexpected4, 'm.')
         a.loglog(pobserved3, pexpected3, 'c.')
         a.loglog(pobserved2, pexpected2, 'y.')
         a.loglog(pobserved1, pexpected1, 'r.')
-
+        '''
+        a.plot(pobserved, pexpected, 'k.') # plots what's left in black
+        a.plot(pobserved4, pexpected4, 'm.')
+        a.plot(pobserved3, pexpected3, 'c.')
+        a.plot(pobserved2, pexpected2, 'y.')
+        a.plot(pobserved1, pexpected1, 'r.')
+        '''
         gcfm().frame.SetTitle(lastcmd())
         #gcfm().frame.SetTitle('r%d.e[%d].schneidman.scatter(nbits=%s, randomneurons=%s, shufflecodes=%s)' % (self.e.r.id, self.e.id, nbits, randomneurons, shufflecodes))
-        title('neurons: %s' % repr(nis))
+        missingcodeis = (self.pobserved == 0).nonzero()[0]
+        missingcodes = self.observedwords[missingcodeis]
+        pexpectedmissing = self.pexpected[missingcodeis]
+        maxpi = pexpectedmissing.argmax()
+        maxp = pexpectedmissing[maxpi]
+        maxpcode = self.expectedwords[missingcodeis[maxpi]]
+        title('neurons: %s\n nmissingcodes: %d, maxpmissingcode: (%r, pexpected=%.3g)' % (nis, len(missingcodes), bin(maxpcode, minbits=self.nbits), maxp))
         a.set_xlabel('observed population code probability')
         a.set_ylabel('expected population code probability')
 
@@ -568,14 +581,15 @@ class Schneidman(object):
             i  = approx(event.xdata, self.pobserved, rtol=5e-2, atol=0).nonzero()[0] # find for what indices (if any) xdata == pobserved
             ii = approx(event.ydata, self.pexpected[i], rtol=1e-1, atol=0).nonzero()[0] # for those above, find for what index (if any) ydata == pexpected
             codeis = i[ii]
-            if codeis.size != 0:
-                #tip += 'i: %s' % repr(i)
-                #tip += '\nii: %s' % repr(ii)
-                #tip += '\ncodeis: %s' % repr(codeis)
+            if codeis.size > 0:
+                #tip += 'i: %r' % i
+                #tip += '\nii: %r' % ii
+                #tip += '\ncodeis: %r' % codeis
                 intcodes = self.observedwords[codeis] # get the int rep for those indices from self.observedwords[i] or self.expectedwords[i]
-                tip = 'intcodes: %s' % repr(intcodes)
                 codes = [ bin(intcode, minbits=self.nbits) for intcode in intcodes ]
-                tip += '\ncodes: %s' % repr(codes)
+                tip =  'codes: %s' % repr(codes).replace('\'', '')
+                tip += '\nintcodes: %r' % list(intcodes)
+                tip += '\n(pobserved, pexpected): %s' % repr(zip([ '%.3g' % val for val in self.pobserved[codeis] ], [ '%.3g' % val for val in self.pexpected[codeis] ])).replace('\'', '')
                 self.tooltip.SetTip(tip) # update the tooltip
                 self.tooltip.Enable(True) # make sure it's enabled
             else:

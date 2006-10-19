@@ -36,7 +36,7 @@ class Movie(Dimstim.Movies.Movie): # inherit from Dimstim Movie() class (assumes
         if leftover != '':
             pprint(leftover)
             print self.nframes,self.ncellshigh,self.ncellswide
-            raise RuntimeError, 'There are unread bytes in movie file %s. Width, height, or nframes is incorrect in the movie file header.' % repr(self.name)
+            raise RuntimeError, 'There are unread bytes in movie file %r. Width, height, or nframes is incorrect in the movie file header.' % self.name
         #self.data = self.data[::,::-1,::] # flip the movie frames vertically for OpenGL's bottom left origin, don't need to do this cuz we're not using OpenGL here, to play the movie, unlike in Dimstim
         f.close() # close the movie file
 

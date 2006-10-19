@@ -270,8 +270,8 @@ class STAs(RevCorrs):
     def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
         super(STAs, self).plot(interp=interp, normed=normed,
                                title=lastcmd(),
-                               #title='r%d.e[%d].sta().plot(interp=%s, normed=%s, scale=%s)' %
-                               #(self.experiment.r.id, self.experiment.id, repr(interp), repr(normed), repr(scale)),
+                               #title='r%d.e[%d].sta().plot(interp=%r, normed=%r, scale=%r)' %
+                               #(self.experiment.r.id, self.experiment.id, interp, normed, scale),
                                scale=scale,
                                **kwargs)
     plot.__doc__ = RevCorrs.plot.__doc__
@@ -288,8 +288,8 @@ class STCs(RevCorrs):
     def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
         super(STCs, self).plot(interp=interp, normed=normed,
                                title=lastcmd(),
-                               #title='STC: r[%d], e[%d], interp=%s, normed=%s, scale=%s' %
-                               #(self.experiment.r.id, self.experiment.id, repr(interp), repr(normed), repr(scale)),
+                               #title='STC: r[%d], e[%d], interp=%r, normed=%r, scale=%r' %
+                               #(self.experiment.r.id, self.experiment.id, interp, normed, scale),
                                scale=scale,
                                **kwargs)
     plot.__doc__ = RevCorrs.plot.__doc__
@@ -340,7 +340,7 @@ class ExperimentPopulationRaster(PopulationRaster):
     """A population raster limited to a single Experiment"""
     def __init__(self, experiment, sortby='id'):
         super(ExperimentPopulationRaster, self).__init__(recording=experiment.r, experiments={experiment.id: experiment}, sortby=sortby)
-        #gcfm().frame.SetTitle('r%d.e[%d].raster(sortby=%s)' % (experiment.r.id, experiment.id, repr(self.sortby))) # set appropriate caption
+        #gcfm().frame.SetTitle('r%d.e[%d].raster(sortby=%r)' % (experiment.r.id, experiment.id, self.sortby)) # set appropriate caption
 
 
 class ExperimentRaster(BaseExperiment):
