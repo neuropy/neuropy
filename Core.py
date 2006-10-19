@@ -132,12 +132,12 @@ barefigure.__doc__ += '\n' + figure.__doc__
 
 def lastcmd():
     """Returns a string containing the last command entered at the PyShell prompt.
-    Maybe this could be expanded to work with other shells too?"""
+    Maybe this could be extended to work with other shells too?"""
     try:
         # PyShell's shell.py was hacked to save the last command
         # as an attrib in Shell.push()
         return __main__.shell.lastcmd
-    except:
+    except AttributeError:
         return 'unknown'
 
 class CanvasFrame(wx.Frame):
@@ -367,8 +367,8 @@ def approx(a, b, rtol=1.e-14, atol=1.e-14):
     numpy.allclose()"""
     x = array(a, copy=False)
     y = array(b, copy=False)
-    print x.shape
-    print y.shape
+    #print x.shape
+    #print y.shape
     return np.less(np.absolute(x-y), atol + rtol * np.absolute(y))
 
 def histogram(a, bins=10, range=None, normed=False):
@@ -449,14 +449,17 @@ def corrcoef(x, y):
     y = array(y)
     return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std())
 
-def bin(i):
-    """Return the binary representation of an integer.
-    Stolen from Andrew Gaul <andrew@gaul.org> off the web"""
+def bin(i, minbits=8):
+    """Return the binary representation of an integer. If necessary, will append leading zeros
+    if result is less than minbits long.
+    First 2 lines stolen from Andrew Gaul <andrew@gaul.org> off the web"""
     l = ['0000', '0001', '0010', '0011', '0100', '0101', '0110', '0111',
          '1000', '1001', '1010', '1011', '1100', '1101', '1110', '1111']
     s = ''.join(map(lambda x, l=l: l[int(x, 16)], hex(i)[2:]))
-    if s[0] == '1' and i > 0:
-        s = '0000' + s
+    s = s.lstrip('0') # strip s of leading zeros
+    nleadingzeros = minbits - len(s)
+    if nleadingzeros > 0:
+        s = '0'*nleadingzeros + s # add enough leading zeros to get requested minbits
     return s
 
 def binaryarray2int(bin):

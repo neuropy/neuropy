@@ -1,7 +1,6 @@
 Schneidman stuff:
 	- for the time bins, try lots of different phases, see if this changes things at all
 		- look if the most common states remain the most common
-	- add codeword (binary and int) popup on float over a point in the scatter plot
 	- since Recordings are fairly short, either combine lots of Recordings into one (or their Experiments), or use a shorter CODEWORDLENGTH to get better stat significance for all possible words
 		- add append() method to Experiment? no. din values have different meaning between Experiments
 		- better to add append() to Recording? yes.
@@ -64,7 +63,10 @@ Schneidman stuff:
 DONE:
 
 - STAs
-- codes, some Schneidman stuff
+- codes
+- Schneidman stuff
+	- add codeword (binary and int) popup on float over a point in the scatter plot
+
 - cross-correlograms
 - population rasters
 	- add neuron id as a popup or something on mouseover on population raster plot

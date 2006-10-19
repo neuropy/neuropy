@@ -503,32 +503,44 @@ class Schneidman(object):
         """Scatterplots the expected probabilities of all possible population codes (y axis) vs their observed probabilities (x axis)
         See Schneidman Figure 1f"""
         print 'shufflecodes ain''t implemented yet, eh'
-        # pick which and how many cells to include
         if nis == None:
             nis = self.neurons.keys()
             nis.sort() # make sure they're in increasing order
-        if nbits == None: # use all cell ids specified in nis
+        if nbits == None: # use all neuron ids specified in nis
             nbits = len(nis)
         if randomneurons:
             nis = random.sample(nis, nbits) # randomly sample nbits of the nis
         else:
             nis = nis[:nbits] # use just the first nbits neurons to make your words
+        self.nbits = nbits
         print 'neurons:', nis
-        pobserved, observedwords = self.intcodesPDF(nis=nis, **kwargs)
-        pexpected, expectedwords = self.intcodesFPDF(nis=nis, **kwargs) # expected, assuming independence
-        assert (observedwords == expectedwords).all() # make sure we're comparing apples to apples
+        self.pobserved, self.observedwords = self.intcodesPDF(nis=nis, **kwargs)
+        self.pexpected, self.expectedwords = self.intcodesFPDF(nis=nis, **kwargs) # expected, assuming independence
+        assert (self.observedwords == self.expectedwords).all() # make sure we're comparing apples to apples
         f = figure()
         a = f.add_subplot(111)
         a.plot([10**-6, 1], [10**-6, 1], 'b-') # plot an x=y line
         a.hold(True)
+
+        self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
+        self.tooltip.Enable(False) # leave disabled for now
+        self.tooltip.SetDelay(0) # set popup delay in ms
+        gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
+        f.canvas.mpl_connect('motion_notify_event', self.onmotion)
+
         # pylab.scatter(pobserved, pexpected), followed by setting the x and y axes to log scale freezes the figure and runs 100% cpu
         # gca().set_xscale('log')
         # gca().set_yscale('log')
         # use loglog() instead
+
+        # colour each scatter point according to how many 1s are in the population code word it represents.
+        # This is done a bit nastily, could use a cleanup:
         inds = []
         for nspikes in range(0,5):
             inds.append([])
             [ inds[nspikes].append(i) for i in range(0,2**nbits) if bin(i).count('1') == nspikes ]
+        pobserved = self.pobserved.copy() # make local copies that are safe to modify for colour plotting and shit
+        pexpected = self.pexpected.copy()
         pobserved1 = pobserved[inds[1]]; pexpected1 = pexpected[inds[1]]
         pobserved2 = pobserved[inds[2]]; pexpected2 = pexpected[inds[2]]
         pobserved3 = pobserved[inds[3]]; pexpected3 = pexpected[inds[3]]
@@ -537,16 +549,39 @@ class Schneidman(object):
         pobserved[inds[2]], pexpected[inds[2]] = None, None
         pobserved[inds[3]], pexpected[inds[3]] = None, None
         pobserved[inds[4]], pexpected[inds[4]] = None, None
-        loglog(pobserved, pexpected, 'k.') # plots what's left in black
-        loglog(pobserved4, pexpected4, 'm.')
-        loglog(pobserved3, pexpected3, 'c.')
-        loglog(pobserved2, pexpected2, 'y.')
-        loglog(pobserved1, pexpected1, 'r.')
+        a.loglog(pobserved, pexpected, 'k.') # plots what's left in black
+        a.loglog(pobserved4, pexpected4, 'm.')
+        a.loglog(pobserved3, pexpected3, 'c.')
+        a.loglog(pobserved2, pexpected2, 'y.')
+        a.loglog(pobserved1, pexpected1, 'r.')
+
         gcfm().frame.SetTitle(lastcmd())
         #gcfm().frame.SetTitle('r%d.e[%d].schneidman.scatter(nbits=%s, randomneurons=%s, shufflecodes=%s)' % (self.e.r.id, self.e.id, nbits, randomneurons, shufflecodes))
         title('neurons: %s' % repr(nis))
-        xlabel('observed population code probability')
-        ylabel('expected population code probability')
+        a.set_xlabel('observed population code probability')
+        a.set_ylabel('expected population code probability')
+
+    def onmotion(self, event):
+        """Called during mouse motion over scatterplot figure. Pops up the corresponding
+        population code word and its int representation when hovering over a neuron scatter point"""
+        if event.xdata != None and event.ydata != None: # if mouse is inside the axes
+            i  = approx(event.xdata, self.pobserved, rtol=5e-2, atol=0).nonzero()[0] # find for what indices (if any) xdata == pobserved
+            ii = approx(event.ydata, self.pexpected[i], rtol=1e-1, atol=0).nonzero()[0] # for those above, find for what index (if any) ydata == pexpected
+            codeis = i[ii]
+            if codeis.size != 0:
+                #tip += 'i: %s' % repr(i)
+                #tip += '\nii: %s' % repr(ii)
+                #tip += '\ncodeis: %s' % repr(codeis)
+                intcodes = self.observedwords[codeis] # get the int rep for those indices from self.observedwords[i] or self.expectedwords[i]
+                tip = 'intcodes: %s' % repr(intcodes)
+                codes = [ bin(intcode, minbits=self.nbits) for intcode in intcodes ]
+                tip += '\ncodes: %s' % repr(codes)
+                self.tooltip.SetTip(tip) # update the tooltip
+                self.tooltip.Enable(True) # make sure it's enabled
+            else:
+                self.tooltip.Enable(False) # disable the tooltip
+        else: # mouse is outside the axes
+            self.tooltip.Enable(False) # disable the tooltip
 
     def nspikingPDF(self, nbits=None, **kwargs):
         """Returns the PDF of observing n cells spiking in the same population code time bin"""
