@@ -254,7 +254,7 @@ class RecordingRaster(BaseRecording):
 class Codes(object):
     """A 2D array where each row is a neuron code, and each column
     is a binary population word for that time bin, sorted LSB to MSB from top to bottom.
-    neurons is a list of Neurons. Order in neurons is preserved."""
+    neurons is a list of Neurons, also from LSB to MSB. Order in neurons is preserved."""
     def __init__(self, neurons=None, kind='binary', tranges=None, tres=20000, phase=0):
         self.neurons = neurons
         self.kind = kind
@@ -377,8 +377,11 @@ class RecordingCode(BaseRecording):
         """Returns a Codes object, a 2D array where each row is a neuron code constrained to the time range of this Recording,
         or if specified, to the time ranges of Experiments in this Recording"""
         if neurons != None:
-            if neurons.__class__ == list: # is a list of neuron ids, preserve their order
-                neurons = [ self.n[ni] for ni in neurons ] # build up list of Neurons, ordered according to the id list in neurons
+            if neurons.__class__ == list:
+                try: # asume is a list of Neuron ids?
+                    neurons = [ self.n[ni] for ni in neurons ] # build up list of Neurons, ordered according to the id list in neurons
+                except: # assume is a list of Neurons
+                    pass
             else: # assume neurons is a dict of neurons
                 neurons = list(neurons.values()) # convert to list of Neurons
         else:
@@ -454,7 +457,9 @@ class Schneidman(object):
     def codes(self, nis=None, kind='binary', tres=20000, phase=0):
         """Returns the appropriate Codes object, depending on the recording
         and experiments defined for this Schneidman object"""
-        return self.r.codes(neurons=nis, experiments=self.experiments, kind=kind, tres=tres, phase=phase)
+        cneurons = [ self.r.cn[ni] for ni in nis ] # build up list of ConstrainedNeurons, according to nis
+        # get codes for this Recording constrained to when stimuli were on screen
+        return self.r.codes(neurons=cneurons, experiments=self.experiments, kind=kind, tres=tres, phase=phase)
 
     def intcodes(self, nis=None, **kwargs):
         """Given neuron indices (ordered LSB to MSB top to bottom), returns an array of the integer representation
@@ -499,15 +504,21 @@ class Schneidman(object):
         intcodeps = x.prod(axis=0) # take the product along the 0th axis (the columns) to get the prob of each population code word
         return intcodeps, intcodes
 
-    def scatter(self, nis=None, nbits=DEFAULTCODEWORDLENGTH, randomneurons=False, shufflecodes=False, **kwargs):
-        """Scatterplots the expected probabilities, assuming independence, of all possible population codes (y axis) vs their observed probabilities (x axis).
+    def scatter(self, nis=None, nbits=None, randomneurons=False, shufflecodes=False, **kwargs):
+        """Scatterplots the expected probabilities, assuming independence,
+        of all possible population codes (y axis) vs their observed probabilities (x axis).
+        nis are in LSB to MSB order.
         See Schneidman Figure 1f"""
-        print 'shufflecodes ain''t implemented yet, eh'
+        print 'shufflecodes aint implemented yet, eh. Shuffle each neurons codetrain, scatter should then fall nicely on the y=x independence line'
         if nis == None:
             nis = self.neurons.keys()
-            nis.sort() # make sure they're in increasing order
-        if nbits == None: # use all neuron ids specified in nis
-            nbits = len(nis)
+            nis.sort() # make sure they're in increasing order, you never know with dict keys
+        else:
+            if nbits == None:
+                nbits = len(nis) # if nis is specified and nbits isn't, each ni gets its own bit
+        if nbits == None:
+            nbits = DEFAULTCODEWORDLENGTH
+        nbits = min(len(nis), nbits) # constrain nbits to number of nis
         if randomneurons:
             nis = random.sample(nis, nbits) # randomly sample nbits of the nis
         else:
@@ -519,7 +530,7 @@ class Schneidman(object):
         assert (self.observedwords == self.expectedwords).all() # make sure we're comparing apples to apples
         f = figure()
         a = f.add_subplot(111)
-        a.plot([10**-6, 1], [10**-6, 1], 'b-') # plot an x=y line
+        a.plot([10**-6, 1], [10**-6, 1], 'b-') # plot a y=x line
         a.hold(True)
 
         self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
@@ -536,9 +547,9 @@ class Schneidman(object):
         # colour each scatter point according to how many 1s are in the population code word it represents.
         # This is done a bit nastily, could use a cleanup:
         inds = []
-        for nspikes in range(0,5):
+        for nspikes in range(0, 5):
             inds.append([])
-            [ inds[nspikes].append(i) for i in range(0,2**nbits) if bin(i).count('1') == nspikes ]
+            [ inds[nspikes].append(i) for i in range(0, 2**nbits) if bin(i).count('1') == nspikes ]
         pobserved = self.pobserved.copy() # make local copies that are safe to modify for colour plotting and shit
         pexpected = self.pexpected.copy()
         pobserved1 = pobserved[inds[1]]; pexpected1 = pexpected[inds[1]]
@@ -565,12 +576,15 @@ class Schneidman(object):
         gcfm().frame.SetTitle(lastcmd())
         #gcfm().frame.SetTitle('r%d.e[%d].schneidman.scatter(nbits=%s, randomneurons=%s, shufflecodes=%s)' % (self.e.r.id, self.e.id, nbits, randomneurons, shufflecodes))
         missingcodeis = (self.pobserved == 0).nonzero()[0]
-        missingcodes = self.observedwords[missingcodeis]
-        pexpectedmissing = self.pexpected[missingcodeis]
-        maxpi = pexpectedmissing.argmax()
-        maxp = pexpectedmissing[maxpi]
-        maxpcode = self.expectedwords[missingcodeis[maxpi]]
-        title('neurons: %s\n nmissingcodes: %d, maxpmissingcode: (%r, pexpected=%.3g)' % (nis, len(missingcodes), bin(maxpcode, minbits=self.nbits), maxp))
+        missingcodetext = ''
+        if len(missingcodeis) != 0:
+            missingcodes = self.observedwords[missingcodeis]
+            pexpectedmissing = self.pexpected[missingcodeis]
+            maxpi = pexpectedmissing.argmax()
+            maxp = pexpectedmissing[maxpi]
+            maxpcode = self.expectedwords[missingcodeis[maxpi]]
+            missingcodetext += '\n nmissingcodes: %d, maxpmissingcode: (%r, pexpected=%.3g)' % (len(missingcodes), bin(maxpcode, minbits=self.nbits), maxp)
+        title('neurons: %s' % nis + missingcodetext)
         a.set_xlabel('observed population code probability')
         a.set_ylabel('expected population code probability')
 

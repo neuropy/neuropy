@@ -658,7 +658,7 @@ class RevCorr(object):
         self.movie = self.experiment.stims[0]
         self.nt = nt # number of revcorr timepoints
         self.tis = range(0, nt, 1) # revcorr timepoint indices
-        self.t = [ int(round(ti * self.movie.sweeptimeMsec)) for ti in self.tis ] #list(array(self.tis) * self.movie.sweeptimeMsec) # revcorr timepoint values, convert to array to do elementwise muliplication, then convert back to list. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
+        self.t = [ int(round(ti * self.movie.sweeptimeMsec)) for ti in self.tis ] # revcorr timepoint values, stored in a list. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
         self.ndinperframe = int(round(self.movie.sweeptimeMsec / float(self.experiment.REFRESHTIME / 1000.)))
         self.width = self.movie.data.shape[-1]
         self.height = self.movie.data.shape[-2]
@@ -758,7 +758,7 @@ class STA(RevCorr):
                 pd.Destroy()
                 self.done = False
                 return
-            rcdini = self.rcdini - ti*self.ndinperframe # this can unintentionally introduce -ve valued indices
+            rcdini = self.rcdini - ti*self.ndinperframe # this can unintentionally introduce -ve valued indices at the left boundary
             rcdini = rcdini[rcdini >= 0] # remove any -ve valued indices. Is this the most efficient way to do this?
             frameis = self.experiment.din[rcdini,1] # get the din values (frame indices) at the rcdini for this timepoint
             # in Cat 15, we erroneously duplicated the first frame of the mseq movies at the end, giving us one more frame (0 to 65535 for mseq32) than we should have had (0 to 65534 for mseq32). We're now using the correct movies, but the din for Cat 15 mseq experiments still have those erroneous frame indices (65535 and 16383 for mseq32 and mseq16 respectively), so we'll just ignore them for revcorr purposes.
@@ -884,5 +884,5 @@ class ConstrainedNeuron(Neuron):
             self.spikes = cspikes # save 'em
             self.nspikes = len(self.spikes) # update it
             if self.nspikes == 0: # this Neuron has no spikes, not much of a Neuron as far as this Recording is concerened
-                self.spikes = np.append(self.nspikes, None) # add None to empty spike list
+                self.spikes = np.append(self.spikes, None) # add None to empty spike list
             self.trange = (self.tranges[0][0], self.tranges[-1][1]) # overwrite inherited self.trange, use start of first trange and end of last trange

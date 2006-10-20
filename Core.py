@@ -524,6 +524,25 @@ def randomize(x):
         y.append(random.choice(x))
     return y
 
+def fact(n):
+    """Factorial!"""
+    assert n.__class__ == int
+    assert n >= 0
+    if n == 0:
+        n = 1 # 0! == 1!
+    result = n
+    for i in range(1, n):
+        result *= i
+    return result
+
+def nPr(n, r):
+    """n Pick r"""
+    return fact(n) / fact(n-r)
+
+def nCr(n, r):
+    """n Choose r"""
+    return nPr(n, r) / fact(r)
+
 '''
 # this f'n isn't really needed, just use objlist.sort(key=lambda obj: obj.attrib)
 def sortby(objs, attrib, cmp=None, reverse=False):
