@@ -328,9 +328,24 @@ class CodeCorrPDF(object):
         were passed and their tranges were used to generate self.tranges (see __init__)"""
         cnis = self.r.cn.keys() # ConstrainedNeuron indices
         ncneurons = len(cnis)
+        # it's more efficient to precalculate the means and stds of each cell's codetrain,
+        # and then reuse them in calculating the correlation coefficients:
+        means = dict( ( cni, self.r.code(cni, tranges=self.tranges, **self.kwargs).c.mean() ) for cni in cnis ) # store each code mean in a dict
+        stds  = dict( ( cni, self.r.code(cni, tranges=self.tranges, **self.kwargs).c.std() ) for cni in cnis ) # store each code std in a dict
+        self.corrs = []
+        for cnii1 in range(0, ncneurons):
+            for cnii2 in range(cnii1+1, ncneurons):
+                cni1 = cnis[cnii1]
+                cni2 = cnis[cnii2]
+                code1 = self.r.code(cni1, tranges=self.tranges, **self.kwargs).c
+                code2 = self.r.code(cni2, tranges=self.tranges, **self.kwargs).c
+                cc = ((code1 * code2).mean() - means[cni1] * means[cni2]) / (stds[cni1] * stds[cni2]) # mean of product - product of means, / by product of stds
+                self.corrs.append(cc)
+        '''
+        # simpler, but slower way:
         self.corrs = [ self.r.codecorr(cnis[cnii1], cnis[cnii2], tranges=self.tranges, **self.kwargs)
-                       for cnii1 in range(0,ncneurons) for cnii2 in range(cnii1,ncneurons)
-                       if cnii1 != cnii2 ]
+                       for cnii1 in range(0,ncneurons) for cnii2 in range(cnii1+1,ncneurons) ]
+        '''
     def plot(self, figsize=(7.5, 6.5), crange=None, nbins=100, normed='pdf'):
         self.crange = crange
         self.nbins = nbins
@@ -409,8 +424,7 @@ class RecordingCode(BaseRecording):
     codes.__doc__ += '\n\nCodes object:\n' + Codes.__doc__
 
     def codecorr(self, neuron1, neuron2, **kwargs):
-        """Calculates the correlation of two Neuron.Code (or ConstrainedNeuron.Code)
-        objects. Uses naive corrcoef() f'n defined by me. SLOWWWWWWWWWWWW!!!!!!!!!!!!!!!!!!!!!!!!!"""
+        """Calculates the correlation of two Neuron.Code (or ConstrainedNeuron.Code)"""
         code1 = self.code(neuron1, **kwargs)
         code2 = self.code(neuron2, **kwargs)
         return corrcoef(code1.c, code2.c)
@@ -491,7 +505,7 @@ class Schneidman(object):
             nis = self.neurons.keys()
         nbits = len(nis)
         intcodes = arange(2**nbits)
-        #neurons = dict( (ni, self.neurons[ni]) for ni in nis )
+        #neurons = dict( (ni, self.neurons[ni]) for ni in nis ) # this is like dict comprehension, pretty awesome!
         codeso = self.codes(nis=nis, kind='binary', **kwargs)
         spikeps = [] # list spike probabilities for all neurons
         for neuroncode in codeso.c: # for each neuron, ie each row

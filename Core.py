@@ -440,14 +440,15 @@ def sah(t, y, ts, keep=False):
     return y[i]
 
 def corrcoef(x, y):
-    """Returns correlation coefficient of signals x and y. This should be equivalent to np.corrcoef(),
-    but that one doesn't seem to work for signals with zeros in them. Check how std() works exactly
+    """Returns the correlation coefficient of signals x and y. This just uses np.corrcoef(),
+    but converts to floats first, cuz np.corrcoef() seems to have issues with integer signals,
+    especially those with zeros in them."""
+    #assert len(x) == len(y), 'arrays need to be of equal length'
+    x = np.float64(x)
+    y = np.float64(y)
+    return np.corrcoef(x, y)[0, 1] # pick one of the 2 entries in the correlation coefficient matrix, on the -ve diagonal (er, the one that goes from bottom left to top right, that's what I mean)
+    #return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std()) # this works just fine as well, easier to understand too
 
-    THIS IS REAL DAMN SLOW, cuz it's pure Python"""
-    assert len(x) == len(y), 'arrays need to be of equal length'
-    x = array(x)
-    y = array(y)
-    return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std())
 
 def bin(i, minbits=8):
     """Return the binary representation of an integer. If necessary, will append leading zeros
@@ -457,9 +458,8 @@ def bin(i, minbits=8):
          '1000', '1001', '1010', '1011', '1100', '1101', '1110', '1111']
     s = ''.join(map(lambda x, l=l: l[int(x, 16)], hex(i)[2:]))
     s = s.lstrip('0') # strip s of leading zeros
-    nleadingzeros = minbits - len(s)
-    if nleadingzeros > 0:
-        s = '0'*nleadingzeros + s # add enough leading zeros to get requested minbits
+    nzerostoadd = minbits - len(s)
+    s = '0'*nzerostoadd + s # add enough leading zeros to get requested minbits
     return s
 
 def binaryarray2int(bin):

@@ -160,8 +160,7 @@ class ExperimentCode(BaseExperiment):
     codes.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__)
 
     def codecorr(self, neuron1, neuron2, **kwargs):
-        """Calculates the correlation of two Neuron.Code objects
-        Uses naive corrcoef() f'n defined by me. SLOWWWWWWWWWWWW!!!!!!!!!!!!!!!!!!!!!!!!!"""
+        """Calculates the correlation of two Neuron.Code objects"""
         code1 = self.code(neuron1, **kwargs)
         code2 = self.code(neuron2, **kwargs)
         return corrcoef(code1.c, code2.c)
