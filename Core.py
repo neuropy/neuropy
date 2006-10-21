@@ -513,7 +513,8 @@ def getbinarytable(nbits=8):
 def shuffle(x):
     """Takes an input list x and returns a shuffled (without replacement) copy. Its only benefit
     over and above random.sample() is that you don't have to pass a second argument len(x)
-    every time you use it"""
+    every time you use it.
+    In NumPy, it's better (and faster) to use np.random.shuffle()"""
     return random.sample(x, len(x))
 
 def randomize(x):

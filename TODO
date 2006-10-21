@@ -14,6 +14,10 @@ Schneidman stuff:
 	- make Neuron.append() in place, and ensure whenever it's used, that's it's used on a copied Neuron
 	- do analyses across Recordings, using Neuron.append(), to increase significance
 
+
+- MPL:
+	- when saving figs, automatically choose .png from list, and automatically fill in the file name with the text of the the title bar of the figure
+
 - cross-correlograms
 	- make it faster
 	- add p values to peaks (% of ticks within the peak, out of all the ticks in the window)
@@ -49,11 +53,14 @@ Schneidman stuff:
 - more detailed experimental info:
 	- Recordings
 		- maybe add other info about the Recording, stored in the same folder, like skull coordinates, angles, polytrode name and type...
+		- LFPs
+			- maybe a .lfp binary file, one per lfp channel, with alternating timestamps and voltage (uV?), ie (int64, float64) pairs
 	- Rips
 		- then, maybe add something that loads info about the rip, say from some file describing the template used, and all the thresholds, exported to the same folder by SURF
         - maybe also load the template file used for the rip, perhaps also stored in the same folder
 	- Neurons
 		- then, maybe add something that loads the template for this neuron, as well as its modelled (or just guesstimated) location in 3D (or just 2D) coordinates in um, as well as cell type potentially
+
 
 
 

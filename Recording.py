@@ -255,12 +255,13 @@ class Codes(object):
     """A 2D array where each row is a neuron code, and each column
     is a binary population word for that time bin, sorted LSB to MSB from top to bottom.
     neurons is a list of Neurons, also from LSB to MSB. Order in neurons is preserved."""
-    def __init__(self, neurons=None, kind='binary', tranges=None, tres=20000, phase=0):
+    def __init__(self, neurons=None, kind='binary', tranges=None, tres=20000, phase=0, shufflecodes=False):
         self.neurons = neurons
         self.kind = kind
         self.tranges = tolist(tranges)
         self.tres = tres
         self.phase = phase
+        self.shufflecodes = shufflecodes
     def calc(self):
         self.s = [] # stores the corresponding spike times for each neuron, just for reference
         self.c = [] # stores the 2D code array
@@ -268,7 +269,12 @@ class Codes(object):
         for neuron in self.neurons:
             codeo = neuron.code(kind=self.kind, tranges=self.tranges, tres=self.tres, phase=self.phase)
             self.s.append(codeo.s) # each is a nested list (ie, 2D), each row will have different length
-            self.c.append( [ codeo.c ] ) # each is a nested list (ie, 2D)
+            if self.shufflecodes:
+                c = codeo.c.copy() # make a copy (wanna leave the codeo's codetrain untouched)
+                np.random.shuffle(c) # shuffle each neuron's codetrain separately, in-place operation
+            else:
+                c = codeo.c # just a pointer
+            self.c.append([c]) # each is a nested list (ie, 2D)
         self.t = codeo.t # stores the bin edges, just for reference. all timepoints should be the same for all neurons, cuz they're all given the same trange. use the timepoints of last neuron
         self.c = tuple(self.c) # required for concatenate
         self.c = cat(self.c)
@@ -373,7 +379,7 @@ class RecordingCode(BaseRecording):
         except AttributeError:
             return self.cn[cneuron].code(kind='binary', tranges=None, tres=20000, phase=0) # cneuron is probably a ConstrainedNeuron id
 
-    def codes(self, neurons=None, experiments=None, kind='binary', tres=20000, phase=0):
+    def codes(self, neurons=None, experiments=None, kind='binary', tres=20000, phase=0, shufflecodes=False):
         """Returns a Codes object, a 2D array where each row is a neuron code constrained to the time range of this Recording,
         or if specified, to the time ranges of Experiments in this Recording"""
         if neurons != None:
@@ -397,7 +403,7 @@ class RecordingCode(BaseRecording):
                 tranges = [ e.trange for e in experiments.values() ]
         else: # no experiments specified, use whole Recording trange
             tranges = [self.trange]
-        codeso = Codes(neurons=neurons, kind=kind, tranges=tranges, tres=tres, phase=phase)
+        codeso = Codes(neurons=neurons, kind=kind, tranges=tranges, tres=tres, phase=phase, shufflecodes=shufflecodes)
         codeso.calc()
         return codeso
     codes.__doc__ += '\n\nCodes object:\n' + Codes.__doc__
@@ -454,12 +460,12 @@ class Schneidman(object):
         self.experiments = experiments # save list of Experiments (could potentially be None)
         self.neurons = self.r.n
 
-    def codes(self, nis=None, kind='binary', tres=20000, phase=0):
+    def codes(self, nis=None, kind='binary', tres=20000, phase=0, shufflecodes=False):
         """Returns the appropriate Codes object, depending on the recording
         and experiments defined for this Schneidman object"""
         cneurons = [ self.r.cn[ni] for ni in nis ] # build up list of ConstrainedNeurons, according to nis
         # get codes for this Recording constrained to when stimuli were on screen
-        return self.r.codes(neurons=cneurons, experiments=self.experiments, kind=kind, tres=tres, phase=phase)
+        return self.r.codes(neurons=cneurons, experiments=self.experiments, kind=kind, tres=tres, phase=phase, shufflecodes=shufflecodes)
 
     def intcodes(self, nis=None, **kwargs):
         """Given neuron indices (ordered LSB to MSB top to bottom), returns an array of the integer representation
@@ -479,7 +485,7 @@ class Schneidman(object):
         return p, bins
 
     def intcodesFPDF(self, nis=None, **kwargs):
-        """Returns the probability of getting each population binary code word, assuming independence between neurons,
+        """the F stands for factorial. Returns the probability of getting each population binary code word, assuming independence between neurons,
         taking into account each neuron's spike (and no spike) probability"""
         if nis == None:
             nis = self.neurons.keys()
@@ -509,7 +515,6 @@ class Schneidman(object):
         of all possible population codes (y axis) vs their observed probabilities (x axis).
         nis are in LSB to MSB order.
         See Schneidman Figure 1f"""
-        print 'shufflecodes aint implemented yet, eh. Shuffle each neurons codetrain, scatter should then fall nicely on the y=x independence line'
         if nis == None:
             nis = self.neurons.keys()
             nis.sort() # make sure they're in increasing order, you never know with dict keys
@@ -525,8 +530,8 @@ class Schneidman(object):
             nis = nis[:nbits] # use just the first nbits neurons to make your words
         self.nbits = nbits
         print 'neurons:', nis
-        self.pobserved, self.observedwords = self.intcodesPDF(nis=nis, **kwargs)
-        self.pexpected, self.expectedwords = self.intcodesFPDF(nis=nis, **kwargs) # expected, assuming independence
+        self.pobserved, self.observedwords = self.intcodesPDF(nis=nis, shufflecodes=shufflecodes, **kwargs) # potentially shuffle the observed codes
+        self.pexpected, self.expectedwords = self.intcodesFPDF(nis=nis, **kwargs) # expected, assuming independence. Never potentially shuffle expected codes (not that it would make any difference to the expected probabilities anyway...)
         assert (self.observedwords == self.expectedwords).all() # make sure we're comparing apples to apples
         f = figure()
         a = f.add_subplot(111)
