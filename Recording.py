@@ -255,7 +255,7 @@ class Codes(object):
     """A 2D array where each row is a neuron code, and each column
     is a binary population word for that time bin, sorted LSB to MSB from top to bottom.
     neurons is a list of Neurons, also from LSB to MSB. Order in neurons is preserved."""
-    def __init__(self, neurons=None, kind='binary', tranges=None, tres=20000, phase=0, shufflecodes=False):
+    def __init__(self, neurons=None, kind='binary', tranges=None, tres=DEFAULTCODETRES, phase=0, shufflecodes=False):
         self.neurons = neurons
         self.kind = kind
         self.tranges = tolist(tranges)
@@ -385,16 +385,16 @@ class CodeCorrPDF(object):
 
 class RecordingCode(BaseRecording):
     """Mix-in class that defines the spike code related Recording methods"""
-    def code(self, cneuron=None, kind='binary', tranges=None, tres=20000, phase=0):
+    def code(self, cneuron=None, kind='binary', tranges=None, tres=DEFAULTCODETRES, phase=0):
         """Returns a ConstrainedNeuron.Code object, constrained to the time
         ranges of the Experiments in this Recording, as well as by tranges. Takes either a
         ConstrainedNeuron object or just a ConstrainedNeuron id"""
         try:
-            return cneuron.code(kind='binary', tranges=None, tres=20000, phase=0) # see if cneuron is a ConstrainedNeuron
+            return cneuron.code(kind='binary', tranges=None, tres=DEFAULTCODETRES, phase=0) # see if cneuron is a ConstrainedNeuron
         except AttributeError:
-            return self.cn[cneuron].code(kind='binary', tranges=None, tres=20000, phase=0) # cneuron is probably a ConstrainedNeuron id
+            return self.cn[cneuron].code(kind='binary', tranges=None, tres=DEFAULTCODETRES, phase=0) # cneuron is probably a ConstrainedNeuron id
 
-    def codes(self, neurons=None, experiments=None, kind='binary', tres=20000, phase=0, shufflecodes=False):
+    def codes(self, neurons=None, experiments=None, kind='binary', tres=DEFAULTCODETRES, phase=0, shufflecodes=False):
         """Returns a Codes object, a 2D array where each row is a neuron code constrained to the time range of this Recording,
         or if specified, to the time ranges of Experiments in this Recording"""
         if neurons != None:
@@ -474,7 +474,7 @@ class Schneidman(object):
         self.experiments = experiments # save list of Experiments (could potentially be None)
         self.neurons = self.r.n
 
-    def codes(self, nis=None, kind='binary', tres=20000, phase=0, shufflecodes=False):
+    def codes(self, nis=None, kind='binary', tres=DEFAULTCODETRES, phase=0, shufflecodes=False):
         """Returns the appropriate Codes object, depending on the recording
         and experiments defined for this Schneidman object"""
         cneurons = [ self.r.cn[ni] for ni in nis ] # build up list of ConstrainedNeurons, according to nis
@@ -630,34 +630,37 @@ class Schneidman(object):
         else: # mouse is outside the axes
             self.tooltip.Enable(False) # disable the tooltip
 
-    def nspikingPDF(self, nbits=None, **kwargs):
-        """Returns the PDF of observing n cells spiking in the same population code time bin"""
-        print 'INCOMPLETE!!!!!!!!!!!!!!!!!!!!!!!!'
-        pobserved, observedwords = self.intcodesPDF(nbits=nbits, **kwargs)
-        nspiking = [] # collect observances of the number of cells spiking for each pop code time bin
-        for observedword in observedwords: # slow hack
-            nspiking.append( np.binary_repr(observedword).count('1') ) # convert words to binary, count the number of 1s in each
-        pnspiking, bins = histogram(nspiking, bins=arange(nbits), normed='pmf') # histogram 'em
+    def nspikingPDF(self, nis=None, shufflecodes=False, **kwargs):
+        """Returns the PDF of observing n cells spiking in the same population code time bin, for either
+        an unshuffled or shuffled Codes object"""
+        observedwords = self.intcodes(nis=nis, shufflecodes=shufflecodes, **kwargs)
+        # collect observances of the number of cells spiking for each pop code time bin
+        nspiking = [ np.binary_repr(observedword).count('1') for observedword in observedwords ] # for all time bins, convert words to binary, count the number of 1s in each. np.binary_repr() is a bit faster than using Core.bin()
+        pnspiking, bins = histogram(nspiking, bins=arange(len(self.neurons)+1), normed='pmf') # histogram 'em, want all probs to add to 1, not their area, so use pmf
         return pnspiking, bins
 
-    def nspikingFPDF(self, nbits=None, **kwargs):
-        """Returns the PDF of observing n cells spiking in the same population code time bin, assuming independence by shuffling each cell's code train"""
-        print 'INCOMPLETE!!!!!!!!!!!!!!!!!!!!!!!!'
-        pass
-
-    def plot_pdf(self, nbits=None, **kwargs):
-        """Plots nspikingPDF and nspikingFPDF together. See 2006 Schneidman fig 1e"""
-        print 'INCOMPLETE!!!!!!!!!!!!!!!!!!!!!!!!'
-        nspikingPDF
-        nspikingFPDF
-    '''
-    class plot(object):
-        """Would allow you to do r92.e[0].schneidman().plot().scatter()"""
-        def scatter():
-            pass
-        def pdf():
-            pass
-    '''
+    def plotnspikingPDFs(self, **kwargs):
+        """Plots nspikingPDF, for both observed and shuffled (forcing independence) codes.
+        See 2006 Schneidman fig 1e"""
+        observedpnspiking, observedbins = self.nspikingPDF(nis=None, shufflecodes=False, **kwargs)
+        indeppnspiking, indepbins = self.nspikingPDF(nis=None, shufflecodes=True, **kwargs)
+        assert (observedbins == indepbins).all() # paranoid schizo, just checking
+        assert approx(observedpnspiking.sum(), 1.0), 'total observed probs: %f' % observedpnspiking.sum()
+        assert approx(indeppnspiking.sum(), 1.0), 'total indep probs: %f' % indeppnspiking.sum()
+        f = figure()
+        a = f.add_subplot(111)
+        a.hold(True)
+        a.plot(observedbins, observedpnspiking, 'r.')
+        a.plot(indepbins, indeppnspiking, 'b.')
+        a.legend(('observed', 'independent'))
+        a.set_yscale('log')
+        try:
+            tres = kwargs['tres'] # check if we're using something other than the default
+        except KeyError:
+            tres = DEFAULTCODETRES
+        gcfm().frame.SetTitle(lastcmd())
+        a.set_xlabel('number of spiking cells in %dms window' % round(tres/1000.0))
+        a.set_ylabel('probability')
 
 class RecordingSchneidman(BaseRecording):
     """Mix-in class that defines the spike code related Schneidman methods"""

@@ -14,7 +14,8 @@ TAB = '    ' # 4 spaces
 DEFAULTMOVIEPATH = 'C:/pub/Movies/'
 DEFAULTMOVIENAME = 'mseq32.m'
 
-DEFAULTCODEWORDLENGTH = 10
+DEFAULTCODETRES = 20000 # us
+DEFAULTCODEWORDLENGTH = 10 # in bits
 
 import os
 import sys
@@ -452,7 +453,7 @@ def corrcoef(x, y):
 
 def bin(i, minbits=8):
     """Return the binary representation of an integer. If necessary, will append leading zeros
-    if result is less than minbits long.
+    if result is less than minbits long. Seems like np.binary_repr() is a somewhat faster alternative.
     First 2 lines stolen from Andrew Gaul <andrew@gaul.org> off the web"""
     l = ['0000', '0001', '0010', '0011', '0100', '0101', '0110', '0111',
          '1000', '1001', '1010', '1011', '1100', '1101', '1110', '1111']
