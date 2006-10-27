@@ -321,13 +321,13 @@ class BinaryCode(BaseCode):
     def calc(self):
         self.t = array([], dtype=np.int64) # set up empty arrays with correct dtypes (otherwise, when appending to them later, they'd default to float64s)
         self.s = array([], dtype=np.int64)
-        self.c = array([], dtype=np.uint8)
+        self.c = array([], dtype=np.int8)
         for trange in self.tranges:
             # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. This way, timepoints will line up for different code objects. Finally, add phase offset relative to this
             tstart = trange[0] - (trange[0] % self.tres) + self.phase/360.0*self.tres # left edge of first code bin
             t = np.int64(np.round(arange(tstart, trange[1]+self.tres, self.tres))) # t sequence demarcates left bin edges, add extra tres to end to make t end inclusive, keep 'em in us integers
             s = self.neuron.cut(trange) # spike times, cut over originally specified trange, not from start to end of newly generated code bin timepoints
-            c = zeros(len(t), dtype=np.uint8) # init binary code signal
+            c = zeros(len(t), dtype=np.int8) # init binary code signal
             # searchsorted returns indices where s fits into t. Sometimes more than one spike will fit into the same time bin, which means searchsorted will return multiple occurences of the same index. You can set c at these indices to 1 a multiple number of times, or prolly more efficient, do an np.unique on it to only set each index to 1 once.
             c[np.unique(t.searchsorted(s)) - 1] = 1 # dec index by 1 so that you get indices that point to the most recent bin edge. For each bin that has at least 1 spike in it, set its value to 1
             self.t = np.append(self.t, t) # save 'em

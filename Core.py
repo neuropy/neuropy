@@ -619,3 +619,66 @@ class neuropyAutoLocator(mpl.ticker.MaxNLocator):
     def __init__(self):
         #mpl.ticker.MaxNLocator.__init__(self, nbins=9, steps=[1, 2, 5, 10]) # standard autolocator
         mpl.ticker.MaxNLocator.__init__(self) # use MaxNLocator's defaults instead
+
+class Ising(object):
+    """Ising maximum entropy model"""
+    def __init__(self, means, pairmeans, algorithm='CG'):
+
+        nbits = len(means)
+        assert len(pairmeans) == nCr(nbits, 2)
+
+        from scipy import maxentropy
+        samplespace = [-1, 1] # non spiking or spiking
+
+        def f1(x):
+            return x==1
+
+        f1s = [ f1 ]*nbits
+
+        # Return True if they're either both spiking or both non-spiking (correlated), otherwise, return False
+        f2s = [ lambda x: f1s[i](x) == f1s[j](x) for i in range(0, nbits) for j in range(i+1, nbits) ]
+        f = np.concatenate((f1s, f2s))
+
+        print 'f1s:', f1s
+        print 'f2s:', f2s
+        print 'f:', f
+        print 'samplespace:', samplespace
+        self.model = maxentropy.model(f, samplespace)
+
+        #self.model.mindual = -100000
+        #self.model.log = None # needed to make LBFGSB algorithm work
+
+        # Now set the desired feature expectations
+        means = asarray(means)
+        pairmeans = asarray(pairmeans)
+        pairmeans /= 2.0 # add the one half in front of each coefficient
+        K = cat((means, pairmeans))
+
+        self.model.verbose = True
+
+        # Fit the model
+        self.model.fit(K, algorithm=algorithm)
+
+        # Output the distribution
+        print "\nFitted model parameters are:\n" + str(self.model.params)
+        print "\nFitted distribution is:"
+        p = self.model.probdist()
+        for j in range(len(self.model.samplespace)):
+            x = self.model.samplespace[j]
+            print '\tx:%s, p(x):%s' % (x, p[j])
+
+        '''
+        # Now show how well the constraints are satisfied:
+        print
+        print "Desired constraints:"
+        print "\tp['dans'] + p['en'] = 0.3"
+        print ("\tp['dans'] + p['" + a_grave + "']  = 0.5").encode('utf-8')
+        print
+        print "Actual expectations under the fitted model:"
+        print "\tp['dans'] + p['en'] =", p[0] + p[1]
+        print ("\tp['dans'] + p['" + a_grave + "']  = " + str(p[0]+p[2])).encode('utf-8')
+        # (Or substitute "x.encode('latin-1')" if you have a primitive terminal.)
+        '''
+
+
+

@@ -16,7 +16,7 @@ Schneidman stuff:
 
 
 - MPL:
-	- when saving figs, automatically choose .png from list, and automatically fill in the file name with the text of the the title bar of the figure
+	- when saving figs, automatically choose .png from list, and automatically fill in the file name with the text of the title bar of the figure
 
 - cross-correlograms
 	- make it faster

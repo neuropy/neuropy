@@ -339,7 +339,7 @@ class CodeCorrPDF(object):
                 cni2 = cnis[cnii2]
                 code1 = self.r.code(cni1, tranges=self.tranges, **self.kwargs).c
                 code2 = self.r.code(cni2, tranges=self.tranges, **self.kwargs).c
-                cc = ((code1 * code2).mean() - means[cni1] * means[cni2]) / (stds[cni1] * stds[cni2]) # mean of product - product of means, / by product of stds
+                cc = ((code1 * code2).mean() - means[cni1] * means[cni2]) / (stds[cni1] * stds[cni2]) # (mean of product - product of means) / by product of stds
                 self.corrs.append(cc)
         '''
         # simpler, but slower way:
@@ -390,9 +390,9 @@ class RecordingCode(BaseRecording):
         ranges of the Experiments in this Recording, as well as by tranges. Takes either a
         ConstrainedNeuron object or just a ConstrainedNeuron id"""
         try:
-            return cneuron.code(kind='binary', tranges=None, tres=DEFAULTCODETRES, phase=0) # see if cneuron is a ConstrainedNeuron
+            return cneuron.code(kind='binary', tranges=tranges, tres=tres, phase=phase) # see if cneuron is a ConstrainedNeuron
         except AttributeError:
-            return self.cn[cneuron].code(kind='binary', tranges=None, tres=DEFAULTCODETRES, phase=0) # cneuron is probably a ConstrainedNeuron id
+            return self.cn[cneuron].code(kind='binary', tranges=tranges, tres=tres, phase=phase) # cneuron is probably a ConstrainedNeuron id
 
     def codes(self, neurons=None, experiments=None, kind='binary', tres=DEFAULTCODETRES, phase=0, shufflecodes=False):
         """Returns a Codes object, a 2D array where each row is a neuron code constrained to the time range of this Recording,
@@ -543,7 +543,8 @@ class Schneidman(object):
         else:
             nis = nis[:nbits] # use just the first nbits neurons to make your words
         self.nbits = nbits
-        print 'neurons:', nis
+        if randomneurons:
+            print 'neurons:', nis # print 'em out if they were randomly selected
         self.pobserved, self.observedwords = self.intcodesPDF(nis=nis, shufflecodes=shufflecodes, **kwargs) # potentially shuffle the observed codes
         self.pexpected, self.expectedwords = self.intcodesFPDF(nis=nis, **kwargs) # expected, assuming independence. Never potentially shuffle expected codes (not that it would make any difference to the expected probabilities anyway...)
         assert (self.observedwords == self.expectedwords).all() # make sure we're comparing apples to apples
@@ -635,7 +636,7 @@ class Schneidman(object):
         an unshuffled or shuffled Codes object"""
         observedwords = self.intcodes(nis=nis, shufflecodes=shufflecodes, **kwargs)
         # collect observances of the number of cells spiking for each pop code time bin
-        nspiking = [ np.binary_repr(observedword).count('1') for observedword in observedwords ] # for all time bins, convert words to binary, count the number of 1s in each. np.binary_repr() is a bit faster than using Core.bin()
+        nspiking = [ np.binary_repr(observedword).count('1') for observedword in observedwords ] # for all time bins, convert words to binary, count the number of 1s in each. np.binary_repr() is a bit faster than using neuropy.Core.bin()
         pnspiking, bins = histogram(nspiking, bins=arange(len(self.neurons)+1), normed='pmf') # histogram 'em, want all probs to add to 1, not their area, so use pmf
         return pnspiking, bins
 
@@ -661,6 +662,21 @@ class Schneidman(object):
         gcfm().frame.SetTitle(lastcmd())
         a.set_xlabel('number of spiking cells in %dms window' % round(tres/1000.0))
         a.set_ylabel('probability')
+
+    def maxent(self, nis, algorithm='CG', **kwargs):
+        # convert values in codes object from [0, 1] to [-1, 1] by mutliplying by 2 and subtracting 1
+        codeso = self.codes(nis=nis, kind='binary', **kwargs)
+        c = codeso.c.copy() # don't modify the original
+        c = c*2 - 1 # this should be safe to do cuz c is a 2D array of int8 values
+        print 'c:', c.__repr__()
+        means = [ row.mean() for row in c ] # iterate over rows of codes in c
+        print 'means:', means
+        nrows = c.shape[0]
+        pairmeans = [ (c[i]*c[j]).mean() for i in range(0, nrows) for j in range(i+1, nrows) ]
+        print 'pairmeans:', pairmeans
+        isingmodel = Ising(means, pairmeans, algorithm=algorithm)
+        return isingmodel
+
 
 class RecordingSchneidman(BaseRecording):
     """Mix-in class that defines the spike code related Schneidman methods"""
