@@ -640,11 +640,11 @@ class Schneidman(object):
         pnspiking, bins = histogram(nspiking, bins=arange(len(self.neurons)+1), normed='pmf') # histogram 'em, want all probs to add to 1, not their area, so use pmf
         return pnspiking, bins
 
-    def plotnspikingPDFs(self, **kwargs):
+    def plotnspikingPDFs(self, nis=None, **kwargs):
         """Plots nspikingPDF, for both observed and shuffled (forcing independence) codes.
         See 2006 Schneidman fig 1e"""
-        observedpnspiking, observedbins = self.nspikingPDF(nis=None, shufflecodes=False, **kwargs)
-        indeppnspiking, indepbins = self.nspikingPDF(nis=None, shufflecodes=True, **kwargs)
+        observedpnspiking, observedbins = self.nspikingPDF(nis=nis, shufflecodes=False, **kwargs)
+        indeppnspiking, indepbins = self.nspikingPDF(nis=nis, shufflecodes=True, **kwargs)
         assert (observedbins == indepbins).all() # paranoid schizo, just checking
         assert approx(observedpnspiking.sum(), 1.0), 'total observed probs: %f' % observedpnspiking.sum()
         assert approx(indeppnspiking.sum(), 1.0), 'total indep probs: %f' % indeppnspiking.sum()
@@ -663,18 +663,20 @@ class Schneidman(object):
         a.set_xlabel('number of spiking cells in %dms window' % round(tres/1000.0))
         a.set_ylabel('probability')
 
-    def maxent(self, nis, algorithm='CG', **kwargs):
-        # convert values in codes object from [0, 1] to [-1, 1] by mutliplying by 2 and subtracting 1
+    def maxent(self, nis=None, algorithm='CG', **kwargs):
+        if nis == None:
+            nis = self.neurons.keys()[0:DEFAULTCODEWORDLENGTH]
+        print 'nis:', nis
         codeso = self.codes(nis=nis, kind='binary', **kwargs)
+        #c = codeso.c
+        # convert values in codes object from [0, 1] to [-1, 1] by mutliplying by 2 and subtracting 1
         c = codeso.c.copy() # don't modify the original
-        c = c*2 - 1 # this should be safe to do cuz c is a 2D array of int8 values
+        c = c*2 - 1 # this should be safe to do cuz c is a 2D array of signed int8 values
         print 'c:', c.__repr__()
         means = [ row.mean() for row in c ] # iterate over rows of codes in c
-        print 'means:', means
         nrows = c.shape[0]
-        pairmeans = [ (c[i]*c[j]).mean() for i in range(0, nrows) for j in range(i+1, nrows) ]
-        print 'pairmeans:', pairmeans
-        isingmodel = Ising(means, pairmeans, algorithm=algorithm)
+        pairmeans = [ (c[i]*c[j]).mean() for i in range(0, nrows) for j in range(i+1, nrows) ] # take a pair of rows, find the mean of their elementwise product
+        isingmodel = Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
         return isingmodel
 
 
