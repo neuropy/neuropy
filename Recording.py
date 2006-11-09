@@ -457,7 +457,6 @@ class RecordingCode(BaseRecording):
         return cw
     '''
 
-
 class Schneidman(object):
     """see 2006 Schneidman figs 1e and 1f"""
     def __init__(self, recording, experiments=None):
@@ -524,11 +523,10 @@ class Schneidman(object):
         intcodeps = x.prod(axis=0) # take the product along the 0th axis (the columns) to get the prob of each population code word
         return intcodeps, intcodes
 
-    def scatter(self, nis=None, nbits=None, randomneurons=False, shufflecodes=False, **kwargs):
-        """Scatterplots the expected probabilities, assuming independence,
+    def scatter(self, nis=None, nbits=None, model='indep', randomneurons=False, shufflecodes=False, algorithm='CG', **kwargs):
+        """Scatterplots the expected probabilities, assuming a model in ['indep', 'ising'],
         of all possible population codes (y axis) vs their observed probabilities (x axis).
-        nis are in LSB to MSB order.
-        See Schneidman Figure 1f"""
+        nis are in LSB to MSB order. See Schneidman Figures 1f and 2a"""
         if nis == None:
             nis = self.neurons.keys()
             nis.sort() # make sure they're in increasing order, you never know with dict keys
@@ -546,7 +544,14 @@ class Schneidman(object):
         if randomneurons:
             print 'neurons:', nis # print 'em out if they were randomly selected
         self.pobserved, self.observedwords = self.intcodesPDF(nis=nis, shufflecodes=shufflecodes, **kwargs) # potentially shuffle the observed codes
-        self.pexpected, self.expectedwords = self.intcodesFPDF(nis=nis, **kwargs) # expected, assuming independence. Never potentially shuffle expected codes (not that it would make any difference to the expected probabilities anyway...)
+        if model == 'indep':
+            self.pexpected, self.expectedwords = self.intcodesFPDF(nis=nis, **kwargs) # expected, assuming independence. don't potentially shuffle expected codes
+        elif model == 'ising':
+            ising = self.ising(nis=nis, algorithm=algorithm) # returns a maxent Ising model
+            self.pexpected = ising.p # expected, assuming maxent Ising model
+            self.expectedwords = ising.intsamplespace
+        else:
+            raise ValueError, 'Unknown model %r' % model
         assert (self.observedwords == self.expectedwords).all() # make sure we're comparing apples to apples
         f = figure()
         a = f.add_subplot(111)
@@ -557,7 +562,7 @@ class Schneidman(object):
         self.tooltip.Enable(False) # leave disabled for now
         self.tooltip.SetDelay(0) # set popup delay in ms
         gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
-        f.canvas.mpl_connect('motion_notify_event', self.onmotion)
+        f.canvas.mpl_connect('motion_notify_event', self.onscattermotion)
 
         # pylab.scatter(pobserved, pexpected), followed by setting the x and y axes to log scale freezes the figure and runs 100% cpu
         # gca().set_xscale('log')
@@ -608,7 +613,7 @@ class Schneidman(object):
         a.set_xlabel('observed population code probability')
         a.set_ylabel('expected population code probability')
 
-    def onmotion(self, event):
+    def onscattermotion(self, event):
         """Called during mouse motion over scatterplot figure. Pops up the corresponding
         population code word and its int representation when hovering over a neuron scatter point"""
         if event.xdata != None and event.ydata != None: # if mouse is inside the axes
@@ -663,21 +668,23 @@ class Schneidman(object):
         a.set_xlabel('number of spiking cells in %dms window' % round(tres/1000.0))
         a.set_ylabel('probability')
 
-    def maxent(self, nis=None, algorithm='CG', **kwargs):
+    def ising(self, nis=None, algorithm='CG', **kwargs):
+        """Returns an Ising maximum entropy model that takes into account pairwise correlations neuron codes
+        algorithm can be 'CG', 'BFGS', 'LBFGSB', 'Powell', or 'Nelder-Mead'"""
         if nis == None:
             nis = self.neurons.keys()[0:DEFAULTCODEWORDLENGTH]
-        print 'nis:', nis
+        print 'nis:', nis.__repr__()
         codeso = self.codes(nis=nis, kind='binary', **kwargs)
         #c = codeso.c
         # convert values in codes object from [0, 1] to [-1, 1] by mutliplying by 2 and subtracting 1
         c = codeso.c.copy() # don't modify the original
         c = c*2 - 1 # this should be safe to do cuz c is a 2D array of signed int8 values
-        print 'c:', c.__repr__()
+        #print 'c:', c.__repr__()
         means = [ row.mean() for row in c ] # iterate over rows of codes in c
         nrows = c.shape[0]
         pairmeans = [ (c[i]*c[j]).mean() for i in range(0, nrows) for j in range(i+1, nrows) ] # take a pair of rows, find the mean of their elementwise product
-        isingmodel = Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
-        return isingmodel
+        ising = Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
+        return ising
 
 
 class RecordingSchneidman(BaseRecording):

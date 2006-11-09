@@ -450,8 +450,22 @@ def corrcoef(x, y):
     return np.corrcoef(x, y)[0, 1] # pick one of the 2 entries in the correlation coefficient matrix, on the -ve diagonal (er, the one that goes from bottom left to top right, that's what I mean)
     #return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std()) # this works just fine as well, easier to understand too
 
-
 def bin(i, minbits=8):
+    """Return the binary representation of an integer, or sequence of integers.
+    If necessary, will append leading zeros if result is less than minbits long.
+    Uses np.binary_repr()"""
+    ints = toiter(i) # ensure it's iterable
+    sints = []
+    for i in ints:
+        s = np.binary_repr(i)
+        nzerostoadd = minbits - len(s) # OK if this is -ve
+        s = '0'*nzerostoadd + s # add enough leading zeros to get requested minbits
+        sints.append(s)
+    if len(sints) == 1:
+        sints = sints[0] # pull it out of the list
+    return sints
+
+def binslow(i, minbits=8):
     """Return the binary representation of an integer. If necessary, will append leading zeros
     if result is less than minbits long. Seems like np.binary_repr() is a somewhat faster alternative.
     First 2 lines stolen from Andrew Gaul <andrew@gaul.org> off the web"""
@@ -628,62 +642,48 @@ class Ising(object):
         from scipy import maxentropy
 
         nbits = len(means)
-        npairmeans = len(pairmeans)
-        assert npairmeans == nCr(nbits, 2)
-
+        npairs = len(pairmeans)
+        assert npairs == nCr(nbits, 2) # sanity
+        self.intsamplespace = range(0, 2**nbits)
         table = getbinarytable(nbits=nbits) # words are in the columns, MSB at bottom row
-        table = table*2 - 1 # convert 0s to -1s
-        samplespace = ar([ table[::-1, wordi] for wordi in range(0, 2**nbits) ]) # all possible binary words, as arrays of -1s and 1s
-        '''
-        def f1(x, i):
-            # First order function
-            return x[-1-i] # return the i'th bit (LSB to MSB) of binary word x
-
-        def f2(x, i, j):
-            # Second order (pairwise) function
-            return x[-1-i] * x[-1-j] # return product of the i'th and j'th bit (LSB to MSB) of binary word
-
-        # This doesn't work. Some sort of stupid scope thing (closures?), all the fs end up using the last values for i and j
-
-        f1s = [ lambda x: f1(x, i=i) for i in range(0, nbits) ]
-        f2s = [ lambda x: f2(x, i, j) for i in range(0, nbits) for j in range(i+1, nbits) ]
-        '''
-        f1s = [ lambda x, i=i: x[-1-i] for i in range(0, nbits) ]
+        self.binsamplespace = ar([ table[::-1, wordi] for wordi in range(0, 2**nbits) ]) # all possible binary words (each is MSB to LSB), as arrays of 0s and 1s
+        self.samplespace = self.binsamplespace * 2 - 1 # convert 0s to -1s
+        # return the i'th bit (LSB to MSB) of binary word x
+        f1s = [ lambda x, i=i: x[-1-i] for i in range(0, nbits) ] # have to do i=i to statically assign value (gets around scope closure problem)
+        # return product of the i'th and j'th bit (LSB to MSB) of binary word
         f2s = [ lambda x, i=i, j=j: x[-1-i] * x[-1-j] for i in range(0, nbits) for j in range(i+1, nbits) ]
-
         f = cat((f1s, f2s))
-
-        #print 'f1s:', f1s
-        #print 'f2s:', f2s
-        #print 'f:', f
-        print 'samplespace:', samplespace.__repr__()
-        self.model = maxentropy.model(f, samplespace)
-
-        self.model.mindual = -10000
+        self.model = maxentropy.model(f, self.samplespace)
+        #self.model.mindual = -10000
         #self.model.log = None # needed to make LBFGSB algorithm work
-
         # Now set the desired feature expectations
         means = asarray(means)
-        print 'means:', means
         pairmeans = asarray(pairmeans)
-        #pairmeans /= 2.0 # add the one half in front of each coefficient, NOT TOO SURE IF THIS SHOULD GO HERE!
-        print 'pairmeans:', pairmeans
+        #pairmeans /= 2.0 # add the one half in front of each coefficient, NOT TOO SURE IF THIS SHOULD GO HERE! causes convergence problems
         K = cat((means, pairmeans))
-
-        self.model.verbose = True
+        self.model.verbose = False
 
         # Fit the model
         self.model.fit(K, algorithm=algorithm)
 
+        self.hi = self.model.params[0:nbits]
+        self.Jij = self.model.params[nbits:nbits+npairs]
+        self.p = self.model.probdist()
+        assert (len(self.hi), len(self.Jij), len(self.p)) == (nbits, npairs, 2**nbits) # sanity checks
+        #print 'means:', means
+        #print 'pairmeans:', pairmeans
+        print 'niterations:', self.model.iters
+        print 'hi:', self.hi.__repr__()
+        print 'Jij:', self.Jij.__repr__()
+        '''
         # Output the distribution
         print "\nFitted model parameters are:\n" + str(self.model.params)
         print "\nFitted distribution is:"
-        p = self.model.probdist()
         for j in range(len(self.model.samplespace)):
             x = ar(self.model.samplespace[j])
             x = (x+1)/2 # convert from -1s and 1s back to 0s and 1s
             print '\tx:%s, p(x):%s' % (x, p[j])
-
+        '''
         '''
         # Now show how well the constraints are satisfied:
         print
@@ -696,153 +696,3 @@ class Ising(object):
         print ("\tp['dans'] + p['" + a_grave + "']  = " + str(p[0]+p[2])).encode('utf-8')
         # (Or substitute "x.encode('latin-1')" if you have a primitive terminal.)
         '''
-
-class IsingString(object):
-    """Ising maximum entropy model"""
-    def __init__(self, means, pairmeans, algorithm='CG'):
-
-        from scipy import maxentropy
-
-        nbits = len(means)
-        npairmeans = len(pairmeans)
-        assert npairmeans == nCr(nbits, 2)
-
-        samplespace = [ bin(word, minbits=nbits) for word in range(0, 2**nbits) ] # all possible binary words, as strings
-
-        def f1(x, i):
-            # First order function
-            return x[-1-i] == '1' # if i'th digit (LSB to MSB) of binary string word x is '1', return True
-
-        def f2(x, i, j):
-            # Second order (pairwise) function
-            return x[-1-i] == x[-1-j] # if i'th and j'th digit (LSB to MSB) of binary string word x are the same (correlated), return True
-
-        # This doesn't work. Some sort of stupid scope thing (closures?), all the fs end up using the last values for i and j
-        '''
-        f1s = [ lambda x: f1(x, i=i) for i in range(0, nbits) ]
-        f2s = [ lambda x: f2(x, i, j) for i in range(0, nbits) for j in range(i+1, nbits) ]
-        '''
-        f1s = [ lambda x, i=i: x[-1-i] == '1' for i in range(0, nbits) ]
-        f2s = [ lambda x, i=i, j=j: x[-1-i] == x[-1-j] for i in range(0, nbits) for j in range(i+1, nbits) ]
-
-        f = cat((f1s, f2s))
-
-        print 'f1s:', f1s
-        print 'f2s:', f2s
-        print 'f:', f
-        print 'samplespace:', samplespace
-        self.model = maxentropy.model(f, samplespace)
-
-        self.model.mindual = -10000
-        #self.model.log = None # needed to make LBFGSB algorithm work
-
-        # Now set the desired feature expectations
-        means = asarray(means)
-        print 'means:', means
-        pairmeans = asarray(pairmeans)
-        #pairmeans /= 2.0 # add the one half in front of each coefficient, NOT TOO SURE IF THIS SHOULD GO HERE!
-        print 'pairmeans:', pairmeans
-        K = cat((means, pairmeans))
-
-        self.model.verbose = True
-
-        # Fit the model
-        self.model.fit(K, algorithm=algorithm)
-
-        # Output the distribution
-        print "\nFitted model parameters are:\n" + str(self.model.params)
-        print "\nFitted distribution is:"
-        p = self.model.probdist()
-        for j in range(len(self.model.samplespace)):
-            x = self.model.samplespace[j]
-            print '\tx:%s, p(x):%s' % (x, p[j])
-
-        '''
-        # Now show how well the constraints are satisfied:
-        print
-        print "Desired constraints:"
-        print "\tp['dans'] + p['en'] = 0.3"
-        print ("\tp['dans'] + p['" + a_grave + "']  = 0.5").encode('utf-8')
-        print
-        print "Actual expectations under the fitted model:"
-        print "\tp['dans'] + p['en'] =", p[0] + p[1]
-        print ("\tp['dans'] + p['" + a_grave + "']  = " + str(p[0]+p[2])).encode('utf-8')
-        # (Or substitute "x.encode('latin-1')" if you have a primitive terminal.)
-        '''
-
-
-
-class IsingOld(object):
-    """Ising maximum entropy model"""
-    def __init__(self, means, pairmeans, algorithm='CG'):
-
-        nbits = len(means)
-        npairmeans = len(pairmeans)
-        assert npairmeans == nCr(nbits, 2)
-
-        from scipy import maxentropy
-        samplespace = [-1, 1] # non spiking or spiking
-
-        def f1(x):
-            #return x==1
-            x = asarray(x)
-            return np.mean(x)
-
-        f1s = [ f1 ]*nbits
-
-        def f2(x, y):
-            x = asarray(x)
-            y = asarray(y)
-            return np.mean(x*y)
-
-        f2s = [ f2 ]*npairmeans
-
-        # Return True if they're either both spiking or both non-spiking (correlated), otherwise, return False
-        #f2s = [ lambda x: f1s[i](x) == f1s[j](x) for i in range(0, nbits) for j in range(i+1, nbits) ]
-        #f = cat((f1s, f2s))
-        f = f1s
-
-        print 'f1s:', f1s
-        print 'f2s:', f2s
-        print 'f:', f
-        print 'samplespace:', samplespace
-        self.model = maxentropy.model(f, samplespace)
-
-        #self.model.mindual = -100000
-        #self.model.log = None # needed to make LBFGSB algorithm work
-
-        # Now set the desired feature expectations
-        means = asarray(means)
-        pairmeans = asarray(pairmeans)
-        pairmeans /= 2.0 # add the one half in front of each coefficient
-        #K = cat((means, pairmeans))
-        K = means
-
-        self.model.verbose = True
-
-        # Fit the model
-        self.model.fit(K, algorithm=algorithm)
-
-        # Output the distribution
-        print "\nFitted model parameters are:\n" + str(self.model.params)
-        print "\nFitted distribution is:"
-        p = self.model.probdist()
-        for j in range(len(self.model.samplespace)):
-            x = self.model.samplespace[j]
-            print '\tx:%s, p(x):%s' % (x, p[j])
-
-        '''
-        # Now show how well the constraints are satisfied:
-        print
-        print "Desired constraints:"
-        print "\tp['dans'] + p['en'] = 0.3"
-        print ("\tp['dans'] + p['" + a_grave + "']  = 0.5").encode('utf-8')
-        print
-        print "Actual expectations under the fitted model:"
-        print "\tp['dans'] + p['en'] =", p[0] + p[1]
-        print ("\tp['dans'] + p['" + a_grave + "']  = " + str(p[0]+p[2])).encode('utf-8')
-        # (Or substitute "x.encode('latin-1')" if you have a primitive terminal.)
-        '''
-
-
-
