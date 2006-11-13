@@ -559,6 +559,56 @@ def nCr(n, r):
     """n Choose r"""
     return nPr(n, r) / fact(r)
 
+ncr = nCr # convenience f'ns
+npr = nPr
+
+'''
+class Chooser(object):
+    """Container class for combination generator.
+    Takes a sequence of objects and the number of objects to return in each combination"""
+    def __init__(self, objects, r):
+        self.objects = asarray(objects)
+        self.n = len(objects)
+        self.r = r
+        self.i = asarray([0]*self.r) # stores all the current i values for all r levels of nested for loops
+    def combgen(self, level=0):
+        """Generator that yields all possible combinations of self.objects, without replacement.
+        Eg, if self.objects=[0,1,2] and self.r=2, this yields [0,1], [0,2], and [1,2], one at a time.
+        A recursive generator is used in order to create the necessary r number of nested for loops"""
+        try: # recursive case
+            if level == 0: # handles special case for starting index of top level for loop
+                starti = 0
+            else:
+                starti = self.i[level-1] + 1 # start this level's loop at one greater than the previous level's current loop index
+            for self.i[level] in range(starti, self.n+1): # not too sure why this is n+1, but it works
+                for comb in self.combgen(level=level+1): # iterate over next level's generator
+                    yield comb # yield whatever next level (level+1) returns, back up to previous level (level-1)
+        except: # base case, we're at the deepest recursion level (innermost for loop)
+            yield self.objects[self.i] # use the current index state for all levels to yield a combination of objects
+
+def choose(objects, r):
+    co = Chooser(objects, r)
+    combs = list(co.combgen())
+    return combs
+'''
+def combgen(objects, r=2, i=None, level=0):
+    """Generator that yields, without replacement, all length r possible combinations of objects from a length n sequence.
+    Eg, if objects=[0,1,2] and r=2, this yields [0,1], [0,2], and [1,2], one at a time.
+    A recursive generator is used in order to create the necessary r number of nested for loops"""
+    assert r <= len(objects)
+    try: # recursive case
+        if i == None:
+            i = asarray([0]*r) # stores all the current index values for all r nested for loops
+        if level == 0: # handles special case for starting index of top level for loop
+            starti = 0
+        else:
+            starti = i[level-1] + 1 # start this level's loop index at one greater than the previous level's current loop index
+        for i[level] in range(starti, len(objects)+1): # not too sure why this is n+1, but it works
+            for comb in combgen(objects, r=r, i=i, level=level+1): # iterate over next level's generator
+                yield comb # yield whatever the next level (level+1) yields, pass it on up to the previous level (level-1)
+    except: # base case, we're at the deepest recursion level (innermost for loop)
+        yield asarray(objects)[i] # use the current index state for all levels to yield a combination of objects
+
 '''
 # this f'n isn't really needed, just use objlist.sort(key=lambda obj: obj.attrib)
 def sortby(objs, attrib, cmp=None, reverse=False):
@@ -633,6 +683,13 @@ class neuropyAutoLocator(mpl.ticker.MaxNLocator):
     def __init__(self):
         #mpl.ticker.MaxNLocator.__init__(self, nbins=9, steps=[1, 2, 5, 10]) # standard autolocator
         mpl.ticker.MaxNLocator.__init__(self) # use MaxNLocator's defaults instead
+
+
+def entropy(p):
+    """Returns the entropy (in bits) of the prob distribution described by the prob values in p"""
+    p = asarray(p)
+    assert approx(sum(p), 1.0) # make sure the probs sum to 1
+    return -sum(p*np.log2(p))
 
 
 class Ising(object):

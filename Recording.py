@@ -686,6 +686,13 @@ class Schneidman(object):
         ising = Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
         return ising
 
+    '''
+    def S1INvsN(self, maxN=15):
+        """Plots the average independent cell entropy S1 and average network multi-information IN (IN = S1 - SN)
+        vs network size N"""
+        for N in range(1, maxN+1):
+            nCr(
+    '''
 
 class RecordingSchneidman(BaseRecording):
     """Mix-in class that defines the spike code related Schneidman methods"""
