@@ -484,14 +484,14 @@ class Schneidman(object):
         """Given neuron indices (ordered LSB to MSB top to bottom), returns an array of the integer representation
         of the neuronal population binary code for each time bin"""
         if nis == None:
-            nis = self.neurons.keys()
+            nis = random.sample(self.neurons.keys(), DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
         return binaryarray2int(self.codes(nis=nis, kind='binary', **kwargs).c)
 
     def intcodesPDF(self, nis=None, **kwargs):
         """Returns the pdf across all possible population binary code words,
         labelled according to their integer representation"""
         if nis == None:
-            nis = self.neurons.keys()
+            nis = random.sample(self.neurons.keys(), DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
         intcodes = self.intcodes(nis=nis, **kwargs)
         nbits = len(nis)
         p, bins = histogram(intcodes, bins=arange(2**nbits), normed='pmf')
@@ -501,7 +501,7 @@ class Schneidman(object):
         """the F stands for factorial. Returns the probability of getting each population binary code word, assuming independence between neurons,
         taking into account each neuron's spike (and no spike) probability"""
         if nis == None:
-            nis = self.neurons.keys()
+            nis = random.sample(self.neurons.keys(), DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
         nbits = len(nis)
         intcodes = arange(2**nbits)
         #neurons = dict( (ni, self.neurons[ni]) for ni in nis ) # this is like dict comprehension, pretty awesome!
@@ -686,13 +686,75 @@ class Schneidman(object):
         ising = Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
         return ising
 
-    '''
-    def S1INvsN(self, maxN=15):
+    def S1INvsN(self, minN=4, maxN=15, nsamples=10, tres=DEFAULTCODETRES, regressinlogspace=False):
         """Plots the average independent cell entropy S1 and average network multi-information IN (IN = S1 - SN)
-        vs network size N"""
-        for N in range(1, maxN+1):
-            nCr(
-    '''
+        vs network size N. IN is how much less entropy there is in the system due to correlated network activity.
+        For each network size up to maxN, Averages S1 and IN over nsamples number of groups at each value of N"""
+        S1mean = [] # as f'n of N
+        INmean = [] # as f'n of N
+        Ns = range(minN, maxN+1) # network sizes from minN up to maxN
+        tstart = time.clock()
+        pd = wx.ProgressDialog(title='S1INvsN progress', message='', maximum=Ns[-1], style=1) # create a progress dialog
+        for N in Ns: # for all network sizes
+            #print 'N:', N
+            cancel = not pd.Update(N-minN-1, newmsg='N = %d\nelapsed: %.1fs' % (N, time.clock()-tstart))
+            if cancel:
+                pd.Destroy()
+                return
+            #t1 = time.clock()
+            niss = nCrsamples(objects=self.neurons.keys(), r=N, nsamples=nsamples) # list of lists of neuron indices
+            #print 'sampling took: %f sec' % (time.clock()-t1)
+            S1s = []
+            INs = []
+            for nis in niss:
+                #t2 = time.clock()
+                p1 = asarray(self.intcodesFPDF(nis=nis, tres=tres)[0]) # indep model
+                pN = asarray(self.intcodesPDF(nis=nis, tres=tres)[0]) # observed word probs
+                #print 'calcing ps took: %f sec' % (time.clock()-t2)
+                # check to make sure there aren't any 0s in either p1 (virtually impossible) or pN (very likely for large networks and short recordings)
+                # otherwise, you get singularities
+                # either add the smallest representable float 1e-307 to all ps, or just pluck the 0s out of the list
+                p1 = p1[p1 > 0] # discard any zero entries
+                pN = pN[pN > 0]
+                S1 = entropy(p1)
+                SN = entropy(pN)
+                assert S1 > SN or approx(S1, SN), 'S1 is %.20f, SN is %.20f' % (S1, SN) # better be, indep model allows for maximum disorder
+                IN = S1 - SN
+                #print S1, SN, IN
+                S1s.append(S1)
+                INs.append(IN)
+            S1mean.append(asarray(S1s).mean())
+            INmean.append(asarray(INs).mean())
+        pd.Destroy()
+        S1mean = asarray(S1mean) / tres * 1e6 # convert to bits/sec
+        INmean = asarray(INmean) / tres * 1e6 # convert to bits/sec
+        f = figure()
+        gcfm().frame.SetTitle(lastcmd())
+        a = f.add_subplot(111)
+        a.hold(True)
+        a.plot(Ns, S1mean, 'b.')
+        a.plot(Ns, INmean, 'r.')
+        # do some linear regression in log10 space
+        mS1, bS1 = sp.polyfit(log10(Ns), log10(S1mean), 1) # returns slope and y intercept
+        mIN, bIN = sp.polyfit(log10(Ns), log10(INmean), 1)
+        xintersect = (bIN - bS1) / (mS1 - mIN)
+        x = array([-1, 3]) # define x in log space, this is really [0.1, 1000]
+        yS1 = mS1*x + bS1 # y = mx + b
+        yIN = mIN*x + bIN
+        plot(10.0**x, 10.0**yS1, 'b-') # raise them to the power to make up for the fact that both the x and y scales will be log
+        plot(10.0**x, 10.0**yIN, 'r-')
+        a.set_xscale('log')
+        a.set_yscale('log')
+        a.set_xlim(1e0, 1e3)
+        a.set_ylim(1e-2, 1e4)
+        a.set_xlabel('Number of cells')
+        a.set_ylabel('bits / sec')
+        a.legend(('S1, slope=%.3f' % mS1, 'IN, slope=%.3f' % mIN), loc='lower right')
+        a.text(0.99, 0.98, 'Nc=%d' % np.round(10**xintersect), # add text box to upper right corner of axes
+            transform = a.transAxes,
+            horizontalalignment = 'right',
+            verticalalignment = 'top')
+        return S1mean, INmean, Ns
 
 class RecordingSchneidman(BaseRecording):
     """Mix-in class that defines the spike code related Schneidman methods"""

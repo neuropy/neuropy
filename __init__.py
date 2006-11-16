@@ -44,11 +44,11 @@ t.load()'''
 print 'Initing and loading Recording(71):'
 r71 = Recording(71)
 r71.load()
-''''''
+'''
 print 'Initing and loading Recording(75):'
 r75 = Recording(75)
 r75.load()
-''''''
+'''
 print 'Initing and loading Recording(76):'
 r76 = Recording(76)
 r76.load()

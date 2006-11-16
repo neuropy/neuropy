@@ -39,7 +39,7 @@ import scipy as sp
 import scipy.signal as sig
 import scipy.weave as weave
 from numpy.random import rand, randn, randint
-from numpy import arange, array, array as ar, asarray, log, log10, zeros, ones, diff, concatenate, concatenate as cat
+from numpy import arange, array, array as ar, asarray, asarray as aar, log, log10, zeros, ones, diff, concatenate, concatenate as cat
 from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
 import wx
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
@@ -486,7 +486,7 @@ def binaryarray2int(bin):
     multiplier = []
     for i in range(nbits):
         multiplier.append(2**i)
-    multiplier = array(multiplier, ndmin=nd).transpose()
+    multiplier = array(multiplier, ndmin=nd).transpose() # convert from list and transpose to a column vector
     #print multiplier
     x = bin*multiplier
     #print x
@@ -562,43 +562,16 @@ def nCr(n, r):
 ncr = nCr # convenience f'ns
 npr = nPr
 
-'''
-class Chooser(object):
-    """Container class for combination generator.
-    Takes a sequence of objects and the number of objects to return in each combination"""
-    def __init__(self, objects, r):
-        self.objects = asarray(objects)
-        self.n = len(objects)
-        self.r = r
-        self.i = asarray([0]*self.r) # stores all the current i values for all r levels of nested for loops
-    def combgen(self, level=0):
-        """Generator that yields all possible combinations of self.objects, without replacement.
-        Eg, if self.objects=[0,1,2] and self.r=2, this yields [0,1], [0,2], and [1,2], one at a time.
-        A recursive generator is used in order to create the necessary r number of nested for loops"""
-        try: # recursive case
-            if level == 0: # handles special case for starting index of top level for loop
-                starti = 0
-            else:
-                starti = self.i[level-1] + 1 # start this level's loop at one greater than the previous level's current loop index
-            for self.i[level] in range(starti, self.n+1): # not too sure why this is n+1, but it works
-                for comb in self.combgen(level=level+1): # iterate over next level's generator
-                    yield comb # yield whatever next level (level+1) returns, back up to previous level (level-1)
-        except: # base case, we're at the deepest recursion level (innermost for loop)
-            yield self.objects[self.i] # use the current index state for all levels to yield a combination of objects
-
-def choose(objects, r):
-    co = Chooser(objects, r)
-    combs = list(co.combgen())
-    return combs
-'''
 def combgen(objects, r=2, i=None, level=0):
     """Generator that yields, without replacement, all length r possible combinations of objects from a length n sequence.
     Eg, if objects=[0,1,2] and r=2, this yields [0,1], [0,2], and [1,2], one at a time.
-    A recursive generator is used in order to create the necessary r number of nested for loops"""
+    A recursive generator is used in order to create the necessary r number of nested for loops.
+    This is cool (my first generator!), but deep recursion is slow"""
+    objects = asarray(objects)
     assert r <= len(objects)
     try: # recursive case
         if i == None:
-            i = asarray([0]*r) # stores all the current index values for all r nested for loops
+            i = [0]*r # stores all the current index values for all r nested for loops
         if level == 0: # handles special case for starting index of top level for loop
             starti = 0
         else:
@@ -606,8 +579,100 @@ def combgen(objects, r=2, i=None, level=0):
         for i[level] in range(starti, len(objects)+1): # not too sure why this is n+1, but it works
             for comb in combgen(objects, r=r, i=i, level=level+1): # iterate over next level's generator
                 yield comb # yield whatever the next level (level+1) yields, pass it on up to the previous level (level-1)
-    except: # base case, we're at the deepest recursion level (innermost for loop)
-        yield asarray(objects)[i] # use the current index state for all levels to yield a combination of objects
+    except IndexError: # base case, we're at the deepest recursion level (innermost for loop). IndexError comes from i[level] being out of range
+        #if len(i) == 1:
+        #    yield objects[i[0]] # no need to yield them in a list
+        #else:
+            yield objects[i] # use the current index state for all levels to yield a combination of objects
+
+def combs(objects, r=2):
+    """Returns all nCr possible combinations of items in objects
+    Generates code with the right number of nested for loops, faster than combgen()"""
+    objects = asarray(objects)
+    dtype = objects.dtype
+    n = len(objects)
+    assert r <= n
+    i = asarray([0]*r)
+    combs = np.zeros(nCr(n, r), dtype=np.object)
+    combi = -1
+
+    code = ''
+    tabs = ''
+    code += tabs+'for i[0] in range(0, n):\n' # this is the outermost for loop
+    tabs += '\t'
+    for level in range(1, r): # here come the inner nested for loops...
+        code += tabs+'for i['+str(level)+'] in range(i['+str(level-1)+']+1, n):\n'
+        tabs += '\t'
+
+    # here's the innermost part of the nested for loops
+    code += tabs + 'combi += 1\n'
+    code += tabs + 'combs[combi] = objects[i]\n'
+    #print code
+
+    exec(code) # run the generated code
+    return combs
+    '''
+    # example of what the generated code looks like for r==3:
+    for i[0] in range(0, n):
+        for i[1] in range(i[0]+1, n):
+            for i[2] in range(i[1]+1, n):
+                combi += 1
+                combs[combi] = objects[i]
+    '''
+
+def argcombs(objects, r=2):
+    """Returns all nCr possible combinations of indices into objects.
+    You'd think this would be faster than combs(), but it doesn't seem to be"""
+    n = len(objects)
+    assert n < 2**8 # this way, we can use uint8's instead of int32's to save memory
+    assert r <= n
+    i = asarray([0]*r)
+    argcombs = np.zeros((nCr(n, r), r), dtype=np.uint8)
+    combi = -1
+
+    code = ''
+    tabs = ''
+    code += tabs+'for i[0] in range(0, n):\n' # this is the outermost for loop
+    tabs += '\t'
+    for level in range(1, r): # here come the inner nested for loops...
+        code += tabs+'for i['+str(level)+'] in range(i['+str(level-1)+']+1, n):\n'
+        tabs += '\t'
+
+    # here's the innermost part of the nested for loops
+    code += tabs + 'combi += 1\n'
+    code += tabs + 'argcombs[combi, :] = i\n'
+    #print code
+
+    exec(code) # run the generated code
+    return argcombs
+    '''
+    # example of what the generated code looks like for r==3:
+    for i[0] in range(0, n):
+        for i[1] in range(i[0]+1, n):
+            for i[2] in range(i[1]+1, n):
+                combi += 1
+                argcombs[combi, :] = i
+    '''
+
+def nCrsamples(objects, r, nsamples):
+    """Returns nsamples unique samples of length r, sampled from objects"""
+    maxnsamples = nCr(len(objects), r)
+    assert nsamples <= maxnsamples # make sure we're being asked for more than the maximum possible number of unique samples
+    # I've set this to 0, cuz generating the table and then sampling it always takes longer (up to maxnsamples = 325, say) than just picking combs at random and making sure they're unique
+    if maxnsamples < 0: # generate a table of all possible combinations, and then just pick nsamples from it without replacement
+        print 'generating table'
+        table = combs(objects, r)
+        samples = random.sample(table, nsamples)
+    else: # the number of possible combs is inconveniently large to completely tabulate, pick some combinations at random and make sure each comb is unique
+        samples = []
+        samplei = 0
+        while samplei < nsamples:
+            sample = random.sample(objects, r) # choose r objects at random
+            sample.sort() # sort for sake of comparison with other samples
+            if sample not in samples: # make sure they're not the same set of objects as any previous set in samples
+                samples.append(sample) # add it to the list of samples
+                samplei += 1
+    return samples
 
 '''
 # this f'n isn't really needed, just use objlist.sort(key=lambda obj: obj.attrib)
@@ -617,7 +682,6 @@ def sortby(objs, attrib, cmp=None, reverse=False):
     objs.sort(key=lambda obj: obj.__getattribute__(attrib), cmp=cmp, reverse=reverse) # sort in-place
     return objs
 '''
-
 def mean_accum(data):
     """Takes mean by accumulating over 0th axis in data,
     much faster than numpy's mean() method because it avoids making any copies of the data
@@ -688,8 +752,11 @@ class neuropyAutoLocator(mpl.ticker.MaxNLocator):
 def entropy(p):
     """Returns the entropy (in bits) of the prob distribution described by the prob values in p"""
     p = asarray(p)
-    assert approx(sum(p), 1.0) # make sure the probs sum to 1
-    return -sum(p*np.log2(p))
+    psum = p.sum()
+    if not approx(psum, 1.0, atol=1e-8): # make sure the probs sum to 1
+        print 'ps don''t sum to 1, they sum to %f instead, normalizing for you' % psum
+        p = p / float(psum)
+    return -(p * np.log2(p)).sum()
 
 
 class Ising(object):
