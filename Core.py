@@ -39,7 +39,7 @@ import scipy as sp
 import scipy.signal as sig
 import scipy.weave as weave
 from numpy.random import rand, randn, randint
-from numpy import arange, array, array as ar, asarray, asarray as aar, log, log10, zeros, ones, diff, concatenate, concatenate as cat
+from numpy import arange, array, array as ar, asarray, asarray as aar, log, log2, log10, zeros, ones, diff, concatenate, concatenate as cat
 from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
 import wx
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
@@ -421,6 +421,84 @@ def histogramSorted(sorteda, bins=10, range=None, normed=False):
     else:
         return n, bins
 
+def histogram2d(x, y, bins, normed=False):
+    """Compute the 2D histogram for a dataset (x,y) given the edges or
+    the number of bins. Stolen from np.histogram2d(), modified to allow
+    normed='pdf' or normed='pmf' (prob mass function)
+
+    Returns histogram, xedges, yedges.
+    The histogram array is a count of the number of samples in each bin.
+    The array is oriented such that H[i,j] is the number of samples falling
+        into binx[j] and biny[i].
+    Data falling outside of the edges are not counted.
+    """
+    try:
+        N = len(bins)
+    except TypeError:
+        N = 1
+        bins = [bins]
+    if N == 2:
+        if np.isscalar(bins[0]):
+            xnbin = bins[0]
+            xedges = np.linspace(x.min(), x.max(), xnbin+1)
+        else:
+            xedges = asarray(bins[0], float)
+            xnbin = len(xedges)-1
+        if np.isscalar(bins[1]):
+            ynbin = bins[1]
+            yedges = np.linspace(y.min(), y.max(), ynbin+1)
+        else:
+            yedges = asarray(bins[1], float)
+            ynbin = len(yedges)-1
+    elif N == 1:
+        ynbin = xnbin = bins[0]
+        xedges = np.linspace(x.min(), x.max(), xnbin+1)
+        yedges = np.linspace(y.max(), y.min(), ynbin+1)
+        xedges[-1] *= 1.0001
+        yedges[-1] *= 1.0001
+    else:
+        yedges = asarray(bins, float)
+        xedges = yedges.copy()
+        ynbin = len(yedges)-1
+        xnbin = len(xedges)-1
+
+    # Flattened histogram matrix (1D)
+    hist = np.zeros((xnbin)*(ynbin), int)
+
+    # Count the number of sample in each bin (1D)
+    xbin = np.digitize(x,xedges)
+    ybin = np.digitize(y,yedges)
+
+    # Remove the outliers
+    outliers = (xbin==0) | (xbin==xnbin+1) | (ybin==0) | (ybin == ynbin+1)
+
+    xbin = xbin[outliers==False]
+    ybin = ybin[outliers==False]
+
+    # Compute the sample indices in the flattened histogram matrix.
+    if xnbin >= ynbin:
+        xy = ybin*(xnbin) + xbin
+        shift = xnbin + 1
+    else:
+        xy = xbin*(ynbin) + ybin
+        shift = ynbin + 1
+
+    # Compute the number of repetitions in xy and assign it to the flattened
+    #  histogram matrix.
+    flatcount = np.bincount(xy)
+    indices = np.arange(len(flatcount)-shift)
+    hist[indices] = flatcount[shift:]
+
+    # Shape into a proper matrix
+    histmat = hist.reshape(xnbin, ynbin)
+
+    if normed == 'pdf':
+        diff2 = np.outer(np.diff(yedges), np.diff(xedges))
+        histmat = histmat / diff2 / histmat.sum()
+    elif normed == 'pmf':
+        histmat = histmat / float(histmat.sum())
+    return histmat, xedges, yedges
+
 def sah(t, y, ts, keep=False):
     """Resample using sample and hold. Returns resampled values at ts given the original points (t,y)
     such that the resampled values are just the most recent value in y (think of a staircase with non-uniform steps).
@@ -755,8 +833,30 @@ def entropy(p):
     psum = p.sum()
     if not approx(psum, 1.0, atol=1e-8): # make sure the probs sum to 1
         print 'ps don''t sum to 1, they sum to %f instead, normalizing for you' % psum
-        p = p / float(psum)
-    return -(p * np.log2(p)).sum()
+        p /= float(psum)
+    return -(p * log2(p)).sum()
+
+def mutualinfo(XY):
+    """Given the joint PDF of two variables, returns the mutual information (in bits) between the two
+    I = sum_X sum_Y P(x, y) * log2( P(x, y) / (P(x) * P(y)) )
+    where P(x) and P(y) are the marginal distributions taken from the joint"""
+    XY = asarray(XY)
+    assert XY.ndim == 2
+    XYsum = XY.sum()
+    if not approx(XYsum, 1.0, atol=1e-8): # make sure the probs sum to 1
+        print 'ps in the joint don''t sum to 1, they sum to %f instead, normalizing for you' % XYsum
+        XY /= float(XYsum)
+    # calculate the marginal probability distributions for X and Y from the joint
+    X = XY.sum(axis=1) # sum over the rows of the joint, get a vector nrows long
+    Y = XY.sum(axis=0) # sum over the cols of the joint, get a vector ncols long
+    I = 0.0
+    for xi, x in enumerate(X):
+        for yi, y in enumerate(Y):
+            if XY[xi, yi] == 0 or (x * y) == 0: # avoid singularities
+                pass # just skip it, assume info contributed is 0 (?????????????????)
+            else:
+                I += XY[xi, yi] * log2( XY[xi, yi] / (x * y) )
+    return I
 
 
 class Ising(object):

@@ -458,7 +458,7 @@ class RecordingCode(BaseRecording):
     '''
 
 class Schneidman(object):
-    """see 2006 Schneidman figs 1e and 1f"""
+    """see 2006 Schneidman"""
     def __init__(self, recording, experiments=None):
         self.r = recording
         if experiments == None:
@@ -488,7 +488,7 @@ class Schneidman(object):
         return binaryarray2int(self.codes(nis=nis, kind='binary', **kwargs).c)
 
     def intcodesPDF(self, nis=None, **kwargs):
-        """Returns the pdf across all possible population binary code words,
+        """Returns the observed pdf across all possible population binary code words,
         labelled according to their integer representation"""
         if nis == None:
             nis = random.sample(self.neurons.keys(), DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
@@ -522,6 +522,24 @@ class Schneidman(object):
         #print 'x', x.__repr__()
         intcodeps = x.prod(axis=0) # take the product along the 0th axis (the columns) to get the prob of each population code word
         return intcodeps, intcodes
+
+    def ising(self, nis=None, algorithm='CG', **kwargs):
+        """Returns an Ising maximum entropy model that takes into account pairwise correlations neuron codes
+        algorithm can be 'CG', 'BFGS', 'LBFGSB', 'Powell', or 'Nelder-Mead'"""
+        if nis == None:
+            nis = self.neurons.keys()[0:DEFAULTCODEWORDLENGTH]
+        print 'nis:', nis.__repr__()
+        codeso = self.codes(nis=nis, kind='binary', **kwargs)
+        #c = codeso.c
+        # convert values in codes object from [0, 1] to [-1, 1] by mutliplying by 2 and subtracting 1
+        c = codeso.c.copy() # don't modify the original
+        c = c*2 - 1 # this should be safe to do cuz c is a 2D array of signed int8 values
+        #print 'c:', c.__repr__()
+        means = [ row.mean() for row in c ] # iterate over rows of codes in c
+        nrows = c.shape[0]
+        pairmeans = [ (c[i]*c[j]).mean() for i in range(0, nrows) for j in range(i+1, nrows) ] # take a pair of rows, find the mean of their elementwise product
+        ising = Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
+        return ising
 
     def scatter(self, nis=None, nbits=None, model='indep', randomneurons=False, shufflecodes=False, algorithm='CG', **kwargs):
         """Scatterplots the expected probabilities, assuming a model in ['indep', 'ising'],
@@ -668,24 +686,6 @@ class Schneidman(object):
         a.set_xlabel('number of spiking cells in %dms window' % round(tres/1000.0))
         a.set_ylabel('probability')
 
-    def ising(self, nis=None, algorithm='CG', **kwargs):
-        """Returns an Ising maximum entropy model that takes into account pairwise correlations neuron codes
-        algorithm can be 'CG', 'BFGS', 'LBFGSB', 'Powell', or 'Nelder-Mead'"""
-        if nis == None:
-            nis = self.neurons.keys()[0:DEFAULTCODEWORDLENGTH]
-        print 'nis:', nis.__repr__()
-        codeso = self.codes(nis=nis, kind='binary', **kwargs)
-        #c = codeso.c
-        # convert values in codes object from [0, 1] to [-1, 1] by mutliplying by 2 and subtracting 1
-        c = codeso.c.copy() # don't modify the original
-        c = c*2 - 1 # this should be safe to do cuz c is a 2D array of signed int8 values
-        #print 'c:', c.__repr__()
-        means = [ row.mean() for row in c ] # iterate over rows of codes in c
-        nrows = c.shape[0]
-        pairmeans = [ (c[i]*c[j]).mean() for i in range(0, nrows) for j in range(i+1, nrows) ] # take a pair of rows, find the mean of their elementwise product
-        ising = Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
-        return ising
-
     def S1INvsN(self, minN=4, maxN=15, nsamples=10, tres=DEFAULTCODETRES, regressinlogspace=False):
         """Plots the average independent cell entropy S1 and average network multi-information IN (IN = S1 - SN)
         vs network size N. IN is how much less entropy there is in the system due to correlated network activity.
@@ -693,20 +693,21 @@ class Schneidman(object):
         S1mean = [] # as f'n of N
         INmean = [] # as f'n of N
         Ns = range(minN, maxN+1) # network sizes from minN up to maxN
-        tstart = time.clock()
-        pd = wx.ProgressDialog(title='S1INvsN progress', message='', maximum=Ns[-1], style=1) # create a progress dialog
-        for N in Ns: # for all network sizes
+        #tstart = time.clock()
+        pd = wx.ProgressDialog(title='S1INvsN progress', message='', maximum=Ns[-1]*nsamples, # create a progress dialog
+                               style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
+        for Ni, N in enumerate(Ns): # for all network sizes
             #print 'N:', N
-            cancel = not pd.Update(N-minN-1, newmsg='N = %d\nelapsed: %.1fs' % (N, time.clock()-tstart))
-            if cancel:
-                pd.Destroy()
-                return
             #t1 = time.clock()
             niss = nCrsamples(objects=self.neurons.keys(), r=N, nsamples=nsamples) # list of lists of neuron indices
             #print 'sampling took: %f sec' % (time.clock()-t1)
             S1s = []
             INs = []
-            for nis in niss:
+            for nisi, nis in enumerate(niss):
+                cancel = not pd.Update(Ni*nsamples+nisi, newmsg='N = %d\nsamplei = %d' % (N, nisi))
+                if cancel:
+                    pd.Destroy()
+                    return
                 #t2 = time.clock()
                 p1 = asarray(self.intcodesFPDF(nis=nis, tres=tres)[0]) # indep model
                 pN = asarray(self.intcodesPDF(nis=nis, tres=tres)[0]) # observed word probs
@@ -718,7 +719,7 @@ class Schneidman(object):
                 pN = pN[pN > 0]
                 S1 = entropy(p1)
                 SN = entropy(pN)
-                assert S1 > SN or approx(S1, SN), 'S1 is %.20f, SN is %.20f' % (S1, SN) # better be, indep model allows for maximum disorder
+                assert S1 > SN or approx(S1, SN), 'S1 is %.20f, SN is %.20f' % (S1, SN) # better be, indep model assumes the least structure
                 IN = S1 - SN
                 #print S1, SN, IN
                 S1s.append(S1)
@@ -738,7 +739,7 @@ class Schneidman(object):
         mS1, bS1 = sp.polyfit(log10(Ns), log10(S1mean), 1) # returns slope and y intercept
         mIN, bIN = sp.polyfit(log10(Ns), log10(INmean), 1)
         xintersect = (bIN - bS1) / (mS1 - mIN)
-        x = array([-1, 3]) # define x in log space, this is really [0.1, 1000]
+        x = array([-1, 3]) # define x in log10 space, this is really [0.1, 1000]
         yS1 = mS1*x + bS1 # y = mx + b
         yIN = mIN*x + bIN
         plot(10.0**x, 10.0**yS1, 'b-') # raise them to the power to make up for the fact that both the x and y scales will be log
@@ -755,6 +756,89 @@ class Schneidman(object):
             horizontalalignment = 'right',
             verticalalignment = 'top')
         return S1mean, INmean, Ns
+
+    def NMmutualinfo(self, nis, mis):
+        """Calculates information that N cells provide about M cells,
+        as a fraction of the M cells' entropy. In other words, calculates
+        the mutual information between the two groups of cells.
+        nis is neuron indices of length N, and is ordered LSB to MSB.
+        mis is neuron indices of length M"""
+
+        # build up joint pdf of all the possible N words, and the two possible N+1th values (0 and 1)
+        nis = toiter(nis)
+        mis = toiter(mis)
+        N = len(nis)
+        M = len(mis)
+        Nintcodes = self.intcodes(nis=nis)
+        #print 'first 100 Nintcodes\n', Nintcodes[:100].__repr__()
+        Mintcodes = self.intcodes(nis=mis)
+        #print 'first 100 Mintcodes\n', Mintcodes[:100].__repr__()
+        xedges = arange(2**N+1) # values 0 to 2**N - 1, plus 2**N which is needed as the rightmost bin edge for histogram2d (annoying)
+        yedges = arange(2**M+1)
+        bins = [xedges, yedges]
+        jpdf, xedgesout, yedgesout = histogram2d(Nintcodes, Mintcodes, bins, normed='pmf') # generate joint pdf
+        #print 'jpdf\n', jpdf.__repr__()
+        #print 'jpdf.sum()', jpdf.sum()
+        assert (np.float64(xedges) == xedgesout).all()
+        assert (np.float64(yedges) == yedgesout).all() # make sure we know what we're doing
+
+        # pdf of N cells
+        Npdf, Nedges = histogram(Nintcodes, bins=range(2**N), normed='pmf')
+        #print 'first 100 Npdf\n', Npdf[:100].__repr__()
+        assert Nedges == range(2**N)
+
+        # pdf of M cells
+        Mpdf, Medges = histogram(Mintcodes, bins=range(2**M), normed='pmf')
+        #print 'first 100 Mpdf\n', Mpdf[:100].__repr__()
+        assert Medges == range(2**M)
+
+        I = mutualinfo(jpdf)
+        IdivS = I / float(entropy(Mpdf)) # return as fraction of entropy in M group of cells (0<= fraction <= 1)
+
+        print 'nis', nis
+        print 'Mpdf', Mpdf
+        print 'entropy(Mpdf)', entropy(Mpdf)
+        print 'marginal Mpdf', jpdf.sum(axis=0)
+        print 'entropy(marginal Mpdf)', entropy(jpdf.sum(axis=0))
+        print 'I', I
+        print 'I/entropy', IdivS
+
+        return IdivS
+
+    def NNplus1(self, compareto=16, maxN=15):
+        """Does Schneidman fig 5b. Averages over lots of different
+        groups of N+1 cells, all done for different values of N up to maxN"""
+        niss = self.neurons.keys()
+        niss.remove(compareto)
+        np.random.shuffle(niss) # shuffle it!
+        N = range(1, maxN+1)
+        IdivS = []
+        for n in N:
+            nis = niss[:n]
+            IdivS.append(self.NMmutualinfo(nis=nis, mis=compareto))
+        f = figure()
+        gcfm().frame.SetTitle(lastcmd())
+        a = f.add_subplot(111)
+        a.hold(True)
+        a.plot(N, IdivS, 'b.')
+        # do some linear regression in log10 space
+        m, b = sp.polyfit(log10(N), log10(IdivS), 1) # returns slope and y intercept
+        x = array([0, 3]) # define x in log10 space, this is really [0.1, 1000]
+        y = m*x + b # y = mx + b
+        xintersect = (0-b) / m # intersection point of regression line with y=1=10**0 line
+        plot(10.0**x, 10.0**y, 'b-') # raise them to the power to make up for the fact that both the x and y scales will be log
+        plot(10.0**x, [1e0]*2, 'r-') # plot horizontal line at y=1
+        a.set_xscale('log')
+        a.set_yscale('log')
+        a.set_xlim(1e0, 1e3)
+        a.set_ylim(1e-3, 1e1)
+        a.set_xlabel('Number of cells')
+        a.set_ylabel('mutualinfo(N, N+1th) / entropy(N+1th)')
+        a.text(0.99, 0.98, 'Nc=%d' % np.round(10**xintersect), # add text box to upper right corner of axes
+            transform = a.transAxes,
+            horizontalalignment = 'right',
+            verticalalignment = 'top')
+
 
 class RecordingSchneidman(BaseRecording):
     """Mix-in class that defines the spike code related Schneidman methods"""
