@@ -686,7 +686,7 @@ class Schneidman(object):
         a.set_xlabel('number of spiking cells in %dms window' % round(tres/1000.0))
         a.set_ylabel('probability')
 
-    def S1INvsN(self, minN=4, maxN=15, nsamples=10, tres=DEFAULTCODETRES, regressinlogspace=False):
+    def S1INvsN(self, minN=4, maxN=15, nsamples=10, tres=DEFAULTCODETRES):
         """Plots the average independent cell entropy S1 and average network multi-information IN (IN = S1 - SN)
         vs network size N. IN is how much less entropy there is in the system due to correlated network activity.
         For each network size up to maxN, Averages S1 and IN over nsamples number of groups at each value of N"""
@@ -758,9 +758,8 @@ class Schneidman(object):
         return S1mean, INmean, Ns
 
     def NMmutualinfo(self, nis, mis):
-        """Calculates information that N cells provide about M cells,
-        as a fraction of the M cells' entropy. In other words, calculates
-        the mutual information between the two groups of cells.
+        """Calculates information that N cells provide about M cells (ie,
+        their mutual information), as a fraction of the M cells' marginal entropy.
         nis is neuron indices of length N, and is ordered LSB to MSB.
         mis is neuron indices of length M"""
 
@@ -783,61 +782,97 @@ class Schneidman(object):
         assert (np.float64(yedges) == yedgesout).all() # make sure we know what we're doing
 
         # pdf of N cells
-        Npdf, Nedges = histogram(Nintcodes, bins=range(2**N), normed='pmf')
+        #Npdf, Nedges = histogram(Nintcodes, bins=range(2**N), normed='pmf')
         #print 'first 100 Npdf\n', Npdf[:100].__repr__()
-        assert Nedges == range(2**N)
+        #assert Nedges == range(2**N)
 
         # pdf of M cells
-        Mpdf, Medges = histogram(Mintcodes, bins=range(2**M), normed='pmf')
+        #Mpdf, Medges = histogram(Mintcodes, bins=range(2**M), normed='pmf')
         #print 'first 100 Mpdf\n', Mpdf[:100].__repr__()
-        assert Medges == range(2**M)
+        #assert Medges == range(2**M)
 
         I = mutualinfo(jpdf)
-        IdivS = I / float(entropy(Mpdf)) # return as fraction of entropy in M group of cells (0<= fraction <= 1)
+        marginalMpdf = jpdf.sum(axis=0)
+        IdivS = I / entropy(marginalMpdf) # return mutual info as fraction of marginal entropy in M group of cells
 
         print 'nis', nis
-        print 'Mpdf', Mpdf
-        print 'entropy(Mpdf)', entropy(Mpdf)
-        print 'marginal Mpdf', jpdf.sum(axis=0)
-        print 'entropy(marginal Mpdf)', entropy(jpdf.sum(axis=0))
+        print 'mis', mis
+        #print 'Mpdf', Mpdf
+        #print 'entropy(Mpdf)', entropy(Mpdf)
+        print 'marginal Mpdf', marginalMpdf
+        print 'entropy(marginal Mpdf)', entropy(marginalMpdf)
         print 'I', I
         print 'I/entropy', IdivS
 
+        if not 0.0 <= IdivS <= 1.0:
+            import pdb; pdb.set_trace()
+            print 'IdivS is out of range'
+            print 'IdivS is %.16f' % IdivS
         return IdivS
 
-    def NNplus1(self, compareto=16, maxN=15):
-        """Does Schneidman fig 5b. Averages over lots of different
+    def NNplus1(self, Nplus1s=None, maxN=10, nsamples=1):
+        """Does Schneidman Figure 5b. Averages over lots of different
         groups of N+1 cells, all done for different values of N up to maxN"""
-        niss = self.neurons.keys()
-        niss.remove(compareto)
-        np.random.shuffle(niss) # shuffle it!
+        if Nplus1s == None: # list of all neurons that will be treated as the N+1th neuron
+            Nplus1s = self.neurons.keys()
+            Nplus1s.sort()
+        else:
+            Nplus1s = toiter(Nplus1s)
+        IdivS = [] # holds the mutual info between N and N+1th cells, as a ratio of the N+1th cell's entropy
         N = range(1, maxN+1)
-        IdivS = []
-        for n in N:
-            nis = niss[:n]
-            IdivS.append(self.NMmutualinfo(nis=nis, mis=compareto))
+        pd = wx.ProgressDialog(title='NNplus1 progress', message='', maximum=len(Nplus1s)*nsamples, # create a progress dialog
+                               style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
+        for Nplus1i, Nplus1 in enumerate(Nplus1s): # for each N+1th neuron to compare to
+            niss = self.neurons.keys()
+            niss.remove(Nplus1) # indices of all the other neurons
+            for samplei in range(nsamples): # average over nsamples different permuatations of the N other cells
+                cancel = not pd.Update(Nplus1i*nsamples+samplei, newmsg='N+1th neuron: %d; samplei: %d' % (Nplus1, samplei))
+                if cancel:
+                    pd.Destroy()
+                    return
+                np.random.shuffle(niss) # shuffle 'em in place
+                IdivS.append([]) # add a new row
+                for n in N:
+                    nis = niss[:n]
+                    IdivS[-1].append(self.NMmutualinfo(nis=nis, mis=Nplus1)) # to each col of last row
+        pd.Destroy()
+        IdivS = asarray(IdivS) # convert from nested list to array
+        assert IdivS.shape == (len(Nplus1s)*nsamples, maxN), 'IdivS.shape is %s' % IdivS.shape
+        IdivSmeans = IdivS.mean(axis=0) # find the average of each column to get the mean IdivS for for all network sizes in N
+        IdivSstds = IdivS.std(axis=0) # find the stdevs too
+
         f = figure()
         gcfm().frame.SetTitle(lastcmd())
         a = f.add_subplot(111)
         a.hold(True)
-        a.plot(N, IdivS, 'b.')
+        #a.plot(N, IdivS, 'b.')
+        a.errorbar(N, IdivSmeans, fmt='b.', yerr=IdivSstds)
         # do some linear regression in log10 space
-        m, b = sp.polyfit(log10(N), log10(IdivS), 1) # returns slope and y intercept
-        x = array([0, 3]) # define x in log10 space, this is really [0.1, 1000]
+        m, b = sp.polyfit(log10(N), log10(IdivSmeans), 1) # returns slope and y intercept
+        x = array([log10(0.9), 3]) # define x in log10 space, this is really [0.9, 1000]
         y = m*x + b # y = mx + b
         xintersect = (0-b) / m # intersection point of regression line with y=1=10**0 line
         plot(10.0**x, 10.0**y, 'b-') # raise them to the power to make up for the fact that both the x and y scales will be log
-        plot(10.0**x, [1e0]*2, 'r-') # plot horizontal line at y=1
+        plot(10.0**x, [1e0]*2, 'r--') # plot horizontal line at y=1
         a.set_xscale('log')
         a.set_yscale('log')
-        a.set_xlim(1e0, 1e3)
+        a.set_xlim(10**log10(0.9), 1e3)
         a.set_ylim(1e-3, 1e1)
         a.set_xlabel('Number of cells')
-        a.set_ylabel('mutualinfo(N, N+1th) / entropy(N+1th)')
+        a.set_ylabel('mutualinfo(N, N+1th) / marginalentropy(N+1th)')
         a.text(0.99, 0.98, 'Nc=%d' % np.round(10**xintersect), # add text box to upper right corner of axes
             transform = a.transAxes,
             horizontalalignment = 'right',
             verticalalignment = 'top')
+
+        for ni, n in enumerate(N):
+            f = figure()
+            gcfm().frame.SetTitle('histogram for N=%d' % n)
+            a = f.add_subplot(111)
+            heights, bins = histogram(IdivS[:, ni], bins=20)
+            barwidth = bins[1]-bins[0]
+            a.bar(left=bins, height=heights, width=barwidth, bottom=0, color='k')
+
 
 
 class RecordingSchneidman(BaseRecording):
