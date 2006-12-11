@@ -550,7 +550,7 @@ class RatePDF(object):
         if self.scale == 'log':
             safe = list(self.rrange) # convert from immutable tuple to mutable list
             # prevent from taking log(0):
-            for (i,r) in enumerate(safe):
+            for i, r in enumerate(safe):
                 if r == 0:
                     safe[i] = 0.1 # set to 0.1 Hz
             self.logrrange = log10(tuple(safe)) # convert back to tuple, is now safe to take log
@@ -568,7 +568,7 @@ class RatePDF(object):
             # need to add one more entry to barwidth to the end to get nbins of them:
             #barwidth.append(barwidth[-1]) # not exactly correct
             logbinwidth = (self.logrrange[1]-self.logrrange[0]) / float(self.nbins)
-            barwidth.append(10**(self.logrrange[1]+logbinwidth)-self.r[-1]) # should be exactly correct
+            barwidth.append(10**(self.logrrange[1]+logbinwidth) - self.r[-1]) # should be exactly correct
         elif self.scale == 'linear':
             barwidth = (self.rrange[1]-self.rrange[0]) / float(self.nbins)
         else:

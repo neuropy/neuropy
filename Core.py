@@ -39,7 +39,8 @@ import scipy as sp
 import scipy.signal as sig
 import scipy.weave as weave
 from numpy.random import rand, randn, randint
-from numpy import arange, array, array as ar, asarray, asarray as aar, log, log2, log10, zeros, ones, diff, concatenate, concatenate as cat
+from numpy import arange, array, array as ar, asarray, asarray as aar, log, log2, log10, sqrt, zeros, ones, diff, concatenate, concatenate as cat, mean, median, std
+from numpy.core.ma import array as mar
 from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
 import wx
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
@@ -421,10 +422,124 @@ def histogramSorted(sorteda, bins=10, range=None, normed=False):
     else:
         return n, bins
 
-def histogram2d(x, y, bins, normed=False):
+def histogram2d(x, y, bins=10, range=None, normed=False):
     """Compute the 2D histogram for a dataset (x,y) given the edges or
-    the number of bins. Stolen from np.histogram2d(), modified to allow
+    the number of bins.
+
+    Stolen from np.histogram2d() in numpy 1.0
+    Modified by mspacek to allow normed='pdf' or normed='pmf' (prob mass function)
+
+    histogram2d(x, y, bins=10, range=None, normed=False) -> H, xedges, yedges
+
+    Compute the 2D histogram from samples x,y.
+
+    Parameters
+    ----------
+    x,y: 1D data series. Both arrays must have the same length.
+    bins: Number of bins -or- [nbin x, nbin y] -or-
+         [bin edges] -or- [x bin edges, y bin edges].
+    range:  A sequence of lower and upper bin edges (default: [min, max]).
+    normed: True or False.
+
+    The histogram array is a count of the number of samples in each
+    two dimensional bin.
+    Setting normed to 'pdf' returns a density rather than a bin count.
+    """
+    try:
+        N = len(bins)
+    except TypeError:
+        N = 1
+        bins = [bins]
+    x = asarray(x)
+    y = asarray(y)
+    if range is None:
+        xmin, xmax = x.min(), x.max()
+        ymin, ymax = y.min(), y.max()
+    else:
+        xmin, xmax = range[0]
+        ymin, ymax = range[1]
+    if N == 2:
+        if np.isscalar(bins[0]):
+            xnbin = bins[0]
+            xedges = np.linspace(xmin, xmax, xnbin+1)
+        else:
+            xedges = asarray(bins[0], float)
+            xnbin = len(xedges)-1
+        if np.isscalar(bins[1]):
+            ynbin = bins[1]
+            yedges = np.linspace(ymin, ymax, ynbin+1)
+        else:
+            yedges = asarray(bins[1], float)
+            ynbin = len(yedges)-1
+    elif N == 1:
+        ynbin = xnbin = bins[0]
+        xedges = np.linspace(xmin, xmax, xnbin+1)
+        yedges = np.linspace(ymin, ymax, ynbin+1)
+    else:
+        yedges = asarray(bins, float)
+        xedges = yedges.copy()
+        ynbin = len(yedges)-1
+        xnbin = len(xedges)-1
+
+    dxedges = np.diff(xedges)
+    dyedges = np.diff(yedges)
+
+    # Flattened histogram matrix (1D)
+    hist = np.zeros((xnbin)*(ynbin), int)
+
+    # Count the number of sample in each bin (1D)
+    xbin = np.digitize(x,xedges)
+    ybin = np.digitize(y,yedges)
+
+    # Values that fall on an edge are put in the right bin.
+    # For the rightmost bin, we want values equal to the right
+    # edge to be counted in the last bin, and not as an outlier.
+    xdecimal = int(-np.log10(dxedges.min()))+6
+    ydecimal = int(-np.log10(dyedges.min()))+6
+    on_edge_x = np.where(np.around(x,xdecimal) == np.around(xedges[-1], xdecimal))[0]
+    on_edge_y = np.where(np.around(y,ydecimal) == np.around(yedges[-1], ydecimal))[0]
+    xbin[on_edge_x] -= 1
+    ybin[on_edge_y] -= 1
+    # Remove the true outliers
+    outliers = (xbin==0) | (xbin==xnbin+1) | (ybin==0) | (ybin == ynbin+1)
+    xbin = xbin[outliers==False] - 1
+    ybin = ybin[outliers==False] - 1
+
+    # Compute the sample indices in the flattened histogram matrix.
+    if xnbin >= ynbin:
+        xy = ybin*(xnbin) + xbin
+    else:
+        xy = xbin*(ynbin) + ybin
+
+    # Compute the number of repetitions in xy and assign it to the flattened
+    # histogram matrix.
+    flatcount = np.bincount(xy)
+    indices = np.arange(len(flatcount))
+    hist[indices] = flatcount
+
+    # Shape into a proper matrix
+    shape = np.sort([xnbin, ynbin])
+    histmat = hist.reshape(shape)
+    if (shape == (ynbin, xnbin)).all():
+        histmat = histmat.T
+
+    if normed:
+        if normed == 'pdf':
+            diff2 = np.outer(dxedges, dyedges)
+            histmat = histmat / diff2 / histmat.sum()
+        elif normed == 'pmf':
+            histmat = histmat / float(histmat.sum())
+        else:
+            raise ValueError, 'unknown normed value %s' % normed
+    return histmat, xedges, yedges
+'''
+def histogram2dold(x, y, bins, normed=False):
+    """Compute the 2D histogram for a dataset (x,y) given the edges or
+    the number of bins. Stolen from np.histogram2d() (numpy 1.0b5), modified to allow
     normed='pdf' or normed='pmf' (prob mass function)
+
+    NOTE: THIS HAS A SERIOUS BUG, IT FAILS TO TAKE THE TRANSPOSE AT ONE POINT, OR SOMETHING,
+    DON'T USE!!!!!!!!
 
     Returns histogram, xedges, yedges.
     The histogram array is a count of the number of samples in each bin.
@@ -498,7 +613,7 @@ def histogram2d(x, y, bins, normed=False):
     elif normed == 'pmf':
         histmat = histmat / float(histmat.sum())
     return histmat, xedges, yedges
-
+'''
 def sah(t, y, ts, keep=False):
     """Resample using sample and hold. Returns resampled values at ts given the original points (t,y)
     such that the resampled values are just the most recent value in y (think of a staircase with non-uniform steps).
@@ -664,14 +779,14 @@ def combgen(objects, r=2, i=None, level=0):
             yield objects[i] # use the current index state for all levels to yield a combination of objects
 
 def combs(objects, r=2):
-    """Returns all nCr possible combinations of items in objects
+    """Returns all nCr possible combinations of items in objects, in a 1D array of arrays.
     Generates code with the right number of nested for loops, faster than combgen()"""
     objects = asarray(objects)
     dtype = objects.dtype
     n = len(objects)
     assert r <= n
     i = asarray([0]*r)
-    combs = np.zeros(nCr(n, r), dtype=np.object)
+    combs = np.empty(nCr(n, r), dtype=np.object) # stores all combinations, will be a 1D array of arrays
     combi = -1
 
     code = ''
@@ -732,21 +847,25 @@ def argcombs(objects, r=2):
                 argcombs[combi, :] = i
     '''
 
-def nCrsamples(objects, r, nsamples):
+def nCrsamples(objects, r, nsamples=None):
     """Returns nsamples unique samples of length r, sampled from objects"""
     maxnsamples = nCr(len(objects), r)
-    assert nsamples <= maxnsamples # make sure we're being asked for more than the maximum possible number of unique samples
-    # I've set this to 0, cuz generating the table and then sampling it always takes longer (up to maxnsamples = 325, say) than just picking combs at random and making sure they're unique
+    if nsamples == None:
+        nsamples = maxnsamples # return all possible combinations
+    if nsamples > maxnsamples: # make sure we're not being asked for more than the maximum possible number of unique samples
+        raise ValueError, 'requested unique nsamples (%d) is larger than len(objects) choose r (%d C %d == %d)' % (nsamples, len(objects), r, maxnsamples)
+    # I've set the criteria for generating a table to be never, cuz generating the table and then sampling it almost always takes longer (at least for maxnsamples as high as 325, say) than just picking combs at random and making sure they're unique
     if maxnsamples < 0: # generate a table of all possible combinations, and then just pick nsamples from it without replacement
-        print 'generating table'
         table = combs(objects, r)
         samples = random.sample(table, nsamples)
+    elif r == 1: # we're just choosing one item from objects at a time
+        samples = random.sample(objects, nsamples)
     else: # the number of possible combs is inconveniently large to completely tabulate, pick some combinations at random and make sure each comb is unique
         samples = []
         samplei = 0
         while samplei < nsamples:
             sample = random.sample(objects, r) # choose r objects at random
-            sample.sort() # sort for sake of comparison with other samples
+            sample.sort() # sort for sake of comparison with other samples, important cuz this removes any differences due to permuatations (as opposed to combs)
             if sample not in samples: # make sure they're not the same set of objects as any previous set in samples
                 samples.append(sample) # add it to the list of samples
                 samplei += 1

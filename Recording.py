@@ -757,7 +757,7 @@ class Schneidman(object):
             verticalalignment = 'top')
         return S1mean, INmean, Ns
 
-    def NMmutualinfo(self, nis, mis):
+    def NMmutualinfo(self, nis, mis, verbose=False):
         """Calculates information that N cells provide about M cells (ie,
         their mutual information), as a fraction of the M cells' marginal entropy.
         nis is neuron indices of length N, and is ordered LSB to MSB.
@@ -784,25 +784,28 @@ class Schneidman(object):
         # pdf of N cells
         #Npdf, Nedges = histogram(Nintcodes, bins=range(2**N), normed='pmf')
         #print 'first 100 Npdf\n', Npdf[:100].__repr__()
-        #assert Nedges == range(2**N)
 
         # pdf of M cells
-        #Mpdf, Medges = histogram(Mintcodes, bins=range(2**M), normed='pmf')
+        Mpdf, Medges = histogram(Mintcodes, bins=arange(2**M), normed='pmf')
         #print 'first 100 Mpdf\n', Mpdf[:100].__repr__()
-        #assert Medges == range(2**M)
+
+        marginalMpdf = jpdf.sum(axis=0)
+        #import pdb; pdb.set_trace()
+        assert approx(Mpdf, marginalMpdf).all() # make sure what you get from the joint is what you get when just building up the pdf straight up on its own
 
         I = mutualinfo(jpdf)
-        marginalMpdf = jpdf.sum(axis=0)
-        IdivS = I / entropy(marginalMpdf) # return mutual info as fraction of marginal entropy in M group of cells
 
-        print 'nis', nis
-        print 'mis', mis
-        #print 'Mpdf', Mpdf
-        #print 'entropy(Mpdf)', entropy(Mpdf)
-        print 'marginal Mpdf', marginalMpdf
-        print 'entropy(marginal Mpdf)', entropy(marginalMpdf)
-        print 'I', I
-        print 'I/entropy', IdivS
+        IdivS = I / entropy(marginalMpdf) # return mutual info as fraction of entropy in M group of cells
+
+        if verbose:
+            print 'nis', nis
+            print 'mis', mis
+            #print 'Mpdf', Mpdf
+            #print 'entropy(Mpdf)', entropy(Mpdf)
+            print 'marginal Mpdf', marginalMpdf
+            print 'entropy(marginal Mpdf)', entropy(marginalMpdf)
+            print 'I', I
+            print 'I/entropy', IdivS
 
         if not 0.0 <= IdivS <= 1.0:
             import pdb; pdb.set_trace()
@@ -810,37 +813,46 @@ class Schneidman(object):
             print 'IdivS is %.16f' % IdivS
         return IdivS
 
-    def NNplus1(self, Nplus1s=None, maxN=10, nsamples=1):
-        """Does Schneidman Figure 5b. Averages over lots of different
-        groups of N+1 cells, all done for different values of N up to maxN"""
+    def NNplus1(self, Nplus1s=None, maxN=15, maxnsamples=10):
+        """Does Schneidman Figure 5b. Averages over as many as maxnsamples different
+        groups of N cells for each N+1th cell in Nplus1s,
+        all done for different values of N up to maxN"""
         if Nplus1s == None: # list of all neurons that will be treated as the N+1th neuron
             Nplus1s = self.neurons.keys()
             Nplus1s.sort()
         else:
             Nplus1s = toiter(Nplus1s)
-        IdivS = [] # holds the mutual info between N and N+1th cells, as a ratio of the N+1th cell's entropy
-        N = range(1, maxN+1)
-        pd = wx.ProgressDialog(title='NNplus1 progress', message='', maximum=len(Nplus1s)*nsamples, # create a progress dialog
+        nNplus1s = len(Nplus1s)
+        dims = (maxN, nNplus1s, maxnsamples)
+        mask = np.zeros(dims) # this will be converted to an array of Falses
+        IdivS = np.ma.array(mask, mask=mask, fill_value=666) # masked array that holds the mutual info between N and N+1th cells, as a ratio of the N+1th cell's entropy. Index like: IdivS[ni, Nplus1i, samplei], ie group size, N+1th cell you're comparing to, and number of samples of size N taken from the possible combs
+        N = range(1, maxN+1) # cell group size, excluding the N+1th neuron. This will be the x axis in the plot
+        nsamples = [ min(maxnsamples, nCr(nNplus1s-1, r)) for r in N ] # take up to maxnsamples of all the other neurons, if that many even exist (for the lower N values, the constraint may end up being the total number of possible combinations of cells), for each N+1th cell. Taken from nNplus1s-1 cuz you always have to exclude an N+1th neurons
+        for ni, n in enumerate(N): # for all group sizes
+            IdivS.mask[ni, :, nsamples[ni]::] = True # mask out the sampleis that are out of range for this value of N, if any
+        maximum = nNplus1s*sum(nsamples)
+        pd = wx.ProgressDialog(title='NNplus1 progress', message='', maximum=maximum, # create a progress dialog
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
-        for Nplus1i, Nplus1 in enumerate(Nplus1s): # for each N+1th neuron to compare to
-            niss = self.neurons.keys()
-            niss.remove(Nplus1) # indices of all the other neurons
-            for samplei in range(nsamples): # average over nsamples different permuatations of the N other cells
-                cancel = not pd.Update(Nplus1i*nsamples+samplei, newmsg='N+1th neuron: %d; samplei: %d' % (Nplus1, samplei))
-                if cancel:
-                    pd.Destroy()
-                    return
-                np.random.shuffle(niss) # shuffle 'em in place
-                IdivS.append([]) # add a new row
-                for n in N:
-                    nis = niss[:n]
-                    IdivS[-1].append(self.NMmutualinfo(nis=nis, mis=Nplus1)) # to each col of last row
+        counter = 0 # counts loops for the progress dialog
+        for ni, n in enumerate(N):
+            for Nplus1i, Nplus1 in enumerate(Nplus1s): # for each N+1th neuron to compare to
+                niss = self.neurons.keys() # neuron indices
+                niss.remove(Nplus1) # keep just the indices of all the other neurons
+                samples = nCrsamples(niss, n, nsamples[ni]) # returns nsamples random unique choices of n items from niss
+                for samplei, sample in enumerate(samples): # average over nsamples different combinations of the N other cells
+                    IdivS[ni, Nplus1i, samplei] = self.NMmutualinfo(nis=sample, mis=Nplus1) # do it
+                    cancel = not pd.Update(counter, newmsg='N: %d; N+1th neuron: %d; samplei: %d' % (n, Nplus1, samplei))
+                    if cancel:
+                        pd.Destroy()
+                        return
+                    counter += 1
         pd.Destroy()
-        IdivS = asarray(IdivS) # convert from nested list to array
-        assert IdivS.shape == (len(Nplus1s)*nsamples, maxN), 'IdivS.shape is %s' % IdivS.shape
-        IdivSmeans = IdivS.mean(axis=0) # find the average of each column to get the mean IdivS for for all network sizes in N
-        IdivSstds = IdivS.std(axis=0) # find the stdevs too
+        IdivSmeans = IdivS.reshape(maxN, nNplus1s*maxnsamples).mean(axis=1) # reshape such that you're averaging over all Nplus1s and all samples. Values that are masked out will be ignored
+        IdivSstds = IdivS.reshape(maxN, nNplus1s*maxnsamples).std(axis=1) # do the same for stdev
+        assert IdivSmeans.shape == (maxN,)
+        assert IdivSstds.shape == (maxN,)
 
+        # plot the figure with error bars
         f = figure()
         gcfm().frame.SetTitle(lastcmd())
         a = f.add_subplot(111)
@@ -859,20 +871,37 @@ class Schneidman(object):
         a.set_xlim(10**log10(0.9), 1e3)
         a.set_ylim(1e-3, 1e1)
         a.set_xlabel('Number of cells')
-        a.set_ylabel('mutualinfo(N, N+1th) / marginalentropy(N+1th)')
+        a.set_ylabel('mutualinfo(N, N+1th) / entropy(N+1th)')
         a.text(0.99, 0.98, 'Nc=%d' % np.round(10**xintersect), # add text box to upper right corner of axes
             transform = a.transAxes,
             horizontalalignment = 'right',
             verticalalignment = 'top')
-
+        # plot the distributions of IdivS
         for ni, n in enumerate(N):
             f = figure()
-            gcfm().frame.SetTitle('histogram for N=%d' % n)
-            a = f.add_subplot(111)
-            heights, bins = histogram(IdivS[:, ni], bins=20)
-            barwidth = bins[1]-bins[0]
-            a.bar(left=bins, height=heights, width=barwidth, bottom=0, color='k')
+            gcfm().frame.SetTitle('%s distrib for N=%d' % (lastcmd(), n))
 
+            a1 = f.add_subplot(211) # axes with linear bins
+            heights, bins = histogram(IdivS[:, ni], bins=arange(0, 1, 0.02))
+            barwidth = bins[1]-bins[0]
+            a1.bar(left=bins, height=heights, width=barwidth, bottom=0, color='k')
+            #a1.set_xlabel('mutualinfo(N, N+1th) / entropy(N+1th)')
+            a1.set_ylabel('count')
+
+            a2 = f.add_subplot(212) # axes with log bins
+            start = log10(0.001)
+            stop = log10(1)
+            bins = np.logspace(start=start, stop=stop, num=50, endpoint=True, base=10.0)
+            heights, bins = histogram(IdivS[:, ni], bins=bins)
+            barwidth = list(diff(bins)) # each bar will have a different width, convert to list so you can append
+            # need to add one more entry to barwidth to the end to get nbins of them:
+            #barwidth.append(barwidth[-1]) # not exactly correct
+            logbinwidth = (log10(stop)-log10(stop)) / float(len(bins))
+            barwidth.append(10**(log10(stop)+logbinwidth) - stop) # should be exactly correct
+            a2.bar(left=bins, height=heights, width=barwidth, bottom=0, color='k')
+            a2.set_xscale('log')
+            a2.set_xlabel('mutualinfo(N, N+1th) / entropy(N+1th)')
+            a2.set_ylabel('count')
 
 
 class RecordingSchneidman(BaseRecording):
