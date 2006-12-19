@@ -350,6 +350,15 @@ def tolist(x):
     else:
         return [x] # stick it in a list
 
+def to2d(arr):
+    """Converts a 1D array to a 2D array with just a singleton row
+    If arr is already 2D, just returns it. If it's anything more than 2D, raises an error"""
+    nd = arr.ndim
+    assert nd in [1, 2]
+    if nd == 1:
+        arr = arr.reshape(1, len(arr))
+    return arr
+
 '''
 def tolist(obj):
     """Takes either scalar or sequence input and returns a list,
@@ -670,23 +679,23 @@ def binslow(i, minbits=8):
     s = '0'*nzerostoadd + s # add enough leading zeros to get requested minbits
     return s
 
-def binaryarray2int(bin):
+def binarray2int(bin):
     """Takes a 2D binary array (only 1s and 0s, with rows LSB to MSB from top to bottom)
     and returns the base 10 integer representations of the columns"""
     #assert type(bin) == type(array)
-    nbits = bin.shape[0] # length of the highest (first) dimension, ie the number of rows
-    nd = bin.ndim
+    bin = to2d(bin) # ensure it's 2D. If it's 1D, force it into having a singleton row
+    nbits = bin.shape[0] # length of the first dimension, ie the number of rows
     multiplier = []
     for i in range(nbits):
         multiplier.append(2**i)
-    multiplier = array(multiplier, ndmin=nd).transpose() # convert from list and transpose to a column vector
+    multiplier = array(multiplier, ndmin=2).transpose() # convert from list and transpose to a column vector (have to make it 2D to transpose)
     #print multiplier
     x = bin*multiplier
     #print x
-    return x.sum(axis=0) # sum over the lowest dimension (the columns)
+    return x.sum(axis=0) # sum over the first dimension (the rows), that way, you're left with only columns in a row vector
 
 def getbinarytable(nbits=8):
-    """Generates a 2D binary table containing all possible words for nbits, with bits in the rows and words in the columns (msb at bottomest row)"""
+    """Generates a 2D binary table containing all possible words for nbits, with bits in the rows and words in the columns (LSB to MSB from top to bottom)"""
     rowlength = 2**nbits
     '''
     x = zeros((nbits, 2**nbits)) # init an array

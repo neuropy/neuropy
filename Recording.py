@@ -265,7 +265,7 @@ class Codes(object):
     def calc(self):
         self.s = [] # stores the corresponding spike times for each neuron, just for reference
         self.c = [] # stores the 2D code array
-        # append neurons in their order in self.neurons, from top to bottom (LSB to MSB right to left if you tilt your head to the left)
+        # append neurons in their order in self.neurons, store them LSB to MSB from top to bottom
         for neuron in self.neurons:
             codeo = neuron.code(kind=self.kind, tranges=self.tranges, tres=self.tres, phase=self.phase)
             self.s.append(codeo.s) # each is a nested list (ie, 2D), each row will have different length
@@ -472,6 +472,7 @@ class Schneidman(object):
                 experiments = [ self.r.e[ei] for ei in experiments ] # convert to a list of Experiments
         self.experiments = experiments # save list of Experiments (could potentially be None)
         self.neurons = self.r.n
+        self.nneurons = len(self.neurons)
 
     def codes(self, nis=None, kind='binary', tres=DEFAULTCODETRES, phase=0, shufflecodes=False):
         """Returns the appropriate Codes object, depending on the recording
@@ -485,7 +486,7 @@ class Schneidman(object):
         of the neuronal population binary code for each time bin"""
         if nis == None:
             nis = random.sample(self.neurons.keys(), DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
-        return binaryarray2int(self.codes(nis=nis, kind='binary', **kwargs).c)
+        return binarray2int(self.codes(nis=nis, kind='binary', **kwargs).c)
 
     def intcodesPDF(self, nis=None, **kwargs):
         """Returns the observed pdf across all possible population binary code words,
@@ -757,21 +758,37 @@ class Schneidman(object):
             verticalalignment = 'top')
         return S1mean, INmean, Ns
 
-    def NMmutualinfo(self, nis, mis, verbose=False):
+    def NMmutualinfo(self, nis=None, mis=None, Nbinarray=None, Mbinarray=None, verbose=False):
         """Calculates information that N cells provide about M cells (ie,
         their mutual information), as a fraction of the M cells' marginal entropy.
         nis is neuron indices of length N, and is ordered LSB to MSB.
         mis is neuron indices of length M"""
 
+        if nis != None:
+            nis = toiter(nis)
+            N = len(nis)
+            Nintcodes = self.intcodes(nis=nis)
+            #print 'first 100 Nintcodes\n', Nintcodes[:100].__repr__()
+        elif Nbinarray != None:
+            Nbinarray = to2d(Nbinarray) # make it 2D if it's 1D
+            N = len(Nbinarray) # gets the number of rows
+            Nintcodes = binarray2int(Nbinarray)
+        else:
+            raise ValueError, 'nis and Nbinarray args can''t both be None'
+
+        if mis != None:
+            mis = toiter(mis)
+            M = len(mis)
+            Mintcodes = self.intcodes(nis=mis)
+            #print 'first 100 Mintcodes\n', Mintcodes[:100].__repr__()
+        elif Mbinarray != None:
+            Mbinarray = to2d(Mbinarray) # make it 2D if it's 1D
+            M = len(Mbinarray) # gets the number of rows
+            Mintcodes = binarray2int(Mbinarray)
+        else:
+            raise ValueError, 'mis and Mbinarray args can''t both be None'
+
         # build up joint pdf of all the possible N words, and the two possible N+1th values (0 and 1)
-        nis = toiter(nis)
-        mis = toiter(mis)
-        N = len(nis)
-        M = len(mis)
-        Nintcodes = self.intcodes(nis=nis)
-        #print 'first 100 Nintcodes\n', Nintcodes[:100].__repr__()
-        Mintcodes = self.intcodes(nis=mis)
-        #print 'first 100 Mintcodes\n', Mintcodes[:100].__repr__()
         xedges = arange(2**N+1) # values 0 to 2**N - 1, plus 2**N which is needed as the rightmost bin edge for histogram2d (annoying)
         yedges = arange(2**M+1)
         bins = [xedges, yedges]
@@ -786,12 +803,11 @@ class Schneidman(object):
         #print 'first 100 Npdf\n', Npdf[:100].__repr__()
 
         # pdf of M cells
-        Mpdf, Medges = histogram(Mintcodes, bins=arange(2**M), normed='pmf')
+        #Mpdf, Medges = histogram(Mintcodes, bins=arange(2**M), normed='pmf')
         #print 'first 100 Mpdf\n', Mpdf[:100].__repr__()
 
         marginalMpdf = jpdf.sum(axis=0)
-        #import pdb; pdb.set_trace()
-        assert approx(Mpdf, marginalMpdf).all() # make sure what you get from the joint is what you get when just building up the pdf straight up on its own
+        #assert approx(Mpdf, marginalMpdf).all() # make sure what you get from the joint is what you get when just building up the pdf straight up on its own
 
         I = mutualinfo(jpdf)
 
@@ -827,28 +843,38 @@ class Schneidman(object):
         mask = np.zeros(dims) # this will be converted to an array of Falses
         IdivS = np.ma.array(mask, mask=mask, fill_value=666) # masked array that holds the mutual info between N and N+1th cells, as a ratio of the N+1th cell's entropy. Index like: IdivS[ni, Nplus1i, samplei], ie group size, N+1th cell you're comparing to, and number of samples of size N taken from the possible combs
         N = range(1, maxN+1) # cell group size, excluding the N+1th neuron. This will be the x axis in the plot
+        N.reverse() # for fun and pleasure
         nsamples = [ min(maxnsamples, nCr(nNplus1s-1, r)) for r in N ] # take up to maxnsamples of all the other neurons, if that many even exist (for the lower N values, the constraint may end up being the total number of possible combinations of cells), for each N+1th cell. Taken from nNplus1s-1 cuz you always have to exclude an N+1th neurons
         for ni, n in enumerate(N): # for all group sizes
             IdivS.mask[ni, :, nsamples[ni]::] = True # mask out the sampleis that are out of range for this value of N, if any
         maximum = nNplus1s*sum(nsamples)
         pd = wx.ProgressDialog(title='NNplus1 progress', message='', maximum=maximum, # create a progress dialog
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
-        counter = 0 # counts loops for the progress dialog
+
+        # get the binary array for the whole population just once, then index into it appropriately in the sample loop, find the corresponding integer codes, and feed it to NMmutualinfo, so you don't have to unnecessarily re-generate it on every iteration
+        nis = self.neurons.keys()
+        nis.sort()
+        binarray = self.codes(nis=nis, kind='binary').c
+        nis2niis = dict(zip( nis, range(len(nis)) )) # make a dict from keys:nis, vals:range(len(nis))
+        counter = 0 # counts inner loop for the progress dialog
         for ni, n in enumerate(N):
             for Nplus1i, Nplus1 in enumerate(Nplus1s): # for each N+1th neuron to compare to
-                niss = self.neurons.keys() # neuron indices
-                niss.remove(Nplus1) # keep just the indices of all the other neurons
-                samples = nCrsamples(niss, n, nsamples[ni]) # returns nsamples random unique choices of n items from niss
-                for samplei, sample in enumerate(samples): # average over nsamples different combinations of the N other cells
-                    IdivS[ni, Nplus1i, samplei] = self.NMmutualinfo(nis=sample, mis=Nplus1) # do it
+                mii = nis2niis[Nplus1]
+                niscopy = copy(nis) # make a copy of neuron indices
+                niscopy.remove(Nplus1) # keep just the indices of all the other neurons
+                samples = nCrsamples(niscopy, n, nsamples[ni]) # returns nsamples random unique choices of n items from niscopy
+                for samplei, sample in enumerate(samples): # collect nsamples different combinations of the N other cells
+                    niis = np.array([ nis2niis[s] for s in toiter(sample) ]) # most of the time (for n>1), sample will be a sequence of nis. Build an array of niis out of it to use as indices into binarray. Sometimes sample will be a scalar, hence the need to push it through toiter()
+                    IdivS[ni, Nplus1i, samplei] = self.NMmutualinfo(Nbinarray=binarray[niis], Mbinarray=binarray[mii]) # do it
                     cancel = not pd.Update(counter, newmsg='N: %d; N+1th neuron: %d; samplei: %d' % (n, Nplus1, samplei))
                     if cancel:
                         pd.Destroy()
                         return
                     counter += 1
         pd.Destroy()
-        IdivSmeans = IdivS.reshape(maxN, nNplus1s*maxnsamples).mean(axis=1) # reshape such that you're averaging over all Nplus1s and all samples. Values that are masked out will be ignored
-        IdivSstds = IdivS.reshape(maxN, nNplus1s*maxnsamples).std(axis=1) # do the same for stdev
+        IdivSreshaped = IdivS.reshape(maxN, nNplus1s*maxnsamples) # reshape such that you collapse all Nplus1s and samples into a single dimension (columns)
+        IdivSmeans = IdivSreshaped.mean(axis=1) # average over all Nplus1s and all samples. Values that are masked out will be ignored
+        IdivSstds = IdivSreshaped.std(axis=1) # find stdev for the same
         assert IdivSmeans.shape == (maxN,)
         assert IdivSstds.shape == (maxN,)
 
@@ -857,7 +883,7 @@ class Schneidman(object):
         gcfm().frame.SetTitle(lastcmd())
         a = f.add_subplot(111)
         a.hold(True)
-        #a.plot(N, IdivS, 'b.')
+        #a.plot(N, IdivSmeans, 'b.')
         a.errorbar(N, IdivSmeans, fmt='b.', yerr=IdivSstds)
         # do some linear regression in log10 space
         m, b = sp.polyfit(log10(N), log10(IdivSmeans), 1) # returns slope and y intercept
@@ -876,23 +902,26 @@ class Schneidman(object):
             transform = a.transAxes,
             horizontalalignment = 'right',
             verticalalignment = 'top')
-        # plot the distributions of IdivS
+        # plot the distributions of IdivSreshaped
         for ni, n in enumerate(N):
             f = figure()
-            gcfm().frame.SetTitle('%s distrib for N=%d' % (lastcmd(), n))
+            gcfm().frame.SetTitle('%s IdivS distrib for N=%d' % (lastcmd(), n))
+
+            notmaskedis = IdivSreshaped[ni].mask==False # indexes the non-masked entries in IdivSreshaped, for this ni
 
             a1 = f.add_subplot(211) # axes with linear bins
-            heights, bins = histogram(IdivS[:, ni], bins=arange(0, 1, 0.02))
+            heights, bins = histogram(IdivSreshaped[ni, notmaskedis], bins=arange(0, 1, 0.02))
             barwidth = bins[1]-bins[0]
             a1.bar(left=bins, height=heights, width=barwidth, bottom=0, color='k')
             #a1.set_xlabel('mutualinfo(N, N+1th) / entropy(N+1th)')
             a1.set_ylabel('count')
+            a1.set_title('IdivS distrib for N=%d' % n)
 
             a2 = f.add_subplot(212) # axes with log bins
             start = log10(0.001)
             stop = log10(1)
             bins = np.logspace(start=start, stop=stop, num=50, endpoint=True, base=10.0)
-            heights, bins = histogram(IdivS[:, ni], bins=bins)
+            heights, bins = histogram(IdivSreshaped[ni, notmaskedis], bins=bins)
             barwidth = list(diff(bins)) # each bar will have a different width, convert to list so you can append
             # need to add one more entry to barwidth to the end to get nbins of them:
             #barwidth.append(barwidth[-1]) # not exactly correct
@@ -902,6 +931,21 @@ class Schneidman(object):
             a2.set_xscale('log')
             a2.set_xlabel('mutualinfo(N, N+1th) / entropy(N+1th)')
             a2.set_ylabel('count')
+        return
+
+    def checkcells(self, nis=None):
+        """Plots the probability of each cell (in nis) being active vs. the number of
+        other active cells at that time. See Schneidman figure 5c"""
+        if nis == None:
+            nis = self.neurons.keys()
+            nis.sort()
+        else:
+            nis = toiter(nis)
+        for ni in nis:
+            neuron = self.neurons[ni]
+            # find each 1 in neuron's codetrain
+            # at all 1 indices, count the number of other 1s in the population, excluding cell ni
+
 
 
 class RecordingSchneidman(BaseRecording):
