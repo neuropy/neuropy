@@ -1,65 +1,64 @@
 Schneidman stuff:
-	- for the time bins, try lots of different phases, see if this changes things at all
-		- look if the most common states remain the most common
-	- since Recordings are fairly short, either combine lots of Recordings into one (or their Experiments), or use a shorter CODEWORDLENGTH to get better stat significance for all possible words
-		- add append() method to Experiment? no. din values have different meaning between Experiments
-		- better to add append() to Recording? yes.
-		- best to just use append() in Neuron? yes. Recording.append() will make use of this. make .spikes 2d array? no, offsets have been added
-	- for common states, see if there's a gradual falloff of probs of being 1 bit, 2bit 3 bit off of that state as you move away from it in bitspace
-		- maybe map out some kind of attractors in bitspace
-	- look for check cells
-	- do the maximum entropy Ising model
-	- see if cortical data extrapolates to the same sort of ideal network size, ~200 neurons
-	- maybe mess around with higher bit codes than just binary, like trinary, quaternary, which reflect more accurately the number of spikes in each bin for each neuron
-	- make Neuron.append() in place, and ensure whenever it's used, that's it's used on a copied Neuron
-	- do analyses across Recordings, using Neuron.append(), to increase significance
+    - for the time bins, try lots of different phases, see if this changes things at all
+        - look if the most common states remain the most common
+    - since Recordings are fairly short, either combine lots of Recordings into one (or their Experiments), or use a shorter CODEWORDLENGTH to get better stat significance for all possible words
+        - add append() method to Experiment? no. din values have different meaning between Experiments
+        - better to add append() to Recording? yes.
+        - best to just use append() in Neuron? yes. Recording.append() will make use of this. make .spikes 2d array? no, offsets have been added
+    - for common states, see if there's a gradual falloff of probs of being 1 bit, 2bit 3 bit off of that state as you move away from it in bitspace
+        - maybe map out some kind of attractors in bitspace
+    - look for check cells
+    - do the maximum entropy Ising model
+    - see if cortical data extrapolates to the same sort of ideal network size, ~200 neurons
+    - maybe mess around with higher bit codes than just binary, like trinary, quaternary, which reflect more accurately the number of spikes in each bin for each neuron
+
+- make Neuron.append() in place, and ensure whenever it's used, that's it's used on a copied Neuron
+- do analyses across Recordings, using Neuron.append(), to increase significance
 
 
 - MPL:
-	- when saving figs, automatically choose .png from list, and automatically fill in the file name with the text of the title bar of the figure
+    - when saving figs, automatically choose .png from list, and automatically fill in the file name with the text of the title bar of the figure
 
 - cross-correlograms
-	- make it faster
-	- add p values to peaks (% of ticks within the peak, out of all the ticks in the window)
-	- do both types of shuffle correction (those would be ?)
-- PSTHs
-	- look more closely for 5 ms peaks. Also, looks at data recorded at lower screen refresh rates
-
-- spike interval histograms with log scale (see Lundstrom + Fairhall 2006)
+    - make it faster
+    - add p values to peaks (% of ticks within the peak, out of all the ticks in the window)
+    - do both types of shuffle correction (those would be ?)
 
 - 2D matrix of cross-correlograms - see the README.wx file in mpl/examples for embedding in wx
+
+- PSTHs
+    - look more closely for 5 ms peaks. Also, looks at data recorded at lower screen refresh rates
+
+- spike interval histograms with log scale (see Lundstrom + Fairhall 2006)
 
 - LFPs! how to export them from surfbawd, and handle them in neuropy?
 
 - rasters
-	- multi trial single neuron raster plots
-	- make rasters faster when large number of spikes on screen (instead of deleting and recreating all vlines, do so just for ones that disappear and appear?)
-	- get scrolly wheel detection to zoom in and out (not possible using mpl events? have to go to wx events?)
+    - multi trial single neuron raster plots
+    - make rasters faster when large number of spikes on screen (instead of deleting and recreating all vlines, do so just for ones that disappear and appear?)
+    - get scrolly wheel detection to zoom in and out (not possible using mpl events? have to go to wx events?)
 
 - tuning curves
 - STC
 - revcorr to sparse bars, or any stimulus really, by directly sampling VisionEgg's framebuffer - easy! just use screen.get_framebuffer_as_array - see r72 makesparsemovie file. Need to refactor Dimstim (new version, call it lowercase dimstim?) into more OOP to really do this nicely
 - maybe change experiment names to include only everything after the exp id in the .srf filename, prevents cluttery repetition of recording name. In case there's only one experiment, use the full .srf filename less the leading recording id and - at the start?
 
-- figure out how to grab the last command typed at the interpreter, so you can set that as the figure caption, makes things nice and explicit. Current code in various gcfm().frame.SetTitle calls that sets the caption sort of guesses what was typed is a hack
-- increase precision of x, y coord display in statusbar of MPL figures
-
 - make PyShell/PyCrust log user input to a file
-- Nah!: Rips should really have ids to make them easier to reference to: r[83].rip[0] instead of r[83].rip['conservative spikes'] - this means adding id prefixes to rip folder names (or maybe suffixes: 'conservative spikes.0.rip', 'liberal spikes.1.rip', etc...). Prefixes would be better cuz they'd force sorting by id in explorer (which uses alphabetical order) - ids should be 0-based of course
+- Nah, not important?: Rips should really have ids to make them easier to reference to: r[83].rip[0] instead of r[83].rip['conservative spikes'] - this means adding id prefixes to rip folder names (or maybe suffixes: 'conservative spikes.0.rip', 'liberal spikes.1.rip', etc...). Prefixes would be better cuz they'd force sorting by id in explorer (which uses alphabetical order) - ids should be 0-based of course
 - worry about conversion of ids to strings: some may be only 1 digit and may have a leading zero!
 - maybe make two load() f'ns for Experiment and Neuron: one from files, and a future one from a database
 - make a save() f'n that pickles the object (including any of its results, like its STA, tuning curve points, etc)? - just use IPython's %store
 
 - more detailed experimental info:
-	- Recordings
-		- maybe add other info about the Recording, stored in the same folder, like skull coordinates, angles, polytrode name and type...
-		- LFPs
-			- maybe a .lfp binary file, one per lfp channel, with alternating timestamps and voltage (uV?), ie (int64, float64) pairs
-	- Rips
-		- then, maybe add something that loads info about the rip, say from some file describing the template used, and all the thresholds, exported to the same folder by SURF
+    - Recordings
+        - maybe add other info about the Recording, stored in the same folder, like skull coordinates, angles, polytrode name and type...
+        - LFPs
+            - maybe a .lfp binary file, one per lfp channel, with alternating timestamps and voltage (uV?), ie (int64, float64) pairs
+    - Rips
+        - then, maybe add something that loads info about the rip, say from some file describing the template used, and all the thresholds, exported to the same folder by SURF
         - maybe also load the template file used for the rip, perhaps also stored in the same folder
-	- Neurons
-		- then, maybe add something that loads the template for this neuron, as well as its modelled (or just guesstimated) location in 3D (or just 2D) coordinates in um, as well as cell type potentially
+    - Neurons
+        - then, maybe add something that loads the template for this neuron, as well as its modelled (or just guesstimated) location in 3D (or just 2D) coordinates in um, as well as cell type potentially
 
 
 
@@ -71,11 +70,13 @@ DONE:
 - STAs
 - codes
 - Schneidman stuff
-	- add codeword (binary and int) popup on float over a point in the scatter plot
+    - add codeword (binary and int) popup on float over a point in the scatter plot
 
 - cross-correlograms
 - population rasters
-	- add neuron id as a popup or something on mouseover on population raster plot
+    - add neuron id as a popup or something on mouseover on population raster plot
 - various rate methods, ratePDFs
 - lots of other stuff I've forgotten about
 - can replace all '%s' % repr(x) with just '%r' % x
+- figure out how to grab the last command typed at the interpreter, so you can set that as the figure caption, makes things nice and explicit. Current code in various gcfm().frame.SetTitle calls that sets the caption sort of guesses what was typed is a hack
+- increase precision of x, y coord display in statusbar of MPL figures

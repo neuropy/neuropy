@@ -843,7 +843,7 @@ class Schneidman(object):
         mask = np.zeros(dims) # this will be converted to an array of Falses
         IdivS = np.ma.array(mask, mask=mask, fill_value=666) # masked array that holds the mutual info between N and N+1th cells, as a ratio of the N+1th cell's entropy. Index like: IdivS[ni, Nplus1i, samplei], ie group size, N+1th cell you're comparing to, and number of samples of size N taken from the possible combs
         N = range(1, maxN+1) # cell group size, excluding the N+1th neuron. This will be the x axis in the plot
-        N.reverse() # for fun and pleasure
+        #N=[15]#.reverse() # for fun and pleasure
         nsamples = [ min(maxnsamples, nCr(nNplus1s-1, r)) for r in N ] # take up to maxnsamples of all the other neurons, if that many even exist (for the lower N values, the constraint may end up being the total number of possible combinations of cells), for each N+1th cell. Taken from nNplus1s-1 cuz you always have to exclude an N+1th neurons
         for ni, n in enumerate(N): # for all group sizes
             IdivS.mask[ni, :, nsamples[ni]::] = True # mask out the sampleis that are out of range for this value of N, if any
@@ -855,6 +855,8 @@ class Schneidman(object):
         nis = self.neurons.keys()
         nis.sort()
         binarray = self.codes(nis=nis, kind='binary').c
+        #nis2niis = {}
+        #nis2niis.fromkeys(nis, range(len(nis))) # make a dict from keys:nis, vals:range(len(nis))
         nis2niis = dict(zip( nis, range(len(nis)) )) # make a dict from keys:nis, vals:range(len(nis))
         counter = 0 # counts inner loop for the progress dialog
         for ni, n in enumerate(N):
@@ -864,7 +866,7 @@ class Schneidman(object):
                 niscopy.remove(Nplus1) # keep just the indices of all the other neurons
                 samples = nCrsamples(niscopy, n, nsamples[ni]) # returns nsamples random unique choices of n items from niscopy
                 for samplei, sample in enumerate(samples): # collect nsamples different combinations of the N other cells
-                    niis = np.array([ nis2niis[s] for s in toiter(sample) ]) # most of the time (for n>1), sample will be a sequence of nis. Build an array of niis out of it to use as indices into binarray. Sometimes sample will be a scalar, hence the need to push it through toiter()
+                    niis = np.array([ nis2niis[s] for s in toiter(sample) ]) # most of the time (for n>1), sample will be a sequence of nis. Build an array of niis out of it to use as indices into binarray. Sometimes (for n=1) sample will be a scalar, hence the need to push it through toiter()
                     IdivS[ni, Nplus1i, samplei] = self.NMmutualinfo(Nbinarray=binarray[niis], Mbinarray=binarray[mii]) # do it
                     cancel = not pd.Update(counter, newmsg='N: %d; N+1th neuron: %d; samplei: %d' % (n, Nplus1, samplei))
                     if cancel:
@@ -935,17 +937,40 @@ class Schneidman(object):
 
     def checkcells(self, nis=None):
         """Plots the probability of each cell (in nis) being active vs. the number of
-        other active cells at that time. See Schneidman figure 5c"""
+        other active cells (in the Recording) at that time. See Schneidman figure 5c"""
         if nis == None:
             nis = self.neurons.keys()
             nis.sort()
         else:
             nis = toiter(nis)
-        for ni in nis:
-            neuron = self.neurons[ni]
-            # find each 1 in neuron's codetrain
-            # at all 1 indices, count the number of other 1s in the population, excluding cell ni
 
+        allnis = self.neurons.keys()
+        allnis.sort()
+        binarray = self.codes(nis=allnis, kind='binary').c # 2D array of the full binary population codetrain, make it just once
+        nis2niis = dict(zip( allnis, range(len(allnis)) )) # make a dict from keys:allnis, vals:range(len(allnis))
+        for ni in nis:
+            othernis = copy(allnis)
+            othernis.remove(ni) # all the other possible nis, excluding the current ni
+            nothers = len(othernis)
+            nii = nis2niis[ni]
+            otherniis = [ nis2niis[otherni] for otherni in othernis ]
+
+            niactivity = binarray[nii] # 0s and 1s
+            nothersactive = binarray[otherniis].sum(axis=0) # anywhere from 0 up to and including nothers
+
+            # build up joint pdf of all the niactivity and nothersactive
+            xedges = np.array([0, 1, 2]) # values 0 and 1, plus 2 which is needed as the rightmost bin edge for histogram2d (annoying)
+            yedges = arange(nothers+2) # anywhere from 0 up to and including nothers, plus nothers+1 as the rightmost bin edge
+            bins = [xedges, yedges]
+            jpdf, xedgesout, yedgesout = histogram2d(niactivity, nothersactive, bins, normed='pmf') # generate joint pdf, niactivity are in the rows, nothersactive are in the columns
+
+            # plot it
+            f = figure()
+            gcfm().frame.SetTitle('%s for ni=%d' % (lastcmd(), ni))
+            a = f.add_subplot(111)
+            a.plot(arange(nothers+1), jpdf[1], 'k.-') # jpdf[1] is probs of getting a 1 for ni, as a f'n of N cells active
+            a.set_xlabel('Number of other active cells')
+            a.set_ylabel('Probability of cell ni being active')
 
 
 class RecordingSchneidman(BaseRecording):
