@@ -144,10 +144,10 @@ def lastcmd():
 
 class CanvasFrame(wx.Frame):
     """A minimal wx.Frame containing a matplotlib figure"""
-    def __init__(self, title='frame', size=(550,350)):
+    def __init__(self, title='frame', size=(550, 350)):
         wx.Frame.__init__(self, None, -1, title=title, size=size)
         self.SetBackgroundColour(wx.NamedColor("WHITE"))
-        self.figure = mpl.figure.Figure(figsize=(5,4), dpi=100)
+        self.figure = mpl.figure.Figure(figsize=(5, 4), dpi=100)
         #self.axes = self.figure.add_subplot(111)
         #t = arange(0.0, 3.0, 0.01)
         #s = sin(2*pi*t)
@@ -653,7 +653,7 @@ def corrcoef(x, y):
     #return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std()) # this works just fine as well, easier to understand too
 
 def bin(i, minbits=8):
-    """Return the binary representation of an integer, or sequence of integers.
+    """Return a string with the binary representation of an integer, or sequence of integers.
     If necessary, will append leading zeros if result is less than minbits long.
     Uses np.binary_repr()"""
     ints = toiter(i) # ensure it's iterable
@@ -668,7 +668,7 @@ def bin(i, minbits=8):
     return sints
 
 def binslow(i, minbits=8):
-    """Return the binary representation of an integer. If necessary, will append leading zeros
+    """Return a string with the binary representation of an integer. If necessary, will append leading zeros
     if result is less than minbits long. Seems like np.binary_repr() is a somewhat faster alternative.
     First 2 lines stolen from Andrew Gaul <andrew@gaul.org> off the web"""
     l = ['0000', '0001', '0010', '0011', '0100', '0101', '0110', '0111',

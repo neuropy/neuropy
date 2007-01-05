@@ -165,7 +165,7 @@ class PopulationRaster(object):
         self.a.set_xlim(left/1000.0, (left+width)/1000.0) # convert from us to ms
     def panx(self, npages=None, left=None):
         """Pans the raster along the x axis by npages, or to position left"""
-        self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll be redrawing most of the ones we just cleared
+        self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
         if left != None: # use left
             self.plot(left=left, width=self.width)
         else: # use npages instead
@@ -173,9 +173,9 @@ class PopulationRaster(object):
         self.f.canvas.draw() # redraw the figure
     def zoomx(self, factor):
         """Zooms the raster along the x axis by factor"""
-        self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll be redrawing most of the ones we just cleared
+        self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
         centre = (self.left + self.left+self.width) / 2.0
-        width = self.width / factor
+        width = self.width / float(factor)
         left = centre - width / 2.0
         self.plot(left=left, width=width)
         self.f.canvas.draw() # redraw the figure
@@ -223,12 +223,12 @@ class PopulationRaster(object):
             elif key == wx.WXK_END: # go to end of last Experiment
                 lastexp = max(self.e.keys())
                 self.panx(left=self.e[lastexp].trange[1]-self.t0-self.width)
-        else: # Ctrl key is down, skip backwards or forwards to next experiment marker
-            if key == wx.WXK_LEFT:
+        else: # Ctrl key is down
+            if key == wx.WXK_LEFT: # skip backwards to previous experiment marker
                 i = self.experimentmarkers.searchsorted(self.left, side='left') # current position of left edge of the window in experimentmarkers list
                 i = max(0, i-1) # decrement by 1, do bounds checking
                 self.panx(left=self.experimentmarkers[i])
-            elif key == wx.WXK_RIGHT:
+            elif key == wx.WXK_RIGHT: # skip forwards to next experiment marker
                 i = self.experimentmarkers.searchsorted(self.left, side='right') # current position of left edge of the window in experimentmarkers list
                 i = min(i, len(self.experimentmarkers)-1) # bounds checking
                 self.panx(left=self.experimentmarkers[i])
@@ -489,14 +489,14 @@ class Schneidman(object):
         """Given neuron indices (ordered LSB to MSB top to bottom), returns an array of the integer representation
         of the neuronal population binary code for each time bin"""
         if nis == None:
-            nis = random.sample(self.neurons.keys(), DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
+            nis = random.sample(self.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
         return binarray2int(self.codes(nis=nis, kind='binary', **kwargs).c)
 
     def intcodesPDF(self, nis=None, **kwargs):
         """Returns the observed pdf across all possible population binary code words,
         labelled according to their integer representation"""
         if nis == None:
-            nis = random.sample(self.neurons.keys(), DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
+            nis = random.sample(self.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
         intcodes = self.intcodes(nis=nis, **kwargs)
         nbits = len(nis)
         p, bins = histogram(intcodes, bins=arange(2**nbits), normed='pmf')
@@ -506,7 +506,7 @@ class Schneidman(object):
         """the F stands for factorial. Returns the probability of getting each population binary code word, assuming independence between neurons,
         taking into account each neuron's spike (and no spike) probability"""
         if nis == None:
-            nis = random.sample(self.neurons.keys(), DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
+            nis = random.sample(self.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
         nbits = len(nis)
         intcodes = arange(2**nbits)
         #neurons = dict( (ni, self.neurons[ni]) for ni in nis ) # this is like dict comprehension, pretty awesome!
@@ -532,7 +532,7 @@ class Schneidman(object):
         """Returns an Ising maximum entropy model that takes into account pairwise correlations neuron codes
         algorithm can be 'CG', 'BFGS', 'LBFGSB', 'Powell', or 'Nelder-Mead'"""
         if nis == None:
-            nis = self.neurons.keys()[0:DEFAULTCODEWORDLENGTH]
+            nis = self.nis[0:DEFAULTCODEWORDLENGTH]
         print 'nis:', nis.__repr__()
         codeso = self.codes(nis=nis, kind='binary', **kwargs)
         #c = codeso.c
@@ -551,8 +551,7 @@ class Schneidman(object):
         of all possible population codes (y axis) vs their observed probabilities (x axis).
         nis are in LSB to MSB order. See Schneidman Figures 1f and 2a"""
         if nis == None:
-            nis = self.neurons.keys()
-            nis.sort() # make sure they're in increasing order, you never know with dict keys
+            nis = self.nis
         else:
             if nbits == None:
                 nbits = len(nis) # if nis is specified and nbits isn't, each ni gets its own bit
@@ -699,7 +698,7 @@ class Schneidman(object):
         INmean = [] # as f'n of N
         Ns = range(minN, maxN+1) # network sizes from minN up to maxN
         #tstart = time.clock()
-        pd = wx.ProgressDialog(title='S1INvsN progress', message='', maximum=Ns[-1]*nsamples, # create a progress dialog
+        pd = wx.ProgressDialog(title='S1INvsN progress', message='', maximum=len(Ns)*nsamples, # create a progress dialog
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
         for Ni, N in enumerate(Ns): # for all network sizes
             #print 'N:', N
@@ -717,9 +716,7 @@ class Schneidman(object):
                 p1 = asarray(self.intcodesFPDF(nis=nis, tres=tres)[0]) # indep model
                 pN = asarray(self.intcodesPDF(nis=nis, tres=tres)[0]) # observed word probs
                 #print 'calcing ps took: %f sec' % (time.clock()-t2)
-                # check to make sure there aren't any 0s in either p1 (virtually impossible) or pN (very likely for large networks and short recordings)
-                # otherwise, you get singularities
-                # either add the smallest representable float 1e-307 to all ps, or just pluck the 0s out of the list
+                # check to make sure there aren't any 0s in either p1 (virtually impossible) or pN (very likely for large networks and short recordings). Otherwise, you get singularities. Either add the smallest representable float 1e-307 to all ps, or just pluck the 0s out of the list
                 p1 = p1[p1 > 0] # discard any zero entries
                 pN = pN[pN > 0]
                 S1 = entropy(p1)
@@ -904,6 +901,11 @@ class Schneidman(object):
             transform = a.transAxes,
             horizontalalignment = 'right',
             verticalalignment = 'top')
+        a.text(0.99, 0.01, 'slope=%.3f' % m, # add slope of fit line to bottom right
+            transform = a.transAxes,
+            horizontalalignment = 'right',
+            verticalalignment = 'bottom')
+
         # plot the distributions of IdivSreshaped
         for ni, n in enumerate(N):
             f = figure()
@@ -956,7 +958,7 @@ class Schneidman(object):
 
         return jpdf
 
-    def checkcells(self, nis=None, othernis=None, nothers=14, nsamples=1):
+    def checkcells(self, nis=None, othernis=None, nothers=14, nsamples=10):
         """Plots the probability of each cell (in nis) being active vs. the number of
         other active cells (in the Recording) at that time. See Schneidman figure 5c"""
         if nis == None:
@@ -977,17 +979,22 @@ class Schneidman(object):
                 pass
             otherniss = nCrsamples(objects=othernis, r=nothers, nsamples=nsamples) # get nsamples unique random samples of length nothers from othernis
 
-            for othernis in otherniss:
+            jpdfs = []
+            for othernis in otherniss: # collect jpdfs across all random samples
                 jpdf = self._checkcell(ni=ni, othernis=othernis)
+                jpdfs.append(jpdf)
 
-                # plot it
-                f = figure()
-                gcfm().frame.SetTitle('%s for ni=%d, othernis=%r' % (lastcmd(), ni, othernis))
-                a = f.add_subplot(111)
-                a.plot(arange(nothers+1), jpdf[1], 'k.-') # jpdf[1] is prob of getting a 1 for ni, as a f'n of N cells active
-                a.set_title('ni=%d, othernis=%r' % (ni, othernis))
-                a.set_xlabel('Number of other active cells')
-                a.set_ylabel('Probability of cell ni being active')
+            # find the mean jpdf
+            jpdf = asarray(jpdfs).mean(axis=0)
+
+            # plot it
+            f = figure()
+            gcfm().frame.SetTitle('%s for ni=%d' % (lastcmd(), ni))
+            a = f.add_subplot(111)
+            a.plot(arange(nothers+1), jpdf[1], 'k.-') # jpdf[1] is prob of getting a 1 for ni, as a f'n of N cells active
+            a.set_title('ni=%d, othernis=%r' % (ni, othernis))
+            a.set_xlabel('Number of other active cells')
+            a.set_ylabel('Probability of cell ni being active')
 
 
 class RecordingSchneidman(BaseRecording):
