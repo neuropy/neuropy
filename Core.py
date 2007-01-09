@@ -986,6 +986,16 @@ def mutualinfo(XY):
                 I += XY[xi, yi] * log2( XY[xi, yi] / (x * y) )
     return I
 
+def DKL(P, Q):
+    """Kullback-Leibler divergence from true probability distribution P to arbitrary distribution Q"""
+    assert len(P) == len(Q)
+    return sum([ p * log2(p/float(q)) for p, q in zip(P, Q) ])
+
+def DJS(P, Q):
+    """Jensen-Shannon divergence, a symmetric measure of divergence between distributions P and Q"""
+    assert len(P) == len(Q)
+    return 1 / 2.0 * ( DKL(P, (P+Q)/2.0) + DKL(Q, (P+Q)/2.0) )
+
 
 class Ising(object):
     """Ising maximum entropy model"""

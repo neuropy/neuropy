@@ -503,8 +503,8 @@ class Schneidman(object):
         return p, bins
 
     def intcodesFPDF(self, nis=None, **kwargs):
-        """the F stands for factorial. Returns the probability of getting each population binary code word, assuming independence between neurons,
-        taking into account each neuron's spike (and no spike) probability"""
+        """the F stands for factorial. Returns the probability of getting each population binary code word, assuming
+        independence between neurons, taking into account each neuron's spike (and no spike) probability"""
         if nis == None:
             nis = random.sample(self.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
         nbits = len(nis)
@@ -513,8 +513,8 @@ class Schneidman(object):
         codeso = self.codes(nis=nis, kind='binary', **kwargs)
         spikeps = [] # list spike probabilities for all neurons
         for neuroncode in codeso.c: # for each neuron, ie each row
-            spikeps.append( neuroncode.sum() / float(neuroncode.size) ) # calc the average p of getting a spike for this neuron, within any time bin
-        spikeps = array(spikeps, ndmin = 2) # convert to an nbits*1 array, make sure it's explicitly treated as a 2D array that can be transposed, or something
+            spikeps.append( neuroncode.mean() ) # calc the average p of getting a spike for this neuron, within any time bin.
+        spikeps = array(spikeps, ndmin=2) # convert to an nbits*1 array, make sure it's explicitly treated as a 2D array that can be transposed, or something
         nospikeps = 1 - spikeps
         #print 'spikesps: ', spikeps.__repr__()
         #print 'nospikesps: ', nospikeps.__repr__()
