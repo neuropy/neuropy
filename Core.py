@@ -142,6 +142,46 @@ def lastcmd():
     except AttributeError:
         return 'unknown'
 
+def innerclass(cls):
+    '''Class decorator for making a class behave as a Java (non-static) inner
+    class.
+
+    Each instance of the decorated class is associated with an instance of its
+    enclosing class. The outer instance is referenced implicitly when an
+    attribute lookup fails in the inner object's namespace. It can also be
+    referenced explicitly through the property '__outer__' of the inner
+    instance.
+
+    Title: Implementing Java inner classes using descriptors
+    Submitter: George Sakkis - gsakkis at rutgers.edu
+    Last Updated: 2005/07/08
+    Version no: 1.1
+    Category: OOP
+    http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/409366
+    '''
+    if hasattr(cls, '__outer__'):
+        raise TypeError('Cannot set attribute "__outer__" in inner class')
+    class InnerDescriptor(object):
+        def __get__(self, outer, outercls):
+            if outer is None:
+                raise AttributeError('An enclosing instance that contains '
+                           '%s.%s is required' % (cls.__name__, cls.__name__))
+            clsdict = cls.__dict__.copy()
+            # explicit read-only reference to the outer instance
+            clsdict['__outer__'] = property(lambda self: outer)
+            # implicit lookup in the outer instance
+            clsdict['__getattr__'] = lambda self,attr: getattr(outer,attr)
+            def __setattr__(this, attr, value):
+                # setting an attribute in the inner instance sets the
+                # respective attribute in the outer instance if and only if
+                # the attribute is already defined in the outer instance
+                if hasattr(outer, attr): setattr(outer,attr,value)
+                else: super(this.__class__,this).__setattr__(attr,value)
+            clsdict['__setattr__'] = __setattr__
+            return type(cls.__name__, cls.__bases__, clsdict)
+    return InnerDescriptor()
+
+
 class CanvasFrame(wx.Frame):
     """A minimal wx.Frame containing a matplotlib figure"""
     def __init__(self, title='frame', size=(550, 350)):
@@ -954,14 +994,42 @@ class neuropyAutoLocator(mpl.ticker.MaxNLocator):
         #mpl.ticker.MaxNLocator.__init__(self, nbins=9, steps=[1, 2, 5, 10]) # standard autolocator
         mpl.ticker.MaxNLocator.__init__(self) # use MaxNLocator's defaults instead
 
+def ensurenormed(p, atol=1e-8):
+    """Ensures p is normalized. Returns p unchanged if it's already normalized,
+    otherwise, prints a warning and returns it normalized. atol is how close to 1.0
+    p.sum() needs to be"""
+    p = asarray(p)
+    psum = p.sum()
+    if not approx(psum, 1.0, atol=atol): # make sure the probs sum to 1
+        print 'ps don''t sum to 1, they sum to %f instead, normalizing for you' % psum
+        p /= float(psum)
+    return p
+
+def logy(x, y):
+    """Performs log of x base y"""
+    return log(x)/log(y)
+
+def log_no_sing(x, subval=0.0, base=np.e):
+    """Performs log on array x, ignoring any zeros in x to avoid singularities,
+    and returning subval in their place in the result"""
+    x = asarray(x)
+    singi = x==0 # find the singularities
+    x[singi] = 1 # replace 'em with 1s, or anything else that's safe to take the log of
+    result = logy(x, y=base) # now it's safe to take the log
+    result[singi] = subval # substitute the result where the singularities were with the substitution value
+    return result
+
+def log10_no_sing(x, subval=0.0):
+    """Performs log10 on x, ignoring singularities"""
+    return log_no_sing(x, subval=subval, base=10)
+
+def log2_no_sing(x, subval=0.0):
+    """Performs log2 on x, ignoring singularities"""
+    return log_no_sing(x, subval=subval, base=2)
 
 def entropy(p):
     """Returns the entropy (in bits) of the prob distribution described by the prob values in p"""
-    p = asarray(p)
-    psum = p.sum()
-    if not approx(psum, 1.0, atol=1e-8): # make sure the probs sum to 1
-        print 'ps don''t sum to 1, they sum to %f instead, normalizing for you' % psum
-        p /= float(psum)
+    p = ensurenormed(p)
     return -(p * log2(p)).sum()
 
 def mutualinfo(XY):
@@ -970,10 +1038,7 @@ def mutualinfo(XY):
     where P(x) and P(y) are the marginal distributions taken from the joint"""
     XY = asarray(XY)
     assert XY.ndim == 2
-    XYsum = XY.sum()
-    if not approx(XYsum, 1.0, atol=1e-8): # make sure the probs sum to 1
-        print 'ps in the joint don''t sum to 1, they sum to %f instead, normalizing for you' % XYsum
-        XY /= float(XYsum)
+    XY = ensurenormed(XY)
     # calculate the marginal probability distributions for X and Y from the joint
     X = XY.sum(axis=1) # sum over the rows of the joint, get a vector nrows long
     Y = XY.sum(axis=0) # sum over the cols of the joint, get a vector ncols long
@@ -986,15 +1051,19 @@ def mutualinfo(XY):
                 I += XY[xi, yi] * log2( XY[xi, yi] / (x * y) )
     return I
 
-def DKL(P, Q):
-    """Kullback-Leibler divergence from true probability distribution P to arbitrary distribution Q"""
-    assert len(P) == len(Q)
-    return sum([ p * log2(p/float(q)) for p, q in zip(P, Q) ])
+def DKL(p, q):
+    """Kullback-Leibler divergence from true probability distribution p to arbitrary distribution q"""
+    assert len(p) == len(q)
+    p = ensurenormed(p)
+    q = ensurenormed(q)
+    return sum([ pi * log2(pi/float(qi)) for pi, qi in zip(p, q) if pi != 0 and qi != 0 ] ) # avoid singularities
 
-def DJS(P, Q):
-    """Jensen-Shannon divergence, a symmetric measure of divergence between distributions P and Q"""
-    assert len(P) == len(Q)
-    return 1 / 2.0 * ( DKL(P, (P+Q)/2.0) + DKL(Q, (P+Q)/2.0) )
+def DJS(p, q):
+    """Jensen-Shannon divergence, a symmetric measure of divergence between distributions p and q"""
+    p = asarray(p) # required for adding p and q
+    q = asarray(q)
+    m = 1 / 2.0 * (p + q)
+    return 1 / 2.0 * ( DKL(p, m) + DKL(q, m) )
 
 
 class Ising(object):
@@ -1035,8 +1104,9 @@ class Ising(object):
         #print 'means:', means
         #print 'pairmeans:', pairmeans
         print 'niterations:', self.model.iters
-        print 'hi:', self.hi.__repr__()
-        print 'Jij:', self.Jij.__repr__()
+        #print 'hi:', self.hi.__repr__()
+        #print 'Jij:', self.Jij.__repr__()
+
         '''
         # Output the distribution
         print "\nFitted model parameters are:\n" + str(self.model.params)

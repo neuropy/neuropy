@@ -533,7 +533,7 @@ class Schneidman(object):
         algorithm can be 'CG', 'BFGS', 'LBFGSB', 'Powell', or 'Nelder-Mead'"""
         if nis == None:
             nis = self.nis[0:DEFAULTCODEWORDLENGTH]
-        print 'nis:', nis.__repr__()
+        #print 'nis:', nis.__repr__()
         codeso = self.codes(nis=nis, kind='binary', **kwargs)
         #c = codeso.c
         # convert values in codes object from [0, 1] to [-1, 1] by mutliplying by 2 and subtracting 1
@@ -546,22 +546,205 @@ class Schneidman(object):
         ising = Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
         return ising
 
-    def scatter(self, nis=None, nbits=None, model='indep', randomneurons=False, shufflecodes=False, algorithm='CG', **kwargs):
+    # if python ever gets class decorators, an inner class could be specified as:
+    #@innerclass
+    class Scatter(object):
+        def __init__(self, nis=None, nbits=None, model='indep', randomneurons=False, shufflecodes=False, algorithm='CG', **kwargs):
+            """Schneidman scatter analysis object. See Schneidman Figures 1f and 2a.
+            Calculates the expected probabilities, assuming a model in ['indep', 'ising'],
+            of all possible population codes vs their observed probabilities.
+            nis are in LSB to MSB order."""
+            if nis == None:
+                nis = self.__outer__.nis # grab nis attrib from Schneidman instance
+            elif nbits == None:
+                nbits = len(nis) # if nis is specified and nbits isn't, each ni gets its own bit
+            if nbits == None:
+                nbits = DEFAULTCODEWORDLENGTH
+            nbits = min(len(nis), nbits) # constrain nbits to be no more than the number of nis
+            if randomneurons:
+                nis = random.sample(nis, nbits) # randomly sample nbits of the nis
+            else:
+                nis = nis[:nbits] # use just the first nbits neurons to make your words
+            nis.sort() # to keep things organized
+
+            self.scatternis = nis # save it so that plot() method can access it, use a name distinct from outer Schneidman's nis attrib
+            self.nbits = nbits
+
+            #if randomneurons:
+            #    print 'neurons:', nis # print 'em out if they were randomly selected
+            self.pobserved, self.observedwords = self.intcodesPDF(nis=nis, shufflecodes=shufflecodes, **kwargs) # potentially shuffle the observed codes
+            if model == 'indep':
+                self.pexpected, self.expectedwords = self.intcodesFPDF(nis=nis, **kwargs) # expected, assuming independence. don't potentially shuffle expected codes
+            elif model == 'ising':
+                ising = self.ising(nis=nis, algorithm=algorithm) # returns a maxent Ising model
+                self.pexpected = ising.p # expected, assuming maxent Ising model
+                self.expectedwords = ising.intsamplespace
+            else:
+                raise ValueError, 'Unknown model %r' % model
+            assert (self.observedwords == self.expectedwords).all() # make sure we're comparing apples to apples
+
+        def plot(self):
+            """Scatterplots the expected probabilities of all possible population codes (y axis)
+            vs their observed probabilities (x axis).
+            nis are in LSB to MSB order. See Schneidman Figures 1f and 2a"""
+            f = figure()
+            a = f.add_subplot(111)
+            a.plot([10**-6, 1], [10**-6, 1], 'b-') # plot a y=x line
+            a.hold(True)
+
+            self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
+            self.tooltip.Enable(False) # leave disabled for now
+            self.tooltip.SetDelay(0) # set popup delay in ms
+            gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
+            f.canvas.mpl_connect('motion_notify_event', self.onmotion) # connect the mpl event to the action
+
+            # pylab.scatter(pobserved, pexpected), followed by setting the x and y axes to log scale freezes the figure and runs 100% cpu
+            # gca().set_xscale('log')
+            # gca().set_yscale('log')
+            # use loglog() instead
+
+            # colour each scatter point according to how many 1s are in the population code word it represents.
+            # This is done a bit nastily, could use a cleanup:
+            inds = []
+            for nspikes in range(0, 5):
+                inds.append([])
+                [ inds[nspikes].append(i) for i in range(0, 2**self.nbits) if bin(i).count('1') == nspikes ]
+            pobserved = self.pobserved.copy() # make local copies that are safe to modify for colour plotting and shit
+            pexpected = self.pexpected.copy()
+            pobserved1 = pobserved[inds[1]]; pexpected1 = pexpected[inds[1]]
+            pobserved2 = pobserved[inds[2]]; pexpected2 = pexpected[inds[2]]
+            pobserved3 = pobserved[inds[3]]; pexpected3 = pexpected[inds[3]]
+            pobserved4 = pobserved[inds[4]]; pexpected4 = pexpected[inds[4]]
+            pobserved[inds[1]], pexpected[inds[1]] = None, None # remove all these
+            pobserved[inds[2]], pexpected[inds[2]] = None, None
+            pobserved[inds[3]], pexpected[inds[3]] = None, None
+            pobserved[inds[4]], pexpected[inds[4]] = None, None
+
+            a.loglog(pobserved, pexpected, 'k.') # plots what's left in black
+            a.loglog(pobserved4, pexpected4, 'm.')
+            a.loglog(pobserved3, pexpected3, 'c.')
+            a.loglog(pobserved2, pexpected2, 'y.')
+            a.loglog(pobserved1, pexpected1, 'r.')
+            '''
+            a.plot(pobserved, pexpected, 'k.') # plots what's left in black
+            a.plot(pobserved4, pexpected4, 'm.')
+            a.plot(pobserved3, pexpected3, 'c.')
+            a.plot(pobserved2, pexpected2, 'y.')
+            a.plot(pobserved1, pexpected1, 'r.')
+            '''
+            gcfm().frame.SetTitle(lastcmd())
+            missingcodeis = (self.pobserved == 0).nonzero()[0]
+            missingcodetext = ''
+            if len(missingcodeis) != 0:
+                missingcodes = self.observedwords[missingcodeis]
+                pexpectedmissing = self.pexpected[missingcodeis]
+                maxpi = pexpectedmissing.argmax()
+                maxp = pexpectedmissing[maxpi]
+                maxpcode = self.expectedwords[missingcodeis[maxpi]]
+                missingcodetext += '\n nmissingcodes: %d, maxpmissingcode: (%r, pexpected=%.3g)' % (len(missingcodes), bin(maxpcode, minbits=self.nbits), maxp)
+            title('neurons: %s' % self.scatternis + missingcodetext)
+            a.set_xlabel('observed population code probability')
+            a.set_ylabel('expected population code probability')
+            a.text(0.99, 0.01, 'DJS=%.4f' % DJS(self.pobserved, self.pexpected), # add DJS to bottom right of plot
+                transform = a.transAxes,
+                horizontalalignment = 'right',
+                verticalalignment = 'bottom')
+
+        def onmotion(self, event):
+            """Called during mouse motion over scatterplot figure. Pops up the corresponding
+            population code word and its int representation when hovering over a neuron scatter point"""
+            if event.xdata != None and event.ydata != None: # if mouse is inside the axes
+                i  = approx(event.xdata, self.pobserved, rtol=5e-2, atol=0).nonzero()[0] # find for what indices (if any) xdata == pobserved
+                ii = approx(event.ydata, self.pexpected[i], rtol=1e-1, atol=0).nonzero()[0] # for those above, find for what index (if any) ydata == pexpected
+                codeis = i[ii]
+                if codeis.size > 0:
+                    #tip += 'i: %r' % i
+                    #tip += '\nii: %r' % ii
+                    #tip += '\ncodeis: %r' % codeis
+                    intcodes = self.observedwords[codeis] # get the int rep for those indices from either self.observedwords[i] or self.expectedwords[i], doesn't matter which since they should be identical
+                    codes = [ bin(intcode, minbits=self.nbits) for intcode in intcodes ]
+                    tip =  'codes: %s' % repr(codes).replace('\'', '')
+                    tip += '\nintcodes: %r' % list(intcodes)
+                    tip += '\n(pobserved, pexpected): %s' % repr(zip([ '%.3g' % val for val in self.pobserved[codeis] ], [ '%.3g' % val for val in self.pexpected[codeis] ])).replace('\'', '')
+                    tip += '\npobserved / pexpected: %s' % repr([ '%.3g' % (o/float(e)) for o, e in zip(self.pobserved[codeis], self.pexpected[codeis]) ]).replace('\'', '')
+                    tip += '\npexpected / pobserved: %s' % repr([ '%.3g' % (e/float(o)) for o, e in zip(self.pobserved[codeis], self.pexpected[codeis]) ]).replace('\'', '')
+                    self.tooltip.SetTip(tip) # update the tooltip
+                    self.tooltip.Enable(True) # make sure it's enabled
+                else:
+                    self.tooltip.Enable(False) # disable the tooltip
+            else: # mouse is outside the axes
+                self.tooltip.Enable(False) # disable the tooltip
+
+    # overwrite Scatter class def'n as an inner class of the current outer class Schneidman, can refer to __outer__ attrib
+    Scatter = innerclass(Scatter)
+
+    def DJShist(self, nbits=DEFAULTCODEWORDLENGTH, ngroups=5, models=['indep', 'ising'],
+                shufflecodes=False, algorithm='CG', **kwargs):
+        """Plots Jensen-Shannon divergence histograms for ngroups random groups of cells, each of length nbits.
+        See Schneidman figure 2b"""
+        DJSs = {}
+        for model in models:
+            DJSs[model] = [] # init a dict with the model names as keys, and empty lists as values
+        pd = wx.ProgressDialog(title='DJShist progress', message='', maximum=ngroups*len(models), # create a progress dialog
+                               style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
+        for groupi in range(ngroups): # for each group of nbits cells
+            for modeli, model in enumerate(models): # for each model
+                cancel = not pd.Update(groupi*len(models)+modeli, newmsg='groupi = %d\nmodel = %s' % (groupi, model))
+                if cancel:
+                    pd.Destroy()
+                    return
+                nis = random.sample(self.nis, nbits) # randomly sample nbits of the Schneidman object's nis attrib
+                so = self.Scatter(nis=nis, model=model, randomneurons=False,
+                             shufflecodes=shufflecodes, algorithm=algorithm, **kwargs)
+                DJSs[model].append(DJS(so.pobserved, so.pexpected))
+        pd.Destroy()
+
+        # histogram them in logspace
+        logrange = (-4, 0)
+        nbins = 50
+        normed = False
+        x = np.logspace(start=logrange[0], stop=logrange[1], num=nbins, endpoint=True, base=10.0)
+        n = {} # stores a list of the bin heights in a separate key for each model
+        for model in models:
+            n[model] = histogram(DJSs[model], bins=x, normed=normed)[0]
+        color = {'indep': 'b', 'ising': 'r'} # dict that maps from model name to color
+
+        # then plot them both on the same axes
+        f = figure()
+        a = f.add_subplot(111)
+        a.hold(True)
+        barwidths = list(diff(x)) # each bar will have a different width, convert to list so you can append
+        # need to add one more entry to barwidth to the end to get nbins of them:
+        #barwidth.append(barwidth[-1]) # not exactly correct
+        logbinwidth = (logrange[1]-logrange[0]) / float(nbins)
+        barwidths.append(10**(logrange[1]+logbinwidth) - x[-1]) # should be exactly correct
+        bars = {}
+        for model in models:
+            bars[model] = a.bar(left=x, height=n[model], width=barwidths, color=color[model],
+                                edgecolor=color[model])
+        a.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
+        gcfm().frame.SetTitle(lastcmd())
+        a.set_title('Jensen-Shannon divergence histogram')
+        a.set_ylabel('group count')
+        a.set_xlabel('DJS (bits)')
+        a.legend([ bars[model][0] for model in models ], models ) # grab the first bar for each model, label it with the model name
+
+    def old_scatter(self, nis=None, nbits=None, model='indep', randomneurons=False, shufflecodes=False, algorithm='CG', **kwargs):
         """Scatterplots the expected probabilities, assuming a model in ['indep', 'ising'],
         of all possible population codes (y axis) vs their observed probabilities (x axis).
         nis are in LSB to MSB order. See Schneidman Figures 1f and 2a"""
         if nis == None:
             nis = self.nis
-        else:
-            if nbits == None:
-                nbits = len(nis) # if nis is specified and nbits isn't, each ni gets its own bit
+        elif nbits == None:
+            nbits = len(nis) # if nis is specified and nbits isn't, each ni gets its own bit
         if nbits == None:
             nbits = DEFAULTCODEWORDLENGTH
-        nbits = min(len(nis), nbits) # constrain nbits to number of nis
+        nbits = min(len(nis), nbits) # constrain nbits to be no more than the number of nis
         if randomneurons:
             nis = random.sample(nis, nbits) # randomly sample nbits of the nis
         else:
             nis = nis[:nbits] # use just the first nbits neurons to make your words
+        nis.sort() # to keep things organized
         self.nbits = nbits
         if randomneurons:
             print 'neurons:', nis # print 'em out if they were randomly selected
@@ -584,7 +767,7 @@ class Schneidman(object):
         self.tooltip.Enable(False) # leave disabled for now
         self.tooltip.SetDelay(0) # set popup delay in ms
         gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
-        f.canvas.mpl_connect('motion_notify_event', self.onscattermotion)
+        f.canvas.mpl_connect('motion_notify_event', self.old_onscattermotion)
 
         # pylab.scatter(pobserved, pexpected), followed by setting the x and y axes to log scale freezes the figure and runs 100% cpu
         # gca().set_xscale('log')
@@ -621,7 +804,6 @@ class Schneidman(object):
         a.plot(pobserved1, pexpected1, 'r.')
         '''
         gcfm().frame.SetTitle(lastcmd())
-        #gcfm().frame.SetTitle('r%d.e[%d].schneidman.scatter(nbits=%s, randomneurons=%s, shufflecodes=%s)' % (self.e.r.id, self.e.id, nbits, randomneurons, shufflecodes))
         missingcodeis = (self.pobserved == 0).nonzero()[0]
         missingcodetext = ''
         if len(missingcodeis) != 0:
@@ -634,8 +816,12 @@ class Schneidman(object):
         title('neurons: %s' % nis + missingcodetext)
         a.set_xlabel('observed population code probability')
         a.set_ylabel('expected population code probability')
+        a.text(0.99, 0.01, 'DJS=%.4f' % DJS(self.pobserved, self.pexpected), # add DJS to bottom right of plot
+            transform = a.transAxes,
+            horizontalalignment = 'right',
+            verticalalignment = 'bottom')
 
-    def onscattermotion(self, event):
+    def old_onscattermotion(self, event):
         """Called during mouse motion over scatterplot figure. Pops up the corresponding
         population code word and its int representation when hovering over a neuron scatter point"""
         if event.xdata != None and event.ydata != None: # if mouse is inside the axes
