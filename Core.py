@@ -767,6 +767,15 @@ def getbinarytable(nbits=8):
         x.append(row)
     return cat(x)
 
+def charfind(string, char):
+    """Finds char in string, returns matching indices. There's gotta be a built-in way to do this somewhere..."""
+    assert len(char) == 1
+    i = []
+    for si, s in enumerate(string):
+        if s == char:
+            i.append(si)
+    return i
+
 def shuffle(x):
     """Takes an input list x and returns a shuffled (without replacement) copy. Its only benefit
     over and above random.sample() is that you don't have to pass a second argument len(x)

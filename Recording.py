@@ -104,9 +104,8 @@ class BaseRecording(object):
 
 
 class PopulationRaster(object):
-    """A population spike raster plot. 'sortby' is the neuron attribute name to sort the raster by.
-    Useful attributes to sort by: 'id', 'nspikes', 'trange'"""
-    def __init__(self, recording=None, experiments=None, sortby='id'):
+    """A population spike raster plot. nis are indices of neurons to plot in the raster, in order from bottom to top"""
+    def __init__(self, recording=None, experiments=None, nis=None):
         self.r = recording
         if experiments == None:
             self.e = recording.e # dictionary
@@ -119,33 +118,47 @@ class PopulationRaster(object):
             experimentmarkers.extend(e.trange)
         self.experimentmarkers = asarray(experimentmarkers) - self.t0 # make 'em relative to t0
         self.experimentmarkers.sort() # just in case exps weren't in sorted order for some reason
-        self.sortby = sortby
-        self.neurons = list(self.r.n.values()) # convert to a list to allow sorting
-        self.sort()
-        self.f = figure(figsize=(14, 6))
-        self.a = self.f.add_subplot(111)
-        self.a.xaxis.set_major_locator(neuropyAutoLocator()) # better behaved tick locator
-        self.a.xaxis.set_major_formatter(neuropyScalarFormatter()) # better behaved tick label formatter
-        gcfm().frame.SetTitle(lastcmd())
-        #gcfm().frame.SetTitle('r%d.raster(sortby=%r)' % (self.r.id, self.sortby))
-        self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
-        self.tooltip.Enable(False) # leave disabled for now
-        self.tooltip.SetDelay(0) # set popup delay in ms
-        gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
-        self.a.set_xlabel('time (msec)')
-        self.a.set_yticks([]) # turn off y axis
-        self.yrange = (0, len(self.neurons))
-        self.a.set_ylim(self.yrange)
-        self.a.set_position([0.02, 0.1, 0.96, 0.88])
-        self.f.canvas.mpl_connect('motion_notify_event', self.onmotion)
-        self.f.canvas.mpl_connect('key_press_event', self.onkeypress)
-    def sort(self):
+        #self.sortby = sortby
+        self.neurons = self.r.n # still a dict
+        if nis != None:
+            self.nis = nis
+        else:
+            self.nis = self.r.n.keys()
+            self.nis.sort() # keep it tidy
+        #self.sort() # run the class's sort() method
+    #def sort(self):
         """Sorts self.neurons according to the neuron attribute specified by self.sortby"""
-        if self.sortby != None:
-            self.neurons.sort(key=lambda n: n.__getattribute__(self.sortby))
-            print 'sorted by %s: %r' % (self.sortby, [ n.__getattribute__(self.sortby) for n in self.neurons ])
+        #if self.sortby != None:
+        #    self.neurons.sort(key=lambda n: n.__getattribute__(self.sortby))
+        #    print 'sorted by %s: %r' % (self.sortby, [ n.__getattribute__(self.sortby) for n in self.neurons ])
     def plot(self, left=0, width=200000):
         """Plots the raster, units are us wrt beginning of first experiment"""
+        try:
+            self.f
+        except AttributeError: # prepare the fig if it hasn't been done already
+            figheight = 1.25+0.2*len(self.nis)
+            self.f = figure(figsize=(14, figheight))
+            self.a = self.f.add_subplot(111)
+            self.a.xaxis.set_major_locator(neuropyAutoLocator()) # better behaved tick locator
+            self.a.xaxis.set_major_formatter(neuropyScalarFormatter()) # better behaved tick label formatter
+            gcfm().frame.SetTitle(lastcmd())
+            self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
+            self.tooltip.Enable(False) # leave disabled for now
+            self.tooltip.SetDelay(0) # set popup delay in ms
+            gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
+            self.a.set_xlabel('time (msec)')
+            self.a.set_yticks([]) # turn off y axis
+            self.yrange = (0, len(self.nis))
+            self.a.set_ylim(self.yrange)
+            #aheight = min(0.025*len(self.nis), 1.0)
+            bottominches = 0.75
+            heightinches = 0.15+0.2*len(self.nis)
+            bottom = bottominches / figheight
+            height = heightinches / figheight
+            self.a.set_position([0.02, bottom, 0.96, height])
+            self.f.canvas.mpl_connect('motion_notify_event', self.onmotion)
+            self.f.canvas.mpl_connect('key_press_event', self.onkeypress)
+
         self.left = left
         self.width = width
         # plot experiment start and endpoints
@@ -159,7 +172,8 @@ class PopulationRaster(object):
                 endlines = self.a.vlines(x=eend/1000.0, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp end, convert to ms
                 endlines[0].set_color((1, 0, 0)) # set to bright red
         # plot the rasters
-        for nii, neuron in enumerate(self.neurons):
+        for nii, ni in enumerate(self.nis):
+            neuron = self.neurons[ni]
             x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / 1000.0 # make spike times always relative to t0, convert to ms
             self.a.vlines(x=x, ymin=nii, ymax=nii+1, fmt='k-')
         self.a.set_xlim(left/1000.0, (left+width)/1000.0) # convert from us to ms
@@ -184,6 +198,8 @@ class PopulationRaster(object):
         experiment info in a tooltip when hovering over a neuron row."""
         if event.xdata != None and event.ydata != None: # if mouse is inside the axes
             nii = int(math.floor(event.ydata)) # use ydata to get index into sorted list of neurons
+            ni = self.nis[nii]
+            neuron = self.neurons[ni]
             currentexp = None
             for e in self.e.values(): # for all experiments
                 estart = (e.trange[0]-self.t0)/1000.0
@@ -192,7 +208,7 @@ class PopulationRaster(object):
                     currentexp = e
                     break # don't need to check any of the other experiments
             tip = 't: %.3f ms\n' % event.xdata # print timepoint down to nearest us, in units of ms
-            tip += 'n%d: %d spikes' % (self.neurons[nii].id, self.neurons[nii].nspikes)
+            tip += 'n%d: %d spikes' % (neuron.id, neuron.nspikes)
             if currentexp == None:
                 tip += '\nno experiment'
             else:
@@ -242,13 +258,13 @@ class RecordingRaster(BaseRecording):
     """Mix-in class that defines the raster related Recording methods"""
     def raster(self, **kwargs):
         """Creates a population spike raster plot"""
-        sortby = kwargs.pop('sortby', 'id')
-        pr = PopulationRaster(recording=self, sortby=sortby)
-        pr.plot(**kwargs)
+        #sortby = kwargs.pop('sortby', 'id')
+        #pr = PopulationRaster(recording=self, sortby=sortby)
+        pr = PopulationRaster(recording=self, **kwargs)
+        return pr
     raster.__doc__ += '\n\n'+PopulationRaster.__doc__
     raster.__doc__ += '\n\n**kwargs:'
     raster.__doc__ += '\n__init__: '+getargstr(PopulationRaster.__init__)
-    raster.__doc__ += '\n    plot: '+getargstr(PopulationRaster.plot)
 
 
 class Codes(object):
@@ -481,6 +497,8 @@ class Schneidman(object):
     def codes(self, nis=None, kind='binary', tres=DEFAULTCODETRES, phase=0, shufflecodes=False):
         """Returns the appropriate Codes object, depending on the recording
         and experiments defined for this Schneidman object"""
+        self.kind = kind
+        self.tres = tres
         cneurons = [ self.r.cn[ni] for ni in nis ] # build up list of ConstrainedNeurons, according to nis
         # get codes for this Recording constrained to when stimuli were on screen
         return self.r.codes(neurons=cneurons, experiments=self.experiments, kind=kind, tres=tres, phase=phase, shufflecodes=shufflecodes)
@@ -549,30 +567,34 @@ class Schneidman(object):
     # if python ever gets class decorators, an inner class could be specified as:
     #@innerclass
     class Scatter(object):
-        def __init__(self, nis=None, nbits=None, model='indep', randomneurons=False, shufflecodes=False, algorithm='CG', **kwargs):
+        def __init__(self, nis=None, nbits=None, model='indep', randomneurons=True, shufflecodes=False, algorithm='CG', **kwargs):
             """Schneidman scatter analysis object. See Schneidman Figures 1f and 2a.
             Calculates the expected probabilities, assuming a model in ['indep', 'ising'],
             of all possible population codes vs their observed probabilities.
             nis are in LSB to MSB order."""
             if nis == None:
                 nis = self.__outer__.nis # grab nis attrib from Schneidman instance
-            elif nbits == None:
-                nbits = len(nis) # if nis is specified and nbits isn't, each ni gets its own bit
-            if nbits == None:
+            else:
+                randomneurons = False # specific nis have been passed, don't use random neurons
+                if nbits == None:
+                    nbits = len(nis) # if nis is specified and nbits isn't, each ni gets its own bit
+            if nbits == None: # nis and nbits were both passed as None
                 nbits = DEFAULTCODEWORDLENGTH
             nbits = min(len(nis), nbits) # constrain nbits to be no more than the number of nis
             if randomneurons:
                 nis = random.sample(nis, nbits) # randomly sample nbits of the nis
+                nis.sort() # to keep things organized
             else:
                 nis = nis[:nbits] # use just the first nbits neurons to make your words
-            nis.sort() # to keep things organized
 
             self.scatternis = nis # save it so that plot() method can access it, use a name distinct from outer Schneidman's nis attrib
             self.nbits = nbits
 
             #if randomneurons:
             #    print 'neurons:', nis # print 'em out if they were randomly selected
-            self.pobserved, self.observedwords = self.intcodesPDF(nis=nis, shufflecodes=shufflecodes, **kwargs) # potentially shuffle the observed codes
+            self.scatterintcodes = self.intcodes(nis=nis, shufflecodes=shufflecodes, **kwargs)
+            self.pobserved, self.observedwords = histogram(self.scatterintcodes, bins=arange(2**nbits), normed='pmf')
+            #self.pobserved, self.observedwords = self.intcodesPDF(nis=nis, shufflecodes=shufflecodes, **kwargs) # potentially shuffle the observed codes
             if model == 'indep':
                 self.pexpected, self.expectedwords = self.intcodesFPDF(nis=nis, **kwargs) # expected, assuming independence. don't potentially shuffle expected codes
             elif model == 'ising':
@@ -665,6 +687,10 @@ class Schneidman(object):
                     codes = [ bin(intcode, minbits=self.nbits) for intcode in intcodes ]
                     tip =  'codes: %s' % repr(codes).replace('\'', '')
                     tip += '\nintcodes: %r' % list(intcodes)
+                    activenis = [ list(asarray(self.scatternis)[::-1][charfind(code, '1')]) for code in codes ]
+                    tip += '\nactivenis: %r' % activenis
+                    tip += '\npattern counts: %r' % [ (self.scatterintcodes == intcode).sum() for intcode in intcodes ]
+                    tip += '\npattern rates (Hz): %s' % repr([ '%.3g' % (p / self.__outer__.tres * 1e6) for p in self.pobserved[codeis] ]).replace('\'', '')
                     tip += '\n(pobserved, pexpected): %s' % repr(zip([ '%.3g' % val for val in self.pobserved[codeis] ], [ '%.3g' % val for val in self.pexpected[codeis] ])).replace('\'', '')
                     tip += '\npobserved / pexpected: %s' % repr([ '%.3g' % (o/float(e)) for o, e in zip(self.pobserved[codeis], self.pexpected[codeis]) ]).replace('\'', '')
                     tip += '\npexpected / pobserved: %s' % repr([ '%.3g' % (e/float(o)) for o, e in zip(self.pobserved[codeis], self.pexpected[codeis]) ]).replace('\'', '')
@@ -715,9 +741,9 @@ class Schneidman(object):
         a.hold(True)
         barwidths = list(diff(x)) # each bar will have a different width, convert to list so you can append
         # need to add one more entry to barwidth to the end to get nbins of them:
-        #barwidth.append(barwidth[-1]) # not exactly correct
-        logbinwidth = (logrange[1]-logrange[0]) / float(nbins)
-        barwidths.append(10**(logrange[1]+logbinwidth) - x[-1]) # should be exactly correct
+        barwidths.append(0) # don't display the last one
+        #logbinwidth = (logrange[1]-logrange[0]) / float(nbins)
+        #barwidths.append(10**(logrange[1]+logbinwidth) - x[-1]) # should be exactly correct
         bars = {}
         for model in models:
             bars[model] = a.bar(left=x, height=n[model], width=barwidths, color=color[model],
@@ -728,121 +754,6 @@ class Schneidman(object):
         a.set_ylabel('group count')
         a.set_xlabel('DJS (bits)')
         a.legend([ bars[model][0] for model in models ], models ) # grab the first bar for each model, label it with the model name
-
-    def old_scatter(self, nis=None, nbits=None, model='indep', randomneurons=False, shufflecodes=False, algorithm='CG', **kwargs):
-        """Scatterplots the expected probabilities, assuming a model in ['indep', 'ising'],
-        of all possible population codes (y axis) vs their observed probabilities (x axis).
-        nis are in LSB to MSB order. See Schneidman Figures 1f and 2a"""
-        if nis == None:
-            nis = self.nis
-        elif nbits == None:
-            nbits = len(nis) # if nis is specified and nbits isn't, each ni gets its own bit
-        if nbits == None:
-            nbits = DEFAULTCODEWORDLENGTH
-        nbits = min(len(nis), nbits) # constrain nbits to be no more than the number of nis
-        if randomneurons:
-            nis = random.sample(nis, nbits) # randomly sample nbits of the nis
-        else:
-            nis = nis[:nbits] # use just the first nbits neurons to make your words
-        nis.sort() # to keep things organized
-        self.nbits = nbits
-        if randomneurons:
-            print 'neurons:', nis # print 'em out if they were randomly selected
-        self.pobserved, self.observedwords = self.intcodesPDF(nis=nis, shufflecodes=shufflecodes, **kwargs) # potentially shuffle the observed codes
-        if model == 'indep':
-            self.pexpected, self.expectedwords = self.intcodesFPDF(nis=nis, **kwargs) # expected, assuming independence. don't potentially shuffle expected codes
-        elif model == 'ising':
-            ising = self.ising(nis=nis, algorithm=algorithm) # returns a maxent Ising model
-            self.pexpected = ising.p # expected, assuming maxent Ising model
-            self.expectedwords = ising.intsamplespace
-        else:
-            raise ValueError, 'Unknown model %r' % model
-        assert (self.observedwords == self.expectedwords).all() # make sure we're comparing apples to apples
-        f = figure()
-        a = f.add_subplot(111)
-        a.plot([10**-6, 1], [10**-6, 1], 'b-') # plot a y=x line
-        a.hold(True)
-
-        self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
-        self.tooltip.Enable(False) # leave disabled for now
-        self.tooltip.SetDelay(0) # set popup delay in ms
-        gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
-        f.canvas.mpl_connect('motion_notify_event', self.old_onscattermotion)
-
-        # pylab.scatter(pobserved, pexpected), followed by setting the x and y axes to log scale freezes the figure and runs 100% cpu
-        # gca().set_xscale('log')
-        # gca().set_yscale('log')
-        # use loglog() instead
-
-        # colour each scatter point according to how many 1s are in the population code word it represents.
-        # This is done a bit nastily, could use a cleanup:
-        inds = []
-        for nspikes in range(0, 5):
-            inds.append([])
-            [ inds[nspikes].append(i) for i in range(0, 2**nbits) if bin(i).count('1') == nspikes ]
-        pobserved = self.pobserved.copy() # make local copies that are safe to modify for colour plotting and shit
-        pexpected = self.pexpected.copy()
-        pobserved1 = pobserved[inds[1]]; pexpected1 = pexpected[inds[1]]
-        pobserved2 = pobserved[inds[2]]; pexpected2 = pexpected[inds[2]]
-        pobserved3 = pobserved[inds[3]]; pexpected3 = pexpected[inds[3]]
-        pobserved4 = pobserved[inds[4]]; pexpected4 = pexpected[inds[4]]
-        pobserved[inds[1]], pexpected[inds[1]] = None, None # remove all these
-        pobserved[inds[2]], pexpected[inds[2]] = None, None
-        pobserved[inds[3]], pexpected[inds[3]] = None, None
-        pobserved[inds[4]], pexpected[inds[4]] = None, None
-
-        a.loglog(pobserved, pexpected, 'k.') # plots what's left in black
-        a.loglog(pobserved4, pexpected4, 'm.')
-        a.loglog(pobserved3, pexpected3, 'c.')
-        a.loglog(pobserved2, pexpected2, 'y.')
-        a.loglog(pobserved1, pexpected1, 'r.')
-        '''
-        a.plot(pobserved, pexpected, 'k.') # plots what's left in black
-        a.plot(pobserved4, pexpected4, 'm.')
-        a.plot(pobserved3, pexpected3, 'c.')
-        a.plot(pobserved2, pexpected2, 'y.')
-        a.plot(pobserved1, pexpected1, 'r.')
-        '''
-        gcfm().frame.SetTitle(lastcmd())
-        missingcodeis = (self.pobserved == 0).nonzero()[0]
-        missingcodetext = ''
-        if len(missingcodeis) != 0:
-            missingcodes = self.observedwords[missingcodeis]
-            pexpectedmissing = self.pexpected[missingcodeis]
-            maxpi = pexpectedmissing.argmax()
-            maxp = pexpectedmissing[maxpi]
-            maxpcode = self.expectedwords[missingcodeis[maxpi]]
-            missingcodetext += '\n nmissingcodes: %d, maxpmissingcode: (%r, pexpected=%.3g)' % (len(missingcodes), bin(maxpcode, minbits=self.nbits), maxp)
-        title('neurons: %s' % nis + missingcodetext)
-        a.set_xlabel('observed population code probability')
-        a.set_ylabel('expected population code probability')
-        a.text(0.99, 0.01, 'DJS=%.4f' % DJS(self.pobserved, self.pexpected), # add DJS to bottom right of plot
-            transform = a.transAxes,
-            horizontalalignment = 'right',
-            verticalalignment = 'bottom')
-
-    def old_onscattermotion(self, event):
-        """Called during mouse motion over scatterplot figure. Pops up the corresponding
-        population code word and its int representation when hovering over a neuron scatter point"""
-        if event.xdata != None and event.ydata != None: # if mouse is inside the axes
-            i  = approx(event.xdata, self.pobserved, rtol=5e-2, atol=0).nonzero()[0] # find for what indices (if any) xdata == pobserved
-            ii = approx(event.ydata, self.pexpected[i], rtol=1e-1, atol=0).nonzero()[0] # for those above, find for what index (if any) ydata == pexpected
-            codeis = i[ii]
-            if codeis.size > 0:
-                #tip += 'i: %r' % i
-                #tip += '\nii: %r' % ii
-                #tip += '\ncodeis: %r' % codeis
-                intcodes = self.observedwords[codeis] # get the int rep for those indices from self.observedwords[i] or self.expectedwords[i]
-                codes = [ bin(intcode, minbits=self.nbits) for intcode in intcodes ]
-                tip =  'codes: %s' % repr(codes).replace('\'', '')
-                tip += '\nintcodes: %r' % list(intcodes)
-                tip += '\n(pobserved, pexpected): %s' % repr(zip([ '%.3g' % val for val in self.pobserved[codeis] ], [ '%.3g' % val for val in self.pexpected[codeis] ])).replace('\'', '')
-                self.tooltip.SetTip(tip) # update the tooltip
-                self.tooltip.Enable(True) # make sure it's enabled
-            else:
-                self.tooltip.Enable(False) # disable the tooltip
-        else: # mouse is outside the axes
-            self.tooltip.Enable(False) # disable the tooltip
 
     def nspikingPDF(self, nis=None, shufflecodes=False, **kwargs):
         """Returns the PDF of observing n cells spiking in the same population code time bin, for either
