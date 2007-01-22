@@ -7,24 +7,23 @@ Schneidman stuff:
         - best to just use append() in Neuron? yes. Recording.append() will make use of this. make .spikes 2d array? no, offsets have been added
     - for common states, see if there's a gradual falloff of probs of being 1 bit, 2bit 3 bit off of that state as you move away from it in bitspace
         - maybe map out some kind of attractors in bitspace
-    - look for check cells
-    - do the maximum entropy Ising model
-    - see if cortical data extrapolates to the same sort of ideal network size, ~200 neurons
     - maybe mess around with higher bit codes than just binary, like trinary, quaternary, which reflect more accurately the number of spikes in each bin for each neuron
+    - rename all instances of binarray to binmatrix (or binmat) in cases where it's 2D (which is most of the time)
+
 
 - make Neuron.append() in place, and ensure whenever it's used, that's it's used on a copied Neuron
 - do analyses across Recordings, using Neuron.append(), to increase significance
 
 
 - MPL:
-    - when saving figs, automatically choose .png from list, and automatically fill in the file name with the text of the title bar of the figure
+    - when saving figs, automatically fill in the file name with the text of the title bar of the figure
 
 - cross-correlograms
     - make it faster
     - add p values to peaks (% of ticks within the peak, out of all the ticks in the window)
     - do both types of shuffle correction (those would be ?)
 
-- 2D matrix of cross-correlograms - see the README.wx file in mpl/examples for embedding in wx
+- plot 2D matrix of cross-correlograms - see the README.wx file in mpl/examples for embedding in wx
 
 - PSTHs
     - look more closely for 5 ms peaks. Also, looks at data recorded at lower screen refresh rates
@@ -64,7 +63,7 @@ Schneidman stuff:
 
 
 
-
+---------------------------------------
 DONE:
 
 - STAs
@@ -80,3 +79,10 @@ DONE:
 - can replace all '%s' % repr(x) with just '%r' % x
 - figure out how to grab the last command typed at the interpreter, so you can set that as the figure caption, makes things nice and explicit. Current code in various gcfm().frame.SetTitle calls that sets the caption sort of guesses what was typed is a hack
 - increase precision of x, y coord display in statusbar of MPL figures
+
+MPL: - when saving figs, automatically choose .png from list
+
+Schneidman stuff:
+    - look for check cells
+    - do the maximum entropy Ising model
+    - see if cortical data extrapolates to the same sort of ideal network size, ~200 neurons

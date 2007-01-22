@@ -290,10 +290,12 @@ class Codes(object):
                 np.random.shuffle(c) # shuffle each neuron's codetrain separately, in-place operation
             else:
                 c = codeo.c # just a pointer
-            self.c.append([c]) # each is a nested list (ie, 2D)
-        self.t = codeo.t # stores the bin edges, just for reference. all timepoints should be the same for all neurons, cuz they're all given the same trange. use the timepoints of last neuron
-        self.c = tuple(self.c) # required for concatenate
-        self.c = cat(self.c)
+            self.c.append(c) # flat list
+        self.t = codeo.t # stores the bin edges, just for reference. all timepoints should be the same for all neurons, cuz they're all given the same trange. use the timepoints of the last neuron
+        nneurons = len(self.neurons)
+        nbins = len(self.c[0]) # all entries in the list should be the same length
+        self.c = cat(self.c).reshape(nneurons, nbins)
+
     def copy(self):
         """Returns a copy of the Codes object"""
         return copy(self)
@@ -1044,7 +1046,7 @@ class Schneidman(object):
         otherniis = [ nis2niis[otherni] for otherni in othernis ]
         nothers = len(othernis)
 
-        nibinarray = binarray[nii] # 0s and 1s
+        nibinarray = binarray[nii] # 0s and 1s, this picks out the row in the binarray that corresponds to ni
         nothersactive = binarray[otherniis].sum(axis=0) # anywhere from 0 up to and including nothers
 
         # build up joint pdf of the nibinarray and nothersactive
@@ -1081,15 +1083,18 @@ class Schneidman(object):
                 jpdf = self._checkcell(ni=ni, othernis=othernis)
                 jpdfs.append(jpdf)
 
-            # find the mean jpdf
-            jpdf = asarray(jpdfs).mean(axis=0)
+            jpdfs = asarray(jpdfs) # this is a nsamples x 2 x (nothers+1) matrix
+            jpdfmean = jpdfs.mean(axis=0) # find the mean jpdf across all nsamples jpdfs
+            jpdfstd = jpdfs.std(axis=0) # find the stdev across all nsamples jpdfs
 
             # plot it
             f = figure()
             gcfm().frame.SetTitle('%s for ni=%d' % (lastcmd(), ni))
             a = f.add_subplot(111)
-            a.plot(arange(nothers+1), jpdf[1], 'k.-') # jpdf[1] is prob of getting a 1 for ni, as a f'n of N cells active
-            a.set_title('ni=%d, othernis=%r' % (ni, othernis))
+            #a.plot(arange(nothers+1), jpdfmean[1], 'k.-')
+            a.errorbar(arange(nothers+1), jpdfmean[1], fmt='k.-', yerr=jpdfstd[1]) # jpdfmean[1] is mean prob of getting a 1 for ni, as a f'n of N other cells active, jpdfstd[1] is stdev of prob of getting a 1 for ni, as a f'n of N other cells active
+
+            a.set_title('ni=%d, othernis=%r, nsamples=%d' % (ni, othernis, nsamples))
             a.set_xlabel('Number of other active cells')
             a.set_ylabel('Probability of cell ni being active')
 

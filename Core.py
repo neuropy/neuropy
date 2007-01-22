@@ -753,7 +753,7 @@ def getbinarytable(nbits=8):
         pattern = array(0, dtype=np.int8).repeat(2**bit)
         pattern = cat((pattern, array(1, dtype=np.int8).repeat(2**bit)))
         npatterns = rowlength / len(pattern) # == 2**nbits / len(pattern) == 2**nbits / 2**(bit+1) == 2**(nbits-bit-1)
-        row = np.repmat(pattern, 1, npatterns)
+        row = np.tile(pattern, [1, npatterns])
         x[bit::,::] = row
     return x
     '''
@@ -763,7 +763,7 @@ def getbinarytable(nbits=8):
         pattern = array(0, dtype=np.int8).repeat(2**bit)
         pattern = cat((pattern, array(1, dtype=np.int8).repeat(2**bit)))
         npatterns = rowlength / len(pattern) # == 2**nbits / len(pattern) == 2**nbits / 2**(bit+1) == 2**(nbits-bit-1)
-        row = np.repmat(pattern, 1, npatterns)
+        row = np.tile(pattern, [1, npatterns])
         x.append(row)
     return cat(x)
 
@@ -906,7 +906,7 @@ def argcombs(objects, r=2):
     '''
 
 def nCrsamples(objects, r, nsamples=None):
-    """Returns nsamples unique samples of length r, sampled from objects"""
+    """Returns a list of nsamples unique samples, each of length r, sampled from objects"""
     maxnsamples = nCr(len(objects), r)
     if nsamples == None:
         nsamples = maxnsamples # return all possible combinations
