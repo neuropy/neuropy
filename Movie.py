@@ -30,7 +30,8 @@ class Movie(Dimstim.Movies.Movie): # inherit from Dimstim Movie() class (assumes
             self.nframes = 6000
             offset = 0 # header is this long
         # read in all of the frames
-        self.data = np.fromfile(f, np.uint8, count=self.nframes*self.ncellshigh*self.ncellswide).reshape(self.nframes,self.ncellshigh,self.ncellswide)
+        self.data = np.fromfile(f, np.uint8, count=self.nframes*self.ncellshigh*self.ncellswide)
+        self.data = self.data.reshape(self.nframes, self.ncellshigh, self.ncellswide)
         #self.data = numarray.fromfile(f, np.UInt8, (self.nframes,self.ncellshigh,self.ncellswide))
         leftover = f.read() # check if there are any leftover bytes in the file
         if leftover != '':

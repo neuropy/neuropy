@@ -42,7 +42,7 @@ class BaseExperiment(object):
         from Movie import Movie, MSEQ32, MSEQ16
 
         f = file(self.path + self.name + '.din', 'rb') # open the din file for reading in binary mode
-        self.din = np.fromfile(f, dtype=np.int64).reshape(-1,2) # reshape to nrows x 2 columns
+        self.din = np.fromfile(f, dtype=np.int64).reshape(-1, 2) # reshape to nrows x 2 columns
         f.close()
         try:
             f = file(self.path + self.name + '.textheader', 'r') # open the textheader file for reading

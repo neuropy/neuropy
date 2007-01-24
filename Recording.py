@@ -104,21 +104,24 @@ class BaseRecording(object):
 
 
 class PopulationRaster(object):
-    """A population spike raster plot. nis are indices of neurons to plot in the raster, in order from bottom to top"""
-    def __init__(self, recording=None, experiments=None, nis=None):
+    """A population spike raster plot. nis are indices of neurons to plot in the raster, in order from bottom to top
+    Defaults to absolute time origin (when acquisition began)"""
+    def __init__(self, recording=None, experiments=None, nis=None, relativet0=False):
         self.r = recording
         if experiments == None:
             self.e = recording.e # dictionary
         else:
             self.e = experiments # should also be a dict
-        firstexp = min(self.e.keys())
-        self.t0 = self.e[firstexp].trange[0]
-        experimentmarkers = [] # a list of all experiment start and stop times, in sorted order
+        if relativet0: # set time origin to start of first experiment
+            firstexp = min(self.e.keys())
+            self.t0 = self.e[firstexp].trange[0] # start time of the first experiment
+        else: # use absolute time origin
+            self.t0 = 0 # leave the time origin at when acquisition began
+        experimentmarkers = [] # a flat list of all experiment start and stop times, in sorted order
         for e in self.e.values():
             experimentmarkers.extend(e.trange)
         self.experimentmarkers = asarray(experimentmarkers) - self.t0 # make 'em relative to t0
         self.experimentmarkers.sort() # just in case exps weren't in sorted order for some reason
-        #self.sortby = sortby
         self.neurons = self.r.n # still a dict
         if nis != None:
             self.nis = nis
@@ -131,8 +134,10 @@ class PopulationRaster(object):
         #if self.sortby != None:
         #    self.neurons.sort(key=lambda n: n.__getattribute__(self.sortby))
         #    print 'sorted by %s: %r' % (self.sortby, [ n.__getattribute__(self.sortby) for n in self.neurons ])
-    def plot(self, left=0, width=200000):
-        """Plots the raster, units are us wrt beginning of first experiment"""
+    def plot(self, left=None, width=200000):
+        """Plots the raster, units are us wrt self.t0"""
+        if left == None:
+            left = self.experimentmarkers[0] # init left window edge to first exp marker, ie start of first experiment
         try:
             self.f
         except AttributeError: # prepare the fig if it hasn't been done already
@@ -162,21 +167,21 @@ class PopulationRaster(object):
         self.left = left
         self.width = width
         # plot experiment start and endpoints
-        for e in self.e.values():
-            estart = e.trange[0]-self.t0
-            eend = e.trange[1]-self.t0
+        for etrange in self.experimentmarkers.reshape(-1, 2): # reshape the flat array into a new nx2, each row is a trange
+            estart = etrange[0]-self.t0
+            eend = etrange[1]-self.t0
             if left <=  estart and estart <= left+width: # experiment start point is within view
-                startlines = self.a.vlines(x=estart/1000.0, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp start, convert to ms
+                startlines = self.a.vlines(x=estart/1e3, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp start, convert to ms
                 startlines[0].set_color((0, 1, 0)) # set to bright green
             if left <= eend and eend <= left+width: # experiment end point is within view
-                endlines = self.a.vlines(x=eend/1000.0, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp end, convert to ms
+                endlines = self.a.vlines(x=eend/1e3, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp end, convert to ms
                 endlines[0].set_color((1, 0, 0)) # set to bright red
         # plot the rasters
         for nii, ni in enumerate(self.nis):
             neuron = self.neurons[ni]
-            x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / 1000.0 # make spike times always relative to t0, convert to ms
+            x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / 1e3 # make spike times always relative to t0, convert to ms
             self.a.vlines(x=x, ymin=nii, ymax=nii+1, fmt='k-')
-        self.a.set_xlim(left/1000.0, (left+width)/1000.0) # convert from us to ms
+        self.a.set_xlim(left/1e3, (left+width)/1e3) # convert from us to ms
     def panx(self, npages=None, left=None):
         """Pans the raster along the x axis by npages, or to position left"""
         self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
@@ -193,6 +198,19 @@ class PopulationRaster(object):
         left = centre - width / 2.0
         self.plot(left=left, width=width)
         self.f.canvas.draw() # redraw the figure
+    def go(self):
+        """Bring up a dialog box to jump to timepoint, mark it with a dotted line"""
+        ted = wx.TextEntryDialog(parent=None, message='Go to timepoint (ms):', caption='Goto',
+                                 defaultValue=str(int(round(self.left / 1e3))), #wx.EmptyString,
+                                 style=wx.TextEntryDialogStyle, pos=wx.DefaultPosition)
+        if ted.ShowModal() == wx.ID_OK:
+            response = ted.GetValue()
+            try:
+                left = float(response)
+                self.plot(left=left*1e3, width=self.width)
+                self.f.canvas.draw() # redraw the figure
+            except ValueError: # response wasn't a valid number
+                pass
     def onmotion(self, event):
         """Called during mouse motion over figure. Pops up neuron and
         experiment info in a tooltip when hovering over a neuron row."""
@@ -202,8 +220,8 @@ class PopulationRaster(object):
             neuron = self.neurons[ni]
             currentexp = None
             for e in self.e.values(): # for all experiments
-                estart = (e.trange[0]-self.t0)/1000.0
-                eend = (e.trange[1]-self.t0)/1000.0
+                estart = (e.trange[0]-self.t0)/1e3
+                eend = (e.trange[1]-self.t0)/1e3
                 if estart < event.xdata  < eend:
                     currentexp = e
                     break # don't need to check any of the other experiments
@@ -220,6 +238,7 @@ class PopulationRaster(object):
     def onkeypress(self, event):
         """Called during a figure keypress"""
         key = event.guiEvent.GetKeyCode() # wx dependent
+        #print key
         # you can also just use the backend-neutral event.key, but that doesn't recognize as many keypresses, like pgup, pgdn, etc.
         if not event.guiEvent.ControlDown(): # wx dependent
             if key == wx.WXK_RIGHT:
@@ -235,10 +254,11 @@ class PopulationRaster(object):
             elif key == wx.WXK_PRIOR: # PGUP (page left)
                 self.panx(-1)
             elif key == wx.WXK_HOME: # go to start of first Experiment
-                self.panx(left=0)
+                self.panx(left=self.experimentmarkers[0])
             elif key == wx.WXK_END: # go to end of last Experiment
-                lastexp = max(self.e.keys())
-                self.panx(left=self.e[lastexp].trange[1]-self.t0-self.width)
+                self.panx(left=self.experimentmarkers[-1]-self.width)
+            elif key == wx.WXK_RETURN: #ord('G'): # go to position
+                self.go()
         else: # Ctrl key is down
             if key == wx.WXK_LEFT: # skip backwards to previous experiment marker
                 i = self.experimentmarkers.searchsorted(self.left, side='left') # current position of left edge of the window in experimentmarkers list
@@ -291,11 +311,21 @@ class Codes(object):
             else:
                 c = codeo.c # just a pointer
             self.c.append(c) # flat list
-        self.t = codeo.t # stores the bin edges, just for reference. all timepoints should be the same for all neurons, cuz they're all given the same trange. use the timepoints of the last neuron
+        self.t = codeo.t # stores the bin edges, just for reference. all bin times should be the same for all neurons, cuz they're all given the same trange. use the bin times of the last neuron
         nneurons = len(self.neurons)
         nbins = len(self.c[0]) # all entries in the list should be the same length
         self.c = cat(self.c).reshape(nneurons, nbins)
-
+    def syncis(self):
+        """Returns synch indices, ie the indices of the bins for which all the
+        neurons in this Codes object have a 1 in them"""
+        return self.c.prod(axis=0).nonzero()[0] # take product down all rows, only synchronous events across all cells will survive
+    def syncts(self):
+        """Returns synch times, ie times of the left bin edges for which
+        all the neurons in this Codes object have a 1 in them"""
+        return self.t[self.syncis()]
+    def synctsms(self):
+        """Returns synch times in ms, to the nearest ms"""
+        return np.int32(np.round(self.syncts() / 1e3))
     def copy(self):
         """Returns a copy of the Codes object"""
         return copy(self)
@@ -753,7 +783,7 @@ class Schneidman(object):
         a.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
         gcfm().frame.SetTitle(lastcmd())
         a.set_title('Jensen-Shannon divergence histogram')
-        a.set_ylabel('group count')
+        a.set_ylabel('number of groups of %d cells' % nbits)
         a.set_xlabel('DJS (bits)')
         a.legend([ bars[model][0] for model in models ], models ) # grab the first bar for each model, label it with the model name
 
@@ -786,7 +816,7 @@ class Schneidman(object):
         except KeyError:
             tres = DEFAULTCODETRES
         gcfm().frame.SetTitle(lastcmd())
-        a.set_xlabel('number of spiking cells in %dms window' % round(tres/1000.0))
+        a.set_xlabel('number of spiking cells in %dms window' % round(tres/1e3))
         a.set_ylabel('probability')
 
     def S1INvsN(self, minN=4, maxN=15, nsamples=10, tres=DEFAULTCODETRES):

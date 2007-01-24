@@ -268,7 +268,7 @@ class XCorr(object):
             a.set_ylabel('spike rate (Hz)')
         else:
             a.set_ylabel('bin count')
-        xticks = a.get_xticks() / 1000.0 # convert from us to ms
+        xticks = a.get_xticks() / 1e3 # convert from us to ms
         xticklabels = []
         [ xticklabels.append('%d' % xtick) for xtick in xticks ] # truncate floats into ints
         a.set_xticklabels(xticklabels)
