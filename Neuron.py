@@ -345,7 +345,7 @@ class NeuronCode(BaseNeuron):
         try:
             self._codes
         except AttributeError: # self._codes doesn't exist yet
-            self._codes = [] # create a list that'll hold Code objects
+            self._codes = [] # create a list that'll hold Code objects for this Neuron
         if kind == 'binary':
             co = BinaryCode(neuron=self, tranges=tranges, tres=tres, phase=phase) # init a new BinaryCode object
         else:

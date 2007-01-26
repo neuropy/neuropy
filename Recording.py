@@ -161,8 +161,8 @@ class PopulationRaster(object):
             bottom = bottominches / figheight
             height = heightinches / figheight
             self.a.set_position([0.02, bottom, 0.96, height])
-            self.f.canvas.mpl_connect('motion_notify_event', self.onmotion)
-            self.f.canvas.mpl_connect('key_press_event', self.onkeypress)
+            self.f.canvas.mpl_connect('motion_notify_event', self._onmotion)
+            self.f.canvas.mpl_connect('key_press_event', self._onkeypress)
 
         self.left = left
         self.width = width
@@ -182,7 +182,7 @@ class PopulationRaster(object):
             x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / 1e3 # make spike times always relative to t0, convert to ms
             self.a.vlines(x=x, ymin=nii, ymax=nii+1, fmt='k-')
         self.a.set_xlim(left/1e3, (left+width)/1e3) # convert from us to ms
-    def panx(self, npages=None, left=None):
+    def _panx(self, npages=None, left=None):
         """Pans the raster along the x axis by npages, or to position left"""
         self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
         if left != None: # use left
@@ -190,7 +190,7 @@ class PopulationRaster(object):
         else: # use npages instead
             self.plot(left=self.left+self.width*npages, width=self.width)
         self.f.canvas.draw() # redraw the figure
-    def zoomx(self, factor):
+    def _zoomx(self, factor):
         """Zooms the raster along the x axis by factor"""
         self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
         centre = (self.left + self.left+self.width) / 2.0
@@ -198,12 +198,12 @@ class PopulationRaster(object):
         left = centre - width / 2.0
         self.plot(left=left, width=width)
         self.f.canvas.draw() # redraw the figure
-    def go(self):
+    def _goto(self):
         """Bring up a dialog box to jump to timepoint, mark it with a dotted line"""
         ted = wx.TextEntryDialog(parent=None, message='Go to timepoint (ms):', caption='Goto',
                                  defaultValue=str(int(round(self.left / 1e3))), #wx.EmptyString,
                                  style=wx.TextEntryDialogStyle, pos=wx.DefaultPosition)
-        if ted.ShowModal() == wx.ID_OK:
+        if ted.ShowModal() == wx.ID_OK: # if OK buttons has been hit
             response = ted.GetValue()
             try:
                 left = float(response)
@@ -211,7 +211,7 @@ class PopulationRaster(object):
                 self.f.canvas.draw() # redraw the figure
             except ValueError: # response wasn't a valid number
                 pass
-    def onmotion(self, event):
+    def _onmotion(self, event):
         """Called during mouse motion over figure. Pops up neuron and
         experiment info in a tooltip when hovering over a neuron row."""
         if event.xdata != None and event.ydata != None: # if mouse is inside the axes
@@ -235,43 +235,43 @@ class PopulationRaster(object):
             self.tooltip.Enable(True) # make sure it's enabled
         else: # mouse is outside the axes
             self.tooltip.Enable(False) # disable the tooltip
-    def onkeypress(self, event):
+    def _onkeypress(self, event):
         """Called during a figure keypress"""
         key = event.guiEvent.GetKeyCode() # wx dependent
         #print key
         # you can also just use the backend-neutral event.key, but that doesn't recognize as many keypresses, like pgup, pgdn, etc.
         if not event.guiEvent.ControlDown(): # wx dependent
             if key == wx.WXK_RIGHT:
-                self.panx(+0.1)
+                self._panx(+0.1)
             elif key == wx.WXK_LEFT:
-                self.panx(-0.1)
+                self._panx(-0.1)
             elif key == wx.WXK_UP:
-                self.zoomx(1.2)
+                self._zoomx(1.2)
             elif key == wx.WXK_DOWN:
-                self.zoomx(1/1.2)
+                self._zoomx(1/1.2)
             elif key == wx.WXK_NEXT: # PGDN (page right)
-                self.panx(+1)
+                self._panx(+1)
             elif key == wx.WXK_PRIOR: # PGUP (page left)
-                self.panx(-1)
+                self._panx(-1)
             elif key == wx.WXK_HOME: # go to start of first Experiment
-                self.panx(left=self.experimentmarkers[0])
+                self._panx(left=self.experimentmarkers[0])
             elif key == wx.WXK_END: # go to end of last Experiment
-                self.panx(left=self.experimentmarkers[-1]-self.width)
+                self._panx(left=self.experimentmarkers[-1]-self.width)
             elif key == wx.WXK_RETURN: #ord('G'): # go to position
-                self.go()
+                self._goto()
         else: # Ctrl key is down
             if key == wx.WXK_LEFT: # skip backwards to previous experiment marker
                 i = self.experimentmarkers.searchsorted(self.left, side='left') # current position of left edge of the window in experimentmarkers list
                 i = max(0, i-1) # decrement by 1, do bounds checking
-                self.panx(left=self.experimentmarkers[i])
+                self._panx(left=self.experimentmarkers[i])
             elif key == wx.WXK_RIGHT: # skip forwards to next experiment marker
                 i = self.experimentmarkers.searchsorted(self.left, side='right') # current position of left edge of the window in experimentmarkers list
                 i = min(i, len(self.experimentmarkers)-1) # bounds checking
-                self.panx(left=self.experimentmarkers[i])
+                self._panx(left=self.experimentmarkers[i])
             elif key == wx.WXK_UP: # zoom in faster
-                self.zoomx(3.0)
+                self._zoomx(3.0)
             elif key == wx.WXK_DOWN: # zoom out faster
-                self.zoomx(1/3.0)
+                self._zoomx(1/3.0)
 
 
 class RecordingRaster(BaseRecording):
@@ -298,6 +298,13 @@ class Codes(object):
         self.tres = tres
         self.phase = phase
         self.shufflecodes = shufflecodes
+        self.nis = [ neuron.id for neuron in self.neurons ]
+        self.nneurons = len(self.neurons)
+        self.nis2niisdict = dict(zip( self.nis, range(self.nneurons) )) # make a dict from keys:self.nis, vals:range(self.nneurons). This converts from nis to niis (from neuron indices to indices into the binary code array self.c)
+    def nis2niis(self, nis=None):
+        """Converts from nis to niis (from neuron indices to indices into the binary code array self.co.c).
+        nis can be a sequence"""
+        return [ self.nis2niisdict[ni] for ni in toiter(nis) ]
     def calc(self):
         self.s = [] # stores the corresponding spike times for each neuron, just for reference
         self.c = [] # stores the 2D code array
@@ -447,7 +454,7 @@ class RecordingCode(BaseRecording):
         or if specified, to the time ranges of Experiments in this Recording"""
         if neurons != None:
             if neurons.__class__ == list:
-                try: # asume is a list of Neuron ids?
+                try: # assume is a list of Neuron ids?
                     neurons = [ self.n[ni] for ni in neurons ] # build up list of Neurons, ordered according to the id list in neurons
                 except: # assume is a list of Neurons
                     pass
@@ -458,7 +465,7 @@ class RecordingCode(BaseRecording):
         if experiments != None:
             # need to preserve order of expids as specified
             if experiments.__class__ == list:
-                try:  # assume is a list of Experiment ids?
+                try: # assume is a list of Experiment ids?
                     tranges = [ self.e[ei].trange for ei in experiments ]
                 except: # assume is a list of Experiments
                     tranges = [ e.trange for e in experiments ]
@@ -521,10 +528,9 @@ class Schneidman(object):
         self.experiments = experiments # save list of Experiments (could potentially be None)
         self.neurons = self.r.n
         self.nneurons = len(self.neurons)
-        self.nis = self.neurons.keys() # save all neuron indices in this Recording
-        self.nis.sort() # make sure they're sorted
-        self.binarray = self.codes(nis=self.nis, kind='binary').c # generate the binary population array for these nis
-        self.nis2niis = dict(zip( self.nis, range(self.nneurons) )) # make a dict from keys:self.nis, vals:range(self.nneurons). This converts from nis to niis (from neuron indices to indices into binarray)
+        nis = self.neurons.keys() # get all neuron indices in this Recording
+        nis.sort() # make sure they're sorted
+        self.co = self.codes(nis=nis, kind='binary') # generate and save the binary codes object for all the nis
 
     def codes(self, nis=None, kind='binary', tres=DEFAULTCODETRES, phase=0, shufflecodes=False):
         """Returns the appropriate Codes object, depending on the recording
@@ -535,18 +541,40 @@ class Schneidman(object):
         # get codes for this Recording constrained to when stimuli were on screen
         return self.r.codes(neurons=cneurons, experiments=self.experiments, kind=kind, tres=tres, phase=phase, shufflecodes=shufflecodes)
 
+    def wordts(self, nis=None, mis=None):
+        """Returns word times, ie the times of the left bin edges for which all the
+        neurons in the mis in this Schneidman object have a 1 in them, and all
+        the rest have a 0 in them. nis lists the total population of neuron ids"""
+        if nis == None:
+            nis = self.co.nis
+        mis = toiter(mis)
+        for mi in mis:
+            assert mi in nis # make sure mis is a subset of nis
+        co = self.codes(nis=nis) # make a new code object using the nis population
+        nis2niis = co.nis2niis
+        notmis = [ ni for ni in nis if ni not in mis ] # nis not in mis
+        mis_high = co.c[nis2niis(mis)].prod(axis=0) == 1 # take product down all rows, only synchronous events across all mis cells will survive, boolean array
+        notmis_low = co.c[nis2niis(notmis)].sum(axis=0) == 0 # boolean array
+        i = (mis_high * notmis_low).nonzero()[0] # indices where mis are 1 and all the others are 0
+        return co.t[i] # return the times at those indices
+
+    def wordtsms(self, nis=None, mis=None):
+        """Returns word times in ms, to the nearest ms, with the on bits specified in mis.
+        nis lists the total population of neuron ids"""
+        return np.int32(np.round(self.wordts(nis=nis, mis=mis) / 1e3))
+
     def intcodes(self, nis=None, **kwargs):
         """Given neuron indices (ordered LSB to MSB top to bottom), returns an array of the integer representation
         of the neuronal population binary code for each time bin"""
         if nis == None:
-            nis = random.sample(self.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
+            nis = random.sample(self.co.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
         return binarray2int(self.codes(nis=nis, kind='binary', **kwargs).c)
 
     def intcodesPDF(self, nis=None, **kwargs):
         """Returns the observed pdf across all possible population binary code words,
         labelled according to their integer representation"""
         if nis == None:
-            nis = random.sample(self.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
+            nis = random.sample(self.co.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
         intcodes = self.intcodes(nis=nis, **kwargs)
         nbits = len(nis)
         p, bins = histogram(intcodes, bins=arange(2**nbits), normed='pmf')
@@ -556,7 +584,7 @@ class Schneidman(object):
         """the F stands for factorial. Returns the probability of getting each population binary code word, assuming
         independence between neurons, taking into account each neuron's spike (and no spike) probability"""
         if nis == None:
-            nis = random.sample(self.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
+            nis = random.sample(self.co.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
         nbits = len(nis)
         intcodes = arange(2**nbits)
         #neurons = dict( (ni, self.neurons[ni]) for ni in nis ) # this is like dict comprehension, pretty awesome!
@@ -582,7 +610,7 @@ class Schneidman(object):
         """Returns an Ising maximum entropy model that takes into account pairwise correlations neuron codes
         algorithm can be 'CG', 'BFGS', 'LBFGSB', 'Powell', or 'Nelder-Mead'"""
         if nis == None:
-            nis = self.nis[0:DEFAULTCODEWORDLENGTH]
+            nis = self.co.nis[0:DEFAULTCODEWORDLENGTH]
         #print 'nis:', nis.__repr__()
         codeso = self.codes(nis=nis, kind='binary', **kwargs)
         #c = codeso.c
@@ -605,7 +633,7 @@ class Schneidman(object):
             of all possible population codes vs their observed probabilities.
             nis are in LSB to MSB order."""
             if nis == None:
-                nis = self.__outer__.nis # grab nis attrib from Schneidman instance
+                nis = self.__outer__.co.nis # grab nis attrib from Codes object in outer Schneidman object
             else:
                 randomneurons = False # specific nis have been passed, don't use random neurons
                 if nbits == None:
@@ -619,7 +647,7 @@ class Schneidman(object):
             else:
                 nis = nis[:nbits] # use just the first nbits neurons to make your words
 
-            self.scatternis = nis # save it so that plot() method can access it, use a name distinct from outer Schneidman's nis attrib
+            self.nis = nis # save it so that plot() method can access it
             self.nbits = nbits
 
             #if randomneurons:
@@ -650,7 +678,7 @@ class Schneidman(object):
             self.tooltip.Enable(False) # leave disabled for now
             self.tooltip.SetDelay(0) # set popup delay in ms
             gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
-            f.canvas.mpl_connect('motion_notify_event', self.onmotion) # connect the mpl event to the action
+            f.canvas.mpl_connect('motion_notify_event', self._onmotion) # connect the mpl event to the action
 
             # pylab.scatter(pobserved, pexpected), followed by setting the x and y axes to log scale freezes the figure and runs 100% cpu
             # gca().set_xscale('log')
@@ -696,15 +724,16 @@ class Schneidman(object):
                 maxp = pexpectedmissing[maxpi]
                 maxpcode = self.expectedwords[missingcodeis[maxpi]]
                 missingcodetext += '\n nmissingcodes: %d, maxpmissingcode: (%r, pexpected=%.3g)' % (len(missingcodes), bin(maxpcode, minbits=self.nbits), maxp)
-            title('neurons: %s' % self.scatternis + missingcodetext)
+            title('neurons: %s' % self.nis + missingcodetext)
             a.set_xlabel('observed population code probability')
             a.set_ylabel('expected population code probability')
             a.text(0.99, 0.01, 'DJS=%.4f' % DJS(self.pobserved, self.pexpected), # add DJS to bottom right of plot
                 transform = a.transAxes,
                 horizontalalignment = 'right',
                 verticalalignment = 'bottom')
+            print 'nis = %r' % self.nis # print out the nis so they can easily be copied and pasted elsewhere
 
-        def onmotion(self, event):
+        def _onmotion(self, event):
             """Called during mouse motion over scatterplot figure. Pops up the corresponding
             population code word and its int representation when hovering over a neuron scatter point"""
             if event.xdata != None and event.ydata != None: # if mouse is inside the axes
@@ -719,7 +748,7 @@ class Schneidman(object):
                     codes = [ bin(intcode, minbits=self.nbits) for intcode in intcodes ]
                     tip =  'codes: %s' % repr(codes).replace('\'', '')
                     tip += '\nintcodes: %r' % list(intcodes)
-                    activenis = [ list(asarray(self.scatternis)[::-1][charfind(code, '1')]) for code in codes ]
+                    activenis = [ list(asarray(self.nis)[::-1][charfind(code, '1')]) for code in codes ]
                     tip += '\nactivenis: %r' % activenis
                     tip += '\npattern counts: %r' % [ (self.scatterintcodes == intcode).sum() for intcode in intcodes ]
                     tip += '\npattern rates (Hz): %s' % repr([ '%.3g' % (p / self.__outer__.tres * 1e6) for p in self.pobserved[codeis] ]).replace('\'', '')
@@ -751,7 +780,7 @@ class Schneidman(object):
                 if cancel:
                     pd.Destroy()
                     return
-                nis = random.sample(self.nis, nbits) # randomly sample nbits of the Schneidman object's nis attrib
+                nis = random.sample(self.co.nis, nbits) # randomly sample nbits of the Schneidman object's nis attrib
                 so = self.Scatter(nis=nis, model=model, randomneurons=False,
                              shufflecodes=shufflecodes, algorithm=algorithm, **kwargs)
                 DJSs[model].append(DJS(so.pobserved, so.pexpected))
@@ -964,7 +993,7 @@ class Schneidman(object):
         groups of N cells for each N+1th cell in Nplus1s,
         all done for different values of N up to maxN"""
         if Nplus1s == None: # list of all neurons that will be treated as the N+1th neuron
-            Nplus1s = self.nis
+            Nplus1s = self.co.nis
         else:
             Nplus1s = toiter(Nplus1s)
         nNplus1s = len(Nplus1s)
@@ -981,19 +1010,18 @@ class Schneidman(object):
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
 
         # get the binary array for the whole population, then index into it appropriately in the sample loop, find the corresponding integer codes, and feed it to NMmutualinfo, so you don't have to unnecessarily re-generate it on every iteration
-        nis = self.nis
-        binarray = self.binarray
-        nis2niis = self.nis2niis
+        nis = self.co.nis
+        nis2niis = self.co.nis2niis
         counter = 0 # counts inner loop for the progress dialog
         for ni, n in enumerate(N):
             for Nplus1i, Nplus1 in enumerate(Nplus1s): # for each N+1th neuron to compare to
-                mii = nis2niis[Nplus1]
+                mii = nis2niis(Nplus1)
                 niscopy = copy(nis) # make a copy of neuron indices
                 niscopy.remove(Nplus1) # keep just the indices of all the other neurons
                 samples = nCrsamples(niscopy, n, nsamples[ni]) # returns nsamples random unique choices of n items from niscopy
                 for samplei, sample in enumerate(samples): # collect nsamples different combinations of the N other cells
-                    niis = np.array([ nis2niis[s] for s in toiter(sample) ]) # most of the time (for n>1), sample will be a sequence of nis. Build an array of niis out of it to use as indices into binarray. Sometimes (for n=1) sample will be a scalar, hence the need to push it through toiter()
-                    IdivS[ni, Nplus1i, samplei] = self.NMmutualinfo(Nbinarray=binarray[niis], Mbinarray=binarray[mii]) # do it
+                    niis = np.array([ nis2niis(s) for s in toiter(sample) ]) # most of the time (for n>1), sample will be a sequence of nis. Build an array of niis out of it to use as indices into the binary code array. Sometimes (for n=1) sample will be a scalar, hence the need to push it through toiter()
+                    IdivS[ni, Nplus1i, samplei] = self.NMmutualinfo(Nbinarray=self.co.c[niis], Mbinarray=self.co.c[mii]) # do it
                     cancel = not pd.Update(counter, newmsg='N: %d; N+1th neuron: %d; samplei: %d' % (n, Nplus1, samplei))
                     if cancel:
                         pd.Destroy()
@@ -1070,20 +1098,19 @@ class Schneidman(object):
         """Returns the joint pdf of cell ni activity and the number of cells in
         othernis being active at the same time. ni should not be in othernis"""
         assert ni not in othernis
-        binarray = self.binarray
-        nis2niis = self.nis2niis
-        nii = nis2niis[ni]
-        otherniis = [ nis2niis[otherni] for otherni in othernis ]
+        nis2niis = self.co.nis2niis
+        nii = nis2niis(ni)
+        otherniis = nis2niis(othernis)
         nothers = len(othernis)
 
-        nibinarray = binarray[nii] # 0s and 1s, this picks out the row in the binarray that corresponds to ni
-        nothersactive = binarray[otherniis].sum(axis=0) # anywhere from 0 up to and including nothers
+        nicode = self.co.c[nii] # 0s and 1s, this picks out the row in the binary code array that corresponds to ni
+        nothersactive = self.co.c[otherniis].sum(axis=0) # anywhere from 0 up to and including nothers
 
-        # build up joint pdf of the nibinarray and nothersactive
+        # build up joint pdf of the nicode and nothersactive
         xedges = np.array([0, 1, 2]) # values 0 and 1, plus 2 which is needed as the rightmost bin edge for histogram2d (annoying)
         yedges = arange(nothers+2) # anywhere from 0 up to and including nothers, plus nothers+1 as the rightmost bin edge
         bins = [xedges, yedges]
-        jpdf, xedgesout, yedgesout = histogram2d(nibinarray, nothersactive, bins, normed='pmf') # generate joint pdf, nibinarray are in the rows, nothersactive are in the columns
+        jpdf, xedgesout, yedgesout = histogram2d(nicode, nothersactive, bins, normed='pmf') # generate joint pdf, nicode are in the rows, nothersactive are in the columns
 
         return jpdf
 
@@ -1091,7 +1118,7 @@ class Schneidman(object):
         """Plots the probability of each cell (in nis) being active vs. the number of
         other active cells (in the Recording) at that time. See Schneidman figure 5c"""
         if nis == None:
-            nis = self.nis
+            nis = self.co.nis
         else:
             nis = toiter(nis)
 
@@ -1099,7 +1126,7 @@ class Schneidman(object):
 
         for ni in nis:
             if saved_othernis == None:
-                othernis = copy(self.nis)
+                othernis = copy(self.co.nis)
             else:
                 othernis = copy(saved_othernis)
             try:

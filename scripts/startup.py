@@ -38,6 +38,8 @@ np.set_printoptions(edgeitems=5)
 np.set_printoptions(linewidth=150)
 np.set_printoptions(suppress=True)
 
+#shell.redirectStdout(redirect=True) # does this actually do anything in PyShell?
+
 #import deep_reload # modifies __builtin__.reload() to do a deep reload
 #import LazyPython
 #sys.excepthook = LazyPython.LazyPython() # this doesn't seem to work

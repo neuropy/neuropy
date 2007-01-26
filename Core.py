@@ -374,7 +374,10 @@ def iterable(x):
         return False
 
 def toiter(x):
-    """Convert to iterable. If input is iterable, returns it. Otherwise returns it in a list"""
+    """Convert to iterable. If input is iterable, returns it. Otherwise returns it in a list.
+    Useful when you want to iterate over an object (like in a for loop),
+    and you don't want to have to do type checking or handle exceptions
+    when the object isn't a sequence"""
     if iterable(x):
         return x
     else:
