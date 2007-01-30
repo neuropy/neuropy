@@ -973,6 +973,7 @@ class neuropyScalarFormatter(mpl.ticker.ScalarFormatter):
         # useMathText will render the offset an scientific notation in mathtext
         #super(neuropyScalarFormatter, self).__init__(useOffset=useOffset, useMathText=useMathText) # can't use this, cuz derived from an old-style class
         mpl.ticker.ScalarFormatter.__init__(self, useOffset=useOffset, useMathText=useMathText)
+        self.thousandsSep = '' # default to not using a thousands separator
 
     def _set_orderOfMagnitude(self, range):
         # if scientific notation is to be used, find the appropriate exponent
@@ -999,6 +1000,16 @@ class neuropyScalarFormatter(mpl.ticker.ScalarFormatter):
         self.format = '%1.' + str(sigfigs[-1]) + 'f'
         if self._usetex or self._useMathText: self.format = '$%s$'%self.format
 
+    def pprint_val(self, x):
+        xp = (x-self.offset)/10**self.orderOfMagnitude
+        if np.absolute(xp) < 1e-8: xp = 0
+        s = self.format % xp
+        if self.thousandsSep: # add thousands-separating characters
+            if s.count('.'): # it's got a decimal in there
+                s = re.sub(r'(?<=\d)(?=(\d\d\d)+\.)', self.thousandsSep, s) # use the regexp for floats
+            else: # it's an int
+                s = re.sub(r'(?<=\d)(?=(\d\d\d)+$)', self.thousandsSep, s) # use the regexp for ints
+        return s
 
 class neuropyAutoLocator(mpl.ticker.MaxNLocator):
     """A tick autolocator that generates more ticks than the standard mpl autolocator"""

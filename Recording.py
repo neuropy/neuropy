@@ -104,14 +104,23 @@ class BaseRecording(object):
 
 
 class PopulationRaster(object):
-    """A population spike raster plot. nis are indices of neurons to plot in the raster, in order from bottom to top
+    """A population spike raster plot. nis are indices of neurons to
+    plot in the raster, in order from bottom to top.
+    jumpts are a sequence of timepoints (in us) that can then be quickly cycled
+    through in the plot using keyboard controls.
     Defaults to absolute time origin (when acquisition began)"""
-    def __init__(self, recording=None, experiments=None, nis=None, relativet0=False):
+    def __init__(self, recording=None, experiments=None, nis=None, jumpts=None, binwidth=None, relativet0=False):
         self.r = recording
         if experiments == None:
             self.e = recording.e # dictionary
         else:
             self.e = experiments # should also be a dict
+        if binwidth == None:
+            self.binwidth = DEFAULTCODETRES
+        else:
+            self.binwidth = binwidth
+        assert self.binwidth >= 10000
+        self.plotbinedges = False # keyboard controlled
         if relativet0: # set time origin to start of first experiment
             firstexp = min(self.e.keys())
             self.t0 = self.e[firstexp].trange[0] # start time of the first experiment
@@ -122,18 +131,17 @@ class PopulationRaster(object):
             experimentmarkers.extend(e.trange)
         self.experimentmarkers = asarray(experimentmarkers) - self.t0 # make 'em relative to t0
         self.experimentmarkers.sort() # just in case exps weren't in sorted order for some reason
+
+        self.jumpts = asarray(jumpts)
+        self.jumpts.sort() # just in case jumpts weren't in sorted order for some reason
+
         self.neurons = self.r.n # still a dict
         if nis != None:
             self.nis = nis
         else:
             self.nis = self.r.n.keys()
             self.nis.sort() # keep it tidy
-        #self.sort() # run the class's sort() method
-    #def sort(self):
-        """Sorts self.neurons according to the neuron attribute specified by self.sortby"""
-        #if self.sortby != None:
-        #    self.neurons.sort(key=lambda n: n.__getattribute__(self.sortby))
-        #    print 'sorted by %s: %r' % (self.sortby, [ n.__getattribute__(self.sortby) for n in self.neurons ])
+
     def plot(self, left=None, width=200000):
         """Plots the raster, units are us wrt self.t0"""
         if left == None:
@@ -145,7 +153,9 @@ class PopulationRaster(object):
             self.f = figure(figsize=(14, figheight))
             self.a = self.f.add_subplot(111)
             self.a.xaxis.set_major_locator(neuropyAutoLocator()) # better behaved tick locator
-            self.a.xaxis.set_major_formatter(neuropyScalarFormatter()) # better behaved tick label formatter
+            self.formatter = neuropyScalarFormatter() # better behaved tick label formatter
+            self.formatter.thousandsSep = ',' # use a thousands separator
+            self.a.xaxis.set_major_formatter(self.formatter)
             gcfm().frame.SetTitle(lastcmd())
             self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
             self.tooltip.Enable(False) # leave disabled for now
@@ -176,6 +186,11 @@ class PopulationRaster(object):
             if left <= eend and eend <= left+width: # experiment end point is within view
                 endlines = self.a.vlines(x=eend/1e3, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp end, convert to ms
                 endlines[0].set_color((1, 0, 0)) # set to bright red
+        # plot the bin edges. Not taking into account self.t0 for now, assuming it's 0
+        if self.plotbinedges:
+            leftbinedge = (left // self.binwidth + 1)*self.binwidth
+            binedges = arange(leftbinedge, left+width, self.binwidth)
+            binlines = self.a.vlines(x=binedges/1e3, ymin=self.yrange[0], ymax=self.yrange[1], fmt='b:') # convert to ms
         # plot the rasters
         for nii, ni in enumerate(self.nis):
             neuron = self.neurons[ni]
@@ -203,7 +218,7 @@ class PopulationRaster(object):
         ted = wx.TextEntryDialog(parent=None, message='Go to timepoint (ms):', caption='Goto',
                                  defaultValue=str(int(round(self.left / 1e3))), #wx.EmptyString,
                                  style=wx.TextEntryDialogStyle, pos=wx.DefaultPosition)
-        if ted.ShowModal() == wx.ID_OK: # if OK buttons has been hit
+        if ted.ShowModal() == wx.ID_OK: # if OK button has been clicked
             response = ted.GetValue()
             try:
                 left = float(response)
@@ -211,6 +226,21 @@ class PopulationRaster(object):
                 self.f.canvas.draw() # redraw the figure
             except ValueError: # response wasn't a valid number
                 pass
+    def _cyclethousandssep(self):
+        """Cycles the tick formatter through thousands separators"""
+        if self.formatter.thousandsSep == ',':
+            self.formatter.thousandsSep = ' '
+        elif self.formatter.thousandsSep == ' ':
+            self.formatter.thousandsSep = None
+        else:
+            self.formatter.thousandsSep = ','
+        self.f.canvas.draw() # redraw the figure
+
+    def _togglebinedges(self):
+        """Toggles plotting of bin edges"""
+        self.plotbinedges = not self.plotbinedges
+        self._panx(npages=0) # replot and redraw by panning by 0
+
     def _onmotion(self, event):
         """Called during mouse motion over figure. Pops up neuron and
         experiment info in a tooltip when hovering over a neuron row."""
@@ -240,14 +270,14 @@ class PopulationRaster(object):
         key = event.guiEvent.GetKeyCode() # wx dependent
         #print key
         # you can also just use the backend-neutral event.key, but that doesn't recognize as many keypresses, like pgup, pgdn, etc.
-        if not event.guiEvent.ControlDown(): # wx dependent
-            if key == wx.WXK_RIGHT:
+        if not event.guiEvent.ControlDown(): # Ctrl key isn't down, wx dependent
+            if key == wx.WXK_RIGHT: # pan right
                 self._panx(+0.1)
-            elif key == wx.WXK_LEFT:
+            elif key == wx.WXK_LEFT: # pan left
                 self._panx(-0.1)
-            elif key == wx.WXK_UP:
+            elif key == wx.WXK_UP: # zoom in
                 self._zoomx(1.2)
-            elif key == wx.WXK_DOWN:
+            elif key == wx.WXK_DOWN: # zoom out
                 self._zoomx(1/1.2)
             elif key == wx.WXK_NEXT: # PGDN (page right)
                 self._panx(+1)
@@ -257,8 +287,20 @@ class PopulationRaster(object):
                 self._panx(left=self.experimentmarkers[0])
             elif key == wx.WXK_END: # go to end of last Experiment
                 self._panx(left=self.experimentmarkers[-1]-self.width)
-            elif key == wx.WXK_RETURN: #ord('G'): # go to position
+            elif key == ord('['): # skip backwards to previous jump point
+                i = self.jumpts.searchsorted(self.left, side='left') # current position of left edge of the window in jumpts list
+                i = max(0, i-1) # decrement by 1, do bounds checking
+                self._panx(left=self.jumpts[i])
+            elif key == ord(']'): # skip forwards to next jump point
+                i = self.jumpts.searchsorted(self.left, side='right') # current position of left edge of the window in jumpts list
+                i = min(i, len(self.jumpts)-1) # bounds checking
+                self._panx(left=self.jumpts[i])
+            elif key == wx.WXK_RETURN: # go to position
                 self._goto()
+            elif key == ord(','): # cycle tick formatter through thousands separators
+                self._cyclethousandssep()
+            elif key == ord('B'): # toggle plotting of bin edges
+                self._togglebinedges()
         else: # Ctrl key is down
             if key == wx.WXK_LEFT: # skip backwards to previous experiment marker
                 i = self.experimentmarkers.searchsorted(self.left, side='left') # current position of left edge of the window in experimentmarkers list
@@ -272,7 +314,6 @@ class PopulationRaster(object):
                 self._zoomx(3.0)
             elif key == wx.WXK_DOWN: # zoom out faster
                 self._zoomx(1/3.0)
-
 
 class RecordingRaster(BaseRecording):
     """Mix-in class that defines the raster related Recording methods"""
