@@ -345,7 +345,10 @@ class Codes(object):
     def nis2niis(self, nis=None):
         """Converts from nis to niis (from neuron indices to indices into the binary code array self.co.c).
         nis can be a sequence"""
-        return [ self.nis2niisdict[ni] for ni in toiter(nis) ]
+        try:
+            return [ self.nis2niisdict[ni] for ni in nis ]
+        except TypeError: # iteration over non-sequence, nis is a scalar
+            return self.nis2niisdict[nis]
     def calc(self):
         self.s = [] # stores the corresponding spike times for each neuron, just for reference
         self.c = [] # stores the 2D code array
@@ -465,9 +468,7 @@ class CodeCorrPDF(object):
         gcfm().frame.SetTitle(lastcmd())
         #gcfm().frame.SetTitle('r%d.codecorrpdf(nbins=%d)' % (self.r.id, self.nbins))
         titlestring = 'neuron pair code correlation pdf'
-        if self.e != None:
-            print self.e
-            titlestring += '\nexperiments: %r' % self.e.keys()
+        titlestring += '\n%s' % lastcmd()
         a.set_title(titlestring)
         if self.normed:
             if self.normed == 'pmf':
@@ -665,6 +666,92 @@ class Schneidman(object):
         ising = Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
         return ising
 
+    def isinghist(self, nbits=10, ngroups=5, algorithm='CG', **kwargs):
+        """Plots, in separate figure, hi and Jij histograms collected from ising models
+        of multiple subgroups of cells. See Schneidman fig 3b"""
+        ims = [] # holds Ising Model objects
+        his = []
+        Jijs = []
+
+        pd = wx.ProgressDialog(title='isinghist() progress', message='', maximum=ngroups, # create a progress dialog
+                               style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
+        for groupi in range(ngroups): # for each group of nbits cells
+            cancel = not pd.Update(groupi, newmsg='groupi = %d' % groupi)
+            if cancel:
+                pd.Destroy()
+                return
+            nis = random.sample(self.co.nis, nbits) # randomly sample nbits of the Schneidman object's nis attrib
+            im = self.ising(nis=nis, algorithm=algorithm, **kwargs) # returns a maxent Ising model
+            ims.append(im)
+            his.append(im.hi)
+            Jijs.append(im.Jij)
+        pd.Destroy()
+
+        # histogram them in linear space
+        nbins = 50
+        hirange = (-2.5, 2.5) #(-10, 10)
+        Jijrange = (-1.1, 1.1) #(-10, 10)
+        hibins = np.linspace(start=hirange[0], stop=hirange[1], num=nbins, endpoint=True)
+        Jijbins = np.linspace(start=Jijrange[0], stop=Jijrange[1], num=nbins, endpoint=True)
+        nhi = histogram(his, bins=hibins, normed='pdf')[0]
+        nJij = histogram(Jijs, bins=Jijbins, normed='pdf')[0]
+
+        # plot the hi histogram
+        f1 = figure()
+        a1 = f1.add_subplot(111)
+        a1.hold(True)
+        a1.bar(left=hibins, height=nhi, width=hibins[1]-hibins[0], color='g', edgecolor='g')
+        gcfm().frame.SetTitle(lastcmd())
+        a1.set_title('hi histogram\n%s' % lastcmd())
+        a1.set_ylabel('probability density')
+        a1.set_xlabel('hi')
+        a1.set_xlim(hirange)
+
+        # plot the Jij histogram
+        f2 = figure()
+        a2 = f2.add_subplot(111)
+        a2.hold(True)
+        a2.bar(left=Jijbins, height=nJij, width=Jijbins[1]-Jijbins[0], color='m', edgecolor='m')
+        gcfm().frame.SetTitle(lastcmd())
+        a2.set_title('Jij histogram\n%s' % lastcmd())
+        a2.set_ylabel('probability density')
+        a2.set_xlabel('Jij')
+        a2.set_xlim(Jijrange)
+
+        return (his, Jijs)
+
+    def nspikingPMF(self, nis=None, shufflecodes=False, **kwargs):
+        """Returns the PMF of observing n cells spiking in the same time bin, for either
+        an unshuffled or shuffled Codes object"""
+        observedwords = self.intcodes(nis=nis, shufflecodes=shufflecodes, **kwargs)
+        # collect observances of the number of cells spiking for each pop code time bin
+        nspiking = [ np.binary_repr(observedword).count('1') for observedword in observedwords ] # for all time bins, convert words to binary, count the number of 1s in each. np.binary_repr() is a bit faster than using neuropy.Core.bin()
+        pnspiking, bins = histogram(nspiking, bins=arange(len(self.neurons)+1), normed='pmf') # histogram 'em, want all probs to add to 1, not their area, so use pmf
+        return pnspiking, bins
+
+    def plotnspikingPMFs(self, nis=None, xrange=[-0.5, 15], **kwargs):
+        """Plots nspikingPMF, for both observed and shuffled (forcing independence) codes.
+        See 2006 Schneidman fig 1e"""
+        observedpnspiking, observedbins = self.nspikingPMF(nis=nis, shufflecodes=False, **kwargs)
+        indeppnspiking, indepbins = self.nspikingPMF(nis=nis, shufflecodes=True, **kwargs)
+        assert (observedbins == indepbins).all() # paranoid schizo, just checking
+        assert approx(observedpnspiking.sum(), 1.0), 'total observed probs: %f' % observedpnspiking.sum()
+        assert approx(indeppnspiking.sum(), 1.0), 'total indep probs: %f' % indeppnspiking.sum()
+        f = figure()
+        a = f.add_subplot(111)
+        a.hold(True)
+        a.plot(observedbins, observedpnspiking, 'r.-')
+        a.plot(indepbins, indeppnspiking, 'b.-')
+        titlestr = 'PMF of observing n cells spiking in the same time bin'
+        titlestr += '\n%s' % lastcmd()
+        a.set_title(titlestr)
+        a.legend(('observed', 'indep (shuffled)'))
+        a.set_yscale('log')
+        a.set_xlim(xrange)
+        gcfm().frame.SetTitle(lastcmd())
+        a.set_xlabel('number of spiking cells in a bin')
+        a.set_ylabel('probability')
+
     # if python ever gets class decorators, an inner class could be specified as:
     #@innerclass
     class Scatter(object):
@@ -765,7 +852,7 @@ class Schneidman(object):
                 maxp = pexpectedmissing[maxpi]
                 maxpcode = self.expectedwords[missingcodeis[maxpi]]
                 missingcodetext += '\n nmissingcodes: %d, maxpmissingcode: (%r, pexpected=%.3g)' % (len(missingcodes), bin(maxpcode, minbits=self.nbits), maxp)
-            title('neurons: %s' % self.nis + missingcodetext)
+            a.set_title('%s\nneurons: %s' % (lastcmd(), self.nis))# + missingcodetext)
             a.set_xlabel('observed population code probability')
             a.set_ylabel('expected population code probability')
             a.text(0.99, 0.01, 'DJS=%.4f' % DJS(self.pobserved, self.pexpected), # add DJS to bottom right of plot
@@ -852,42 +939,10 @@ class Schneidman(object):
                                 edgecolor=color[model])
         a.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
         gcfm().frame.SetTitle(lastcmd())
-        a.set_title('Jensen-Shannon divergence histogram')
+        a.set_title('Jensen-Shannon divergence histogram\n%s' % lastcmd())
         a.set_ylabel('number of groups of %d cells' % nbits)
         a.set_xlabel('DJS (bits)')
         a.legend([ bars[model][0] for model in models ], models ) # grab the first bar for each model, label it with the model name
-
-    def nspikingPDF(self, nis=None, shufflecodes=False, **kwargs):
-        """Returns the PDF of observing n cells spiking in the same population code time bin, for either
-        an unshuffled or shuffled Codes object"""
-        observedwords = self.intcodes(nis=nis, shufflecodes=shufflecodes, **kwargs)
-        # collect observances of the number of cells spiking for each pop code time bin
-        nspiking = [ np.binary_repr(observedword).count('1') for observedword in observedwords ] # for all time bins, convert words to binary, count the number of 1s in each. np.binary_repr() is a bit faster than using neuropy.Core.bin()
-        pnspiking, bins = histogram(nspiking, bins=arange(len(self.neurons)+1), normed='pmf') # histogram 'em, want all probs to add to 1, not their area, so use pmf
-        return pnspiking, bins
-
-    def plotnspikingPDFs(self, nis=None, **kwargs):
-        """Plots nspikingPDF, for both observed and shuffled (forcing independence) codes.
-        See 2006 Schneidman fig 1e"""
-        observedpnspiking, observedbins = self.nspikingPDF(nis=nis, shufflecodes=False, **kwargs)
-        indeppnspiking, indepbins = self.nspikingPDF(nis=nis, shufflecodes=True, **kwargs)
-        assert (observedbins == indepbins).all() # paranoid schizo, just checking
-        assert approx(observedpnspiking.sum(), 1.0), 'total observed probs: %f' % observedpnspiking.sum()
-        assert approx(indeppnspiking.sum(), 1.0), 'total indep probs: %f' % indeppnspiking.sum()
-        f = figure()
-        a = f.add_subplot(111)
-        a.hold(True)
-        a.plot(observedbins, observedpnspiking, 'r.')
-        a.plot(indepbins, indeppnspiking, 'b.')
-        a.legend(('observed', 'independent'))
-        a.set_yscale('log')
-        try:
-            tres = kwargs['tres'] # check if we're using something other than the default
-        except KeyError:
-            tres = DEFAULTCODETRES
-        gcfm().frame.SetTitle(lastcmd())
-        a.set_xlabel('number of spiking cells in %dms window' % round(tres/1e3))
-        a.set_ylabel('probability')
 
     def S1INvsN(self, minN=4, maxN=15, nsamples=10, tres=DEFAULTCODETRES):
         """Plots the average independent cell entropy S1 and average network multi-information IN (IN = S1 - SN)
@@ -951,6 +1006,7 @@ class Schneidman(object):
         a.set_ylim(1e-2, 1e4)
         a.set_xlabel('Number of cells')
         a.set_ylabel('bits / sec')
+        a.set_title('S1 & IN vs N\n%s' % lastcmd())
         a.legend(('S1, slope=%.3f' % mS1, 'IN, slope=%.3f' % mIN), loc='lower right')
         a.text(0.99, 0.98, 'Nc=%d' % np.round(10**xintersect), # add text box to upper right corner of axes
             transform = a.transAxes,
@@ -1095,6 +1151,7 @@ class Schneidman(object):
         a.set_ylim(1e-3, 1e1)
         a.set_xlabel('Number of cells')
         a.set_ylabel('mutualinfo(N, N+1th) / entropy(N+1th)')
+        a.set_title('fraction of info that the N+1th provide about the Nth cell\n%s' % lastcmd())
         a.text(0.99, 0.98, 'Nc=%d' % np.round(10**xintersect), # add text box to upper right corner of axes
             transform = a.transAxes,
             horizontalalignment = 'right',
