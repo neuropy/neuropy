@@ -245,6 +245,7 @@ class ReceptiveFieldFrame(wx.Frame):
         event.Skip()
     '''
     def OnMouseWheel(self, event):
+        """This could be useful..."""
         pass
     def __set_properties(self):
         self.SetTitle(self.title)
@@ -287,6 +288,14 @@ def str2(data):
         if len(s) == 1:
             s = '0'+s # add a leading zero for single digits
 '''
+def pad0s(val, ndigits):
+    """Returns a string rep of val, padded with enough leading 0s
+    to give you a string rep with ndigits in it"""
+    val = str(val)
+    nzerostoadd = ndigits - len(val)
+    val = '0'*nzerostoadd + val
+    return val
+
 def txtdin2binarydin(fin, fout):
     """Converts a csv text .din file to an int64 binary .din file"""
     fi = file(fin, 'r') # open the din file for reading in text mode
@@ -298,7 +307,7 @@ def txtdin2binarydin(fin, fout):
         nruns = 18
         line[1] = int(line[1]) % nruns
         '''
-        fo.write( struct.pack('@qq', int(line[0]), int(line[1])) ) # read both values in as a C long longs, using the system's native ('@') byte order
+        fo.write( struct.pack('@qq', int(line[0]), int(line[1])) ) # write both values out as a C long longs, using the system's native ('@') byte order
     fi.close()
     fo.close()
     print 'Converted ascii din: ' + repr(fin) + ' to binary din: ' + repr(fout)
@@ -331,6 +340,43 @@ def renameSpikeFiles(path, newname):
                 newfname = newname+fname[i::]
                 print newfname
                 os.rename(path+SLASH+fname, path+SLASH+newfname)
+
+def csv2binary(fin, multiplier=1e6):
+    """Exports spike data in a csv file, with cells in the columns and times down the rows,
+    into int64 binary files, one for each neuron. Takes csv values and multiplies them by
+    multiplier before saving"""
+    fin = os.path.normpath(fin)
+    fi = file(fin, 'r') # open csv file for reading in text mode
+    print 'Exporting %s to:' % fi.name
+    firstline = fi.next()
+    nneurons = len(firstline.split(','))
+    fi.seek(0)
+    data = [] # nested list, one entry per neuron
+    for ni in range(nneurons):
+        data.append([]) # init each neuron's list
+    for line in fi:
+        line = line.replace('\n', '') # strip the newline character
+        line = line.split(',')
+        for ni, strval in enumerate(line): # going horizontally across the line
+            try:
+                data[ni].append(int(round(float(strval)*multiplier)))
+            except ValueError: # strval is empty string
+                pass
+    fi.close()
+    #return data
+    path = os.path.splitext(fi.name)[0] # extensionless filename
+    try:
+        os.mkdir(path) # make a dir with that name
+    except OSError: # dir already exists
+        pass
+    tail = os.path.split(path)[-1] # just the extensionless filename
+    for ni, neuron in enumerate(data):
+        fname = os.path.join(path, tail) + '_t' + pad0s(ni, ndigits=len(str(nneurons))) + '.spk'
+        fo = file(fname, 'wb') # for writing in binary mode
+        print fo.name
+        for spiketime in neuron: # write each spiketime to the file, there should be a more streamlined way to do this
+            fo.write( struct.pack('@q', spiketime) ) # write the value out as a C long long, using the system's native ('@') byte order
+        fo.close()
 
 def warn(msg, level=2, exit_val=1):
     """Standard warning printer. Gives formatting consistency. Stolen from IPython.genutils"""

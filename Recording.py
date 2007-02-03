@@ -1214,7 +1214,9 @@ class Schneidman(object):
 
     def checkcells(self, nis=None, othernis=None, nothers=14, nsamples=10):
         """Plots the probability of each cell (in nis) being active vs. the number of
-        other active cells (in the Recording) at that time. See Schneidman figure 5c"""
+        other active cells (in the Recording) at that time. For each ni, an average over
+        nsamples, each being a different sample of nothers from othernis.
+        See Schneidman figure 5c"""
         if nis == None:
             nis = self.co.nis
         else:
@@ -1246,10 +1248,11 @@ class Schneidman(object):
             f = figure()
             gcfm().frame.SetTitle('%s for ni=%d' % (lastcmd(), ni))
             a = f.add_subplot(111)
-            #a.plot(arange(nothers+1), jpdfmean[1], 'k.-')
-            a.errorbar(arange(nothers+1), jpdfmean[1], fmt='k.-', yerr=jpdfstd[1]) # jpdfmean[1] is mean prob of getting a 1 for ni, as a f'n of N other cells active, jpdfstd[1] is stdev of prob of getting a 1 for ni, as a f'n of N other cells active
+            a.plot(arange(nothers+1), jpdfmean[1], 'k.-')
+            # errorbar() is buggy and unpredictable for some reason!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            #a.errorbar(arange(nothers+1), jpdfmean[1], fmt='k.-', yerr=jpdfstd[1]) # jpdfmean[1] is mean prob of getting a 1 for ni, as a f'n of N other cells active, jpdfstd[1] is stdev of prob of getting a 1 for ni, as a f'n of N other cells active
 
-            a.set_title('ni=%d, othernis=%r, nsamples=%d' % (ni, othernis, nsamples))
+            a.set_title('%s\nni=%d, othernis=%r, nsamples=%d' % (lastcmd(), ni, othernis, nsamples))
             a.set_xlabel('Number of other active cells')
             a.set_ylabel('Probability of cell ni being active')
 
