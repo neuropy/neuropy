@@ -18,10 +18,10 @@ class BaseRecording(object):
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         if parent == None:
             try:
-                self.t = _data.c[DEFAULTCATID].t[DEFAULTTRACKID] # see if the default Track has already been init'd
+                self.t = _data.a[DEFAULTANIMALNAME].t[DEFAULTTRACKID] # see if the default Track has already been init'd
             except KeyError:
                 self.t = Track() # init the default Track...
-                _data.c[DEFAULTCATID].t[self.t.id] = self.t  # ...and add it to the default Cat object's list of Tracks
+                _data.a[DEFAULTANIMALNAME].t[self.t.id] = self.t  # ...and add it to the default Animal's list of Tracks
         else:
             self.t = parent # save parent Track object
         if id is not None:
@@ -54,8 +54,8 @@ class BaseRecording(object):
         return name
     def name2id(self, name):
         try:
-            id = name[0:name.index(' - ')] # everything before the first ' - ', index() raises ValueError if it can't be found
-        except ValueError:
+            id = name[0:name.index(' - ')] # everything before the first ' - '
+        except ValueError: # ' - ' can't be found
             raise ValueError, 'Badly formatted Recording name: %s' % name
         try:
             id = int(id) # convert string to int if possible

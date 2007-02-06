@@ -4,18 +4,29 @@
 
 DEFAULTDATAPATH = 'C:/data/' # the convention in neuropy is that all 'path' var names have a trailing slash
 DEFAULTMODELPATH = 'C:/model/'
+
+DEFAULTSPECIES = 'Cat'
 DEFAULTCATID = 15
-DEFAULTSYSTEMNAME = 'Cat 15'
+DEFAULTRATID = 0
+if DEFAULTSPECIES == 'Cat':
+    DEFAULTANIMALNAME = DEFAULTSPECIES + ' ' + str(DEFAULTCATID)
+elif DEFAULTSPECIES == 'Rat':
+    DEFAULTANIMALNAME = DEFAULTSPECIES + ' ' + str(DEFAULTRATID)
+else:
+    raise ValueError, 'unknown species %r' % DEFAULTSPECIES
+
 DEFAULTTRACKID = '7c'
 RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording/Run
-SLASH = '/' # use forward slashes instead of having to use double backslashes
-TAB = '    ' # 4 spaces
-
 DEFAULTMOVIEPATH = 'C:/pub/Movies/'
 DEFAULTMOVIENAME = 'mseq32.m'
 
+DEFAULTSYSTEMNAME = 'example model system'
+
 DEFAULTCODETRES = 20000 # us
 DEFAULTCODEWORDLENGTH = 10 # in bits
+
+SLASH = '/' # use forward slashes instead of having to use double backslashes
+TAB = '    ' # 4 spaces
 
 import os
 import sys
@@ -50,33 +61,36 @@ mpl.interactive(True)
 
 
 class Data(object): # use 'new-style' classes
-    """Abstract data class. Data can have multiple Cats"""
+    """Abstract data class. Data can have multiple Animals in it"""
     def __init__(self, dataPath=DEFAULTDATAPATH):
         self.level = 0 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         self.name = 'Data'
         self.path = dataPath
-        self.c = {} # store Cats in a dictionary
+        self.a = {} # store Animals in a dictionary
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
     def writetree(self, string):
-        """Write to self's tree buffer and to parent's too"""
+        """Write to self's tree buffer"""
         self.treebuf.write(string)
         # Data has no parent to write to
     def load(self):
 
-        from Cat import Cat
+        from Animal import Cat, Rat
 
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        catNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.startswith('Cat ') ] # os.listdir() returns all dirs AND files
-        for catName in catNames:
-            cat = Cat(id=None, name=catName, parent=self) # make an instance using just the catName (let it figure out the cat id)
-            cat.load() # load the Cat
-            self.c[cat.id] = cat # save it
-        #if len(self.c) == 1:
-        #   self.c = self.c.values[0] # pull it out of the dictionary
+        dirnames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) ] # os.listdir() returns all dirs AND files
+        for dirname in dirnames:
+            if dirname.startswith('Cat '):
+                cat = Cat(name=dirname, parent=self) # make an instance using just the dirname
+                cat.load() # load the Cat
+                self.a[cat.name] = cat # save it, using its (dir)name as the dict key
+            elif dirname.startswith('Rat '):
+                rat = Rat(name=dirname, parent=self) # make an instance using just the dirname
+                rat.load() # load the Rat
+                self.a[rat.name] = rat # save it, using its (dir)name as the dict key
 
 _data = Data() # init a default Data object to use as a container for everything that falls under the data object hierarchy
 
@@ -288,7 +302,7 @@ def str2(data):
         if len(s) == 1:
             s = '0'+s # add a leading zero for single digits
 '''
-def pad0s(val, ndigits):
+def pad0s(val, ndigits=2):
     """Returns a string rep of val, padded with enough leading 0s
     to give you a string rep with ndigits in it"""
     val = str(val)

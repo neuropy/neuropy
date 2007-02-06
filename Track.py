@@ -9,28 +9,32 @@ class Track(object):
     """A Track can have multiple Recordings"""
     def __init__(self, id=DEFAULTTRACKID, name=None, parent=None):
 
-        from Cat import Cat
+        from Animal import Cat, Rat
 
         self.level = 2 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         if parent == None:
             try:
-                self.c = _data.c[DEFAULTCATID] # see if the default Cat has already been init'd
-            except KeyError:
-                self.c = Cat() # init the default Cat...
-                _data.c[self.c.id] = self.c  # ...and add it to the default Data object's list of Cats
+                self.a = _data.a[DEFAULTANIMALNAME] # see if the default Animal has already been init'd
+            except KeyError: # it hasn't, init the default animal, save it in self.a, and add it to _data.a
+                if DEFAULTSPECIES == 'Cat':
+                    defaultanimal = Cat(id=DEFAULTCATID, parent=_data)
+                elif DEFAULTSPECIES == 'Rat':
+                    defaultanimal = Rat(id=DEFAULTRATID, parent=_data)
+                self.a = defaultanimal
+                _data.a[defaultanimal.name] = defaultanimal
         else:
-            self.c = parent # save parent Cat object
+            self.a = parent # save parent Animal object
         if id is not None:
-            name = self.id2name(self.c.path, id) # use the id to get the name
+            name = self.id2name(self.a.path, id) # use the id to get the name
         elif name is not None:
             id = self.name2id(name) # use the name to get the id
         else:
             raise ValueError, 'Track id and name can\'t both be None'
         self.id = id
         self.name = name
-        self.path = self.c.path + self.name + SLASH
-        self.c.t[self.id] = self # add/overwrite this Track to its parent's dict of Tracks, in case this Track wasn't loaded by its parent
+        self.path = self.a.path + self.name + SLASH
+        self.a.t[self.id] = self # add/overwrite this Track to its parent Animal's dict of Tracks, in case this Track wasn't loaded by its parent
         self.r = {} # store Recordings in a dictionary
     def tree(self):
         """Print tree hierarchy"""
@@ -38,7 +42,7 @@ class Track(object):
     def writetree(self, string):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
-        self.c.writetree(string)
+        self.a.writetree(string)
     def id2name(self, path, id):
         name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith('Track '+str(id)) ]
         if len(name) != 1:

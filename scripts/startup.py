@@ -103,9 +103,13 @@ except NameError: # we're running in some environment where shell isn't defined,
     pass
 
 def refresh(modname):
-    """Deletes all modules with 'modname' in their file path (mod.__file__), then re-imports 'modname' as a module.
+    """Deletes all modules with 'modname' in their file path (mod.__file__).
+    Also, deletes any objects that depended on modname. Then re-imports 'modname' as a module.
     'modname' need not have been previously imported.
      WARNING: Seems to cause problems in IPython"""
+    import __main__
+    md = __main__.__dict__
+
     print 'refreshing %s' % modname
     for key, mod in sys.modules.items():
         try:
@@ -114,6 +118,12 @@ def refresh(modname):
                 del sys.modules[key]
         except AttributeError: # some modules don't have a .__file__ attrib
             pass
+
+    for key in md.keys(): # for all names in the namespace
+        if repr(md[key]).count(modname): # if modname shows up in this object's repr, ie if this object depends on modname
+            del md[key] # delete the object
+            #print 'deleted object:', key
+
     __import__(modname, globals(), locals(), []) # this is equivalent to "import modname", yet accepts a string for modname
     print '%s refreshed' % modname
 
@@ -144,3 +154,4 @@ _original = __main__.__dict__.keys()
 print 'importing neuropy'
 import neuropy
 from neuropy import *
+from neuropy import _data # ensure it's imported, in spite of leading _, useful for user examination of default Data object

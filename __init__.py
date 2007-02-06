@@ -6,7 +6,7 @@ r"""Tools for analyzing experimental and model neuronal and stimulus data in pyt
 
                 Data              0                Model
                   |                                  |
-                 Cat              1               System
+                Animal            1               System
                   |                                  |
                 Track             2                  |
                   |                                  |
@@ -22,8 +22,9 @@ __author__ = "Martin Spacek"
 #print 'importing neuropy'
 
 from Core import *
+from Core import _data # ensure it's imported, in spite of leading _, useful for user examination of default Data object
 
-from Cat import Cat
+from Animal import Cat, Rat
 from System import System
 from Track import Track
 from Recording import Recording
@@ -44,11 +45,11 @@ t.load()'''
 print 'Initing and loading Recording(71):'
 r71 = Recording(71)
 r71.load()
-'''
+''''''
 print 'Initing and loading Recording(75):'
 r75 = Recording(75)
 r75.load()
-'''
+''''''
 print 'Initing and loading Recording(76):'
 r76 = Recording(76)
 r76.load()
