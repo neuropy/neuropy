@@ -9,7 +9,7 @@ Schneidman stuff:
         - maybe map out some kind of attractors in bitspace
     - maybe mess around with higher bit codes than just binary, like trinary, quaternary, which reflect more accurately the number of spikes in each bin for each neuron
     - rename all instances of binarray to binmatrix (or binmat) in cases where it's 2D (which is most of the time)
-
+    - make plotnspikingPMFs use nsamples so you get a nice average with errorbars
 
 - make Neuron.append() in place, and ensure whenever it's used, that's it's used on a copied Neuron
 - do analyses across Recordings, using Neuron.append(), to increase significance

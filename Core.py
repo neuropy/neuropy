@@ -305,6 +305,8 @@ def str2(data):
 def pad0s(val, ndigits=2):
     """Returns a string rep of val, padded with enough leading 0s
     to give you a string rep with ndigits in it"""
+    if val.__class__ != int:
+        raise ValueError, '%r isn\'t an int' % val
     val = str(val)
     nzerostoadd = ndigits - len(val)
     val = '0'*nzerostoadd + val
@@ -1076,6 +1078,14 @@ class neuropyAutoLocator(mpl.ticker.MaxNLocator):
     def __init__(self):
         #mpl.ticker.MaxNLocator.__init__(self, nbins=9, steps=[1, 2, 5, 10]) # standard autolocator
         mpl.ticker.MaxNLocator.__init__(self) # use MaxNLocator's defaults instead
+
+def normalize(seq):
+    """Normalizes a sequence, returning zeros if sum(seq) == 0"""
+    a = asarray(seq)
+    if a.sum() == 0: # numpy doesn't raise ZeroDivisionErrors for some reason
+        return zeros(a.shape) # just return zeros
+    else:
+        return a / float(a.sum()) # return it normalized
 
 def ensurenormed(p, atol=1e-8):
     """Ensures p is normalized. Returns p unchanged if it's already normalized,

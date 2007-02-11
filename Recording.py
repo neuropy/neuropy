@@ -44,23 +44,22 @@ class BaseRecording(object):
         self.treebuf.write(string)
         self.t.writetree(string)
     def id2name(self, path, id):
-        if len(str(id)) == 1: # if id is only 1 digit long
-            id = '0'+str(id) # add a leading zero
-        name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith(str(id)+' - ') ]
+        name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith(str(id)) ]
         if len(name) != 1:
             raise NameError, 'Ambiguous or non-existent Recording id: %s' % id
         else:
             name = name[0] # pull the string out of the list
         return name
     def name2id(self, name):
+        id = name.split()[0] # returns the first word in the name, using whitespace as separators
         try:
-            id = name[0:name.index(' - ')] # everything before the first ' - '
-        except ValueError: # ' - ' can't be found
-            raise ValueError, 'Badly formatted Recording name: %s' % name
-        try:
-            id = int(id) # convert string to int if possible
+            int(id[0]) # first character of Recording id better be an integer
         except ValueError:
-            pass # it's alphanumeric, leave it as a string
+            raise ValueError, 'First character of Recording name %r should be a number' % name
+        try:
+            id = int(id) # convert entire string to int if possible
+        except ValueError:
+            pass # it's alphanumeric (but starts with a number), leave it as a string
         return id
     def load(self):
 
@@ -91,8 +90,9 @@ class BaseRecording(object):
                 if rip.name.count(ripkeyword): # if the keyword is in the ripName
                     self.n = self.rip[rip.name].n # make it the default Rip
                     self.cn = self.rip[rip.name].cn # make it the default Rip for ConstrainedNeurons too
-        #if len(self.rip) == 1:
-        #   self.rip = self.rip.values[0] # pull it out of the dictionary
+        if len(self.rip) == 1: # there's only one rip, make it the default Rip, even if it doesn't have a ripkeyword in it
+            self.n = self.rip.values()[0].n # make it the default Rip
+            self.cn = self.rip.values()[0].cn # make it the default Rip for ConstrainedNeurons too
         try:
             firstexp = min(self.e.keys())
             lastexp = max(self.e.keys())
@@ -145,7 +145,10 @@ class PopulationRaster(object):
     def plot(self, left=None, width=200000):
         """Plots the raster, units are us wrt self.t0"""
         if left == None:
-            left = self.experimentmarkers[0] # init left window edge to first exp marker, ie start of first experiment
+            try:
+                left = self.experimentmarkers[0] # init left window edge to first exp marker, ie start of first experiment
+            except IndexError: # ain't no experiments, no associated markers
+                left = min([ neuron.spikes[0] for neuron in self.r.n.values() ]) # set it to the earliest spike in the population
         try:
             self.f
         except AttributeError: # prepare the fig if it hasn't been done already
@@ -445,7 +448,7 @@ class CodeCorrPDF(object):
         self.corrs = [ self.r.codecorr(cnis[cnii1], cnis[cnii2], tranges=self.tranges, **self.kwargs)
                        for cnii1 in range(0,ncneurons) for cnii2 in range(cnii1+1,ncneurons) ]
         '''
-    def plot(self, figsize=(7.5, 6.5), crange=None, nbins=100, normed='pdf'):
+    def plot(self, figsize=(7.5, 6.5), crange=[-0.05, 0.3], nbins=40, normed='pdf'):
         self.crange = crange
         self.nbins = nbins
         self.normed = normed
@@ -609,7 +612,8 @@ class Schneidman(object):
         """Given neuron indices (ordered LSB to MSB top to bottom), returns an array of the integer representation
         of the neuronal population binary code for each time bin"""
         if nis == None:
-            nis = random.sample(self.co.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
+            raise ValueError, 'nis is None'
+            #nis = random.sample(self.co.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
         return binarray2int(self.codes(nis=nis, kind='binary', **kwargs).c)
 
     def intcodesPDF(self, nis=None, **kwargs):
@@ -668,7 +672,7 @@ class Schneidman(object):
 
     def isinghist(self, nbits=10, ngroups=5, algorithm='CG', **kwargs):
         """Plots, in separate figure, hi and Jij histograms collected from ising models
-        of multiple subgroups of cells. See Schneidman fig 3b"""
+        of multiple subgroups of cells. Returns (his, Jijs). See Schneidman fig 3b"""
         ims = [] # holds Ising Model objects
         his = []
         Jijs = []
@@ -732,6 +736,12 @@ class Schneidman(object):
     def plotnspikingPMFs(self, nis=None, xrange=[-0.5, 15], **kwargs):
         """Plots nspikingPMF, for both observed and shuffled (forcing independence) codes.
         See 2006 Schneidman fig 1e"""
+        if nis == None:
+            niswasNone = True
+            nis = random.sample(self.co.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
+            print 'nis = %r' % nis
+        else:
+            niswasNone = False
         observedpnspiking, observedbins = self.nspikingPMF(nis=nis, shufflecodes=False, **kwargs)
         indeppnspiking, indepbins = self.nspikingPMF(nis=nis, shufflecodes=True, **kwargs)
         assert (observedbins == indepbins).all() # paranoid schizo, just checking
@@ -744,6 +754,8 @@ class Schneidman(object):
         a.plot(indepbins, indeppnspiking, 'b.-')
         titlestr = 'PMF of observing n cells spiking in the same time bin'
         titlestr += '\n%s' % lastcmd()
+        if niswasNone:
+            titlestr += ', nis: %r' % nis
         a.set_title(titlestr)
         a.legend(('observed', 'indep (shuffled)'))
         a.set_yscale('log')
@@ -855,6 +867,7 @@ class Schneidman(object):
             a.set_title('%s\nneurons: %s' % (lastcmd(), self.nis))# + missingcodetext)
             a.set_xlabel('observed population code probability')
             a.set_ylabel('expected population code probability')
+            a.set_ylim(ymin=10**-11, yman=10**0) # this makes all plots consistent, some might be missing a scatter point or two
             a.text(0.99, 0.01, 'DJS=%.4f' % DJS(self.pobserved, self.pexpected), # add DJS to bottom right of plot
                 transform = a.transAxes,
                 horizontalalignment = 'right',
@@ -894,7 +907,7 @@ class Schneidman(object):
     Scatter = innerclass(Scatter)
 
     def DJShist(self, nbits=DEFAULTCODEWORDLENGTH, ngroups=5, models=['indep', 'ising'],
-                shufflecodes=False, algorithm='CG', **kwargs):
+                logrange=(-4, 0), nbins=50, shufflecodes=False, algorithm='CG', **kwargs):
         """Plots Jensen-Shannon divergence histograms for ngroups random groups of cells, each of length nbits.
         See Schneidman figure 2b"""
         DJSs = {}
@@ -903,31 +916,28 @@ class Schneidman(object):
         pd = wx.ProgressDialog(title='DJShist progress', message='', maximum=ngroups*len(models), # create a progress dialog
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
         for groupi in range(ngroups): # for each group of nbits cells
-            for modeli, model in enumerate(models): # for each model
+            nis = random.sample(self.co.nis, nbits) # randomly sample nbits of the Schneidman object's nis attrib
+            for modeli, model in enumerate(models): # for each model, use the same nis
                 cancel = not pd.Update(groupi*len(models)+modeli, newmsg='groupi = %d\nmodel = %s' % (groupi, model))
                 if cancel:
                     pd.Destroy()
                     return
-                nis = random.sample(self.co.nis, nbits) # randomly sample nbits of the Schneidman object's nis attrib
                 so = self.Scatter(nis=nis, model=model, randomneurons=False,
                              shufflecodes=shufflecodes, algorithm=algorithm, **kwargs)
                 DJSs[model].append(DJS(so.pobserved, so.pexpected))
         pd.Destroy()
 
         # histogram them in logspace
-        logrange = (-4, 0)
-        nbins = 50
-        normed = False
         x = np.logspace(start=logrange[0], stop=logrange[1], num=nbins, endpoint=True, base=10.0)
         n = {} # stores a list of the bin heights in a separate key for each model
         for model in models:
-            n[model] = histogram(DJSs[model], bins=x, normed=normed)[0]
+            n[model] = histogram(DJSs[model], bins=x, normed=False)[0]
         color = {'indep': 'b', 'ising': 'r'} # dict that maps from model name to color
 
         # then plot them both on the same axes
         f = figure()
         a = f.add_subplot(111)
-        a.hold(True)
+        #a.hold(True)
         barwidths = list(diff(x)) # each bar will have a different width, convert to list so you can append
         # need to add one more entry to barwidth to the end to get nbins of them:
         barwidths.append(0) # don't display the last one
@@ -944,25 +954,26 @@ class Schneidman(object):
         a.set_xlabel('DJS (bits)')
         a.legend([ bars[model][0] for model in models ], models ) # grab the first bar for each model, label it with the model name
 
-    def S1INvsN(self, minN=4, maxN=15, nsamples=10, tres=DEFAULTCODETRES):
+    def S1INvsN(self, minN=4, maxN=15, maxnsamples=10, tres=DEFAULTCODETRES):
         """Plots the average independent cell entropy S1 and average network multi-information IN (IN = S1 - SN)
         vs network size N. IN is how much less entropy there is in the system due to correlated network activity.
-        For each network size up to maxN, Averages S1 and IN over nsamples number of groups at each value of N"""
+        For each network size up to maxN, Averages S1 and IN over maxnsamples (or less if that many aren't possible)
+        number of groups at each value of N"""
         S1mean = [] # as f'n of N
         INmean = [] # as f'n of N
         Ns = range(minN, maxN+1) # network sizes from minN up to maxN
         #tstart = time.clock()
-        pd = wx.ProgressDialog(title='S1INvsN progress', message='', maximum=len(Ns)*nsamples, # create a progress dialog
+        pd = wx.ProgressDialog(title='S1INvsN progress', message='', maximum=len(Ns)*maxnsamples, # create a progress dialog
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
         for Ni, N in enumerate(Ns): # for all network sizes
-            #print 'N:', N
-            #t1 = time.clock()
-            niss = nCrsamples(objects=self.neurons.keys(), r=N, nsamples=nsamples) # list of lists of neuron indices
-            #print 'sampling took: %f sec' % (time.clock()-t1)
+            # get a list of lists of neuron indices
+            niss = nCrsamples(objects=self.neurons.keys(),
+                              r=N, # pick N neurons
+                              maxnsamples=min(nCr(self.nneurons, N), maxnsamples) ) # do it at most maxnsamples times
             S1s = []
             INs = []
             for nisi, nis in enumerate(niss):
-                cancel = not pd.Update(Ni*nsamples+nisi, newmsg='N = %d\nsamplei = %d' % (N, nisi))
+                cancel = not pd.Update(Ni*maxnsamples+nisi, newmsg='N = %d\nsamplei = %d' % (N, nisi))
                 if cancel:
                     pd.Destroy()
                     return
@@ -1089,7 +1100,7 @@ class Schneidman(object):
         """Does Schneidman Figure 5b. Averages over as many as maxnsamples different
         groups of N cells for each N+1th cell in Nplus1s,
         all done for different values of N up to maxN"""
-        if Nplus1s == None: # list of all neurons that will be treated as the N+1th neuron
+        if Nplus1s == None: # list of all indices of neurons that will be treated as the N+1th neuron
             Nplus1s = self.co.nis
         else:
             Nplus1s = toiter(Nplus1s)
@@ -1151,7 +1162,7 @@ class Schneidman(object):
         a.set_ylim(1e-3, 1e1)
         a.set_xlabel('Number of cells')
         a.set_ylabel('mutualinfo(N, N+1th) / entropy(N+1th)')
-        a.set_title('fraction of info that the N+1th provide about the Nth cell\n%s' % lastcmd())
+        a.set_title('fraction of info that N cells provide about the N+1th cell\n%s' % lastcmd())
         a.text(0.99, 0.98, 'Nc=%d' % np.round(10**xintersect), # add text box to upper right corner of axes
             transform = a.transAxes,
             horizontalalignment = 'right',
@@ -1192,7 +1203,7 @@ class Schneidman(object):
             a2.set_ylabel('count')
         return
 
-    def _checkcell(self, ni=None, othernis=None):
+    def _checkcell(self, ni=None, othernis=None, shufflecodes=False):
         """Returns the joint pdf of cell ni activity and the number of cells in
         othernis being active at the same time. ni should not be in othernis"""
         assert ni not in othernis
@@ -1202,17 +1213,26 @@ class Schneidman(object):
         nothers = len(othernis)
 
         nicode = self.co.c[nii] # 0s and 1s, this picks out the row in the binary code array that corresponds to ni
-        nothersactive = self.co.c[otherniis].sum(axis=0) # anywhere from 0 up to and including nothers
+        othercodes = self.co.c[otherniis]
+        if shufflecodes:
+            nicode = asarray(shuffle(nicode))
+            othercodes = asarray(shuffle(othercodes))
+        nothersactive = othercodes.sum(axis=0) # anywhere from 0 up to and including nothers
 
         # build up joint pdf of the nicode and nothersactive
         xedges = np.array([0, 1, 2]) # values 0 and 1, plus 2 which is needed as the rightmost bin edge for histogram2d (annoying)
         yedges = arange(nothers+2) # anywhere from 0 up to and including nothers, plus nothers+1 as the rightmost bin edge
         bins = [xedges, yedges]
-        jpdf, xedgesout, yedgesout = histogram2d(nicode, nothersactive, bins, normed='pmf') # generate joint pdf, nicode are in the rows, nothersactive are in the columns
 
+        jpdf, xedgesout, yedgesout = histogram2d(nicode, nothersactive, bins, normed=False) # generate joint pdf, nicode are in the rows, nothersactive are in the columns, leave it unnormalized, just counts
+
+        # now, normalize each column separately, so that say, for nothersactive==5, p(checkcell==0)+p(checkcell==1) == 1.0
+        jpdf = np.float64(jpdf) # convert to floats, updated entries are trunc'd to ints
+        for coli in range(jpdf.shape[-1]):
+            jpdf[:, coli] = normalize(jpdf[:, coli]) # save the normalized column back to the jpdf
         return jpdf
 
-    def checkcells(self, nis=None, othernis=None, nothers=14, nsamples=10):
+    def checkcells(self, nis=None, othernis=None, nothers=14, nsamples=10, shufflecodes=False):
         """Plots the probability of each cell (in nis) being active vs. the number of
         other active cells (in the Recording) at that time. For each ni, an average over
         nsamples, each being a different sample of nothers from othernis.
@@ -1237,7 +1257,7 @@ class Schneidman(object):
 
             jpdfs = []
             for othernis in otherniss: # collect jpdfs across all random samples
-                jpdf = self._checkcell(ni=ni, othernis=othernis)
+                jpdf = self._checkcell(ni=ni, othernis=othernis, shufflecodes=shufflecodes)
                 jpdfs.append(jpdf)
 
             jpdfs = asarray(jpdfs) # this is a nsamples x 2 x (nothers+1) matrix
@@ -1248,11 +1268,16 @@ class Schneidman(object):
             f = figure()
             gcfm().frame.SetTitle('%s for ni=%d' % (lastcmd(), ni))
             a = f.add_subplot(111)
-            a.plot(arange(nothers+1), jpdfmean[1], 'k.-')
-            # errorbar() is buggy and unpredictable for some reason!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            #a.errorbar(arange(nothers+1), jpdfmean[1], fmt='k.-', yerr=jpdfstd[1]) # jpdfmean[1] is mean prob of getting a 1 for ni, as a f'n of N other cells active, jpdfstd[1] is stdev of prob of getting a 1 for ni, as a f'n of N other cells active
+            a.hold(True)
+            #a.plot(arange(nothers+1), jpdfmean[1], 'k.-') # jpdfmean[1] is the marginal pdf of getting a 1 for the check cell as a f'n of ncellsactive
+            a.errorbar(arange(nothers+1), jpdfmean[1], fmt='k.-', yerr=jpdfstd[1])
 
-            a.set_title('%s\nni=%d, othernis=%r, nsamples=%d' % (lastcmd(), ni, othernis, nsamples))
+            titlestr = '%s\nni=%d' % (lastcmd(), ni)
+            if nsamples == 1:
+                titlestr += ', othernis=%r' % othernis
+            else:
+                titlestr += ', nsamples=%d' % nsamples
+            a.set_title(titlestr)
             a.set_xlabel('Number of other active cells')
             a.set_ylabel('Probability of cell ni being active')
 

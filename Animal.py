@@ -30,9 +30,9 @@ class Animal(object):
 
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        trackNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.startswith('Track ') ]
-        for trackName in trackNames:
-            track = Track(id=None, name=trackName, parent=self) # make an instance using just the track name (let it figure out the track id)
+        dirnames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.startswith('Track ') ]
+        for dirname in dirnames:
+            track = Track(id=None, name=dirname, parent=self) # make an instance using just the track name (let it figure out the track id)
             track.load() # load the Track
             self.t[track.id] = track # save it
         #if len(self.t) == 1:
@@ -42,9 +42,9 @@ class Animal(object):
 class Cat(Animal):
     """This Animal is a Cat"""
     def __init__(self, id=DEFAULTCATID, parent=_data):
-        id = pad0s(id, ndigits=2) # returns a string
-        name = 'Cat ' + id
-        self.id = int(id) # save it as an int
+        #id = pad0s(id, ndigits=2) # returns a string
+        name = 'Cat ' + str(id)
+        self.id = int(id) # save it as an int (this will again remove any leading zeros)
         super(Cat, self).__init__(name=name, parent=parent)
         #self.kind = 'Cat'
 
@@ -52,8 +52,8 @@ class Cat(Animal):
 class Rat(Animal):
     """This Animal is a Rat"""
     def __init__(self, id=DEFAULTRATID, parent=_data):
-        id = pad0s(id, ndigits=2) # returns a string
-        name = 'Rat ' + id
-        self.id = int(id) # save it as an int
+        #id = pad0s(id, ndigits=2) # returns a string
+        name = 'Rat ' + str(id)
+        self.id = int(id) # save it as an int (this will again remove any leading zeros)
         super(Rat, self).__init__(name=name, parent=parent)
         #self.kind = 'Rat'
