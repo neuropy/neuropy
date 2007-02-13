@@ -867,7 +867,7 @@ class Schneidman(object):
             a.set_title('%s\nneurons: %s' % (lastcmd(), self.nis))# + missingcodetext)
             a.set_xlabel('observed population code probability')
             a.set_ylabel('expected population code probability')
-            a.set_ylim(ymin=10**-11, yman=10**0) # this makes all plots consistent, some might be missing a scatter point or two
+            a.set_ylim(ymin=10**-11, ymax=10**0) # this makes all plots consistent, some might be missing a scatter point or two
             a.text(0.99, 0.01, 'DJS=%.4f' % DJS(self.pobserved, self.pexpected), # add DJS to bottom right of plot
                 transform = a.transAxes,
                 horizontalalignment = 'right',
@@ -959,8 +959,8 @@ class Schneidman(object):
         vs network size N. IN is how much less entropy there is in the system due to correlated network activity.
         For each network size up to maxN, Averages S1 and IN over maxnsamples (or less if that many aren't possible)
         number of groups at each value of N"""
-        S1mean = [] # as f'n of N
-        INmean = [] # as f'n of N
+        S1ss= [] # as f'n of N
+        INss = []
         Ns = range(minN, maxN+1) # network sizes from minN up to maxN
         #tstart = time.clock()
         pd = wx.ProgressDialog(title='S1INvsN progress', message='', maximum=len(Ns)*maxnsamples, # create a progress dialog
@@ -969,7 +969,7 @@ class Schneidman(object):
             # get a list of lists of neuron indices
             niss = nCrsamples(objects=self.neurons.keys(),
                               r=N, # pick N neurons
-                              maxnsamples=min(nCr(self.nneurons, N), maxnsamples) ) # do it at most maxnsamples times
+                              nsamples=min(nCr(self.nneurons, N), maxnsamples) ) # do it at most maxnsamples times
             S1s = []
             INs = []
             for nisi, nis in enumerate(niss):
@@ -989,19 +989,25 @@ class Schneidman(object):
                 assert S1 > SN or approx(S1, SN), 'S1 is %.20f, SN is %.20f' % (S1, SN) # better be, indep model assumes the least structure
                 IN = S1 - SN
                 #print S1, SN, IN
-                S1s.append(S1)
-                INs.append(IN)
-            S1mean.append(asarray(S1s).mean())
-            INmean.append(asarray(INs).mean())
+                S1s.append(S1 / tres * 1e6) # convert to bits/sec
+                INs.append(IN / tres * 1e6)
+            S1ss.append(S1s)
+            INss.append(INs)
         pd.Destroy()
-        S1mean = asarray(S1mean) / tres * 1e6 # convert to bits/sec
-        INmean = asarray(INmean) / tres * 1e6 # convert to bits/sec
+        S1mean = [ asarray(S1s).mean() for S1s in S1ss ]
+        S1std = [ asarray(S1s).std() for S1s in S1ss ]
+        INmean = [ asarray(INs).mean() for INs in INss ]
+        INstd = [ asarray(INs).std() for INs in INss ]
         f = figure()
         gcfm().frame.SetTitle(lastcmd())
         a = f.add_subplot(111)
         a.hold(True)
-        a.plot(Ns, S1mean, 'b.')
-        a.plot(Ns, INmean, 'r.')
+        for N, S1s in zip(Ns, S1ss): # plot all the samples before plotting the means with errorbars
+            a.plot([N]*len(S1s), S1s, '.', color='lightblue')
+        for N, INs in zip(Ns, INss):
+            a.plot([N]*len(INs), INs, '.', color='pink')
+        S1line = a.errorbar(Ns, S1mean, yerr=S1std, fmt='b.')[0]
+        INline = a.errorbar(Ns, INmean, yerr=INstd, fmt='r.')[0]
         # do some linear regression in log10 space
         mS1, bS1 = sp.polyfit(log10(Ns), log10(S1mean), 1) # returns slope and y intercept
         mIN, bIN = sp.polyfit(log10(Ns), log10(INmean), 1)
@@ -1009,8 +1015,8 @@ class Schneidman(object):
         x = array([-1, 3]) # define x in log10 space, this is really [0.1, 1000]
         yS1 = mS1*x + bS1 # y = mx + b
         yIN = mIN*x + bIN
-        plot(10.0**x, 10.0**yS1, 'b-') # raise them to the power to make up for the fact that both the x and y scales will be log
-        plot(10.0**x, 10.0**yIN, 'r-')
+        a.plot(10.0**x, 10.0**yS1, 'b-') # raise them to the power to make up for the fact that both the x and y scales will be log
+        a.plot(10.0**x, 10.0**yIN, 'r-')
         a.set_xscale('log')
         a.set_yscale('log')
         a.set_xlim(1e0, 1e3)
@@ -1018,7 +1024,7 @@ class Schneidman(object):
         a.set_xlabel('Number of cells')
         a.set_ylabel('bits / sec')
         a.set_title('S1 & IN vs N\n%s' % lastcmd())
-        a.legend(('S1, slope=%.3f' % mS1, 'IN, slope=%.3f' % mIN), loc='lower right')
+        a.legend((S1line, INline), ('S1, slope=%.3f' % mS1, 'IN, slope=%.3f' % mIN), loc='lower right')
         a.text(0.99, 0.98, 'Nc=%d' % np.round(10**xintersect), # add text box to upper right corner of axes
             transform = a.transAxes,
             horizontalalignment = 'right',

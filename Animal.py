@@ -46,7 +46,6 @@ class Cat(Animal):
         name = 'Cat ' + str(id)
         self.id = int(id) # save it as an int (this will again remove any leading zeros)
         super(Cat, self).__init__(name=name, parent=parent)
-        #self.kind = 'Cat'
 
 
 class Rat(Animal):
@@ -56,4 +55,3 @@ class Rat(Animal):
         name = 'Rat ' + str(id)
         self.id = int(id) # save it as an int (this will again remove any leading zeros)
         super(Rat, self).__init__(name=name, parent=parent)
-        #self.kind = 'Rat'

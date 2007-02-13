@@ -1098,7 +1098,7 @@ def ensurenormed(p, atol=1e-8):
         p /= float(psum)
     return p
 
-def logy(x, y):
+def logy(x, base=10):
     """Performs log of x base y"""
     return log(x)/log(y)
 
