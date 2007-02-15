@@ -734,6 +734,7 @@ class Schneidman(object):
         if nis == None:
             niswasNone = True
             nis = random.sample(self.co.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
+            nis.sort()
             print 'nis = %r' % nis
         else:
             niswasNone = False
@@ -1137,7 +1138,7 @@ class Schneidman(object):
                         return
                     counter += 1
         pd.Destroy()
-        IdivSreshaped = IdivS.reshape(maxN, nNplus1s*maxnsamples) # reshape such that you collapse all Nplus1s and samples into a single dimension (columns)
+        IdivSreshaped = IdivS.reshape(maxN, nNplus1s*maxnsamples) # reshape such that you collapse all Nplus1s and samples into a single dimension (columns), The N are still in the rows
         IdivSmeans = IdivSreshaped.mean(axis=1) # average over all Nplus1s and all samples. Values that are masked out will be ignored
         IdivSstds = IdivSreshaped.std(axis=1) # find stdev for the same
         assert IdivSmeans.shape == (maxN,)
@@ -1148,8 +1149,9 @@ class Schneidman(object):
         gcfm().frame.SetTitle(lastcmd())
         a = f.add_subplot(111)
         a.hold(True)
-        #a.plot(N, IdivSmeans, 'b.')
-        a.errorbar(N, IdivSmeans, fmt='b.', yerr=IdivSstds)
+        for n, row in zip(N, IdivSreshaped): # underplot the samples for each value of N
+            a.plot([n]*len(row), row, '.', color='lightblue')
+        a.errorbar(N, IdivSmeans, yerr=IdivSstds, fmt='b.') # now plot the means and stds
         # do some linear regression in log10 space
         m, b = sp.polyfit(log10(N), log10(IdivSmeans), 1) # returns slope and y intercept
         x = array([log10(0.9), 3]) # define x in log10 space, this is really [0.9, 1000]
@@ -1172,7 +1174,7 @@ class Schneidman(object):
             transform = a.transAxes,
             horizontalalignment = 'right',
             verticalalignment = 'bottom')
-
+        '''
         # plot the distributions of IdivSreshaped
         for ni, n in enumerate(N):
             f = figure()
@@ -1203,7 +1205,7 @@ class Schneidman(object):
             a2.set_xlabel('mutualinfo(N, N+1th) / entropy(N+1th)')
             a2.set_ylabel('count')
         return
-
+        '''
     def _checkcell(self, ni=None, othernis=None, shufflecodes=False):
         """Returns the joint pdf of cell ni activity and the number of cells in
         othernis being active at the same time. ni should not be in othernis"""
