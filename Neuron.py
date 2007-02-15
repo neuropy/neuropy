@@ -65,7 +65,7 @@ class BaseNeuron(object):
         f.close()
         self.nspikes = len(self.spikes)
         if self.nspikes == 0: # this Neuron has no spikes, not much of a Neuron as far as this Recording is concerened
-            self.spikes = np.append(self.nspikes, None) # add None to empty spike list
+            self.spikes = np.append(self.nspikes, None) # add None to empty spike list. Why None? Why not just leave it empty?
         #self.results = {} # a dictionary to store results in
         self.trange = self.spikes[0], self.spikes[-1]
         # then, maybe add something that loads the template for this neuron, as well as its modelled (or just guesstimated) location in 3D (or just 2D) coordinates in um, as well as cell type potentially

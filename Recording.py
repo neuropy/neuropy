@@ -397,11 +397,6 @@ class Codes(object):
         self.tranges = [ trange for codeso in codesos for trange in codeso.tranges ] # this tranges potentially holds multiple tranges from each codes objects, times the number of codes objects
         self.calc() # recalculate this code with its new set of tranges
     '''
-'''
-class CodeWords(object):
-    """What's this supposed to do?"""
-    pass
-'''
 
 class CodeCorrPDF(object):
     """A PDF of the correlations of the codes of all cell pairs in this Recording
@@ -1248,6 +1243,7 @@ class Schneidman(object):
         else:
             nis = toiter(nis)
 
+        Ns = arange(nothers+1)
         saved_othernis = copy(othernis) # save a copy so we can mess with the original
 
         for ni in nis:
@@ -1275,8 +1271,12 @@ class Schneidman(object):
             gcfm().frame.SetTitle('%s for ni=%d' % (lastcmd(), ni))
             a = f.add_subplot(111)
             a.hold(True)
-            #a.plot(arange(nothers+1), jpdfmean[1], 'k.-') # jpdfmean[1] is the marginal pdf of getting a 1 for the check cell as a f'n of ncellsactive
-            a.errorbar(arange(nothers+1), jpdfmean[1], fmt='k.-', yerr=jpdfstd[1])
+            # plot all the samples first
+            for jpdfsample in jpdfs: # iter over the hyperrows
+                a.plot(Ns, jpdfsample[1], '.', color='lightgrey') # marginal pdf of getting a 1 for the check cell
+            # plot the means and stds
+            a.errorbar(Ns, jpdfmean[1], yerr=jpdfstd[1], fmt='k.-') # marginal pdf of getting a 1 for the check cell
+            a.set_ylim(ymin=0, ymax=1)
 
             titlestr = '%s\nni=%d' % (lastcmd(), ni)
             if nsamples == 1:
