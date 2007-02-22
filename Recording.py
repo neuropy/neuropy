@@ -109,7 +109,9 @@ class PopulationRaster(object):
     jumpts are a sequence of timepoints (in us) that can then be quickly cycled
     through in the plot using keyboard controls.
     Defaults to absolute time origin (when acquisition began)"""
-    def __init__(self, recording=None, experiments=None, nis=None, jumpts=None, binwidth=None, relativet0=False):
+    def __init__(self, recording=None, experiments=None, nis=None,
+                 jumpts=None, binwidth=None, relativet0=False, units='msec',
+                 publication=False):
         self.r = recording
         if experiments == None:
             self.e = recording.e # dictionary
@@ -135,6 +137,12 @@ class PopulationRaster(object):
         self.jumpts = asarray(jumpts)
         self.jumpts.sort() # just in case jumpts weren't in sorted order for some reason
 
+        units2tconv = {'usec': 1e0, 'msec': 1e3, 'sec': 1e6}
+        self.units = units
+        self.tconv = units2tconv[units]
+
+        self.publication = publication
+
         self.neurons = self.r.n # still a dict
         if nis != None:
             self.nis = nis
@@ -155,25 +163,33 @@ class PopulationRaster(object):
             figheight = 1.25+0.2*len(self.nis)
             self.f = figure(figsize=(14, figheight))
             self.a = self.f.add_subplot(111)
-            self.a.xaxis.set_major_locator(neuropyAutoLocator()) # better behaved tick locator
             self.formatter = neuropyScalarFormatter() # better behaved tick label formatter
             self.formatter.thousandsSep = ',' # use a thousands separator
-            self.a.xaxis.set_major_formatter(self.formatter)
+            if not self.publication:
+                self.a.xaxis.set_major_locator(neuropyAutoLocator()) # better behaved tick locator
+                self.a.xaxis.set_major_formatter(self.formatter)
+                self.a.set_yticks([]) # turn off y axis
             gcfm().frame.SetTitle(lastcmd())
             self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
             self.tooltip.Enable(False) # leave disabled for now
             self.tooltip.SetDelay(0) # set popup delay in ms
             gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
-            self.a.set_xlabel('time (msec)')
-            self.a.set_yticks([]) # turn off y axis
-            self.yrange = (0, len(self.nis))
+            self.a.set_xlabel('time (%s)' % self.units)
+            if not self.publication:
+                self.yrange = (0, len(self.nis))
+            else:
+                self.a.set_ylabel('cell index') # not really cell id, it's the ii (the index into the id)
+                self.yrange = (-0.5, len(self.nis)-0.5)
             self.a.set_ylim(self.yrange)
             #aheight = min(0.025*len(self.nis), 1.0)
             bottominches = 0.75
             heightinches = 0.15+0.2*len(self.nis)
             bottom = bottominches / figheight
             height = heightinches / figheight
-            self.a.set_position([0.02, bottom, 0.96, height])
+            if not self.publication:
+                self.a.set_position([0.02, bottom, 0.96, height])
+            else:
+                self.a.set_position([0.05, bottom, 0.96, height])
             self.f.canvas.mpl_connect('motion_notify_event', self._onmotion)
             self.f.canvas.mpl_connect('key_press_event', self._onkeypress)
 
@@ -184,22 +200,25 @@ class PopulationRaster(object):
             estart = etrange[0]-self.t0
             eend = etrange[1]-self.t0
             if left <=  estart and estart <= left+width: # experiment start point is within view
-                startlines = self.a.vlines(x=estart/1e3, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp start, convert to ms
+                startlines = self.a.vlines(x=estart/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp start, convert to ms
                 startlines[0].set_color((0, 1, 0)) # set to bright green
             if left <= eend and eend <= left+width: # experiment end point is within view
-                endlines = self.a.vlines(x=eend/1e3, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp end, convert to ms
+                endlines = self.a.vlines(x=eend/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp end, convert t
                 endlines[0].set_color((1, 0, 0)) # set to bright red
         # plot the bin edges. Not taking into account self.t0 for now, assuming it's 0
         if self.plotbinedges:
             leftbinedge = (left // self.binwidth + 1)*self.binwidth
             binedges = arange(leftbinedge, left+width, self.binwidth)
-            binlines = self.a.vlines(x=binedges/1e3, ymin=self.yrange[0], ymax=self.yrange[1], fmt='b:') # convert to ms
+            binlines = self.a.vlines(x=binedges/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], fmt='b:') # convert t
         # plot the rasters
         for nii, ni in enumerate(self.nis):
             neuron = self.neurons[ni]
-            x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / 1e3 # make spike times always relative to t0, convert to ms
-            self.a.vlines(x=x, ymin=nii, ymax=nii+1, fmt='k-')
-        self.a.set_xlim(left/1e3, (left+width)/1e3) # convert from us to ms
+            x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / self.tconv # make spike times always relative to t0, convert t
+            if not self.publication:
+                self.a.vlines(x=x, ymin=nii, ymax=nii+1, fmt='k-')
+            else:
+                self.a.vlines(x=x, ymin=nii-0.5, ymax=nii+0.5, fmt='k-')
+        self.a.set_xlim(left/self.tconv, (left+width)/self.tconv) # convert t
     def _panx(self, npages=None, left=None):
         """Pans the raster along the x axis by npages, or to position left"""
         self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
@@ -219,13 +238,13 @@ class PopulationRaster(object):
     def _goto(self):
         """Bring up a dialog box to jump to timepoint, mark it with a dotted line"""
         ted = wx.TextEntryDialog(parent=None, message='Go to timepoint (ms):', caption='Goto',
-                                 defaultValue=str(int(round(self.left / 1e3))), #wx.EmptyString,
+                                 defaultValue=str(int(round(self.left / self.tconv))), #wx.EmptyString,
                                  style=wx.TextEntryDialogStyle, pos=wx.DefaultPosition)
         if ted.ShowModal() == wx.ID_OK: # if OK button has been clicked
             response = ted.GetValue()
             try:
                 left = float(response)
-                self.plot(left=left*1e3, width=self.width)
+                self.plot(left=left*self.tconv, width=self.width)
                 self.f.canvas.draw() # redraw the figure
             except ValueError: # response wasn't a valid number
                 pass
@@ -253,8 +272,8 @@ class PopulationRaster(object):
             neuron = self.neurons[ni]
             currentexp = None
             for e in self.e.values(): # for all experiments
-                estart = (e.trange[0]-self.t0)/1e3
-                eend = (e.trange[1]-self.t0)/1e3
+                estart = (e.trange[0]-self.t0)/self.tconv
+                eend = (e.trange[1]-self.t0)/self.tconv
                 if estart < event.xdata  < eend:
                     currentexp = e
                     break # don't need to check any of the other experiments
