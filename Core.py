@@ -1099,8 +1099,8 @@ def ensurenormed(p, atol=1e-8):
     return p
 
 def logy(x, base=10):
-    """Performs log of x base y"""
-    return log(x)/log(y)
+    """Performs log of x with specified base"""
+    return log(x)/log(base)
 
 def log_no_sing(x, subval=0.0, base=np.e):
     """Performs log on array x, ignoring any zeros in x to avoid singularities,

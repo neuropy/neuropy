@@ -950,6 +950,8 @@ class Schneidman(object):
         a.set_xlabel('DJS (bits)')
         a.legend([ bars[model][0] for model in models ], models ) # grab the first bar for each model, label it with the model name
 
+    #TODO: deltaDJShist()
+
     def S1INvsN(self, minN=4, maxN=15, maxnsamples=10, tres=DEFAULTCODETRES):
         """Plots the average independent cell entropy S1 and average network multi-information IN (IN = S1 - SN)
         vs network size N. IN is how much less entropy there is in the system due to correlated network activity.
@@ -957,19 +959,21 @@ class Schneidman(object):
         number of groups at each value of N"""
         S1ss= [] # as f'n of N
         INss = []
-        Ns = range(minN, maxN+1) # network sizes from minN up to maxN
+        N = range(minN, maxN+1) # network sizes from minN up to maxN
         #tstart = time.clock()
-        pd = wx.ProgressDialog(title='S1INvsN progress', message='', maximum=len(Ns)*maxnsamples, # create a progress dialog
+        nsamples = [ min(nCr(self.nneurons, r), maxnsamples) for r in N ] # nsamples as a f'n of N. For each value of N, take up to maxnsamples of all the other neurons, if that many are even possible
+
+        pd = wx.ProgressDialog(title='S1INvsN progress', message='', maximum=sum(nsamples), # create a progress dialog
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
-        for Ni, N in enumerate(Ns): # for all network sizes
+        for ni, n in enumerate(N): # for all network sizes
             # get a list of lists of neuron indices
             niss = nCrsamples(objects=self.neurons.keys(),
-                              r=N, # pick N neurons
-                              nsamples=min(nCr(self.nneurons, N), maxnsamples) ) # do it at most maxnsamples times
+                              r=n, # pick n neurons
+                              nsamples=nsamples[ni] ) # do it at most maxnsamples times
             S1s = []
             INs = []
             for nisi, nis in enumerate(niss):
-                cancel = not pd.Update(Ni*maxnsamples+nisi, newmsg='N = %d\nsamplei = %d' % (N, nisi))
+                cancel = not pd.Update(ni*maxnsamples+nisi, newmsg='N = %d\nsamplei = %d' % (n, nisi))
                 if cancel:
                     pd.Destroy()
                     return
@@ -992,21 +996,23 @@ class Schneidman(object):
         pd.Destroy()
         S1mean = [ asarray(S1s).mean() for S1s in S1ss ]
         S1std = [ asarray(S1s).std() for S1s in S1ss ]
+        S1sem = asarray(S1std) / sqrt(asarray(nsamples))
         INmean = [ asarray(INs).mean() for INs in INss ]
         INstd = [ asarray(INs).std() for INs in INss ]
+        INsem = asarray(INstd) / sqrt(asarray(nsamples))
         f = figure()
         gcfm().frame.SetTitle(lastcmd())
         a = f.add_subplot(111)
         a.hold(True)
-        for N, S1s in zip(Ns, S1ss): # plot all the samples before plotting the means with errorbars
-            a.plot([N]*len(S1s), S1s, '.', color='lightblue')
-        for N, INs in zip(Ns, INss):
-            a.plot([N]*len(INs), INs, '.', color='pink')
-        S1line = a.errorbar(Ns, S1mean, yerr=S1std, fmt='b.')[0]
-        INline = a.errorbar(Ns, INmean, yerr=INstd, fmt='r.')[0]
+        for n, S1s in zip(N, S1ss): # plot all the samples before plotting the means with errorbars
+            a.plot([n]*len(S1s), S1s, '_', markersize=4, color='lightblue')
+        for n, INs in zip(N, INss):
+            a.plot([n]*len(INs), INs, '_', markersize=4, color='pink')
+        S1line = a.errorbar(N, S1mean, yerr=S1sem, fmt='b.')[0]
+        INline = a.errorbar(N, INmean, yerr=INsem, fmt='r.')[0]
         # do some linear regression in log10 space
-        mS1, bS1 = sp.polyfit(log10(Ns), log10(S1mean), 1) # returns slope and y intercept
-        mIN, bIN = sp.polyfit(log10(Ns), log10(INmean), 1)
+        mS1, bS1 = sp.polyfit(log10(N), log10(S1mean), 1) # returns slope and y intercept
+        mIN, bIN = sp.polyfit(log10(N), log10(INmean), 1)
         xintersect = (bIN - bS1) / (mS1 - mIN)
         x = array([-1, 3]) # define x in log10 space, this is really [0.1, 1000]
         yS1 = mS1*x + bS1 # y = mx + b
@@ -1025,7 +1031,7 @@ class Schneidman(object):
             transform = a.transAxes,
             horizontalalignment = 'right',
             verticalalignment = 'top')
-        return S1mean, INmean, Ns
+        return S1mean, INmean, N
 
     def NMmutualinfo(self, nis=None, mis=None, Nbinarray=None, Mbinarray=None, verbose=False):
         """Calculates information that N cells provide about M cells (ie,
@@ -1092,7 +1098,7 @@ class Schneidman(object):
             print 'I', I
             print 'I/entropy', IdivS
 
-        if not 0.0 <= IdivS <= 1.0:
+        if not 0.0 <= IdivS <= 1.0+1e-10:
             import pdb; pdb.set_trace()
             print 'IdivS is out of range'
             print 'IdivS is %.16f' % IdivS
@@ -1138,24 +1144,26 @@ class Schneidman(object):
                         return
                     counter += 1
         pd.Destroy()
-        IdivSreshaped = IdivS.reshape(maxN, nNplus1s*maxnsamples) # reshape such that you collapse all Nplus1s and samples into a single dimension (columns), The N are still in the rows
-        IdivSmeans = IdivSreshaped.mean(axis=1) # average over all Nplus1s and all samples. Values that are masked out will be ignored
-        IdivSstds = IdivSreshaped.std(axis=1) # find stdev for the same
+        IdivS = IdivS.reshape(maxN, nNplus1s*maxnsamples) # reshape such that you collapse all Nplus1s and samples into a single dimension (columns). The N are still in the rows
+        #logIdivS = log10(IdivS)
+        IdivSmeans = IdivS.mean(axis=1) # average over all Nplus1s and all samples. Values that are masked are ignored
+        IdivSstds = IdivS.std(axis=1) # find stdev for the same
         assert IdivSmeans.shape == (maxN,)
         assert IdivSstds.shape == (maxN,)
+        IdivSsems = IdivSstds / sqrt(asarray(nsamples)*nNplus1s)
 
         # plot the figure with error bars
         f = figure()
         gcfm().frame.SetTitle(lastcmd())
         a = f.add_subplot(111)
         a.hold(True)
-        for n, row in zip(N, IdivSreshaped): # underplot the samples for each value of N
-            a.plot([n]*len(row), row, '.', color='lightblue')
-        a.errorbar(N, IdivSmeans, yerr=IdivSstds, fmt='b.') # now plot the means and stds
+        for n, row in zip(N, IdivS): # underplot the samples for each value of N
+            a.plot([n]*len(row), row, '_', markersize=4, color='deepskyblue')
+        a.errorbar(N, IdivSmeans, yerr=IdivSsems, fmt='b.') # now plot the means and sems
         # do some linear regression in log10 space
         m, b = sp.polyfit(log10(N), log10(IdivSmeans), 1) # returns slope and y intercept
         x = array([log10(0.9), 3]) # define x in log10 space, this is really [0.9, 1000]
-        y = m*x + b # y = mx + b
+        y = m*x + b
         xintersect = (0-b) / m # intersection point of regression line with y=1=10**0 line
         plot(10.0**x, 10.0**y, 'b-') # raise them to the power to make up for the fact that both the x and y scales will be log
         plot(10.0**x, [1e0]*2, 'r--') # plot horizontal line at y=1
@@ -1175,15 +1183,15 @@ class Schneidman(object):
             horizontalalignment = 'right',
             verticalalignment = 'bottom')
         '''
-        # plot the distributions of IdivSreshaped
+        # plot the distributions of IdivS
         for ni, n in enumerate(N):
             f = figure()
             gcfm().frame.SetTitle('%s IdivS distrib for N=%d' % (lastcmd(), n))
 
-            notmaskedis = IdivSreshaped[ni].mask==False # indexes the non-masked entries in IdivSreshaped, for this ni
+            notmaskedis = IdivS[ni].mask==False # indexes the non-masked entries in IdivS, for this ni
 
             a1 = f.add_subplot(211) # axes with linear bins
-            heights, bins = histogram(IdivSreshaped[ni, notmaskedis], bins=arange(0, 1, 0.02))
+            heights, bins = histogram(IdivS[ni, notmaskedis], bins=arange(0, 1, 0.02))
             barwidth = bins[1]-bins[0]
             a1.bar(left=bins, height=heights, width=barwidth, bottom=0, color='k')
             #a1.set_xlabel('mutualinfo(N, N+1th) / entropy(N+1th)')
@@ -1194,7 +1202,7 @@ class Schneidman(object):
             start = log10(0.001)
             stop = log10(1)
             bins = np.logspace(start=start, stop=stop, num=50, endpoint=True, base=10.0)
-            heights, bins = histogram(IdivSreshaped[ni, notmaskedis], bins=bins)
+            heights, bins = histogram(IdivS[ni, notmaskedis], bins=bins)
             barwidth = list(diff(bins)) # each bar will have a different width, convert to list so you can append
             # need to add one more entry to barwidth to the end to get nbins of them:
             #barwidth.append(barwidth[-1]) # not exactly correct
@@ -1235,7 +1243,7 @@ class Schneidman(object):
             jpdf[:, coli] = normalize(jpdf[:, coli]) # save the normalized column back to the jpdf
         return jpdf
 
-    def checkcells(self, nis=None, othernis=None, nothers=14, nsamples=10, shufflecodes=False):
+    def checkcells(self, nis=None, othernis=None, nothers=None, nsamples=10, shufflecodes=False):
         """Plots the probability of each cell (in nis) being active vs. the number of
         other active cells (in the Recording) at that time. For each ni, an average over
         nsamples, each being a different sample of nothers from othernis.
@@ -1244,8 +1252,16 @@ class Schneidman(object):
             nis = self.co.nis
         else:
             nis = toiter(nis)
-
-        Ns = arange(nothers+1)
+        if othernis == None:
+            othernis = self.co.nis
+        else:
+            othernis = toiter(nis)
+        if nothers == None:
+            less = 0
+            while nCr(len(othernis), len(othernis)-less) < nsamples:
+                less += 1
+            nothers = len(othernis) - 1 - less # -1 to remove ni, -less again to allow for at least nsamples combos of othernis
+        N = arange(nothers+1)
         saved_othernis = copy(othernis) # save a copy so we can mess with the original
 
         for ni in nis:
@@ -1264,9 +1280,10 @@ class Schneidman(object):
                 jpdf = self._checkcell(ni=ni, othernis=othernis, shufflecodes=shufflecodes)
                 jpdfs.append(jpdf)
 
-            jpdfs = asarray(jpdfs) # this is a nsamples x 2 x (nothers+1) matrix
+            jpdfs = asarray(jpdfs) # this is an nsamples x 2 x (1+nothers) matrix
             jpdfmean = jpdfs.mean(axis=0) # find the mean jpdf across all nsamples jpdfs
             jpdfstd = jpdfs.std(axis=0) # find the stdev across all nsamples jpdfs
+            jpdfsem = jpdfstd / sqrt(nsamples)
 
             # plot it
             f = figure()
@@ -1274,10 +1291,11 @@ class Schneidman(object):
             a = f.add_subplot(111)
             a.hold(True)
             # plot all the samples first
-            for jpdfsample in jpdfs: # iter over the hyperrows
-                a.plot(Ns, jpdfsample[1], '.', color='lightgrey') # marginal pdf of getting a 1 for the check cell
-            # plot the means and stds
-            a.errorbar(Ns, jpdfmean[1], yerr=jpdfstd[1], fmt='k.-') # marginal pdf of getting a 1 for the check cell
+            for jpdf in jpdfs: # iter over the hyperrows
+                a.plot(N, jpdf[1], '_', markersize=4, color=0.6) # marginal pdf of getting a 1 for the check cell
+            # plot the stdevs, means, and sems of marginal pdf of getting a 1 for the check cell
+            #a.errorbar(N, jpdfmean[1], yerr=jpdfstd[1], fmt=None, capsize=0, ecolor='grey')
+            a.errorbar(N, jpdfmean[1], yerr=jpdfsem[1], fmt='k.-')
             a.set_ylim(ymin=0, ymax=1)
 
             titlestr = '%s\nni=%d' % (lastcmd(), ni)
