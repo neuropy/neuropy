@@ -832,6 +832,19 @@ def getbinarytable(nbits=8):
         x.append(row)
     return cat(x)
 
+def enlarge(a, x=2, y=None):
+    """Enlarges 2D image array a using simple pixel repetition in both dimensions.
+    Enlarges by factor x horizontally and factor y vertically.
+    If y is left as None, uses factor x for both dimensions."""
+    a = asarray(a)
+    assert a.ndim == 2
+    if y == None:
+        y = x
+    for factor in (x, y):
+        assert factor.__class__ == int
+        assert factor > 0
+    return a.repeat(y, axis=0).repeat(x, axis=1)
+
 def charfind(string, char):
     """Finds char in string, returns matching indices. There's gotta be a built-in way to do this somewhere..."""
     assert len(char) == 1
