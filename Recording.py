@@ -871,19 +871,21 @@ class Schneidman(object):
             '''
             gcfm().frame.SetTitle(lastcmd())
             missingcodeis = (self.pobserved == 0).nonzero()[0]
+            nmissing = len(missingcodeis)
+            percentmissing = nmissing / float(2**self.nbits)*100
             missingcodetext = ''
-            if len(missingcodeis) != 0:
+            if nmissing != 0:
                 missingcodes = self.observedwords[missingcodeis]
                 pexpectedmissing = self.pexpected[missingcodeis]
                 maxpi = pexpectedmissing.argmax()
                 maxp = pexpectedmissing[maxpi]
                 maxpcode = self.expectedwords[missingcodeis[maxpi]]
-                missingcodetext += '\n nmissingcodes: %d, maxpmissingcode: (%r, pexpected=%.3g)' % (len(missingcodes), bin(maxpcode, minbits=self.nbits), maxp)
+                missingcodetext += '\n nmissingcodes: %d, maxpmissingcode: (%r, pexpected=%.3g)' % (nmissing, bin(maxpcode, minbits=self.nbits), maxp)
             a.set_title('%s\nneurons: %s' % (lastcmd(), self.nis))# + missingcodetext)
             a.set_xlabel('observed population code probability')
             a.set_ylabel('expected population code probability')
             a.set_ylim(ymin=10**-11, ymax=10**0) # this makes all plots consistent, some might be missing a scatter point or two
-            a.text(0.99, 0.01, 'DJS=%.4f' % DJS(self.pobserved, self.pexpected), # add DJS to bottom right of plot
+            a.text(0.99, 0.01, '%% missing=%.1f\nDJS=%.4f' % (percentmissing, DJS(self.pobserved, self.pexpected)), # add DJS to bottom right of plot
                 transform = a.transAxes,
                 horizontalalignment = 'right',
                 verticalalignment = 'bottom')
