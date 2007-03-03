@@ -925,53 +925,71 @@ class Schneidman(object):
 
     def DJShist(self, nbits=DEFAULTCODEWORDLENGTH, ngroups=5, models=['indep', 'ising'],
                 logrange=(-4, 0), nbins=50, shufflecodes=False, algorithm='CG', **kwargs):
-        """Plots Jensen-Shannon divergence histograms for ngroups random groups of cells, each of length nbits.
+        """Plots Jensen-Shannon divergence histograms and a histogram of their ratios for ngroups random groups of cells, each of length nbits.
         See Schneidman figure 2b"""
-        DJSs = {}
+        niss = [] # list of lists, each sublist is a group of neuron indices
+        DJSs = {} # hold the Jensen-Shannon divergences for different models and different groups of neurons
         for model in models:
             DJSs[model] = [] # init a dict with the model names as keys, and empty lists as values
         pd = wx.ProgressDialog(title='DJShist progress', message='', maximum=ngroups*len(models), # create a progress dialog
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
         for groupi in range(ngroups): # for each group of nbits cells
             nis = random.sample(self.co.nis, nbits) # randomly sample nbits of the Schneidman object's nis attrib
+            niss.append(nis)
             for modeli, model in enumerate(models): # for each model, use the same nis
                 cancel = not pd.Update(groupi*len(models)+modeli, newmsg='groupi = %d\nmodel = %s' % (groupi, model))
                 if cancel:
                     pd.Destroy()
                     return
                 so = self.Scatter(nis=nis, model=model, randomneurons=False,
-                             shufflecodes=shufflecodes, algorithm=algorithm, **kwargs)
+                                  shufflecodes=shufflecodes, algorithm=algorithm, **kwargs)
                 DJSs[model].append(DJS(so.pobserved, so.pexpected))
         pd.Destroy()
 
-        # histogram them in logspace
+        # now find the DJSratios between the two models, for each group of neurons
+        if len(models) == 2: # do it only if there's 2 models, otherwise it's indeterminate which two to take ratio of
+            DJSratios = asarray(DJSs.values()[1]) / asarray(DJSs.values()[0]) # 2nd model as a ratio of the 1st
+
+        # histogram DJSs and DJSratios in logspace
         x = np.logspace(start=logrange[0], stop=logrange[1], num=nbins, endpoint=True, base=10.0)
         n = {} # stores a list of the bin heights in a separate key for each model
         for model in models:
             n[model] = histogram(DJSs[model], bins=x, normed=False)[0]
+        nratios = histogram(DJSratios, bins=x, normed=False)[0] # bin heights for the DJSratios
         color = {'indep': 'b', 'ising': 'r'} # dict that maps from model name to color
-
-        # then plot them both on the same axes
-        f = figure()
-        a = f.add_subplot(111)
-        #a.hold(True)
         barwidths = list(diff(x)) # each bar will have a different width, convert to list so you can append
         # need to add one more entry to barwidth to the end to get nbins of them:
         barwidths.append(0) # don't display the last one
         #logbinwidth = (logrange[1]-logrange[0]) / float(nbins)
         #barwidths.append(10**(logrange[1]+logbinwidth) - x[-1]) # should be exactly correct
+
+        # plot DJSs of all models on the same axes
+        f1 = figure()
+        a1 = f1.add_subplot(111)
+        #a1.hold(True)
         bars = {}
         for model in models:
-            bars[model] = a.bar(left=x, height=n[model], width=barwidths, color=color[model],
-                                edgecolor=color[model])
-        a.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
+            bars[model] = a1.bar(left=x, height=n[model], width=barwidths, color=color[model],
+                                 edgecolor=color[model])
+        a1.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
         gcfm().frame.SetTitle(lastcmd())
-        a.set_title('Jensen-Shannon divergence histogram\n%s' % lastcmd())
-        a.set_ylabel('number of groups of %d cells' % nbits)
-        a.set_xlabel('DJS (bits)')
-        a.legend([ bars[model][0] for model in models ], models ) # grab the first bar for each model, label it with the model name
+        a1.set_title('Jensen-Shannon divergence histogram\n%s' % lastcmd())
+        a1.set_ylabel('number of groups of %d cells' % nbits)
+        a1.set_xlabel('DJS (bits)')
+        a1.legend([ bars[model][0] for model in models ], models ) # grab the first bar for each model, label it with the model name
 
-    #TODO: deltaDJShist()
+        # plot DJSratios
+        if len(models) == 2:
+            f2 = figure()
+            a2 = f2.add_subplot(111)
+            a2.bar(left=x, height=nratios, width=barwidths, color='g', edgecolor='g')
+            a2.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
+            gcfm().frame.SetTitle(lastcmd())
+            a2.set_title('Jensen-Shannon divergence ratios histogram\n%s' % lastcmd())
+            a2.set_ylabel('number of groups of %d cells' % nbits)
+            a2.set_xlabel('DJS ratio (%s / %s)' % (models[1], models[0]))
+
+        return niss, DJSs, DJSratios
 
     def S1INvsN(self, minN=4, maxN=15, maxnsamples=10, tres=DEFAULTCODETRES):
         """Plots the average independent cell entropy S1 and average network multi-information IN (IN = S1 - SN)
