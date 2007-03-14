@@ -782,7 +782,8 @@ class Schneidman(object):
     # if python ever gets class decorators, an inner class could be specified as:
     #@innerclass
     class Scatter(object):
-        def __init__(self, nis=None, nbits=None, model='indep', randomneurons=True, shufflecodes=False, algorithm='CG', **kwargs):
+        def __init__(self, nis=None, nbits=None, model='indep', randomneurons=True, shufflecodes=False,
+                     algorithm='CG', **kwargs):
             """Schneidman scatter analysis object. See Schneidman Figures 1f and 2a.
             Calculates the expected probabilities, assuming a model in ['indep', 'ising'],
             of all possible population codes vs their observed probabilities.
@@ -923,6 +924,11 @@ class Schneidman(object):
     # overwrite Scatter class def'n as an inner class of the current outer class Schneidman, can refer to __outer__ attrib
     Scatter = innerclass(Scatter)
 
+    def I1I2vsIN(self, N=10, ngroups=10, tres=DEFAULTCODETRES):
+        """Does Schneidman fig 2c. Plots I1/IN vs IN, as well as I2/In vs IN, for ngroups of cells"""
+        pass
+
+
     def DJShist(self, nbits=DEFAULTCODEWORDLENGTH, ngroups=5, models=['indep', 'ising'],
                 logrange=(-4, 0), nbins=50, shufflecodes=False, algorithm='CG', **kwargs):
         """Plots Jensen-Shannon divergence histograms and a histogram of their ratios for ngroups random groups of cells, each of length nbits.
@@ -994,7 +1000,7 @@ class Schneidman(object):
     def S1INvsN(self, minN=4, maxN=15, maxnsamples=10, tres=DEFAULTCODETRES):
         """Plots the average independent cell entropy S1 and average network multi-information IN (IN = S1 - SN)
         vs network size N. IN is how much less entropy there is in the system due to correlated network activity.
-        For each network size up to maxN, Averages S1 and IN over maxnsamples (or less if that many aren't possible)
+        For each network size up to maxN, averages S1 and IN over maxnsamples (or less if that many aren't possible)
         number of groups at each value of N"""
         S1ss= [] # as f'n of N
         INss = []

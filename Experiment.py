@@ -337,16 +337,14 @@ class ExperimentRevCorr(BaseExperiment):
 
 class ExperimentPopulationRaster(PopulationRaster):
     """A population raster limited to a single Experiment"""
-    def __init__(self, experiment, sortby='id'):
-        super(ExperimentPopulationRaster, self).__init__(recording=experiment.r, experiments={experiment.id: experiment}, sortby=sortby)
-        #gcfm().frame.SetTitle('r%d.e[%d].raster(sortby=%r)' % (experiment.r.id, experiment.id, self.sortby)) # set appropriate caption
+    def __init__(self, experiment):
+        super(ExperimentPopulationRaster, self).__init__(recording=experiment.r, experiments={experiment.id: experiment})
 
 
 class ExperimentRaster(BaseExperiment):
     """Mix-in class that defines the raster related Experiment methods"""
     def raster(self, **kwargs):
         """Creates a population spike raster plot"""
-        sortby = kwargs.pop('sortby', 'id')
         pr = ExperimentPopulationRaster(experiment=self, sortby=sortby)
         pr.plot(**kwargs)
     raster.__doc__ += '\n\n'+ExperimentPopulationRaster.__doc__

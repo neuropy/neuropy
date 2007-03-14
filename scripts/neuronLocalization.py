@@ -321,8 +321,8 @@ def chan2pos(polytrode=None, chanid=None):
         return SiteLoc
 
 print 'neuronid xcoord ycoord'
-for (neuronid,chanid) in neuron2chan.iteritems():
-    x,y = chan2pos(polytrode='2b', chanid=chanid) # unpack the tuple
+for neuronid, chanid in neuron2chan.iteritems():
+    x, y = chan2pos(polytrode='2b', chanid=chanid) # unpack the tuple
     print neuronid, x, y
 
 '''

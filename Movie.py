@@ -18,9 +18,9 @@ class Movie(Dimstim.Movies.Movie): # inherit from Dimstim Movie() class (assumes
         f = file(self.path + self.name, 'rb') # open the movie file for reading in binary format
         headerstring = f.read(5)
         if headerstring == 'movie': # a header has been added to the start of the file
-            (self.ncellswide,) = struct.unpack('H', f.read(2)) # 'H'== unsigned short int == 2 bytes on this PC
-            (self.ncellshigh,) = struct.unpack('H', f.read(2))
-            (self.nframes,) = struct.unpack('H', f.read(2))
+            self.ncellswide, = struct.unpack('H', f.read(2)) # 'H'== unsigned short int == 2 bytes on this PC
+            self.ncellshigh, = struct.unpack('H', f.read(2))
+            self.nframes, = struct.unpack('H', f.read(2))
             if self.nframes == 0: # this was used in Cat 15 mseq movies to indicate 2**16 frames, shouldn't really worry about this, cuz we're using slightly modified mseq movies now that don't have the extra frame at the end that the Cat 15 movies had (see comment in Experiment module), and therefore never have a need to indicate 2**16 frames
                 self.nframes = 2**16
             offset = 11 # header is this long
