@@ -70,43 +70,12 @@ class BaseNeuron(object):
         self.trange = self.spikes[0], self.spikes[-1]
         # then, maybe add something that loads the template for this neuron, as well as its modelled (or just guesstimated) location in 3D (or just 2D) coordinates in um, as well as cell type potentially
 
-
-    def cut(self, *args, **kwargs):
+    def cut(self, *args):
         """Returns a view of the Neuron's spike times where tstart <= spikes <= tend
-
         *args can be: nothing (returns all spikes), None, tstart, or (tstart, tend)
         None and 0 for tstart are shorthand for 'from first spike'
         None and -1 for tend are shorthand for 'to last spike'"""
-        tstart = None
-        tend = None
-        if len(args) == 0: # passed nothing
-            pass
-        elif len(args) == 1: # passed None, or just tstart, or a (tstart, tend) tuple/list
-            if not iterable(args[0]):
-                if args[0] == None:
-                    pass
-                else: # just tstart was passed
-                    tstart = args[0]
-            elif len(args[0]) == 2: # it's a tuple/list
-                tstart = args[0][0]
-                tend = args[0][1]
-            else:
-                raise ValueError, 'tuple/list is too long'
-        elif len(args) == 2: # passed tstart and tend as separate args
-            tstart = args[0]
-            tend = args[1]
-        else:
-            raise ValueError, 'too many arguments'
-
-        if tstart in [None, 0]: # shorthand for "from first spike" - would be problematic if a spike existed at t=0
-            tstart = self.spikes[0]
-        if tend in [None, -1]: # shorthand for "to last spike" - would be problematic if a spike existed at t=-1
-            tend = self.spikes[-1]
-        try:
-            returntstart = kwargs['returntstart']
-        except KeyError:
-            returntstart = False
-
+        tstart, tend = self._parse_cutargs(*args)
         '''
         # this is what we're trying to do:
         return self.spikes[ (self.spikes >= tstart) & (self.spikes <= tend) ]
@@ -117,17 +86,43 @@ class BaseNeuron(object):
         if tend  == self.spikes[min(hi, self.nspikes-1)]: # if tend matches a spike (protect from going out of index bounds when checking)
             hi += 1 # inc to include a spike if it happens to exactly equal tend. This gives us end inclusion
             hi = min(hi, self.nspikes) # limit hi to max slice index (==max value index + 1)
-        cutspikes = self.spikes[ lo : hi ] # slice it
-        if not returntstart:
-            return cutspikes
-        else:
-            return cutspikes, tstart
+        cutspikes = self.spikes[lo:hi] # slice it
+        return cutspikes
 
     def cutrel(self, *args):
         """Cuts Neuron spike times and returns them relative to tstart"""
-        cutspikes, tstart = self.cut(*args, **{'returntstart':True})
+        tstart, tend = self._parse_cutargs(*args)
+        cutspikes = self.cut(tstart, tend)
         tstart = np.int64(round(tstart)) # let's keep all the returned spikes as integers, us is more than accurate enough
         return cutspikes - tstart
+
+    def _parse_cutargs(self, *args):
+        """Takes set of args as passed to cut or cutrel and returns (tstart, tend)"""
+        tstart = None
+        tend = None
+        if len(args) == 0: # passed nothing
+            pass
+        elif len(args) == 1: # passed None, or just tstart, or a (tstart, tend) sequence
+            if not iterable(args[0]):
+                if args[0] == None:
+                    pass
+                else: # just tstart was passed
+                    tstart = args[0]
+            elif len(args[0]) == 2: # it's a sequence
+                tstart = args[0][0]
+                tend = args[0][1]
+            else:
+                raise ValueError, 'sequence is too long'
+        elif len(args) == 2: # passed tstart and tend as separate args
+            tstart = args[0]
+            tend = args[1]
+        else:
+            raise ValueError, 'too many arguments'
+        if tstart in [None, 0]: # shorthand for "from first spike" - would be problematic if a spike existed at t=0
+            tstart = self.spikes[0]
+        if tend in [None, -1]: # shorthand for "to last spike" - would be problematic if a spike existed at t=-1
+            tend = self.spikes[-1]
+        return (tstart, tend)
 
     def copy(self):
         """Returns a copy of the Neuron"""
