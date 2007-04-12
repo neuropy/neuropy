@@ -84,7 +84,7 @@ class BaseExperiment(object):
                     pass
                 # Search self.moviepath string (from textheader) for 'Movies' word (preferably case insensitive). Everything after that is the relative path to your base movies folder. Eg, if self.moviepath = 'C:\\Desktop\\Movies\\reliability\\e\\single\\', then set self.relpath = 'reliability\\e\\single\\'
                 try:
-                    s.moviepath = s.moviepath.replace('\\','/') # replace annoying double backslashes with single forward slashes, which seem to work
+                    s.moviepath = s.moviepath.replace('\\', '/') # replace annoying double backslashes with single forward slashes, which seem to work
                     s.relpath = s.moviepath[ s.moviepath.index('Movies/')+len('Movies/') :: ]
                     s.path = path + s.relpath
                 except AttributeError: # this Movie was manually inited, not loaded from a textheader. s.moviepath doesn't exist, use s.path instead. Or it might not even be a Movie
@@ -100,6 +100,7 @@ class BaseExperiment(object):
             # self.sweeptable = {[]} # dictionary of lists, ie sweeptable={'ori',[0,45,90],'sfreq',[1,1,1]}
             # so you index into it with self.sweeptable['var'][sweepi]
             # vars = self.sweeptable.keys()
+            # need to check if varlist exists, if so use it (we're dealing with Cat 15), if not, use revamped dimstim.SweepTable class
             if self.stims: # this Experiment has object-oriented stim(s)
                 for s in self.stims:
                     varvals={} # init a dictionary that will contain variable values

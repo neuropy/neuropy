@@ -14,6 +14,9 @@ Schneidman stuff:
 - make Neuron.append() in place, and ensure whenever it's used, that's it's used on a copied Neuron
 - do analyses across Recordings, using Neuron.append(), to increase significance
 
+- add checks to Experiment.load() to see if we're dealing with Cat 15 textheaders, or the newer dimstim.SweepTable class!!
+    - need to keep old buildSweepTable() f'n in dimstim.Core for backward compatibility
+
 - replace all SLASH, / and \\ stuff by using os.path calls, like os.path.basename, os.path.dirname, os.path.join, os.path.normpath, os.path.splitdrive, os.path.splitext, os.path.split
 - add a Lab object to data hierarchy, need to bump everyone else's level down one (up in number, self.level +=1)
 

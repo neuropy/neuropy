@@ -60,7 +60,7 @@ mpl.use('WXAgg')
 mpl.interactive(True)
 
 
-class Data(object): # use 'new-style' classes
+class Data(object):
     """Abstract data class. Data can have multiple Animals in it"""
     def __init__(self, dataPath=DEFAULTDATAPATH):
         self.level = 0 # level in the hierarchy
@@ -229,8 +229,8 @@ frame.__doc__ += '\n\n**kwargs:\n' + getargstr(CanvasFrame.__init__)
 
 
 class ReceptiveFieldFrame(wx.Frame):
-    """A wx.Frame for plotting a scrollable 2D grid of receptive fields, with neuron and time labels
-    rfs is a list of (nt, width, height) sized receptive fields made up of uint8 RGB data"""
+    """A wx.Frame for plotting a scrollable 2D grid of receptive fields, with neuron and time labels.
+    rfs is a list of (nt, width, height) sized receptive fields of uint8 RGB data, one per neuron"""
     def __init__(self, parent=None, id=-1, title='ReceptiveFieldFrame', rfs=None, neurons=None, t=None, scale=2.0, **kwargs):
         self.rfs = rfs
         self.neurons = neurons
@@ -397,7 +397,7 @@ def csv2binary(fin, multiplier=1e6):
 def warn(msg, level=2, exit_val=1):
     """Standard warning printer. Gives formatting consistency. Stolen from IPython.genutils"""
     if level > 0:
-        header = ['','','WARNING: ','ERROR: ','FATAL ERROR: ']
+        header = ['', '', 'WARNING: ', 'ERROR: ', 'FATAL ERROR: ']
         print >> sys.stderr, '%s%s' % (header[level],msg)
         if level == 4:
             print >> sys.stderr,'Exiting.\n'
@@ -407,13 +407,13 @@ def warn(msg):
     import warnings
     warnings.warn(msg, category=RuntimeWarning, stacklevel=2)
 '''
-def unique(inseq):
-    """Return unique items from a 1-dimensional sequence. Stolen from numpy.unique(), modified to return list instead of array"""
-    # Dictionary setting is quite fast.
-    outseq = {}
-    for item in inseq:
-        outseq[item] = None
-    return list(outseq.keys())
+def unique(seq):
+    """Return unique items from a 1-dimensional sequence. Stolen from numpy.unique().
+    Dictionary setting is quite fast"""
+    result = {}
+    for item in seq:
+        result[item] = None
+    return result.keys()
 '''
 def unique(objlist):
     """Returns the input list minus any repeated objects it may have had. Also defined in Dimstim"""
@@ -459,9 +459,9 @@ def to2d(arr):
     """Converts a 1D array to a 2D array with just a singleton row
     If arr is already 2D, just returns it. If it's anything more than 2D, raises an error"""
     nd = arr.ndim
-    assert nd in [1, 2]
+    assert nd in [1, 2], 'array rank > 2'
     if nd == 1:
-        arr = arr.reshape(1, len(arr))
+        arr = arr.reshape(1, -1)
     return arr
 
 '''
@@ -602,20 +602,20 @@ def histogram2d(x, y, bins=10, range=None, normed=False):
     hist = np.zeros((xnbin)*(ynbin), int)
 
     # Count the number of sample in each bin (1D)
-    xbin = np.digitize(x,xedges)
-    ybin = np.digitize(y,yedges)
+    xbin = np.digitize(x, xedges)
+    ybin = np.digitize(y, yedges)
 
     # Values that fall on an edge are put in the right bin.
     # For the rightmost bin, we want values equal to the right
     # edge to be counted in the last bin, and not as an outlier.
     xdecimal = int(-np.log10(dxedges.min()))+6
     ydecimal = int(-np.log10(dyedges.min()))+6
-    on_edge_x = np.where(np.around(x,xdecimal) == np.around(xedges[-1], xdecimal))[0]
-    on_edge_y = np.where(np.around(y,ydecimal) == np.around(yedges[-1], ydecimal))[0]
+    on_edge_x = np.where(np.around(x, xdecimal) == np.around(xedges[-1], xdecimal))[0]
+    on_edge_y = np.where(np.around(y, ydecimal) == np.around(yedges[-1], ydecimal))[0]
     xbin[on_edge_x] -= 1
     ybin[on_edge_y] -= 1
     # Remove the true outliers
-    outliers = (xbin==0) | (xbin==xnbin+1) | (ybin==0) | (ybin == ynbin+1)
+    outliers = (xbin==0) | (xbin==xnbin+1) | (ybin==0) | (ybin==ynbin+1)
     xbin = xbin[outliers==False] - 1
     ybin = ybin[outliers==False] - 1
 
@@ -849,18 +849,26 @@ def charfind(string, char):
     """Finds char in string, returns matching indices. There's gotta be a built-in way to do this somewhere..."""
     assert len(char) == 1
     i = []
+    # maybe more efficient to use .find() method on successively smaller slices of string
     for si, s in enumerate(string):
         if s == char:
             i.append(si)
     return i
-
+'''
 def shuffle(x):
     """Takes an input list x and returns a shuffled (without replacement) copy. Its only benefit
     over and above random.sample() is that you don't have to pass a second argument len(x)
     every time you use it.
     In NumPy, it's better (and faster) to use np.random.shuffle()"""
     return random.sample(x, len(x))
-
+'''
+def shuffle(seq):
+    """Takes a sequence and returns a shuffled (without replacement) copy.
+    Its only benefit over np.random.shuffle is that it returns a copy instead of shuffling in-place"""
+    result = copy(seq)
+    np.random.shuffle(result) # shuffles in-place, doesn't convert to an array
+    return result
+'''
 def randomize(x):
     """Takes an input list x and returns a randomized (with replacement) output list of
     the same length, sampled from the input sequence"""
@@ -868,6 +876,16 @@ def randomize(x):
     for i in range(0, len(x)):
         y.append(random.choice(x))
     return y
+'''
+def randomize(seq):
+    """Returns a randomized (with replacement) output sequence sampled from
+    (and of the same length as) the input sequence"""
+    n = len(seq)
+    i = np.random.randint(n, size=n) # returns random ints from 0 to len(seq)-1
+    if seq.__class__ == np.ndarray:
+        return np.asarray(seq)[i] # use i as random indices into seq, return as an array
+    else:
+        return list(np.asarray(seq)[i]) # return as a list
 
 def fact(n):
     """Factorial!"""
@@ -1113,7 +1131,7 @@ def ensurenormed(p, atol=1e-8):
 
 def logy(x, base=10):
     """Performs log of x with specified base"""
-    return log(x)/log(base)
+    return log(x) / log(base)
 
 def log_no_sing(x, subval=0.0, base=np.e):
     """Performs log on array x, ignoring any zeros in x to avoid singularities,
