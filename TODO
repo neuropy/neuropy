@@ -1,3 +1,5 @@
+- move code to /neuropy subfolder, make a setup.py in root, keep TODO in root
+
 Schneidman stuff:
     - for the time bins, try lots of different phases, see if this changes things at all
         - look if the most common states remain the most common
