@@ -1,4 +1,4 @@
-r"""Tools for analyzing experimental and model neuronal and stimulus data in python
+r"""Experimental and model neuronal and stimulus data analysis in Python
 
                          object hierarchies:
 
