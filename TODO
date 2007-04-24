@@ -1,6 +1,6 @@
 - move code to /neuropy subfolder, make a setup.py in root, keep TODO in root
 
-Schneidman stuff:
+Netstate stuff:
     - for the time bins, try lots of different phases, see if this changes things at all
         - look if the most common states remain the most common
     - since Recordings are fairly short, either combine lots of Recordings into one (or their Experiments), or use a shorter CODEWORDLENGTH to get better stat significance for all possible words
@@ -78,7 +78,7 @@ DONE:
 
 - STAs
 - codes
-- Schneidman stuff
+- Netstate stuff
     - add codeword (binary and int) popup on float over a point in the scatter plot
 
 - cross-correlograms
@@ -92,7 +92,7 @@ DONE:
 
 MPL: - when saving figs, automatically choose .png from list
 
-Schneidman stuff:
+Netstate stuff:
     - look for check cells
     - do the maximum entropy Ising model
     - see if cortical data extrapolates to the same sort of ideal network size, ~200 neurons

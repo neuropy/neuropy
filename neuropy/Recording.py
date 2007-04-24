@@ -577,8 +577,8 @@ class RecordingCode(BaseRecording):
         return cw
     '''
 
-class Schneidman(object):
-    """Implements a lot of the analyses found in the 2006 Schneidman paper"""
+class Netstate(object):
+    """Implements a lot of the analyses on network states found in the 2006 Schneidman paper"""
     def __init__(self, recording, experiments=None):
         self.r = recording
         if experiments == None:
@@ -599,7 +599,7 @@ class Schneidman(object):
 
     def codes(self, nis=None, kind='binary', tres=DEFAULTCODETRES, phase=0, shufflecodes=False):
         """Returns the appropriate Codes object, depending on the recording
-        and experiments defined for this Schneidman object"""
+        and experiments defined for this Netstate object"""
         self.kind = kind
         self.tres = tres
         cneurons = [ self.r.cn[ni] for ni in nis ] # build up list of ConstrainedNeurons, according to nis
@@ -608,7 +608,7 @@ class Schneidman(object):
 
     def wordts(self, nis=None, mis=None):
         """Returns word times, ie the times of the left bin edges for which all the
-        neurons in the mis in this Schneidman object have a 1 in them, and all
+        neurons in the mis in this Netstate object have a 1 in them, and all
         the rest have a 0 in them. nis lists the total population of neuron ids"""
         if nis == None:
             nis = self.co.nis
@@ -704,7 +704,7 @@ class Schneidman(object):
             if cancel:
                 pd.Destroy()
                 return
-            nis = random.sample(self.co.nis, nbits) # randomly sample nbits of the Schneidman object's nis attrib
+            nis = random.sample(self.co.nis, nbits) # randomly sample nbits of the Netstate's nis attrib
             im = self.ising(nis=nis, algorithm=algorithm, **kwargs) # returns a maxent Ising model
             ims.append(im)
             his.append(im.hi)
@@ -790,12 +790,12 @@ class Schneidman(object):
     class Scatter(object):
         def __init__(self, nis=None, nbits=None, model='indep', randomneurons=True, shufflecodes=False,
                      algorithm='CG', **kwargs):
-            """Schneidman scatter analysis object. See Schneidman Figures 1f and 2a.
+            """Netstate scatter analysis object. See Schneidman Figures 1f and 2a.
             Calculates the expected probabilities, assuming a model in ['indep', 'ising'],
             of all possible population codes vs their observed probabilities.
             nis are in LSB to MSB order."""
             if nis == None:
-                nis = self.__outer__.co.nis # grab nis attrib from Codes object in outer Schneidman object
+                nis = self.__outer__.co.nis # grab nis attrib from Codes object in outer Netstate object
             else:
                 randomneurons = False # specific nis have been passed, don't use random neurons
                 if nbits == None:
@@ -927,7 +927,7 @@ class Schneidman(object):
             else: # mouse is outside the axes
                 self.tooltip.Enable(False) # disable the tooltip
 
-    # overwrite Scatter class def'n as an inner class of the current outer class Schneidman, can refer to __outer__ attrib
+    # overwrite Scatter class def'n as an inner class of the current outer class Netstate, can refer to __outer__ attrib
     Scatter = innerclass(Scatter)
 
     def I1I2vsIN(self, N=10, ngroups=10, tres=DEFAULTCODETRES):
@@ -946,7 +946,7 @@ class Schneidman(object):
         pd = wx.ProgressDialog(title='DJShist progress', message='', maximum=ngroups*len(models), # create a progress dialog
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
         for groupi in range(ngroups): # for each group of nbits cells
-            nis = random.sample(self.co.nis, nbits) # randomly sample nbits of the Schneidman object's nis attrib
+            nis = random.sample(self.co.nis, nbits) # randomly sample nbits of the Netstate's nis attrib
             niss.append(nis)
             for modeli, model in enumerate(models): # for each model, use the same nis
                 cancel = not pd.Update(groupi*len(models)+modeli, newmsg='groupi = %d\nmodel = %s' % (groupi, model))
@@ -1359,17 +1359,17 @@ class Schneidman(object):
             a.set_ylabel('Probability of cell ni being active')
 
 
-class RecordingSchneidman(BaseRecording):
-    """Mix-in class that defines the spike code related Schneidman methods"""
-    def schneidman(self, experiments=None):
-        """Returns a Schneidman object"""
-        so = Schneidman(recording=self, experiments=experiments)
-        return so
+class RecordingNetstate(BaseRecording):
+    """Mix-in class that defines the spike code related Netstate methods"""
+    def netstate(self, experiments=None):
+        """Returns a Netstate object"""
+        nso = Netstate(recording=self, experiments=experiments)
+        return nso
 
 
 class Recording(RecordingRaster,
                 RecordingCode,
-                RecordingSchneidman,
+                RecordingNetstate,
                 BaseRecording):
     """Inherits all the Recording classes into a single Recording class"""
     pass
