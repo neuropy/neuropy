@@ -14,7 +14,7 @@ class Rip(object):
 
     def __init__(self, id=None, name=None, parent=Recording):
         self.level = 4 # level in the hierarchy
-        #self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+        #self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
         try:
             self.r = parent() # init parent Recording object
         except TypeError: # parent is an instance, not a class
@@ -24,9 +24,9 @@ class Rip(object):
         # rips don't have ids, at least for now. Just names
         self.id = id # not really used by the Rip class, just there for user's info
         self.name = name
-        self.path = self.r.path + self.name + '.rip' + SLASH # have to add .rip extension to rip name to get its actual folder name
-        self.n = {} # store Neurons in a dictionary
-        self.cn = {} # store ConstrainedNeurons in a dictionary
+        self.path = os.path.join(self.r.path, self.name) + '.rip' # have to add .rip extension to rip name to get its actual folder name
+        self.n = dictattr() # store Neurons in a dictionary with attrib access
+        self.cn = dictattr() # store ConstrainedNeurons in a dictionary with attrib acces
     '''
     def tree(self):
         """Print tree hierarchy"""
@@ -42,7 +42,9 @@ class Rip(object):
 
         #treestr = self.level*TAB + self.name + '/'
         #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        neuronNames = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(self.path) if os.path.isfile(self.path+fname) and fname.endswith('.spk') ] # returns spike filenames without their .spk extension
+        neuronNames = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(self.path)
+                        if os.path.isfile(os.path.join(self.path, fname))
+                        and fname.endswith('.spk') ] # returns spike filenames without their .spk extension
         for neuronName in neuronNames:
             neuron = Neuron(id=None, name=neuronName, parent=self) # make an instance using just the neuron name (let it figure out the neuron id)
             neuron.load() # load the neuron

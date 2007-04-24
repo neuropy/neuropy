@@ -15,7 +15,7 @@ class BaseRecording(object):
         from Track import Track
 
         self.level = 3 # level in the hierarchy
-        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
         if parent == None:
             try:
                 self.t = _data.a[DEFAULTANIMALNAME].t[DEFAULTTRACKID] # see if the default Track has already been init'd
@@ -32,10 +32,10 @@ class BaseRecording(object):
             raise ValueError, 'Recording id and name can\'t both be None'
         self.id = id
         self.name = name
-        self.path = self.t.path + self.name + SLASH
+        self.path = os.path.join(self.t.path, self.name)
         self.t.r[self.id] = self # add/overwrite this Recording to its parent's dict of Recordings, in case this Recording wasn't loaded by its parent
-        self.e = {} # store Experiments in a dictionary
-        self.rip = {} # store Rips in a dictionary
+        self.e = dictattr() # store Experiments in a dictionary with attrib access
+        self.rip = dictattr() # store Rips in a dictionary with attrib access
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
@@ -44,20 +44,21 @@ class BaseRecording(object):
         self.treebuf.write(string)
         self.t.writetree(string)
     def id2name(self, path, id):
-        name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith(str(id)) ]
+        name = [ dirname for dirname in os.listdir(path)
+                 if os.path.isdir(os.path.join(path, dirname))
+                 and dirname.startswith(str(id)) ]
         if len(name) != 1:
             raise NameError, 'Ambiguous or non-existent Recording id: %s' % id
         else:
-            name = name[0] # pull the string out of the list
-        return name
+            return name[0] # pull the string out of the list
     def name2id(self, name):
-        id = name.split()[0] # returns the first word in the name, using whitespace as separators
+        id = name.split()[0] # return the first word in the name, using whitespace as separators
         try:
             int(id[0]) # first character of Recording id better be an integer
         except ValueError:
             raise ValueError, 'First character of Recording name %r should be a number' % name
         try:
-            id = int(id) # convert entire string to int if possible
+            id = int(id) # convert entire id to int if possible
         except ValueError:
             pass # it's alphanumeric (but starts with a number), leave it as a string
         return id
@@ -68,26 +69,29 @@ class BaseRecording(object):
 
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        experimentNames = [ fname[0:fname.rfind('.din')] for fname in os.listdir(self.path) if os.path.isfile(self.path+fname) and fname.endswith('.din') ] # returns din filenames without their .din extension
-        for (experimentid, experimentName) in enumerate(experimentNames): # experimentids will be according to alphabetical order of experimentNames
+        experimentNames = [ fname[0:fname.rfind('.din')] for fname in os.listdir(self.path)
+                            if os.path.isfile(os.path.join(self.path, fname))
+                            and fname.endswith('.din') ] # returns din filenames without their .din extension
+        for experimentid, experimentName in enumerate(experimentNames): # experimentids will be according to alphabetical order of experimentNames
             experiment = Experiment(id=experimentid, name=experimentName, parent=self) # pass both the id and the name
             experiment.load() # load the Experiment
             self.e[experiment.id] = experiment # save it
-        #if len(self.e) == 1:
-        #   self.e = self.e.values[0] # pull it out of the dictionary
-        ripNames = [ dirname[0:dirname.rfind('.rip')] for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.endswith('.rip') ] # returns rip folder names without their .rip extension
-        defaultRipNames = [ ripName for ripName in ripNames for ripkeyword in RIPKEYWORDS if ripName.count(ripkeyword) ]
+        ripNames = [ dirname[0:dirname.rfind('.rip')] for dirname in os.listdir(self.path)
+                     if os.path.isdir(os.path.join(self.path, dirname))
+                     and dirname.endswith('.rip') ] # returns rip folder names without their .rip extension
+        defaultRipNames = [ ripName for ripName in ripNames for ripkeyword in RIPKEYWORDS
+                            if ripkeyword in ripName ]
         if len(defaultRipNames) < 1:
             warn('Couldn\'t find a default Rip for Recording(%s)' % self.id)
         if len(defaultRipNames) > 1: # This could just be a warning instead of an exception, but really, some folder renaming is in order
-            raise RuntimeError, 'More than one Rip folder in Recording(%s) has a default keyword: %s' %(self.id, defaultRipNames)
-        for (ripid, ripName) in enumerate(ripNames): # ripids will be according to alphabetical order of ripNames
+            raise RuntimeError, 'More than one Rip folder in Recording(%s) has a default keyword: %s' % (self.id, defaultRipNames)
+        for ripid, ripName in enumerate(ripNames): # ripids will be according to alphabetical order of ripNames
             rip = Rip(id=ripid, name=ripName, parent=self) # pass both the id and the name
             rip.load() # load the Rip
             self.rip[rip.name] = rip # save it
             # make the Neurons from the default Rip (if it exists in the Recording path) available in the Recording, so you can access them via r.n[nid] instead of having to do r.rip[name].n[nid]. Make them just another pointer to the data in r.rip[ripName].n
-            for ripkeyword in RIPKEYWORDS[::-1]: # reverse the keywords so first one gets processed last
-                if rip.name.count(ripkeyword): # if the keyword is in the ripName
+            for ripkeyword in RIPKEYWORDS[::-1]: # reverse the keywords so last one gets processed first
+                if ripkeyword in rip.name:
                     self.n = self.rip[rip.name].n # make it the default Rip
                     self.cn = self.rip[rip.name].cn # make it the default Rip for ConstrainedNeurons too
         if len(self.rip) == 1: # there's only one rip, make it the default Rip, even if it doesn't have a ripkeyword in it
@@ -143,7 +147,7 @@ class PopulationRaster(object):
 
         self.publication = publication
 
-        self.neurons = self.r.n # still a dict
+        self.neurons = self.r.n # still a dictattr
         if nis != None:
             self.nis = nis
         else:
@@ -363,7 +367,7 @@ class Codes(object):
         self.shufflecodes = shufflecodes
         self.nis = [ neuron.id for neuron in self.neurons ]
         self.nneurons = len(self.neurons)
-        self.nis2niisdict = dict(zip( self.nis, range(self.nneurons) )) # make a dict from keys:self.nis, vals:range(self.nneurons). This converts from nis to niis (from neuron indices to indices into the binary code array self.c)
+        self.nis2niisdict = dict(zip(self.nis, range(self.nneurons))) # make a dict from keys:self.nis, vals:range(self.nneurons). This converts from nis to niis (from neuron indices to indices into the binary code array self.c)
     def nis2niis(self, nis=None):
         """Converts from nis to niis (from neuron indices to indices into the binary code array self.co.c).
         nis can be a sequence"""
@@ -423,7 +427,7 @@ class CodeCorrPDF(object):
     def __init__(self, recording=None, experiments=None, **kwargs):
         self.r = recording
         if experiments != None:
-            assert experiments.__class__ == dict
+            assert experiments.__class__ == dictattr
         self.e = experiments # save it, should be a dict if not None
         if self.e != None: # specific experiments were specified
             self.tranges = [ e.trange for e in self.e.values() ]
@@ -434,8 +438,10 @@ class CodeCorrPDF(object):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
         # Delete their n and c attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
-        [ d.__delitem__(key) for d in [selfd, otherd] for key in ['corrs', 'n', 'c', 'crange', 'nbins', 'normed'] if d.has_key(key) ]
-        if type(self) == type(other) and selfd == otherd:
+        [ d.__delitem__(key) for d in [selfd, otherd]
+          for key in ['corrs', 'n', 'c', 'crange', 'nbins', 'normed']
+          if d.has_key(key) ]
+        if self.__class__ == other.__class__ and selfd == otherd:
             return True
         else:
             return False
@@ -449,7 +455,7 @@ class CodeCorrPDF(object):
         means = dict( ( cni, self.r.code(cni, tranges=self.tranges, **self.kwargs).c.mean() ) for cni in cnis ) # store each code mean in a dict
         stds  = dict( ( cni, self.r.code(cni, tranges=self.tranges, **self.kwargs).c.std() ) for cni in cnis ) # store each code std in a dict
         self.corrs = []
-        for cnii1 in range(0, ncneurons):
+        for cnii1 in range(ncneurons):
             for cnii2 in range(cnii1+1, ncneurons):
                 cni1 = cnis[cnii1]
                 cni2 = cnis[cnii2]

@@ -11,12 +11,12 @@ class Animal(object):
     for clarity, since ids could be confusing (would id==5 mean Cat 5 or Rat 5?)"""
     def __init__(self, name=None, parent=None):
         self.level = 1 # level in the hierarchy
-        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
         self.d = parent # save the parent Data object
         self.name = name
-        self.path = self.d.path + self.name + SLASH
+        self.path = os.path.join(self.d.path, self.name)
         self.d.a[self.name] = self # add/overwrite this Animal to its parent's dict of Animals, in case this Animal wasn't loaded by its parent
-        self.t = {} # store Tracks in a dictionary
+        self.t = dictattr() # store Tracks in a dictionary with attrib access
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
@@ -30,13 +30,13 @@ class Animal(object):
 
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        dirnames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.startswith('Track ') ]
+        dirnames = [ dirname for dirname in os.listdir(self.path)
+                     if os.path.isdir(os.path.join(self.path, dirname))
+                     and dirname.startswith('Track ') ]
         for dirname in dirnames:
             track = Track(id=None, name=dirname, parent=self) # make an instance using just the track name (let it figure out the track id)
             track.load() # load the Track
             self.t[track.id] = track # save it
-        #if len(self.t) == 1:
-        #   self.t = self.t.values[0] # pull it out of the dictionary
 
 
 class Cat(Animal):

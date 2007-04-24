@@ -10,4 +10,4 @@ setup(name = 'neuropy',
       #author_email = '',
       #url = '',
       #long_description = '',
-      packages = ['neuropy'])
+      packages = ['neuropy', 'neuropy.scripts'])

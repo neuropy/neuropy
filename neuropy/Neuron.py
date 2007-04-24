@@ -14,7 +14,7 @@ class BaseNeuron(object):
 
     def __init__(self, id=None, name=None, parent=Rip): # neuron names don't include the '.spk' ending, although neuron filenames do
         self.level = 5 # level in the hierarchy
-        #self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+        #self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
         try:
             self.rip = parent() # init parent Rip object
         except TypeError: # parent is an instance, not a class
@@ -40,16 +40,20 @@ class BaseNeuron(object):
     def id2name(self, path, id):
         #if len(str(id)) == 1: # if id is only 1 digit long
         #    id = '0'+str(id) # add a leading zero
-        name = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(path) if os.path.isfile(path+fname) and \
-               ( fname.find('_t'+str(id)+'.spk')!=-1 or fname.find('_t0'+str(id)+'.spk')!=-1 or fname.find('_t00'+str(id)+'.spk')!=-1 ) ] # have to deal with leading zero ids, go up to 3 digit ids, should really use a re to do this properly...
+        name = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(path)
+                 if os.path.isfile(os.path.join(path, fname))
+                 and
+                 (    '_t%s.spk' % id in fname
+                   or '_t0%s.spk' % id in fname
+                   or '_t00%s.spk' % id in fname )
+                 ] # have to deal with leading zero ids, go up to 3 digit ids, should really use a re to do this properly...
         if len(name) != 1:
             raise NameError, 'Ambiguous or non-existent Neuron id: %s' % id
         else:
-            name = name[0] # pull the string out of the list
-        return name
+            return name[0] # pull the string out of the list
     def name2id(self, name):
         try:
-            id = name[name.rindex('_t')+2::] # everything from just after the last '_t' to the end of the neuron name, index() raises ValueError if it can't be found
+            id = name[name.rindex('_t')+2::] # everything from just after the last '_t' to the end of the neuron name, rindex() raises ValueError if it can't be found
         except ValueError:
             raise ValueError, 'Badly formatted Neuron name: %s' % name
         try:
@@ -60,7 +64,7 @@ class BaseNeuron(object):
     def load(self):
         #treestr = self.level*TAB + self.name + '/'
         #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        f = file(self.path + self.name + '.spk', 'rb') # open the spike file for reading in binary mode
+        f = file(os.path.join(self.path, self.name) + '.spk', 'rb') # open the spike file for reading in binary mode
         self.spikes = np.fromfile(f, dtype=np.int64) # read in all spike times in us
         f.close()
         self.nspikes = len(self.spikes)
@@ -153,7 +157,7 @@ class BaseNeuron(object):
         HOW THE HELL DO YOU FIND THE INDEX OF A VALUE IN A NUMPY ARRAY? a==5 gives you a long boolean array,
         how do you find the indices where that boolean is True? use .nonzero() or np.where()
 
-        AS OF OCT 11, 2006, DOESN'T LOOK LIKE THIS METHOD IS ACTUALLY BEING USED YET. WILL BE USEFUL ONCE I START
+        AS OF OCT 11, 2006, DOESN'T LOOK LIKE THIS METHOD IS ACTUALLY BEING USED YET. IT'LL BE USEFUL ONCE I START
         DOING ANALYSES OVER MULTIPLE RECORDINGS TO INCREASE STATS SIGNIFICANCE"""
 
         others = makeiter(others)

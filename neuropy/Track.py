@@ -12,7 +12,7 @@ class Track(object):
         from Animal import Cat, Rat
 
         self.level = 2 # level in the hierarchy
-        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
         if parent == None:
             try:
                 self.a = _data.a[DEFAULTANIMALNAME] # see if the default Animal has already been init'd
@@ -33,9 +33,9 @@ class Track(object):
             raise ValueError, 'Track id and name can\'t both be None'
         self.id = id
         self.name = name
-        self.path = self.a.path + self.name + SLASH
+        self.path = os.path.join(self.a.path, self.name)
         self.a.t[self.id] = self # add/overwrite this Track to its parent Animal's dict of Tracks, in case this Track wasn't loaded by its parent
-        self.r = {} # store Recordings in a dictionary
+        self.r = dictattr() # store Recordings in a dictionary with attrib access
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
@@ -44,14 +44,15 @@ class Track(object):
         self.treebuf.write(string)
         self.a.writetree(string)
     def id2name(self, path, id):
-        name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith('Track '+str(id)) ]
+        name = [ dirname for dirname in os.listdir(path)
+                 if os.path.isdir(os.path.join(path, dirname))
+                 and dirname.startswith('Track %s' % id) ]
         if len(name) != 1:
             raise NameError, 'Ambiguous or non-existent Track id: %s' % id
         else:
-            name = name[0] # pull the string out of the list
-        return name
+            return name[0] # pull the string out of the list
     def name2id(self, name):
-        id = name.replace('Track ','',1) # replace first occurrence of 'Track ' with nothing, keep the rest
+        id = name.replace('Track ', '', 1) # replace first occurrence of 'Track ' with nothing, keep the rest
         if not id:
             raise NameError, 'Badly formatted Track name: %s' % name
         try:
@@ -65,10 +66,10 @@ class Track(object):
 
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        dirnames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname[0].isdigit() ] # 1st char in dirname must be a digit, that's all
+        dirnames = [ dirname for dirname in os.listdir(self.path)
+                     if os.path.isdir(os.path.join(self.path, dirname))
+                     and dirname[0].isdigit() ] # 1st char in dirname must be a digit, that's all
         for dirname in dirnames:
             recording = Recording(id=None, name=dirname, parent=self) # make an instance using just the recording name (let it figure out the recording id)
             recording.load() # load the Recording
             self.r[recording.id] = recording # save it
-        #if len(self.r) == 1:
-        #   self.r = self.r.values[0] # pull it out of the dictionary

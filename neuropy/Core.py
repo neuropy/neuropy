@@ -2,32 +2,6 @@
 
 #print 'importing Core'
 
-DEFAULTDATAPATH = 'C:/data/' # the convention in neuropy is that all 'path' var names have a trailing slash
-DEFAULTMODELPATH = 'C:/model/'
-
-DEFAULTSPECIES = 'Cat'
-DEFAULTCATID = 15
-DEFAULTRATID = 0
-if DEFAULTSPECIES == 'Cat':
-    DEFAULTANIMALNAME = DEFAULTSPECIES + ' ' + str(DEFAULTCATID)
-elif DEFAULTSPECIES == 'Rat':
-    DEFAULTANIMALNAME = DEFAULTSPECIES + ' ' + str(DEFAULTRATID)
-else:
-    raise ValueError, 'unknown species %r' % DEFAULTSPECIES
-
-DEFAULTTRACKID = '7c'
-RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording/Run
-DEFAULTMOVIEPATH = 'C:/pub/Movies/'
-DEFAULTMOVIENAME = 'mseq32.m'
-
-DEFAULTSYSTEMNAME = 'example model system'
-
-DEFAULTCODETRES = 20000 # us
-DEFAULTCODEWORDLENGTH = 10 # in bits
-
-SLASH = '/' # use forward slashes instead of having to use double backslashes
-TAB = '    ' # 4 spaces
-
 import os
 import sys
 import time
@@ -35,7 +9,7 @@ import types
 import __main__
 import struct
 import re
-import StringIO
+import cStringIO
 import random
 import math
 
@@ -59,15 +33,42 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 mpl.use('WXAgg')
 mpl.interactive(True)
 
+from dimstim.Core import dictattr # Dictionary with attribute access
+
+DEFAULTDATAPATH = os.path.join(os.sep, 'data')
+DEFAULTMODELPATH = os.path.join(os.sep, 'model')
+
+DEFAULTSPECIES = 'Cat'
+DEFAULTCATID = 15
+DEFAULTRATID = 0
+if DEFAULTSPECIES == 'Cat':
+    DEFAULTANIMALNAME = '%s %d' % (DEFAULTSPECIES, DEFAULTCATID)
+elif DEFAULTSPECIES == 'Rat':
+    DEFAULTANIMALNAME = '%s %d' % (DEFAULTSPECIES, DEFAULTRATID)
+else:
+    raise ValueError, 'unknown species %s' % DEFAULTSPECIES
+
+DEFAULTTRACKID = '7c'
+RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording/Run
+DEFAULTMOVIEPATH = os.path.join(os.sep, 'pub', 'Movies')
+DEFAULTMOVIENAME = 'mseq32.m'
+
+DEFAULTSYSTEMNAME = 'example model system'
+
+DEFAULTCODETRES = 20000 # us
+DEFAULTCODEWORDLENGTH = 10 # in bits
+
+TAB = '    ' # 4 spaces
+
 
 class Data(object):
     """Abstract data class. Data can have multiple Animals in it"""
     def __init__(self, dataPath=DEFAULTDATAPATH):
         self.level = 0 # level in the hierarchy
-        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
         self.name = 'Data'
         self.path = dataPath
-        self.a = {} # store Animals in a dictionary
+        self.a = dictattr() # store Animals in a dictionary with attrib access
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
@@ -81,7 +82,8 @@ class Data(object):
 
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        dirnames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) ] # os.listdir() returns all dirs AND files
+        dirnames = [ dirname for dirname in os.listdir(self.path)
+                     if os.path.isdir(os.path.join(self.path, dirname)) ]
         for dirname in dirnames:
             if dirname.startswith('Cat '):
                 cat = Cat(name=dirname, parent=self) # make an instance using just the dirname
@@ -99,23 +101,22 @@ class Model(Data):
     """Abstract model class. Model can have multiple model Systems"""
     def __init__(self, modelPath=DEFAULTMODELPATH):
         self.level = 0 # level in the hierarchy
-        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
         self.name = 'Model'
         self.path = modelPath
-        self.s = {} # store model Systems in a dictionary
+        self.s = dictattr() # store model Systems in a dictionary with attrib access
     def load(self):
 
         from System import System
 
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        systemNames = [ dirname for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) ] # os.listdir() returns all dirs AND files
+        systemNames = [ dirname for dirname in os.listdir(self.path)
+                        if os.path.isdir(os.path.join(self.path, dirname)) ]
         for systemName in systemNames:
             system = System(name=systemName, parent=self) # make an instance using the systemName
             system.load() # load the System
             self.s[system.name] = system # save it
-        #if len(self.s) == 1:
-        #   self.s = self.s.values[0] # pull it out of the dictionary
 
 _model = Model() # init a default Model object to use as a container for everything that falls under the model object hierarchy
 
@@ -315,18 +316,18 @@ def pad0s(val, ndigits=2):
 def txtdin2binarydin(fin, fout):
     """Converts a csv text .din file to an int64 binary .din file"""
     fi = file(fin, 'r') # open the din file for reading in text mode
-    fo = file(fout,'wb') # for writing in binary mode
+    fo = file(fout, 'wb') # for writing in binary mode
     for line in fi:
         line = line.split(',')
         '''
-        # for old NVS display, converts from NVS condition numbers (which increment with repeats) to Dimstim sweepis (which don't)
+        # for old NVS display, converts from NVS condition numbers (which increment with repeats) to dimstim sweepis (which don't)
         nruns = 18
         line[1] = int(line[1]) % nruns
         '''
         fo.write( struct.pack('@qq', int(line[0]), int(line[1])) ) # write both values out as a C long longs, using the system's native ('@') byte order
     fi.close()
     fo.close()
-    print 'Converted ascii din: ' + repr(fin) + ' to binary din: ' + repr(fout)
+    print 'Converted ascii din: %r to binary din: %r' % (fin, fout)
 
 def convertalltxtdin2binarydin(path=None):
     """Converts all text .csv din files in path (or cwd) to 64 bit binary .din files of the same name"""
@@ -341,8 +342,8 @@ def convertalltxtdin2binarydin(path=None):
             dinfnames.append(fname.rstrip('.csv')) # text din filenames without the .csv extension
 
     for dinfname in dinfnames:
-        fin = path + '\\' + dinfname + '.csv'
-        fout = path + '\\' + dinfname + '.din'
+        fin = os.path.join(path, dinfname) + '.csv'
+        fout = os.path.join(path, dinfname) + '.din'
         #os.rename(fout, fin) # rename the csv .din file to .din.txt extension
         txtdin2binarydin(fin, fout) # convert the text .csv file to binary .din file
         #os.remove(fin) # delete the .din.txt file
@@ -355,7 +356,7 @@ def renameSpikeFiles(path, newname):
             if i != -1:
                 newfname = newname+fname[i::]
                 print newfname
-                os.rename(path+SLASH+fname, path+SLASH+newfname)
+                os.rename(os.path.join(path, fname), os.path.join(path, newfname))
 
 def csv2binary(fin, multiplier=1e6):
     """Exports spike data in a csv file, with cells in the columns and times down the rows,
@@ -416,7 +417,7 @@ def unique(seq):
     return result.keys()
 '''
 def unique(objlist):
-    """Returns the input list minus any repeated objects it may have had. Also defined in Dimstim"""
+    """Returns the input list minus any repeated objects it may have had. Also defined in dimstim"""
     return list(set(objlist)) # this requires Python >= 2.4
 '''
 '''

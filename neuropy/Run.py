@@ -13,7 +13,7 @@ class Run(object):
         from System import System
 
         self.level = 3 # level in the hierarchy
-        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
         if parent == None:
             try:
                 self.s = _model.s[DEFAULTSYSTEMNAME] # see if the default System has already been init'd
@@ -30,10 +30,10 @@ class Run(object):
             raise ValueError, 'Run id and name can\'t both be None'
         self.id = id
         self.name = name
-        self.path = self.s.path + self.name + SLASH
+        self.path = os.path.join(self.s.path, self.name)
         self.s.r[self.id] = self # add/overwrite this Run to its parent's dict of Runs, in case this Run wasn't loaded by its parent
-        self.e = {} # store Experiments in a dictionary
-        self.rip = {} # store Rips in a dictionary
+        self.e = dictattr() # store Experiments in a dictionary with attrib access
+        self.rip = dictattr() # store Rips in a dictionary with attrib access
     def writetree(self,string):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
@@ -41,12 +41,13 @@ class Run(object):
     def id2name(self, path, id):
         if len(str(id)) == 1: # if id is only 1 digit long
             id = '0'+str(id) # add a leading zero
-        name = [ dirname for dirname in os.listdir(path) if os.path.isdir(path+dirname) and dirname.startswith(str(id)+' - ') ]
+        name = [ dirname for dirname in os.listdir(path)
+                 if os.path.isdir(os.path.join(path, dirname))
+                 and dirname.startswith('%s - ' % id) ]
         if len(name) != 1:
             raise NameError, 'Ambiguous or non-existent Run id: %s' % id
         else:
-            name = name[0] # pull the string out of the list
-        return name
+            return name[0] # pull the string out of the list
     def name2id(self, name):
         try:
             id = name[0:name.index(' - ')] # everything before the first ' - ', index() raises ValueError if it can't be found
@@ -64,26 +65,27 @@ class Run(object):
 
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        experimentNames = [ fname[0:fname.rfind('.din')] for fname in os.listdir(self.path) if os.path.isfile(self.path+fname) and fname.endswith('.din') ] # returns din filenames without their .din extension
-        for (experimentid, experimentName) in enumerate(experimentNames): # experimentids will be according to alphabetical order of experimentNames
+        experimentNames = [ fname[0:fname.rfind('.din')] for fname in os.listdir(self.path)
+                            if os.path.isfile(os.path.join(self.path, fname))
+                            and fname.endswith('.din') ] # returns din filenames without their .din extension
+        for experimentid, experimentName in enumerate(experimentNames): # experimentids will be according to alphabetical order of experimentNames
             experiment = Experiment(id=experimentid, name=experimentName, parent=self) # pass both the id and the name
             experiment.load() # load the Experiment
             self.e[experiment.id] = experiment # save it
-        #if len(self.e) == 1:
-        #   self.e = self.e.values[0] # pull it out of the dictionary
-        ripNames = [ dirname[0:dirname.rfind('.rip')] for dirname in os.listdir(self.path) if os.path.isdir(self.path+dirname) and dirname.endswith('.rip') ] # returns rip folder names without their .rip extension
-        defaultRipNames = [ ripName for ripName in ripNames for ripkeyword in RIPKEYWORDS if ripName.count(ripkeyword) ]
+        ripNames = [ dirname[0:dirname.rfind('.rip')] for dirname in os.listdir(self.path)
+                     if os.path.isdir(os.path.join(self.path, dirname))
+                     and dirname.endswith('.rip') ] # returns rip folder names without their .rip extension
+        defaultRipNames = [ ripName for ripName in ripNames for ripkeyword in RIPKEYWORDS
+                            if ripkeyword in ripName ]
         if len(defaultRipNames) < 1:
             warn('Couldn\'t find a default Rip for Run(%s)' % self.id)
         if len(defaultRipNames) > 1: # This could just be a warning instead of an exception, but really, some folder renaming is in order
-            raise RuntimeError, 'More than one Rip folder in Run(%s) has a default keyword: %s' %(self.id, defaultRipNames)
-        for (ripid, ripName) in enumerate(ripNames): # ripids will be according to alphabetical order of ripNames
+            raise RuntimeError, 'More than one Rip folder in Run(%s) has a default keyword: %s' % (self.id, defaultRipNames)
+        for ripid, ripName in enumerate(ripNames): # ripids will be according to alphabetical order of ripNames
             rip = Rip(id=ripid, name=ripName, parent=self) # pass both the id and the name
             rip.load() # load the Rip
             self.rip[rip.name] = rip # save it
             # make the Neurons from the default Rip (if it exists in the Run path) available in the Run, so you can access them via r.n[nid] instead of having to do r.rip[name].n[nid]. Make them just another pointer to the data in r.rip[ripName].n
-            for ripkeyword in RIPKEYWORDS[::-1]: # reverse the keywords so first one gets processed last
-                if rip.name.count(ripkeyword): # if the keyword is in the ripName
+            for ripkeyword in RIPKEYWORDS[::-1]: # reverse the keywords so last one gets processed first
+                if ripkeyword in rip.name:
                     self.n = self.rip[rip.name].n # make it the default Rip
-        #if len(self.rip) == 1:
-        #   self.rip = self.rip.values[0] # pull it out of the dictionary
