@@ -673,7 +673,7 @@ class Netstate(object):
         return intcodeps, intcodes
 
     def ising(self, nis=None, algorithm='CG', **kwargs):
-        """Returns an Ising maximum entropy model that takes into account pairwise correlations neuron codes
+        """Returns an Ising maximum entropy model that takes into account pairwise correlations within neuron codes
         algorithm can be 'CG', 'BFGS', 'LBFGSB', 'Powell', or 'Nelder-Mead'"""
         if nis == None:
             nis = self.co.nis[0:DEFAULTCODEWORDLENGTH]
@@ -687,8 +687,8 @@ class Netstate(object):
         means = [ row.mean() for row in c ] # iterate over rows of codes in c
         nrows = c.shape[0]
         pairmeans = [ (c[i]*c[j]).mean() for i in range(0, nrows) for j in range(i+1, nrows) ] # take a pair of rows, find the mean of their elementwise product
-        ising = Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
-        return ising
+        isingo = Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
+        return isingo
 
     def isinghist(self, nbits=10, ngroups=5, algorithm='CG', **kwargs):
         """Plots, in separate figure, hi and Jij histograms collected from ising models
@@ -700,15 +700,15 @@ class Netstate(object):
         pd = wx.ProgressDialog(title='isinghist() progress', message='', maximum=ngroups, # create a progress dialog
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
         for groupi in range(ngroups): # for each group of nbits cells
-            cancel = not pd.Update(groupi, newmsg='groupi = %d' % groupi)
-            if cancel:
-                pd.Destroy()
-                return
             nis = random.sample(self.co.nis, nbits) # randomly sample nbits of the Netstate's nis attrib
             im = self.ising(nis=nis, algorithm=algorithm, **kwargs) # returns a maxent Ising model
             ims.append(im)
             his.append(im.hi)
             Jijs.append(im.Jij)
+            cancel = not pd.Update(groupi, newmsg='groupi = %d' % groupi)
+            if cancel:
+                pd.Destroy()
+                return
         pd.Destroy()
 
         # histogram them in linear space
@@ -848,7 +848,7 @@ class Netstate(object):
             # use loglog() instead
 
             # colour each scatter point according to how many 1s are in the population code word it represents.
-            # This is done a bit nastily, could use a cleanup:
+            # This is done very nastily, could use a cleanup:
             inds = []
             for nspikes in range(0, 5):
                 inds.append([])
@@ -930,14 +930,54 @@ class Netstate(object):
     # overwrite Scatter class def'n as an inner class of the current outer class Netstate, can refer to __outer__ attrib
     Scatter = innerclass(Scatter)
 
-    def I1I2vsIN(self, N=10, ngroups=10, tres=DEFAULTCODETRES):
-        """Does Schneidman fig 2c. Plots I1/IN vs IN, as well as I2/In vs IN, for ngroups of cells"""
-        pass
+    def I2vsIN(self, N=10, ngroups=15, tres=DEFAULTCODETRES):
+        """Does Schneidman fig 2c. I2/IN vs IN, for ngroups of cells.
+        This shows you what fraction of network correlation is accounted
+        for by the maxent pairwise model.
+        Plotting Icond-indep is different from S1 (see below),
+        and sounds annoying and not worth it (see methods)"""
+        niss = nCrsamples(objects=self.neurons.keys(),
+                          r=N, # pick N neurons at random
+                          nsamples=ngroups) # do it ngroups times
+        I2s = []
+        INs = []
+        pd = wx.ProgressDialog(title='I2vsIN() progress', message='', maximum=ngroups, # create a progress dialog
+                               style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
+        for groupi, nis in enumerate(niss):
+            p1 = asarray(self.intcodesFPDF(nis=nis, tres=tres)[0]) # indep model
+            p2 = self.ising(nis=nis).p # expected, assuming maxent Ising model
+            pN = asarray(self.intcodesPDF(nis=nis, tres=tres)[0]) # observed word probs
+            S1 = entropy_no_sing(p1) # ignore any singularities
+            S2 = entropy_no_sing(p2)
+            SN = entropy_no_sing(pN)
+            IN = S1 - SN
+            I2 = S1 - S2
+            I2s.append(I2 / tres * 1e6) # convert to bits/sec
+            INs.append(IN / tres * 1e6)
+            cancel = not pd.Update(groupi, newmsg='groupi = %d' % (groupi+1))
+            if cancel:
+                pd.Destroy()
+                return
+        pd.Destroy()
+        I2s = asarray(I2s)
+        INs = asarray(INs)
+        I2divIN = I2s / INs
+        f = figure()
+        gcfm().frame.SetTitle(lastcmd())
+        a = f.add_subplot(111)
+        a.plot(INs, I2divIN, 'r.')
+        a.set_xlim(xmin=0.0)
+        a.set_ylim(ymin=0.0, ymax=1.0)
+        a.set_xlabel('IN (bits / sec)')
+        a.set_ylabel('I2 / IN')
+        a.set_title('%s' % lastcmd())
 
+        return dictattr(I2divIN=I2divIN, INs=INs, niss=niss, a=a)
 
     def DJShist(self, nbits=DEFAULTCODEWORDLENGTH, ngroups=5, models=['indep', 'ising'],
                 logrange=(-4, 0), nbins=50, shufflecodes=False, algorithm='CG', **kwargs):
-        """Plots Jensen-Shannon divergence histograms and a histogram of their ratios for ngroups random groups of cells, each of length nbits.
+        """Plots Jensen-Shannon divergence histograms and a histogram of their ratios
+        for ngroups random groups of cells, each of length nbits.
         See Schneidman figure 2b"""
         niss = [] # list of lists, each sublist is a group of neuron indices
         DJSs = {} # hold the Jensen-Shannon divergences for different models and different groups of neurons
@@ -1032,11 +1072,8 @@ class Netstate(object):
                 p1 = asarray(self.intcodesFPDF(nis=nis, tres=tres)[0]) # indep model
                 pN = asarray(self.intcodesPDF(nis=nis, tres=tres)[0]) # observed word probs
                 #print 'calcing ps took: %f sec' % (time.clock()-t2)
-                # check to make sure there aren't any 0s in either p1 (virtually impossible) or pN (very likely for large networks and short recordings). Otherwise, you get singularities. Either add the smallest representable float 1e-307 to all ps, or just pluck the 0s out of the list
-                p1 = p1[p1 > 0] # discard any zero entries
-                pN = pN[pN > 0]
-                S1 = entropy(p1)
-                SN = entropy(pN)
+                S1 = entropy_no_sing(p1) # ignore any singularities
+                SN = entropy_no_sing(pN)
                 assert S1 > SN or approx(S1, SN), 'S1 is %.20f, SN is %.20f' % (S1, SN) # better be, indep model assumes the least structure
                 IN = S1 - SN
                 #print S1, SN, IN

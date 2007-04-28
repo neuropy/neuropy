@@ -785,6 +785,7 @@ def binslow(i, minbits=8):
     s = '0'*nzerostoadd + s # add enough leading zeros to get requested minbits
     return s
 
+# an alternative would be to use int('10110', base=2) for each column, probably slower though
 def binarray2int(bin):
     """Takes a 2D binary array (only 1s and 0s, with rows LSB to MSB from top to bottom)
     and returns the base 10 integer representations of the columns"""
@@ -1140,7 +1141,7 @@ def log_no_sing(x, subval=0.0, base=np.e):
     x = asarray(x)
     singi = x==0 # find the singularities
     x[singi] = 1 # replace 'em with 1s, or anything else that's safe to take the log of
-    result = logy(x, y=base) # now it's safe to take the log
+    result = logy(x, base=base) # now it's safe to take the log
     result[singi] = subval # substitute the result where the singularities were with the substitution value
     return result
 
@@ -1156,6 +1157,13 @@ def entropy(p):
     """Returns the entropy (in bits) of the prob distribution described by the prob values in p"""
     p = ensurenormed(p)
     return -(p * log2(p)).sum()
+
+def entropy_no_sing(p):
+    """Returns the entropy (in bits) of the prob distribution described by the prob values in p
+    Ignore singularities in p (assumes their contribution to entropy is zero)"""
+    p = ensurenormed(p)
+    return -(p * log2_no_sing(p, subval=0.0)).sum()
+
 
 def mutualinfo(XY):
     """Given the joint PDF of two variables, returns the mutual information (in bits) between the two
@@ -1228,7 +1236,7 @@ class Ising(object):
         assert (len(self.hi), len(self.Jij), len(self.p)) == (nbits, npairs, 2**nbits) # sanity checks
         #print 'means:', means
         #print 'pairmeans:', pairmeans
-        print 'niterations:', self.model.iters
+        print '%d iters,' % self.model.iters,
         #print 'hi:', self.hi.__repr__()
         #print 'Jij:', self.Jij.__repr__()
 

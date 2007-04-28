@@ -1,4 +1,5 @@
-- move code to /neuropy subfolder, make a setup.py in root, keep TODO in root
+- get rid of all use of python's built-in random module, use numpy.random instead
+- if an analysis method needs to return more than one object, have return them in a dictattr of results
 
 Netstate stuff:
     - for the time bins, try lots of different phases, see if this changes things at all
@@ -91,6 +92,9 @@ DONE:
 - increase precision of x, y coord display in statusbar of MPL figures
 
 MPL: - when saving figs, automatically choose .png from list
+
+- move code to /neuropy subfolder, make a setup.py in root, keep TODO in root
+
 
 Netstate stuff:
     - look for check cells

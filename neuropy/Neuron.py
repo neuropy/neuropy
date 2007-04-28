@@ -246,7 +246,7 @@ class XCorr(object):
         out = weave.inline(code,
                            [selfspikes, otherspikes, nspikes, trange],
                            type_converters=weave.converters.blitz,
-                           compiler = 'gcc')
+                           compiler = 'msvc?')
         '''
     def plot(self, nbins=100, figsize=(6.5, 6.5), style='count'):
         """style can be 'count' or 'rate'"""
@@ -507,6 +507,7 @@ class GaussRate(BaseRate):
         self.kind = 'gauss'
         self.width = width
     def calc(self):
+        # use scipy.signal.gaussian, use just left half to keep it causal
         pass
     def plot(self):
         super(GaussRate, self).plot()
@@ -520,6 +521,7 @@ class RectRate(BaseRate):
         self.kind = 'rect'
         self.width = width
     def calc(self):
+        # use scipy.signal.boxcar
         pass
     def plot(self):
         super(RectRate, self).plot()
