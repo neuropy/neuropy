@@ -971,11 +971,15 @@ class Netstate(object):
         a.set_xlabel('IN (bits / sec)')
         a.set_ylabel('I2 / IN')
         a.set_title('%s' % lastcmd())
+        a.text(0.99, 0.01, 'mean=%.3f, std=%.3f' % (I2divIN.mean(), I2divIN.std()), # add mean and std to bottom right
+            transform = a.transAxes,
+            horizontalalignment = 'right',
+            verticalalignment = 'bottom')
 
         return dictattr(I2divIN=I2divIN, INs=INs, niss=niss, a=a)
 
-    def DJShist(self, nbits=DEFAULTCODEWORDLENGTH, ngroups=5, models=['indep', 'ising'],
-                logrange=(-4, 0), nbins=50, shufflecodes=False, algorithm='CG', **kwargs):
+    def DJShist(self, nbits=DEFAULTCODEWORDLENGTH, ngroups=5, models=['ising', 'indep'],
+                logrange=(-3.667, -0.333), nbins=50, shufflecodes=False, algorithm='CG', **kwargs):
         """Plots Jensen-Shannon divergence histograms and a histogram of their ratios
         for ngroups random groups of cells, each of length nbits.
         See Schneidman figure 2b"""
@@ -989,13 +993,13 @@ class Netstate(object):
             nis = random.sample(self.co.nis, nbits) # randomly sample nbits of the Netstate's nis attrib
             niss.append(nis)
             for modeli, model in enumerate(models): # for each model, use the same nis
+                so = self.Scatter(nis=nis, model=model, randomneurons=False,
+                                  shufflecodes=shufflecodes, algorithm=algorithm, **kwargs)
+                DJSs[model].append(DJS(so.pobserved, so.pexpected))
                 cancel = not pd.Update(groupi*len(models)+modeli, newmsg='groupi = %d\nmodel = %s' % (groupi, model))
                 if cancel:
                     pd.Destroy()
                     return
-                so = self.Scatter(nis=nis, model=model, randomneurons=False,
-                                  shufflecodes=shufflecodes, algorithm=algorithm, **kwargs)
-                DJSs[model].append(DJS(so.pobserved, so.pexpected))
         pd.Destroy()
 
         # now find the DJSratios between the two models, for each group of neurons
@@ -1012,28 +1016,42 @@ class Netstate(object):
         barwidths = list(diff(x)) # each bar will have a different width, convert to list so you can append
         # need to add one more entry to barwidth to the end to get nbins of them:
         barwidths.append(0) # don't display the last one
-        #logbinwidth = (logrange[1]-logrange[0]) / float(nbins)
+        logbinwidth = (logrange[1]-logrange[0]) / float(nbins)
         #barwidths.append(10**(logrange[1]+logbinwidth) - x[-1]) # should be exactly correct
 
         # plot DJSs of all models on the same axes
-        f1 = figure()
-        a1 = f1.add_subplot(111)
-        #a1.hold(True)
+        f = figure()
+        a = f.add_subplot(111)
+        #a.hold(True)
         bars = {}
+        heights = {}
         for model in models:
-            bars[model] = a1.bar(left=x, height=n[model], width=barwidths, color=color[model],
+            heights[model] = n[model] / float(ngroups * logbinwidth)
+            bars[model] = a.bar(left=x, height=heights[model], width=barwidths, color=color[model],
                                  edgecolor=color[model])
-        a1.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
+        a.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
+        a.set_xlim(xmin=10**logrange[0], xmax=10**logrange[1])
         gcfm().frame.SetTitle(lastcmd())
-        a1.set_title('Jensen-Shannon divergence histogram\n%s' % lastcmd())
-        a1.set_ylabel('number of groups of %d cells' % nbits)
-        a1.set_xlabel('DJS (bits)')
-        a1.legend([ bars[model][0] for model in models ], models ) # grab the first bar for each model, label it with the model name
+        #a.set_title('Jensen-Shannon divergence histogram\n%s' % lastcmd())
+        #a.set_ylabel('number of groups of %d cells' % nbits)
+        #a.set_xlabel('DJS (bits)')
+        #a.set_ylabel('probability density (1 / log10(DJS))', size=20)
+
+        a.set_xticklabels(['', '0.001', '0.01', '0.1', '']) # hack!
+
+        for label in a.get_xticklabels():
+            label.set_size(30)
+        for label in a.get_yticklabels():
+            label.set_size(30)
+
+        a.legend([ bars[model][0] for model in models ], ['pairwise', 'independent'], prop=mpl.font_manager.FontProperties(size=20) ) # grab the first bar for each model, label it with the model name
 
         # plot DJSratios
         if len(models) == 2:
             f2 = figure()
             a2 = f2.add_subplot(111)
+            a1 = a
+            a = [a1, a2]
             a2.bar(left=x, height=nratios, width=barwidths, color='g', edgecolor='g')
             a2.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
             gcfm().frame.SetTitle(lastcmd())
@@ -1041,7 +1059,7 @@ class Netstate(object):
             a2.set_ylabel('number of groups of %d cells' % nbits)
             a2.set_xlabel('DJS ratio (%s / %s)' % (models[1], models[0]))
 
-        return niss, DJSs, DJSratios
+        return dictattr(niss=niss, DJSs=DJSs, DJSratios=DJSratios, a=a, x=x, heights=heights)
 
     def S1INvsN(self, minN=4, maxN=15, maxnsamples=10, tres=DEFAULTCODETRES):
         """Plots the average independent cell entropy S1 and average network multi-information IN (IN = S1 - SN)
