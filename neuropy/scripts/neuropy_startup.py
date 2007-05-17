@@ -33,6 +33,11 @@ mpl.interactive(True)
 
 cd('c:/home/mspacek/Desktop')
 
+try:
+    clr = shell.clear
+except NameError: # we're running in some environment where shell isn't defined, like ipython
+    pass
+
 def r():
     """Refreshes neuropy.
     WARNING: Seems to cause problems in IPython"""
