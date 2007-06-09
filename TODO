@@ -1,3 +1,4 @@
+- need to deal with change of dimstim movie sweep time from sweeptimeMsec to sweepSec for Cat 16+
 - get rid of all use of python's built-in random module, use numpy.random instead
 - if an analysis method needs to return more than one object, have return them in a dictattr of results
 

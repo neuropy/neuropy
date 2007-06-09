@@ -73,11 +73,12 @@ class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dims
                 self.__cat__ = self.r.t.a.id # haven't considered what to do with a rat...
             if self.__cat__ >= 16: # post major refactoring of dimstim
                 # need to at least check if this Experiment uses a default movie like mseq32 or mseq16
+                # as in "for defaultm in [MSEQ32, MSEQ16]:" code block in self.loadprecat16exp()
                 pass
             else:
-                self.loadprecat15exp()
+                self.loadprecat16exp()
 
-    def loadprecat15exp(self):
+    def loadprecat16exp(self):
 
         from Movie import Movie, MSEQ32, MSEQ16
 
@@ -109,7 +110,7 @@ class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dims
                 pass
             '''
         # Generate the sweeptable here, no need to load if from files anymore...
-        # self.sweeptable = {[]} # dictionary of lists, ie sweeptable={'ori',[0,45,90],'sfreq',[1,1,1]}
+        # self.sweeptable = {[]} # dictionary of lists, ie sweeptable={'ori':[0,45,90], 'sfreq':[1,1,1]}
         # so you index into it with self.sweeptable['var'][sweepi]
         # vars = self.sweeptable.keys()
         # need to check if varlist exists, if so use it (we're dealing with Cat 15), if not, use revamped dimstim.SweepTable class
