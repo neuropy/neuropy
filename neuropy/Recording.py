@@ -578,8 +578,9 @@ class RecordingCode(BaseRecording):
     '''
 
 class Netstate(object):
-    """Implements a lot of the analyses on network states found in the 2006 Schneidman paper"""
-    def __init__(self, recording, experiments=None):
+    """Network state analyses.
+    Implements a lot of the analyses on network states found in the 2006 Schneidman paper"""
+    def __init__(self, recording, experiments=None, kind='binary'):
         self.r = recording
         if experiments == None:
             self.tranges = [self.r.trange] # or should we check to see if this Recording has a tranges field due to appending Neurons?
@@ -595,7 +596,7 @@ class Netstate(object):
         self.nneurons = len(self.neurons)
         nis = self.neurons.keys() # get all neuron indices in this Recording
         nis.sort() # make sure they're sorted
-        self.co = self.codes(nis=nis, kind='binary') # generate and save the binary codes object for all the nis
+        self.co = self.codes(nis=nis, kind=kind) # generate and save the binary codes object for all the nis
 
     def codes(self, nis=None, kind='binary', tres=DEFAULTCODETRES, phase=0, shufflecodes=False):
         """Returns the appropriate Codes object, depending on the recording
@@ -811,6 +812,7 @@ class Netstate(object):
 
             self.nis = nis # save it so that plot() method can access it
             self.nbits = nbits
+            self.model = model
 
             #if randomneurons:
             #    print 'neurons:', nis # print 'em out if they were randomly selected
@@ -823,11 +825,16 @@ class Netstate(object):
                 ising = self.ising(nis=nis, algorithm=algorithm) # returns a maxent Ising model
                 self.pexpected = ising.p # expected, assuming maxent Ising model
                 self.expectedwords = ising.intsamplespace
+            elif model == 'both':
+                ising = self.ising(nis=nis, algorithm=algorithm) # returns a maxent Ising model
+                self.pexpected = ising.p # expected, assuming maxent Ising model
+                self.expectedwords = ising.intsamplespace
+                self.pindepexpected, blah = self.intcodesFPDF(nis=nis, **kwargs) # expected, assuming independence. don't potentially shuffle expected codes
             else:
                 raise ValueError, 'Unknown model %r' % model
             assert (self.observedwords == self.expectedwords).all() # make sure we're comparing apples to apples
 
-        def plot(self):
+        def plot(self, color=False):
             """Scatterplots the expected probabilities of all possible population codes (y axis)
             vs their observed probabilities (x axis).
             nis are in LSB to MSB order. See Schneidman Figures 1f and 2a"""
@@ -849,37 +856,40 @@ class Netstate(object):
 
             # colour each scatter point according to how many 1s are in the population code word it represents.
             # This is done very nastily, could use a cleanup:
-            inds = []
-            for nspikes in range(0, 5):
-                inds.append([])
-                [ inds[nspikes].append(i) for i in range(0, 2**self.nbits) if bin(i).count('1') == nspikes ]
-            pobserved = self.pobserved.copy() # make local copies that are safe to modify for colour plotting and shit
-            pexpected = self.pexpected.copy()
-            pobserved1 = pobserved[inds[1]]; pexpected1 = pexpected[inds[1]]
-            pobserved2 = pobserved[inds[2]]; pexpected2 = pexpected[inds[2]]
-            pobserved3 = pobserved[inds[3]]; pexpected3 = pexpected[inds[3]]
-            pobserved4 = pobserved[inds[4]]; pexpected4 = pexpected[inds[4]]
-            pobserved[inds[1]], pexpected[inds[1]] = None, None # remove all these
-            pobserved[inds[2]], pexpected[inds[2]] = None, None
-            pobserved[inds[3]], pexpected[inds[3]] = None, None
-            pobserved[inds[4]], pexpected[inds[4]] = None, None
+            if color:
+                inds = []
+                for nspikes in range(0, 5):
+                    inds.append([])
+                    [ inds[nspikes].append(i) for i in range(0, 2**self.nbits) if bin(i).count('1') == nspikes ]
+                pobserved = self.pobserved.copy() # make local copies that are safe to modify for colour plotting and shit
+                pexpected = self.pexpected.copy()
+                pobserved1 = pobserved[inds[1]]; pexpected1 = pexpected[inds[1]]
+                pobserved2 = pobserved[inds[2]]; pexpected2 = pexpected[inds[2]]
+                pobserved3 = pobserved[inds[3]]; pexpected3 = pexpected[inds[3]]
+                pobserved4 = pobserved[inds[4]]; pexpected4 = pexpected[inds[4]]
+                pobserved[inds[1]], pexpected[inds[1]] = None, None # remove all these
+                pobserved[inds[2]], pexpected[inds[2]] = None, None
+                pobserved[inds[3]], pexpected[inds[3]] = None, None
+                pobserved[inds[4]], pexpected[inds[4]] = None, None
 
-            a.loglog(pobserved, pexpected, 'k.') # plots what's left in black
-            a.loglog(pobserved4, pexpected4, 'm.')
-            a.loglog(pobserved3, pexpected3, 'c.')
-            a.loglog(pobserved2, pexpected2, 'y.')
-            a.loglog(pobserved1, pexpected1, 'r.')
+            if self.model == 'both': # plot the indep model too, and plot it first
+                a.loglog(self.pobserved, self.pindepexpected, color='lightsteelblue', marker='.', linestyle='None')
+            # plot whichever model was specified
+            if color:
+                a.loglog(pobserved, pexpected, 'k.') # plots what's left in black
+                a.loglog(pobserved4, pexpected4, 'm.')
+                a.loglog(pobserved3, pexpected3, 'c.')
+                a.loglog(pobserved2, pexpected2, 'y.')
+                a.loglog(pobserved1, pexpected1, 'r.')
+            else:
+                a.loglog(self.pobserved, self.pexpected, 'r.')
             '''
-            a.plot(pobserved, pexpected, 'k.') # plots what's left in black
-            a.plot(pobserved4, pexpected4, 'm.')
-            a.plot(pobserved3, pexpected3, 'c.')
-            a.plot(pobserved2, pexpected2, 'y.')
-            a.plot(pobserved1, pexpected1, 'r.')
+            a.plot(pobserved, pexpected, 'k.')
             '''
             gcfm().frame.SetTitle(lastcmd())
             missingcodeis = (self.pobserved == 0).nonzero()[0]
             nmissing = len(missingcodeis)
-            percentmissing = nmissing / float(2**self.nbits)*100
+            percentmissing = nmissing / float(2**self.nbits) * 100
             missingcodetext = ''
             if nmissing != 0:
                 missingcodes = self.observedwords[missingcodeis]
@@ -892,7 +902,11 @@ class Netstate(object):
             a.set_xlabel('observed population code probability')
             a.set_ylabel('expected population code probability')
             a.set_ylim(ymin=10**-11, ymax=10**0) # this makes all plots consistent, some might be missing a scatter point or two
-            a.text(0.99, 0.01, '%% missing=%.1f\nDJS=%.4f' % (percentmissing, DJS(self.pobserved, self.pexpected)), # add DJS to bottom right of plot
+            if self.model =='both':
+                DJSstring = '(%.4f, %.4f)' % (DJS(self.pobserved, self.pindepexpected), DJS(self.pobserved, self.pexpected))
+            else:
+                DJSstring = '%.4f' % DJS(self.pobserved, self.pexpected)
+            a.text(0.99, 0.01, '%.1f%% missing\nDJS=%s' % (percentmissing, DJSstring), # add DJS to bottom right of plot
                 transform = a.transAxes,
                 horizontalalignment = 'right',
                 verticalalignment = 'bottom')
