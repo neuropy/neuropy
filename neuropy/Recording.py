@@ -18,10 +18,10 @@ class BaseRecording(object):
         self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
         if parent == None:
             try:
-                self.t = _data.a[DEFAULTANIMALNAME].t[DEFAULTTRACKID] # see if the default Track has already been init'd
+                self.t = _data.a[ANIMALNAME].t[TRACKID] # see if the default Track has already been init'd
             except KeyError:
                 self.t = Track() # init the default Track...
-                _data.a[DEFAULTANIMALNAME].t[self.t.id] = self.t  # ...and add it to the default Animal's list of Tracks
+                _data.a[ANIMALNAME].t[self.t.id] = self.t  # ...and add it to the default Animal's list of Tracks
         else:
             self.t = parent # save parent Track object
         if id is not None:
@@ -122,7 +122,7 @@ class PopulationRaster(object):
         else:
             self.e = experiments # should also be a dict
         if binwidth == None:
-            self.binwidth = DEFAULTCODETRES
+            self.binwidth = CODETRES
         else:
             self.binwidth = binwidth
         assert self.binwidth >= 10000
@@ -358,7 +358,7 @@ class Codes(object):
     """A 2D array where each row is a neuron code, and each column
     is a binary population word for that time bin, sorted LSB to MSB from top to bottom.
     neurons is a list of Neurons, also from LSB to MSB. Order in neurons is preserved."""
-    def __init__(self, neurons=None, kind='binary', tranges=None, tres=DEFAULTCODETRES, phase=0, shufflecodes=False):
+    def __init__(self, neurons=None, kind=CODEKIND, tranges=None, tres=CODETRES, phase=0, shufflecodes=False):
         self.neurons = neurons
         self.kind = kind
         self.tranges = tolist(tranges)
@@ -505,16 +505,16 @@ class CodeCorrPDF(object):
 
 class RecordingCode(BaseRecording):
     """Mix-in class that defines the spike code related Recording methods"""
-    def code(self, cneuron=None, kind='binary', tranges=None, tres=DEFAULTCODETRES, phase=0):
+    def code(self, cneuron=None, kind=CODEKIND, tranges=None, tres=CODETRES, phase=0):
         """Returns a ConstrainedNeuron.Code object, constrained to the time
         ranges of the Experiments in this Recording, as well as by tranges. Takes either a
         ConstrainedNeuron object or just a ConstrainedNeuron id"""
         try:
-            return cneuron.code(kind='binary', tranges=tranges, tres=tres, phase=phase) # see if cneuron is a ConstrainedNeuron
+            return cneuron.code(kind=kind, tranges=tranges, tres=tres, phase=phase) # see if cneuron is a ConstrainedNeuron
         except AttributeError:
-            return self.cn[cneuron].code(kind='binary', tranges=tranges, tres=tres, phase=phase) # cneuron is probably a ConstrainedNeuron id
+            return self.cn[cneuron].code(kind=kind, tranges=tranges, tres=tres, phase=phase) # cneuron is probably a ConstrainedNeuron id
 
-    def codes(self, neurons=None, experiments=None, kind='binary', tres=DEFAULTCODETRES, phase=0, shufflecodes=False):
+    def codes(self, neurons=None, experiments=None, kind=CODEKIND, tres=CODETRES, phase=0, shufflecodes=False):
         """Returns a Codes object, a 2D array where each row is a neuron code constrained to the time range of this Recording,
         or if specified, to the time ranges of Experiments in this Recording"""
         if neurons != None:
@@ -577,10 +577,11 @@ class RecordingCode(BaseRecording):
         return cw
     '''
 
-class Netstate(object):
-    """Network state analyses.
+class BaseNetstate(object):
+    """Base class of Network state analyses.
     Implements a lot of the analyses on network states found in the 2006 Schneidman paper"""
-    def __init__(self, recording, experiments=None, kind='binary'):
+
+    def __init__(self, recording, experiments=None, kind=CODEKIND, tres=CODETRES, phase=0):
         self.r = recording
         if experiments == None:
             self.tranges = [self.r.trange] # or should we check to see if this Recording has a tranges field due to appending Neurons?
@@ -591,21 +592,27 @@ class Netstate(object):
             except AttributeError:
                 self.tranges = [ self.r.e[ei].trange for ei in experiments ] # assume experiments is a list of experiment ids
                 experiments = [ self.r.e[ei] for ei in experiments ] # convert to a list of Experiments
-        self.experiments = experiments # save list of Experiments (could potentially be None)
+        self.e = experiments # save list of Experiments (could potentially be None)
+        self.kind = kind
+        self.tres = tres
+        self.phase = phase
         self.neurons = self.r.n
         self.nneurons = len(self.neurons)
         nis = self.neurons.keys() # get all neuron indices in this Recording
         nis.sort() # make sure they're sorted
-        self.co = self.codes(nis=nis, kind=kind) # generate and save the binary codes object for all the nis
+        self.co = self.codes(nis=nis) # generate and save the Codes object for all the nis
 
-    def codes(self, nis=None, kind='binary', tres=DEFAULTCODETRES, phase=0, shufflecodes=False):
+    def codes(self, nis=None, shufflecodes=False):
         """Returns the appropriate Codes object, depending on the recording
         and experiments defined for this Netstate object"""
-        self.kind = kind
-        self.tres = tres
         cneurons = [ self.r.cn[ni] for ni in nis ] # build up list of ConstrainedNeurons, according to nis
         # get codes for this Recording constrained to when stimuli were on screen
-        return self.r.codes(neurons=cneurons, experiments=self.experiments, kind=kind, tres=tres, phase=phase, shufflecodes=shufflecodes)
+        return self.r.codes(neurons=cneurons,
+                            experiments=self.e,
+                            kind=self.kind,
+                            tres=self.tres,
+                            phase=self.phase,
+                            shufflecodes=shufflecodes)
 
     def wordts(self, nis=None, mis=None):
         """Returns word times, ie the times of the left bin edges for which all the
@@ -625,37 +632,37 @@ class Netstate(object):
         return co.t[i] # return the times at those indices
 
     def wordtsms(self, nis=None, mis=None):
-        """Returns word times in ms, to the nearest ms, with the on bits specified in mis.
+        """Returns word times to the nearest msec, with the on bits specified in mis.
         nis lists the total population of neuron ids"""
         return np.int32(np.round(self.wordts(nis=nis, mis=mis) / 1e3))
 
-    def intcodes(self, nis=None, **kwargs):
+    def intcodes(self, nis=None):
         """Given neuron indices (ordered LSB to MSB top to bottom), returns an array of the integer representation
         of the neuronal population binary code for each time bin"""
+        assert self.kind == binary
         if nis == None:
-            raise ValueError, 'nis is None'
-            #nis = random.sample(self.co.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
-        return binarray2int(self.codes(nis=nis, kind='binary', **kwargs).c)
+            nis = random.sample(self.co.nis, CODEWORDLEN) # randomly sample CODEWORDLEN bits of the nis
+        return binarray2int(self.codes(nis=nis).c)
 
-    def intcodesPDF(self, nis=None, **kwargs):
+    def intcodesPDF(self, nis=None):
         """Returns the observed pdf across all possible population binary code words,
         labelled according to their integer representation"""
         if nis == None:
-            nis = random.sample(self.co.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
-        intcodes = self.intcodes(nis=nis, **kwargs)
+            nis = random.sample(self.co.nis, CODEWORDLEN) # randomly sample CODEWORDLEN bits of the nis
+        intcodes = self.intcodes(nis=nis)
         nbits = len(nis)
         p, bins = histogram(intcodes, bins=arange(2**nbits), normed='pmf')
         return p, bins
 
-    def intcodesFPDF(self, nis=None, **kwargs):
+    def intcodesFPDF(self, nis=None):
         """the F stands for factorial. Returns the probability of getting each population binary code word, assuming
         independence between neurons, taking into account each neuron's spike (and no spike) probability"""
         if nis == None:
-            nis = random.sample(self.co.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
+            nis = random.sample(self.co.nis, CODEWORDLEN) # randomly sample CODEWORDLEN bits of the nis
         nbits = len(nis)
         intcodes = arange(2**nbits)
         #neurons = dict( (ni, self.neurons[ni]) for ni in nis ) # this is like dict comprehension, pretty awesome!
-        codeso = self.codes(nis=nis, kind='binary', **kwargs)
+        codeso = self.codes(nis=nis)
         spikeps = [] # list spike probabilities for all neurons
         for neuroncode in codeso.c: # for each neuron, ie each row
             spikeps.append( neuroncode.mean() ) # calc the average p of getting a spike for this neuron, within any time bin.
@@ -673,13 +680,13 @@ class Netstate(object):
         intcodeps = x.prod(axis=0) # take the product along the 0th axis (the columns) to get the prob of each population code word
         return intcodeps, intcodes
 
-    def ising(self, nis=None, algorithm='CG', **kwargs):
+    def ising(self, nis=None, algorithm='CG'):
         """Returns an Ising maximum entropy model that takes into account pairwise correlations within neuron codes
         algorithm can be 'CG', 'BFGS', 'LBFGSB', 'Powell', or 'Nelder-Mead'"""
         if nis == None:
-            nis = self.co.nis[0:DEFAULTCODEWORDLENGTH]
+            nis = self.co.nis[0:CODEWORDLEN]
         #print 'nis:', nis.__repr__()
-        codeso = self.codes(nis=nis, kind='binary', **kwargs)
+        codeso = self.codes(nis=nis)
         #c = codeso.c
         # convert values in codes object from [0, 1] to [-1, 1] by mutliplying by 2 and subtracting 1
         c = codeso.c.copy() # don't modify the original
@@ -691,35 +698,44 @@ class Netstate(object):
         isingo = Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
         return isingo
 
-    def isinghist(self, nbits=10, ngroups=5, algorithm='CG', **kwargs):
-        """Plots, in separate figure, hi and Jij histograms collected from ising models
-        of multiple subgroups of cells. Returns (his, Jijs). See Schneidman fig 3b"""
-        ims = [] # holds Ising Model objects
-        his = []
-        Jijs = []
+class NetstateIsingHist(BaseNetstate):
+    """Netstate Ising parameter histograms. See Schneidman 2006 Fig 3b"""
+    def calc(self, nbits=10, ngroups=5, algorithm='CG'):
+        """Collects hi and Jij parameter values computed from ising models
+        of ngroups subgroups of cells of size nbits"""
+        self.nbits = nbits
+        self.ngroups = ngroups
+        self.algorithm = algorithm
 
-        pd = wx.ProgressDialog(title='isinghist() progress', message='', maximum=ngroups, # create a progress dialog
+        self.ims = [] # holds Ising Model objects
+        self.his = []
+        self.Jijs = []
+
+        pd = wx.ProgressDialog(title='NetstateIsingHist progress', message='', maximum=ngroups, # create a progress dialog
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
-        for groupi in range(ngroups): # for each group of nbits cells
+        for groupi in range(self.ngroups): # for each group of nbits cells
             nis = random.sample(self.co.nis, nbits) # randomly sample nbits of the Netstate's nis attrib
-            im = self.ising(nis=nis, algorithm=algorithm, **kwargs) # returns a maxent Ising model
-            ims.append(im)
-            his.append(im.hi)
-            Jijs.append(im.Jij)
+            im = self.ising(nis=nis, algorithm=algorithm) # returns a maxent Ising model
+            self.ims.append(im)
+            self.his.append(im.hi)
+            self.Jijs.append(im.Jij)
             cancel = not pd.Update(groupi, newmsg='groupi = %d' % groupi)
             if cancel:
                 pd.Destroy()
                 return
         pd.Destroy()
 
+    def plot(self, nbins=50, hirange=(-2.5, 2.5), Jijrange=(-1.1, 1.1)):
+        """Plots hi and Jij histograms in separate figures"""
+
+        try: self.his, self.Jij
+        except AttributeError: self.calc()
+
         # histogram them in linear space
-        nbins = 50
-        hirange = (-2.5, 2.5) #(-10, 10)
-        Jijrange = (-1.1, 1.1) #(-10, 10)
-        hibins = np.linspace(start=hirange[0], stop=hirange[1], num=nbins, endpoint=True)
+        hibins  = np.linspace(start=hirange[0], stop=hirange[1], num=nbins, endpoint=True)
         Jijbins = np.linspace(start=Jijrange[0], stop=Jijrange[1], num=nbins, endpoint=True)
-        nhi = histogram(his, bins=hibins, normed='pdf')[0]
-        nJij = histogram(Jijs, bins=Jijbins, normed='pdf')[0]
+        nhi  = histogram(self.his, bins=hibins, normed='pdf')[0]
+        nJij = histogram(self.Jijs, bins=Jijbins, normed='pdf')[0]
 
         # plot the hi histogram
         f1 = figure()
@@ -743,7 +759,9 @@ class Netstate(object):
         a2.set_xlabel('Jij')
         a2.set_xlim(Jijrange)
 
-        return (his, Jijs)
+
+class NetstateOtherStuff(BaseNetstate):
+    """TEMPORARY"""
 
     def nspikingPMF(self, nis=None, shufflecodes=False, **kwargs):
         """Returns the PMF of observing n cells spiking in the same time bin, for either
@@ -759,7 +777,7 @@ class Netstate(object):
         See 2006 Schneidman fig 1e"""
         if nis == None:
             niswasNone = True
-            nis = random.sample(self.co.nis, DEFAULTCODEWORDLENGTH) # randomly sample DEFAULTCODEWORDLENGTH bits of the nis
+            nis = random.sample(self.co.nis, CODEWORDLEN) # randomly sample CODEWORDLEN bits of the nis
             nis.sort()
             print 'nis = %r' % nis
         else:
@@ -802,7 +820,7 @@ class Netstate(object):
                 if nbits == None:
                     nbits = len(nis) # if nis is specified and nbits isn't, each ni gets its own bit
             if nbits == None: # nis and nbits were both passed as None
-                nbits = DEFAULTCODEWORDLENGTH
+                nbits = CODEWORDLEN
             nbits = min(len(nis), nbits) # constrain nbits to be no more than the number of nis
             if randomneurons:
                 nis = random.sample(nis, nbits) # randomly sample nbits of the nis
@@ -944,7 +962,7 @@ class Netstate(object):
     # overwrite Scatter class def'n as an inner class of the current outer class Netstate, can refer to __outer__ attrib
     Scatter = innerclass(Scatter)
 
-    def I2vsIN(self, N=10, ngroups=15, tres=DEFAULTCODETRES):
+    def I2vsIN(self, N=10, ngroups=15, tres=CODETRES):
         """Does Schneidman fig 2c. I2/IN vs IN, for ngroups of cells.
         This shows you what fraction of network correlation is accounted
         for by the maxent pairwise model.
@@ -992,7 +1010,7 @@ class Netstate(object):
 
         return dictattr(I2divIN=I2divIN, INs=INs, niss=niss, a=a)
 
-    def DJShist(self, nbits=DEFAULTCODEWORDLENGTH, ngroups=5, models=['ising', 'indep'],
+    def DJShist(self, nbits=CODEWORDLEN, ngroups=5, models=['ising', 'indep'],
                 logrange=(-3.667, -0.333), nbins=50, shufflecodes=False, algorithm='CG', **kwargs):
         """Plots Jensen-Shannon divergence histograms and a histogram of their ratios
         for ngroups random groups of cells, each of length nbits.
@@ -1075,7 +1093,7 @@ class Netstate(object):
 
         return dictattr(niss=niss, DJSs=DJSs, DJSratios=DJSratios, a=a, x=x, heights=heights)
 
-    def S1INvsN(self, minN=4, maxN=15, maxnsamples=10, tres=DEFAULTCODETRES):
+    def S1INvsN(self, minN=4, maxN=15, maxnsamples=10, tres=CODETRES):
         """Plots the average independent cell entropy S1 and average network multi-information IN (IN = S1 - SN)
         vs network size N. IN is how much less entropy there is in the system due to correlated network activity.
         For each network size up to maxN, averages S1 and IN over maxnsamples (or less if that many aren't possible)
@@ -1429,11 +1447,17 @@ class Netstate(object):
 
 
 class RecordingNetstate(BaseRecording):
-    """Mix-in class that defines the spike code related Netstate methods"""
-    def netstate(self, experiments=None):
-        """Returns a Netstate object"""
-        nso = Netstate(recording=self, experiments=experiments)
-        return nso
+    """Mix-in class that defines Netstate related Recording methods"""
+    def ns_(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=0):
+        """Returns a BaseNetstate object"""
+        return BaseNetstate(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase)
+    def ns_isinghist(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=0):
+        """Returns a NetstateIsingHist object"""
+        return NetstateIsingHist(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase)
+    def ns_other(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=0):
+        """Returns a NetstateOtherStuff object"""
+        return NetstateOtherStuff(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase)
+
 
 
 class Recording(RecordingRaster,

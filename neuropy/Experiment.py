@@ -6,7 +6,7 @@ import dimstim.Experiment
 
 from Core import *
 import Neuron
-from Recording import PopulationRaster, Codes, CodeCorrPDF, Netstate
+from Recording import PopulationRaster, Codes, CodeCorrPDF
 
 class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dimstim???????????????????????????
     """An Experiment corresponds to a single contiguous VisionEgg stimulus session.
@@ -200,12 +200,11 @@ class ExperimentCode(BaseExperiment):
     codecorrpdf.__doc__ += '\nCodeCorrPDF: '+getargstr(CodeCorrPDF.__init__)
     codecorrpdf.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code)
     codecorrpdf.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__)
-
+    '''
     def netstate(self):
         """Returns a Netstate object"""
         nso = Netstate(experiment=self)
         return nso
-    '''
     def codewords(self, **kwargs):
         cw = CodeWords(trange=self.trange)
         cw.calc()

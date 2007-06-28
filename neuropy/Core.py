@@ -35,35 +35,38 @@ mpl.interactive(True)
 
 from dimstim.Core import dictattr # Dictionary with attribute access
 
-DEFAULTDATAPATH = os.path.join(os.sep, 'data')
-DEFAULTMODELPATH = os.path.join(os.sep, 'model')
+# global DEFAULTS
 
-DEFAULTSPECIES = 'Cat'
-DEFAULTCATID = 15
-DEFAULTRATID = 0
-if DEFAULTSPECIES == 'Cat':
-    DEFAULTANIMALNAME = '%s %d' % (DEFAULTSPECIES, DEFAULTCATID)
-elif DEFAULTSPECIES == 'Rat':
-    DEFAULTANIMALNAME = '%s %d' % (DEFAULTSPECIES, DEFAULTRATID)
+DATAPATH = os.path.join(os.sep, 'data')
+MODELPATH = os.path.join(os.sep, 'model')
+
+SPECIES = 'Cat'
+CATID = 15
+RATID = 0
+if SPECIES == 'Cat':
+    ANIMALNAME = '%s %d' % (SPECIES, CATID)
+elif SPECIES == 'Rat':
+    ANIMALNAME = '%s %d' % (SPECIES, RATID)
 else:
-    raise ValueError, 'unknown species %s' % DEFAULTSPECIES
+    raise ValueError, 'unknown species %s' % SPECIES
 
-DEFAULTTRACKID = '7c'
+TRACKID = '7c'
 RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording/Run
-DEFAULTMOVIEPATH = os.path.join(os.sep, 'pub', 'Movies')
-DEFAULTMOVIENAME = 'mseq32.m'
+MOVIEPATH = os.path.join(os.sep, 'pub', 'Movies')
+MOVIENAME = 'mseq32.m'
 
-DEFAULTSYSTEMNAME = 'example model system'
+SYSTEMNAME = 'example model system'
 
-DEFAULTCODETRES = 20000 # us
-DEFAULTCODEWORDLENGTH = 10 # in bits
+CODEKIND = 'binary'
+CODETRES = 20000 # us
+CODEWORDLEN = 10 # in bits
 
 TAB = '    ' # 4 spaces
 
 
 class Data(object):
     """Abstract data class. Data can have multiple Animals in it"""
-    def __init__(self, dataPath=DEFAULTDATAPATH):
+    def __init__(self, dataPath=DATAPATH):
         self.level = 0 # level in the hierarchy
         self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
         self.name = 'Data'
@@ -99,7 +102,7 @@ _data = Data() # init a default Data object to use as a container for everything
 
 class Model(Data):
     """Abstract model class. Model can have multiple model Systems"""
-    def __init__(self, modelPath=DEFAULTMODELPATH):
+    def __init__(self, modelPath=MODELPATH):
         self.level = 0 # level in the hierarchy
         self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
         self.name = 'Model'

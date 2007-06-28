@@ -312,7 +312,7 @@ class BinaryCode(BaseCode):
     phase in us specifies where to start the codetrain in time, relative to the nearest multiple of tres before each trange.
     Phase is in degrees of a single bin period. -ve phase is leading (codetrain starts earlier in time),
     +ve is lagging (codetrain starts later in time)"""
-    def __init__(self, neuron=None, tranges=None, tres=20000, phase=0):
+    def __init__(self, neuron=None, tranges=None, tres=CODETRES, phase=0):
         super(BinaryCode, self).__init__(neuron=neuron, tranges=tranges)
         self.kind = 'binary'
         self.tres = tres
@@ -339,7 +339,7 @@ class BinaryCode(BaseCode):
 
 class NeuronCode(BaseNeuron):
     """Mix-in class that defines the spike code related Neuron methods"""
-    def code(self, kind='binary', tranges=None, tres=20000, phase=0):
+    def code(self, kind=CODEKIND, tranges=None, tres=CODETRES, phase=0):
         """Returns an existing Code object, or creates a new one if necessary"""
         try:
             self._codes

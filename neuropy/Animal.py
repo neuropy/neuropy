@@ -41,7 +41,7 @@ class Animal(object):
 
 class Cat(Animal):
     """This Animal is a Cat"""
-    def __init__(self, id=DEFAULTCATID, parent=_data):
+    def __init__(self, id=CATID, parent=_data):
         #id = pad0s(id, ndigits=2) # returns a string
         name = 'Cat ' + str(id)
         self.id = int(id) # save it as an int (this will again remove any leading zeros)
@@ -50,7 +50,7 @@ class Cat(Animal):
 
 class Rat(Animal):
     """This Animal is a Rat"""
-    def __init__(self, id=DEFAULTRATID, parent=_data):
+    def __init__(self, id=RATID, parent=_data):
         #id = pad0s(id, ndigits=2) # returns a string
         name = 'Rat ' + str(id)
         self.id = int(id) # save it as an int (this will again remove any leading zeros)

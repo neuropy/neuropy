@@ -7,7 +7,7 @@ from Core import _model # ensure it's imported, in spite of leading _
 
 class System(object):
     """A model System can have multiple modelling Runs"""
-    def __init__(self, name=DEFAULTSYSTEMNAME, parent=_model):
+    def __init__(self, name=SYSTEMNAME, parent=_model):
         self.level = 1 # level in the hierarchy
         self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
         self.m = parent # save parent Model object

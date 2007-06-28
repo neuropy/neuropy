@@ -45,8 +45,8 @@ class Movie(object): # DON'T inherit from dimstim.Movie class!
         f.close() # close the movie file
 
 # init some typical movies (but don't load 'em til needed). Then, just point to them within the appropriate Experiments
-MSEQ32 = Movie(fname=os.path.join(DEFAULTMOVIEPATH, 'mseq32.m'), parent=None)
-MSEQ16 = Movie(fname=os.path.join(DEFAULTMOVIEPATH, 'mseq16.m'), parent=None)
+MSEQ32 = Movie(fname=os.path.join(MOVIEPATH, 'mseq32.m'), parent=None)
+MSEQ16 = Movie(fname=os.path.join(MOVIEPATH, 'mseq16.m'), parent=None)
 
 # shouldn't use sparse bar movies anymore, can access VisionEgg directly now, get the framebuffers to directly do STA
 #sparsebars = Movie(path='C:/data/Cat 15/Track 7c/72 - track 7c sparseexps/', name='72 - track 7c sparseexps.sparsebars.movie');

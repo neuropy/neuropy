@@ -7,7 +7,7 @@ from Core import _data # ensure it's imported, in spite of leading _
 
 class Track(object):
     """A Track can have multiple Recordings"""
-    def __init__(self, id=DEFAULTTRACKID, name=None, parent=None):
+    def __init__(self, id=TRACKID, name=None, parent=None):
 
         from Animal import Cat, Rat
 
@@ -15,12 +15,12 @@ class Track(object):
         self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
         if parent == None:
             try:
-                self.a = _data.a[DEFAULTANIMALNAME] # see if the default Animal has already been init'd
+                self.a = _data.a[ANIMALNAME] # see if the default Animal has already been init'd
             except KeyError: # it hasn't, init the default animal, save it in self.a, and add it to _data.a
-                if DEFAULTSPECIES == 'Cat':
-                    defaultanimal = Cat(id=DEFAULTCATID, parent=_data)
-                elif DEFAULTSPECIES == 'Rat':
-                    defaultanimal = Rat(id=DEFAULTRATID, parent=_data)
+                if SPECIES == 'Cat':
+                    defaultanimal = Cat(id=CATID, parent=_data)
+                elif SPECIES == 'Rat':
+                    defaultanimal = Rat(id=RATID, parent=_data)
                 self.a = defaultanimal
                 _data.a[defaultanimal.name] = defaultanimal
         else:

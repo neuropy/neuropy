@@ -16,7 +16,7 @@ class Run(object):
         self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
         if parent == None:
             try:
-                self.s = _model.s[DEFAULTSYSTEMNAME] # see if the default System has already been init'd
+                self.s = _model.s[SYSTEMNAME] # see if the default System has already been init'd
             except KeyError:
                 self.s = System() # init the default System...
                 _model.s[s.name] = self.s  # ...and add it to the default Model object's list of System
