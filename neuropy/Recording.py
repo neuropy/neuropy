@@ -636,13 +636,13 @@ class BaseNetstate(object):
         nis lists the total population of neuron ids"""
         return np.int32(np.round(self.wordts(nis=nis, mis=mis) / 1e3))
 
-    def intcodes(self, nis=None):
+    def intcodes(self, nis=None, shufflecodes=False):
         """Given neuron indices (ordered LSB to MSB top to bottom), returns an array of the integer representation
         of the neuronal population binary code for each time bin"""
-        assert self.kind == binary
+        assert self.kind == 'binary'
         if nis == None:
             nis = random.sample(self.co.nis, CODEWORDLEN) # randomly sample CODEWORDLEN bits of the nis
-        return binarray2int(self.codes(nis=nis).c)
+        return binarray2int(self.codes(nis=nis, shufflecodes=shufflecodes).c)
 
     def intcodesPDF(self, nis=None):
         """Returns the observed pdf across all possible population binary code words,
@@ -743,7 +743,8 @@ class NetstateIsingHist(BaseNetstate):
         a1.hold(True)
         a1.bar(left=hibins, height=nhi, width=hibins[1]-hibins[0], color='g', edgecolor='g')
         gcfm().frame.SetTitle(lastcmd())
-        a1.set_title('hi histogram\n%s' % lastcmd())
+        a1.set_title('hi histogram\n%s, nbits=%d, ngroups=%d, algorithm=%s' % (lastcmd(), self.nbits,
+                                                                               self.ngroups, self.algorithm))
         a1.set_ylabel('probability density')
         a1.set_xlabel('hi')
         a1.set_xlim(hirange)
@@ -754,48 +755,67 @@ class NetstateIsingHist(BaseNetstate):
         a2.hold(True)
         a2.bar(left=Jijbins, height=nJij, width=Jijbins[1]-Jijbins[0], color='m', edgecolor='m')
         gcfm().frame.SetTitle(lastcmd())
-        a2.set_title('Jij histogram\n%s' % lastcmd())
+        a2.set_title('Jij histogram\n%s, nbits=%d, ngroups=%d, algorithm=%s' % (lastcmd(), self.nbits,
+                                                                                self.ngroups, self.algorithm))
         a2.set_ylabel('probability density')
         a2.set_xlabel('Jij')
         a2.set_xlim(Jijrange)
 
+        self.f1 = f1
+        self.a1 = a1
+        self.f2 = f2
+        self.a2 = a2
+        return self
 
-class NetstateOtherStuff(BaseNetstate):
-    """TEMPORARY"""
 
-    def nspikingPMF(self, nis=None, shufflecodes=False, **kwargs):
-        """Returns the PMF of observing n cells spiking in the same time bin, for either
-        an unshuffled or shuffled Codes object"""
-        observedwords = self.intcodes(nis=nis, shufflecodes=shufflecodes, **kwargs)
-        # collect observances of the number of cells spiking for each pop code time bin
-        nspiking = [ np.binary_repr(observedword).count('1') for observedword in observedwords ] # for all time bins, convert words to binary, count the number of 1s in each. np.binary_repr() is a bit faster than using neuropy.Core.bin()
-        pnspiking, bins = histogram(nspiking, bins=arange(len(self.neurons)+1), normed='pmf') # histogram 'em, want all probs to add to 1, not their area, so use pmf
-        return pnspiking, bins
-
-    def plotnspikingPMFs(self, nis=None, xrange=[-0.5, 15], **kwargs):
-        """Plots nspikingPMF, for both observed and shuffled (forcing independence) codes.
-        See 2006 Schneidman fig 1e"""
+class NetstateNspikingPMF(BaseNetstate):
+    """Netstate PMF of number of cells spiking in the same bin. See 2006 Schneidman fig 1e"""
+    def calc(self, nis=None):
+        """Calcs the PMF of observing n cells spiking in the same time bin,
+        as well as the PMF for indep cells (shuffled codes)"""
         if nis == None:
-            niswasNone = True
+            self.niswasNone = True
             nis = random.sample(self.co.nis, CODEWORDLEN) # randomly sample CODEWORDLEN bits of the nis
             nis.sort()
             print 'nis = %r' % nis
         else:
-            niswasNone = False
-        observedpnspiking, observedbins = self.nspikingPMF(nis=nis, shufflecodes=False, **kwargs)
-        indeppnspiking, indepbins = self.nspikingPMF(nis=nis, shufflecodes=True, **kwargs)
-        assert (observedbins == indepbins).all() # paranoid schizo, just checking
-        assert approx(observedpnspiking.sum(), 1.0), 'total observed probs: %f' % observedpnspiking.sum()
-        assert approx(indeppnspiking.sum(), 1.0), 'total indep probs: %f' % indeppnspiking.sum()
+            self.niswasNone = False
+
+        self.nis = nis
+        self.words = {}
+        self.nspiking = {}
+        self.pnspiking = {}
+        self.bins = {}
+
+        for shufflecodes in (False, True):
+            self.words[shufflecodes] = self.intcodes(nis=self.nis, shufflecodes=shufflecodes)
+            # collect observances of the number of cells spiking for each pop code time bin
+            self.nspiking[shufflecodes] = [ np.binary_repr(word).count('1') for word in self.words[shufflecodes] ] # convert the word at each time bin to binary, count the number of 1s in it. np.binary_repr() is a bit faster than using neuropy.Core.bin()
+            self.pnspiking[shufflecodes], self.bins[shufflecodes] = histogram(self.nspiking[shufflecodes],
+                                                                              bins=arange(self.nneurons+1),
+                                                                              normed='pmf') # want all probs to add to 1, not their area, so use pmf
+
+        assert (self.bins[False] == self.bins[True]).all() # paranoid schizo, just checking
+        self.bins = self.bins[False] # since they're identical, get rid of the dict and just keep one
+        assert approx(self.pnspiking[False].sum(), 1.0), 'total observed probs: %f' % self.pnspiking[False].sum()
+        assert approx(self.pnspiking[True].sum(), 1.0), 'total indep probs: %f' % self.pnspiking[True].sum()
+
+
+    def plot(self, xrange=[-0.5, 15]):
+        """Plots nspikingPMF, for both observed and shuffled (forcing independence) codes"""
+
+        try: self.pnspiking, self.bins
+        except AttributeError: self.calc()
+
         f = figure()
         a = f.add_subplot(111)
         a.hold(True)
-        a.plot(observedbins, observedpnspiking, 'r.-')
-        a.plot(indepbins, indeppnspiking, 'b.-')
+        a.plot(self.bins, self.pnspiking[False], 'r.-')
+        a.plot(self.bins, self.pnspiking[True], 'b.-')
         titlestr = 'PMF of observing n cells spiking in the same time bin'
         titlestr += '\n%s' % lastcmd()
-        if niswasNone:
-            titlestr += ', nis: %r' % nis
+        if self.niswasNone:
+            titlestr += '\nnis: %r' % self.nis
         a.set_title(titlestr)
         a.legend(('observed', 'indep (shuffled)'))
         a.set_yscale('log')
@@ -803,6 +823,12 @@ class NetstateOtherStuff(BaseNetstate):
         gcfm().frame.SetTitle(lastcmd())
         a.set_xlabel('number of spiking cells in a bin')
         a.set_ylabel('probability')
+
+        self.f = f
+        self.a = a
+        return self
+
+class NetstateOtherStuff(BaseNetstate):
 
     # if python ever gets class decorators, an inner class could be specified as:
     #@innerclass
@@ -1454,6 +1480,9 @@ class RecordingNetstate(BaseRecording):
     def ns_isinghist(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=0):
         """Returns a NetstateIsingHist object"""
         return NetstateIsingHist(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase)
+    def ns_nspikingpmf(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=0):
+        """Returns a NetstateNspikingPMF object"""
+        return NetstateNspikingPMF(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase)
     def ns_other(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=0):
         """Returns a NetstateOtherStuff object"""
         return NetstateOtherStuff(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase)
