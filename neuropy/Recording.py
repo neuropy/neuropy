@@ -581,7 +581,7 @@ class BaseNetstate(object):
     """Base class of Network state analyses.
     Implements a lot of the analyses on network states found in the 2006 Schneidman paper"""
 
-    def __init__(self, recording, experiments=None, kind=CODEKIND, tres=CODETRES, phase=0):
+    def __init__(self, recording, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=0):
         self.r = recording
         if experiments == None:
             self.tranges = [self.r.trange] # or should we check to see if this Recording has a tranges field due to appending Neurons?
@@ -598,9 +598,14 @@ class BaseNetstate(object):
         self.phase = phase
         self.neurons = self.r.n
         self.nneurons = len(self.neurons)
-        nis = self.neurons.keys() # get all neuron indices in this Recording
-        nis.sort() # make sure they're sorted
+        if nis == None:
+            self.niswasNone = True
+            nis = self.neurons.keys() # get all neuron indices in this Recording
+            nis.sort() # make sure they're sorted
+        else:
+            self.niswasNone = False
         self.cs = self.codes(nis=nis) # generate and save the Codes object for all the nis
+        # if you need to retrieve the nis, you can get them from self.cs.nis. Leave self.nis open for subclasses to use for their own purposes
 
     def codes(self, nis=None, shufflecodes=False):
         """Returns the appropriate Codes object, depending on the recording
@@ -726,6 +731,8 @@ class NetstateIsingHist(BaseNetstate):
                 return
         pd.Destroy()
 
+        return self
+
     def plot(self, nbins=50, hirange=(-2.5, 2.5), Jijrange=(-1.1, 1.1)):
         """Plots hi and Jij histograms in separate figures"""
 
@@ -771,18 +778,15 @@ class NetstateIsingHist(BaseNetstate):
 
 class NetstateNspikingPMF(BaseNetstate):
     """Netstate PMF of number of cells spiking in the same bin. See 2006 Schneidman fig 1e"""
-    def calc(self, nis=None):
+    def calc(self):
         """Calcs the PMF of observing n cells spiking in the same time bin,
         as well as the PMF for indep cells (shuffled codes)"""
-        if nis == None:
-            self.niswasNone = True
-            nis = random.sample(self.cs.nis, CODEWORDLEN) # randomly sample CODEWORDLEN bits of the nis
-            nis.sort()
-            print 'nis = %r' % nis
+        if self.niswasNone:
+            self.nis = random.sample(self.cs.nis, CODEWORDLEN) # randomly sample CODEWORDLEN bits of the nis
+            self.nis.sort()
+            print 'nis = %r' % self.nis
         else:
-            self.niswasNone = False
-
-        self.nis = nis
+            self.nis = self.cs.nis
         self.words = {}
         self.nspiking = {}
         self.pnspiking = {}
@@ -796,11 +800,12 @@ class NetstateNspikingPMF(BaseNetstate):
                                                                               bins=arange(self.nneurons+1),
                                                                               normed='pmf') # want all probs to add to 1, not their area, so use pmf
 
-        assert (self.bins[False] == self.bins[True]).all() # paranoid schizo, just checking
+        assert (self.bins[False] == self.bins[True]).all() # paranoid, just checking
         self.bins = self.bins[False] # since they're identical, get rid of the dict and just keep one
         assert approx(self.pnspiking[False].sum(), 1.0), 'total observed probs: %f' % self.pnspiking[False].sum()
         assert approx(self.pnspiking[True].sum(), 1.0), 'total indep probs: %f' % self.pnspiking[True].sum()
 
+        return self
 
     def plot(self, xrange=[-0.5, 15]):
         """Plots nspikingPMF, for both observed and shuffled (forcing independence) codes"""
@@ -832,65 +837,52 @@ class NetstateNspikingPMF(BaseNetstate):
 
 class NetstateScatter(BaseNetstate):
     """Netstate scatter analysis object. See Schneidman Figures 1f and 2a"""
-    def __init__(self, nis=None):
-        """
-        - ********Dilemma. Should i make nis an arg in base class init, and save it as an attrib?
-            - problem:
-                    nis = self.neurons.keys() # get all neuron indices in this Recording
-                    nis.sort() # make sure they're sorted
-                    self.cs = self.codes(nis=nis) # generate and save the Codes object for all the nis
-            - what nis should self.cs use then?
-        - Otherwise, for those subclasses that need it, should I simply overload the init and add a nis arg and make it an attrib in the subclass?
-        - think I deifnitely dont want to be choosing nis in calc, cuz calc isn't really exposed to user in ns_whatever methods of Recording, although user could train himself to first run the calc method, but that ain't too nice
-        """
-    def calc(self, nbits=None, model='indep', randomneurons=True, shufflecodes=False,
-                 algorithm='CG', **kwargs):
-        """Calculates the expected probabilities, assuming a model in ['indep', 'ising'],
+
+    def calc(self, nbits=None, model='both', shufflecodes=False, algorithm='CG'):
+        """Calculates the expected probabilities, assuming a model in ['indep', 'ising', 'both'],
         of all possible population codes vs their observed probabilities.
-        nis are in LSB to MSB order."""
-        if nis == None:
-            nis = self.cs.nis # grab nis attrib from Codes object in BaseNetstate
-        else:
-            randomneurons = False # specific nis have been passed, don't use random neurons
-            if nbits == None:
-                nbits = len(nis) # if nis is specified and nbits isn't, each ni gets its own bit
-        if nbits == None: # nis and nbits were both passed as None
-            nbits = CODEWORDLEN
-        nbits = min(len(nis), nbits) # constrain nbits to be no more than the number of nis
-        if randomneurons:
-            nis = random.sample(nis, nbits) # randomly sample nbits of the nis
-            nis.sort() # to keep things organized
-        else:
-            nis = nis[:nbits] # use just the first nbits neurons to make your words
-
-        self.nis = nis # save it so that plot() method can access it
+        self's nis are treated in LSB to MSB order"""
         self.nbits = nbits
+        if self.nbits == None:
+            self.nbits = CODEWORDLEN
         self.model = model
+        self.shufflecodes = shufflecodes
+        self.algorithm = algorithm
 
-        #if randomneurons:
-        #    print 'neurons:', nis # print 'em out if they were randomly selected
-        self.scatterintcodes = self.intcodes(nis=nis, shufflecodes=shufflecodes, **kwargs)
-        self.pobserved, self.observedwords = histogram(self.scatterintcodes, bins=arange(2**nbits), normed='pmf')
-        #self.pobserved, self.observedwords = self.intcodesPDF(nis=nis, shufflecodes=shufflecodes, **kwargs) # potentially shuffle the observed codes
-        if model == 'indep':
-            self.pexpected, self.expectedwords = self.intcodesFPDF(nis=nis, **kwargs) # expected, assuming independence. don't potentially shuffle expected codes
-        elif model == 'ising':
-            ising = self.ising(nis=nis, algorithm=algorithm) # returns a maxent Ising model
+        if self.niswasNone:
+            self.nis = random.sample(self.cs.nis, self.nbits) # randomly sample nbits of the nis
+            self.nis.sort()
+            print 'nis = %r' % self.nis
+        else:
+            self.nis = self.cs.nis
+
+        self._intcodes = self.intcodes(nis=self.nis, shufflecodes=self.shufflecodes)
+        self.pobserved, self.observedwords = histogram(self._intcodes, bins=arange(2**self.nbits), normed='pmf')
+        if self.model == 'indep':
+            self.pexpected, self.expectedwords = self.intcodesFPDF(nis=self.nis) # expected, assuming independence
+        elif self.model == 'ising':
+            ising = self.ising(nis=self.nis, algorithm=self.algorithm) # returns a maxent Ising model
             self.pexpected = ising.p # expected, assuming maxent Ising model
             self.expectedwords = ising.intsamplespace
-        elif model == 'both':
-            ising = self.ising(nis=nis, algorithm=algorithm) # returns a maxent Ising model
+        elif self.model == 'both':
+            ising = self.ising(nis=self.nis, algorithm=self.algorithm) # returns a maxent Ising model
             self.pexpected = ising.p # expected, assuming maxent Ising model
             self.expectedwords = ising.intsamplespace
-            self.pindepexpected, blah = self.intcodesFPDF(nis=nis, **kwargs) # expected, assuming independence. don't potentially shuffle expected codes
+            self.pindepexpected = self.intcodesFPDF(nis=self.nis)[0] # expected, assuming independence
         else:
             raise ValueError, 'Unknown model %r' % model
         assert (self.observedwords == self.expectedwords).all() # make sure we're comparing apples to apples
 
+        return self
+
+
     def plot(self, color=False):
         """Scatterplots the expected probabilities of all possible population codes (y axis)
-        vs their observed probabilities (x axis).
-        nis are in LSB to MSB order. See Schneidman Figures 1f and 2a"""
+        vs their observed probabilities (x axis). nis are in LSB to MSB order"""
+
+        try: self.pobserved, self.pexpected
+        except AttributeError: self.calc()
+
         f = figure()
         a = f.add_subplot(111)
         a.plot([10**-6, 1], [10**-6, 1], 'b-') # plot a y=x line
@@ -965,6 +957,10 @@ class NetstateScatter(BaseNetstate):
             verticalalignment = 'bottom')
         print 'nis = %r' % self.nis # print out the nis so they can easily be copied and pasted elsewhere
 
+        self.f = f
+        self.a = a
+        return self
+
     def _onmotion(self, event):
         """Called during mouse motion over scatterplot figure. Pops up the corresponding
         population code word and its int representation when hovering over a neuron scatter point"""
@@ -982,8 +978,8 @@ class NetstateScatter(BaseNetstate):
                 tip += '\nintcodes: %r' % list(intcodes)
                 activenis = [ list(asarray(self.nis)[::-1][charfind(code, '1')]) for code in codes ]
                 tip += '\nactivenis: %r' % activenis
-                tip += '\npattern counts: %r' % [ (self.scatterintcodes == intcode).sum() for intcode in intcodes ]
-                tip += '\npattern rates (Hz): %s' % repr([ '%.3g' % (p / self.__outer__.tres * 1e6) for p in self.pobserved[codeis] ]).replace('\'', '')
+                tip += '\npattern counts: %r' % [ (self._intcodes == intcode).sum() for intcode in intcodes ]
+                tip += '\npattern rates (Hz): %s' % repr([ '%.3g' % (p / self.tres * 1e6) for p in self.pobserved[codeis] ]).replace('\'', '')
                 tip += '\n(pobserved, pexpected): %s' % repr(zip([ '%.3g' % val for val in self.pobserved[codeis] ], [ '%.3g' % val for val in self.pexpected[codeis] ])).replace('\'', '')
                 tip += '\npobserved / pexpected: %s' % repr([ '%.3g' % (o/float(e)) for o, e in zip(self.pobserved[codeis], self.pexpected[codeis]) ]).replace('\'', '')
                 tip += '\npexpected / pobserved: %s' % repr([ '%.3g' % (e/float(o)) for o, e in zip(self.pobserved[codeis], self.pexpected[codeis]) ]).replace('\'', '')
@@ -994,56 +990,72 @@ class NetstateScatter(BaseNetstate):
         else: # mouse is outside the axes
             self.tooltip.Enable(False) # disable the tooltip
 
-
-class NetstateOtherStuff(BaseNetstate):
-
-    def I2vsIN(self, N=10, ngroups=15, tres=CODETRES):
-        """Does Schneidman fig 2c. I2/IN vs IN, for ngroups of cells.
-        This shows you what fraction of network correlation is accounted
-        for by the maxent pairwise model.
+class NetstateI2vsIN(BaseNetstate):
+    """Netstate I2/IN vs IN (fraction of pairwise correlated entropy vs all correlated entropy) analysis.
+    See Schneidman fig 2c"""
+    def calc(self, N=10, ngroups=15):
+        """Computes I2/IN vs IN, for ngroups of cells.
+        This shows you what fraction of network correlation is accounted for by the maxent pairwise model.
         Plotting Icond-indep is different from S1 (see below),
-        and sounds annoying and not worth it (see methods)"""
-        niss = nCrsamples(objects=self.neurons.keys(),
-                          r=N, # pick N neurons at random
-                          nsamples=ngroups) # do it ngroups times
+        and sounds annoying and not worth it (see methods in Schneidman 2006)"""
+        self.N = N
+        self.ngroups = ngroups
+
+        self.niss = nCrsamples(objects=self.neurons.keys(),
+                          r=self.N, # pick N neurons at random
+                          nsamples=self.ngroups) # do it ngroups times
         I2s = []
         INs = []
-        pd = wx.ProgressDialog(title='I2vsIN() progress', message='', maximum=ngroups, # create a progress dialog
+        pd = wx.ProgressDialog(title='I2vsIN() progress', message='', maximum=self.ngroups, # create a progress dialog
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
-        for groupi, nis in enumerate(niss):
-            p1 = asarray(self.intcodesFPDF(nis=nis, tres=tres)[0]) # indep model
+        for groupi, nis in enumerate(self.niss):
+            p1 = asarray(self.intcodesFPDF(nis=nis)[0]) # indep model
             p2 = self.ising(nis=nis).p # expected, assuming maxent Ising model
-            pN = asarray(self.intcodesPDF(nis=nis, tres=tres)[0]) # observed word probs
+            pN = asarray(self.intcodesPDF(nis=nis)[0]) # observed word probs
             S1 = entropy_no_sing(p1) # ignore any singularities
             S2 = entropy_no_sing(p2)
             SN = entropy_no_sing(pN)
             IN = S1 - SN
             I2 = S1 - S2
-            I2s.append(I2 / tres * 1e6) # convert to bits/sec
-            INs.append(IN / tres * 1e6)
+            I2s.append(I2 / self.tres * 1e6) # convert to bits/sec
+            INs.append(IN / self.tres * 1e6)
             cancel = not pd.Update(groupi, newmsg='groupi = %d' % (groupi+1))
             if cancel:
                 pd.Destroy()
                 return
         pd.Destroy()
-        I2s = asarray(I2s)
-        INs = asarray(INs)
-        I2divIN = I2s / INs
+        self.I2s = asarray(I2s)
+        self.INs = asarray(INs)
+        self.I2divIN = self.I2s / self.INs
+
+        return self
+
+    def plot(self, xlim=(0.0, None), ylim=(0.0, 1.0)):
+        """Plots I2/IN vs IN"""
+
+        try: self.I2s, self.INs, self.I2divIN
+        except AttributeError: self.calc()
+
         f = figure()
         gcfm().frame.SetTitle(lastcmd())
         a = f.add_subplot(111)
-        a.plot(INs, I2divIN, 'r.')
-        a.set_xlim(xmin=0.0)
-        a.set_ylim(ymin=0.0, ymax=1.0)
+        a.plot(self.INs, self.I2divIN, 'r.')
+        a.set_xlim(xlim)
+        a.set_ylim(ylim)
         a.set_xlabel('IN (bits / sec)')
         a.set_ylabel('I2 / IN')
         a.set_title('%s' % lastcmd())
-        a.text(0.99, 0.01, 'mean=%.3f, std=%.3f' % (I2divIN.mean(), I2divIN.std()), # add mean and std to bottom right
-            transform = a.transAxes,
-            horizontalalignment = 'right',
-            verticalalignment = 'bottom')
+        a.text(0.99, 0.01, 'mean=%.3f, std=%.3f' % (self.I2divIN.mean(), self.I2divIN.std()), # add mean and std to bottom right
+               transform=a.transAxes,
+               horizontalalignment='right',
+               verticalalignment='bottom')
 
-        return dictattr(I2divIN=I2divIN, INs=INs, niss=niss, a=a)
+        self.f = f
+        self.a = a
+        return self
+
+
+class NetstateOtherStuff(BaseNetstate):
 
     def DJShist(self, nbits=CODEWORDLEN, ngroups=5, models=['ising', 'indep'],
                 logrange=(-3.667, -0.333), nbins=50, shufflecodes=False, algorithm='CG', **kwargs):
@@ -1483,19 +1495,26 @@ class NetstateOtherStuff(BaseNetstate):
 
 class RecordingNetstate(BaseRecording):
     """Mix-in class that defines Netstate related Recording methods"""
-    def ns_(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=0):
+    def ns_(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=0):
         """Returns a BaseNetstate object"""
-        return BaseNetstate(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase)
-    def ns_isinghist(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=0):
+        return BaseNetstate(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
+    def ns_isinghist(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=0):
         """Returns a NetstateIsingHist object"""
         return NetstateIsingHist(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase)
-    def ns_nspikingpmf(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=0):
+    def ns_nspikingpmf(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=0):
         """Returns a NetstateNspikingPMF object"""
-        return NetstateNspikingPMF(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase)
-    def ns_other(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=0):
-        """Returns a NetstateOtherStuff object"""
-        return NetstateOtherStuff(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase)
+        return NetstateNspikingPMF(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
+    def ns_scatter(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=0):
+        """Returns a NetstateScatter object"""
+        return NetstateScatter(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
+    def ns_i2vsin(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=0):
+        """Returns a NetstateI2vsIN object"""
+        return NetstateI2vsIN(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
 
+
+    def ns_other(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=0):
+        """Returns a NetstateOtherStuff object"""
+        return NetstateOtherStuff(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
 
 
 class Recording(RecordingRaster,
