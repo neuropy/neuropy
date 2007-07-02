@@ -35,7 +35,7 @@ mpl.interactive(True)
 
 from dimstim.Core import dictattr # Dictionary with attribute access
 
-# global DEFAULTS
+# GLOBAL DEFAULTS
 
 DATAPATH = os.path.join(os.sep, 'data')
 MODELPATH = os.path.join(os.sep, 'model')
@@ -59,6 +59,7 @@ SYSTEMNAME = 'example model system'
 
 CODEKIND = 'binary'
 CODETRES = 20000 # us
+CODEPHASE = 0 # deg
 CODEWORDLEN = 10 # in bits
 
 TAB = '    ' # 4 spaces

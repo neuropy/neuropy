@@ -312,7 +312,7 @@ class BinaryCode(BaseCode):
     phase in us specifies where to start the codetrain in time, relative to the nearest multiple of tres before each trange.
     Phase is in degrees of a single bin period. -ve phase is leading (codetrain starts earlier in time),
     +ve is lagging (codetrain starts later in time)"""
-    def __init__(self, neuron=None, tranges=None, tres=CODETRES, phase=0):
+    def __init__(self, neuron=None, tranges=None, tres=CODETRES, phase=CODEPHASE):
         super(BinaryCode, self).__init__(neuron=neuron, tranges=tranges)
         self.kind = 'binary'
         self.tres = tres
@@ -339,7 +339,7 @@ class BinaryCode(BaseCode):
 
 class NeuronCode(BaseNeuron):
     """Mix-in class that defines the spike code related Neuron methods"""
-    def code(self, kind=CODEKIND, tranges=None, tres=CODETRES, phase=0):
+    def code(self, tranges=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns an existing Code object, or creates a new one if necessary"""
         try:
             self._codes
@@ -486,6 +486,7 @@ class IDPRate(BaseRate):
                 pass
 
         print 'IDPRATE IS INCOMPLETE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+        raise NotImplementedError
 
         # Step 2: extend back half an ISI from sudden rate increase, and forward half an ISI from sudden rate decrease
 
@@ -508,7 +509,7 @@ class GaussRate(BaseRate):
         self.width = width
     def calc(self):
         # use scipy.signal.gaussian, use just left half to keep it causal
-        pass
+        raise NotImplementedError
     def plot(self):
         super(GaussRate, self).plot()
         title('Gaussian sliding window spike rate')
@@ -522,7 +523,7 @@ class RectRate(BaseRate):
         self.width = width
     def calc(self):
         # use scipy.signal.boxcar
-        pass
+        raise NotImplementedError
     def plot(self):
         super(RectRate, self).plot()
         title('rectangular sliding window spike rate')

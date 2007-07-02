@@ -343,25 +343,24 @@ class PopulationRaster(object):
 
 class RecordingRaster(BaseRecording):
     """Mix-in class that defines the raster related Recording methods"""
-    def raster(self, **kwargs):
-        """Creates a population spike raster plot"""
-        #sortby = kwargs.pop('sortby', 'id')
-        #pr = PopulationRaster(recording=self, sortby=sortby)
-        pr = PopulationRaster(recording=self, **kwargs)
-        return pr
+    def raster(self, experiments=None, nis=None,
+                     jumpts=None, binwidth=None, relativet0=False, units='msec',
+                     publication=False):
+        """Returns a population spike raster plot"""
+        return PopulationRaster(recording=self, experiments=experiments, nis=nis,
+                                                jumpts=jumpts, binwidth=binwidth, relativet0=relativet0, units=units,
+                                                publication=publication)
     raster.__doc__ += '\n\n'+PopulationRaster.__doc__
-    raster.__doc__ += '\n\n**kwargs:'
-    raster.__doc__ += '\n__init__: '+getargstr(PopulationRaster.__init__)
 
 
 class Codes(object):
     """A 2D array where each row is a neuron code, and each column
     is a binary population word for that time bin, sorted LSB to MSB from top to bottom.
     neurons is a list of Neurons, also from LSB to MSB. Order in neurons is preserved."""
-    def __init__(self, neurons=None, kind=CODEKIND, tranges=None, tres=CODETRES, phase=0, shufflecodes=False):
+    def __init__(self, neurons=None, tranges=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE, shufflecodes=False):
         self.neurons = neurons
-        self.kind = kind
         self.tranges = tolist(tranges)
+        self.kind = kind
         self.tres = tres
         self.phase = phase
         self.shufflecodes = shufflecodes
@@ -380,7 +379,7 @@ class Codes(object):
         self.c = [] # stores the 2D code array
         # append neurons in their order in self.neurons, store them LSB to MSB from top to bottom
         for neuron in self.neurons:
-            codeo = neuron.code(kind=self.kind, tranges=self.tranges, tres=self.tres, phase=self.phase)
+            codeo = neuron.code(tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase)
             self.s.append(codeo.s) # each is a nested list (ie, 2D), each row will have different length
             if self.shufflecodes:
                 c = codeo.c.copy() # make a copy (wanna leave the codeo's codetrain untouched)
@@ -424,7 +423,7 @@ class Codes(object):
 class CodeCorrPDF(object):
     """A PDF of the correlations of the codes of all cell pairs in this Recording
     See 2006 Schneidman fig 1d"""
-    def __init__(self, recording=None, experiments=None, **kwargs):
+    def __init__(self, recording=None, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         self.r = recording
         if experiments != None:
             assert experiments.__class__ == dictattr
@@ -433,7 +432,9 @@ class CodeCorrPDF(object):
             self.tranges = [ e.trange for e in self.e.values() ]
         else:
             self.tranges = [ self.r.trange ] # use the Recording's trange
-        self.kwargs = kwargs
+        self.kind = kind
+        self.tres = tres
+        self.phase = phase
     def __eq__(self, other):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
@@ -452,20 +453,26 @@ class CodeCorrPDF(object):
         ncneurons = len(cnis)
         # it's more efficient to precalculate the means and stds of each cell's codetrain,
         # and then reuse them in calculating the correlation coefficients:
-        means = dict( ( cni, self.r.code(cni, tranges=self.tranges, **self.kwargs).c.mean() ) for cni in cnis ) # store each code mean in a dict
-        stds  = dict( ( cni, self.r.code(cni, tranges=self.tranges, **self.kwargs).c.std() ) for cni in cnis ) # store each code std in a dict
+        means = dict( ( cni, self.r.code(cni, tranges=self.tranges,
+                                              kind=self.kind,
+                                              tres=self.tres,
+                                              phase=self.phase).c.mean() ) for cni in cnis ) # store each code mean in a dict
+        stds  = dict( ( cni, self.r.code(cni, tranges=self.tranges,
+                                              kind=self.kind,
+                                              tres=self.tres,
+                                              phase=self.phase).c.std() ) for cni in cnis ) # store each code std in a dict
         self.corrs = []
         for cnii1 in range(ncneurons):
             for cnii2 in range(cnii1+1, ncneurons):
                 cni1 = cnis[cnii1]
                 cni2 = cnis[cnii2]
-                code1 = self.r.code(cni1, tranges=self.tranges, **self.kwargs).c
-                code2 = self.r.code(cni2, tranges=self.tranges, **self.kwargs).c
+                code1 = self.r.code(cni1, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
+                code2 = self.r.code(cni2, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
                 cc = ((code1 * code2).mean() - means[cni1] * means[cni2]) / (stds[cni1] * stds[cni2]) # (mean of product - product of means) / by product of stds
                 self.corrs.append(cc)
         '''
         # simpler, but slower way:
-        self.corrs = [ self.r.codecorr(cnis[cnii1], cnis[cnii2], tranges=self.tranges, **self.kwargs)
+        self.corrs = [ self.r.codecorr(cnis[cnii1], cnis[cnii2], tranges=self.tranges, kind=self.kind, self.tres, self.phase)
                        for cnii1 in range(0,ncneurons) for cnii2 in range(cnii1+1,ncneurons) ]
         '''
     def plot(self, figsize=(7.5, 6.5), crange=[-0.05, 0.3], nbins=40, normed='pdf'):
@@ -505,16 +512,16 @@ class CodeCorrPDF(object):
 
 class RecordingCode(BaseRecording):
     """Mix-in class that defines the spike code related Recording methods"""
-    def code(self, cneuron=None, kind=CODEKIND, tranges=None, tres=CODETRES, phase=0):
+    def code(self, cneuron=None, tranges=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a ConstrainedNeuron.Code object, constrained to the time
         ranges of the Experiments in this Recording, as well as by tranges. Takes either a
         ConstrainedNeuron object or just a ConstrainedNeuron id"""
         try:
-            return cneuron.code(kind=kind, tranges=tranges, tres=tres, phase=phase) # see if cneuron is a ConstrainedNeuron
+            return cneuron.code(tranges=tranges, kind=kind, tres=tres, phase=phase) # see if cneuron is a ConstrainedNeuron
         except AttributeError:
-            return self.cn[cneuron].code(kind=kind, tranges=tranges, tres=tres, phase=phase) # cneuron is probably a ConstrainedNeuron id
+            return self.cn[cneuron].code(tranges=tranges, kind=kind, tres=tres, phase=phase) # cneuron is probably a ConstrainedNeuron id
 
-    def codes(self, neurons=None, experiments=None, kind=CODEKIND, tres=CODETRES, phase=0, shufflecodes=False):
+    def codes(self, neurons=None, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE, shufflecodes=False):
         """Returns a Codes object, a 2D array where each row is a neuron code constrained to the time range of this Recording,
         or if specified, to the time ranges of Experiments in this Recording"""
         if neurons != None:
@@ -538,50 +545,38 @@ class RecordingCode(BaseRecording):
                 tranges = [ e.trange for e in experiments.values() ]
         else: # no experiments specified, use whole Recording trange
             tranges = [self.trange]
-        codeso = Codes(neurons=neurons, kind=kind, tranges=tranges, tres=tres, phase=phase, shufflecodes=shufflecodes)
+        codeso = Codes(neurons=neurons, tranges=tranges, kind=kind, tres=tres, phase=phase, shufflecodes=shufflecodes)
         codeso.calc()
         return codeso
     codes.__doc__ += '\n\nCodes object:\n' + Codes.__doc__
 
-    def codecorr(self, neuron1, neuron2, **kwargs):
-        """Calculates the correlation of two Neuron.Code (or ConstrainedNeuron.Code)"""
-        code1 = self.code(neuron1, **kwargs)
-        code2 = self.code(neuron2, **kwargs)
+    def codecorr(self, neuron1, neuron2, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
+        """Calculates the correlation coefficient of the codes of two neurons"""
+        code1 = self.code(neuron1, kind=kind, tres=tres, phase=phase)
+        code2 = self.code(neuron2, kind=kind, tres=tres, phase=phase)
         return corrcoef(code1.c, code2.c)
-    codecorr.__doc__ += '\n\n**kwargs:'
-    #codecorr.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code) # causes import problems
-    #codecorr.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__) # causes import problems
 
-    def codecorrpdf(self, experiments=None, **kwargs):
+    def codecorrpdf(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns an existing CodeCorrPDF object, or creates a new one if necessary"""
         try:
             self._codecorrpdfs
         except AttributeError: # doesn't exist yet
             self._codecorrpdfs = [] # create a list that'll hold CodeCorrPDF objects
-        cco = CodeCorrPDF(recording=self, experiments=experiments, **kwargs) # init a new one
+        cco = CodeCorrPDF(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase) # init a new one
         for ccpdf in self._codecorrpdfs:
             if cco == ccpdf: # need to define special == method for class CodeCorrPDF()
                 return ccpdf # returns the first object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._codecorrpdfs
         cco.calc() # no matching object was found, calculate it
         self._codecorrpdfs.append(cco) # add it to the object list
         return cco
-    codecorrpdf.__doc__ += '\n\n**kwargs:'
     codecorrpdf.__doc__ += '\nCodeCorrPDF: '+getargstr(CodeCorrPDF.__init__)
-    #codecorrpdf.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code) # causes import problems
-    #codecorrpdf.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__) # causes import problems
 
-    '''
-    def codewords(self, **kwargs):
-        cw = CodeWords(tranges=self.tranges)
-        cw.calc()
-        return cw
-    '''
 
 class BaseNetstate(object):
     """Base class of Network state analyses.
     Implements a lot of the analyses on network states found in the 2006 Schneidman paper"""
 
-    def __init__(self, recording, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=0):
+    def __init__(self, recording, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         self.r = recording
         if experiments == None:
             self.tranges = [self.r.trange] # or should we check to see if this Recording has a tranges field due to appending Neurons?
@@ -717,7 +712,7 @@ class NetstateIsingHist(BaseNetstate):
         self.his = []
         self.Jijs = []
 
-        pd = wx.ProgressDialog(title='NetstateIsingHist progress', message='', maximum=ngroups, # create a progress dialog
+        pd = wx.ProgressDialog(title='NetstateIsingHist progress', message='', maximum=self.ngroups, # create a progress dialog
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
         for groupi in range(self.ngroups): # for each group of nbits cells
             nis = random.sample(self.cs.nis, nbits) # randomly sample nbits of the Netstate's nis attrib
@@ -837,7 +832,6 @@ class NetstateNspikingPMF(BaseNetstate):
 
 class NetstateScatter(BaseNetstate):
     """Netstate scatter analysis object. See Schneidman Figures 1f and 2a"""
-
     def calc(self, nbits=None, model='both', shufflecodes=False, algorithm='CG'):
         """Calculates the expected probabilities, assuming a model in ['indep', 'ising', 'both'],
         of all possible population codes vs their observed probabilities.
@@ -1055,42 +1049,54 @@ class NetstateI2vsIN(BaseNetstate):
         return self
 
 
-class NetstateOtherStuff(BaseNetstate):
+class NetstateDJSHist(BaseNetstate):
+    """Jensen-Shannon histogram analysis. See Schneidman 2006 figure 2b"""
+    def calc(self, nbits=CODEWORDLEN, ngroups=5, models=['ising', 'indep'],
+                   shufflecodes=False, algorithm='CG'):
+        """Calculates Jensen-Shannon divergences and their ratios
+        for ngroups random groups of cells, each of length nbits."""
+        self.nbits = nbits
+        self.ngroups = ngroups
+        self.models = models
+        self.shufflecodes = shufflecodes
+        self.algorithm = algorithm
 
-    def DJShist(self, nbits=CODEWORDLEN, ngroups=5, models=['ising', 'indep'],
-                logrange=(-3.667, -0.333), nbins=50, shufflecodes=False, algorithm='CG', **kwargs):
-        """Plots Jensen-Shannon divergence histograms and a histogram of their ratios
-        for ngroups random groups of cells, each of length nbits.
-        See Schneidman figure 2b"""
-        niss = [] # list of lists, each sublist is a group of neuron indices
-        DJSs = {} # hold the Jensen-Shannon divergences for different models and different groups of neurons
-        for model in models:
-            DJSs[model] = [] # init a dict with the model names as keys, and empty lists as values
-        pd = wx.ProgressDialog(title='DJShist progress', message='', maximum=ngroups*len(models), # create a progress dialog
-                               style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
-        for groupi in range(ngroups): # for each group of nbits cells
-            nis = random.sample(self.cs.nis, nbits) # randomly sample nbits of the Netstate Codes' nis attrib
-            niss.append(nis)
-            for modeli, model in enumerate(models): # for each model, use the same nis
-                so = self.Scatter(nis=nis, model=model, randomneurons=False,
-                                  shufflecodes=shufflecodes, algorithm=algorithm, **kwargs)
-                DJSs[model].append(DJS(so.pobserved, so.pexpected))
-                cancel = not pd.Update(groupi*len(models)+modeli, newmsg='groupi = %d\nmodel = %s' % (groupi, model))
+        self.niss = [] # list of lists, each sublist is a group of neuron indices
+        self.DJSs = {} # hold the Jensen-Shannon divergences for different models and different groups of neurons
+        for model in  self.models:
+            self.DJSs[model] = [] # init a dict with the model names as keys, and empty lists as values
+        pd = wx.ProgressDialog(title='DJShist progress', message='', maximum=self.ngroups*len(self.models),
+                               style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME) # create a progress dialog
+        for groupi in range(self.ngroups): # for each group of nbits cells
+            nis = random.sample(self.cs.nis, self.nbits) # randomly sample nbits of the Netstate Codes' nis attrib
+            self.niss.append(nis)
+            for modeli, model in enumerate(self.models): # for each model, use the same nis
+                so = self.r.ns_scatter(experiments=self.e, nis=nis, kind=self.kind, tres=self.tres, phase=self.phase) # netstate scatter object
+                so.calc(nbits=self.nbits, model=model, shufflecodes=self.shufflecodes, algorithm=self.algorithm)
+
+                self.DJSs[model].append(DJS(so.pobserved, so.pexpected))
+                cancel = not pd.Update(groupi*len(self.models)+modeli, newmsg='groupi = %d\nmodel = %s' % (groupi, model))
                 if cancel:
                     pd.Destroy()
                     return
         pd.Destroy()
 
         # now find the DJSratios between the two models, for each group of neurons
-        if len(models) == 2: # do it only if there's 2 models, otherwise it's indeterminate which two to take ratio of
-            DJSratios = asarray(DJSs.values()[1]) / asarray(DJSs.values()[0]) # 2nd model as a ratio of the 1st
+        if len(self.models) == 2: # do it only if there's 2 models, otherwise it's indeterminate which two to take ratio of
+            self.DJSratios = asarray(self.DJSs.values()[1]) / asarray(self.DJSs.values()[0]) # 2nd model as a ratio of the 1st
 
-        # histogram DJSs and DJSratios in logspace
+        return self
+
+    def plot(self, logrange=(-3.667, -0.333), nbins=50, publication=False):
+        """Plots histogram DJSs and DJSratios in logspace"""
+
+        try: self.niss, self.DJSs
+        except AttributeError: self.calc()
+
         x = np.logspace(start=logrange[0], stop=logrange[1], num=nbins, endpoint=True, base=10.0)
         n = {} # stores a list of the bin heights in a separate key for each model
-        for model in models:
-            n[model] = histogram(DJSs[model], bins=x, normed=False)[0]
-        nratios = histogram(DJSratios, bins=x, normed=False)[0] # bin heights for the DJSratios
+        for model in self.models:
+            n[model] = histogram(self.DJSs[model], bins=x, normed=False)[0]
         color = {'indep': 'b', 'ising': 'r'} # dict that maps from model name to color
         barwidths = list(diff(x)) # each bar will have a different width, convert to list so you can append
         # need to add one more entry to barwidth to the end to get nbins of them:
@@ -1099,46 +1105,52 @@ class NetstateOtherStuff(BaseNetstate):
         #barwidths.append(10**(logrange[1]+logbinwidth) - x[-1]) # should be exactly correct
 
         # plot DJSs of all models on the same axes
-        f = figure()
-        a = f.add_subplot(111)
-        #a.hold(True)
+        f1 = figure()
+        a1 = f1.add_subplot(111)
+        #a1.hold(True)
         bars = {}
         heights = {}
-        for model in models:
-            heights[model] = n[model] / float(ngroups * logbinwidth)
-            bars[model] = a.bar(left=x, height=heights[model], width=barwidths, color=color[model],
+        for model in self.models:
+            heights[model] = n[model] / float(self.ngroups * logbinwidth)
+            bars[model] = a1.bar(left=x, height=heights[model], width=barwidths, color=color[model],
                                  edgecolor=color[model])
-        a.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
-        a.set_xlim(xmin=10**logrange[0], xmax=10**logrange[1])
+        a1.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
+        a1.set_xlim(xmin=10**logrange[0], xmax=10**logrange[1])
         gcfm().frame.SetTitle(lastcmd())
-        #a.set_title('Jensen-Shannon divergence histogram\n%s' % lastcmd())
-        #a.set_ylabel('number of groups of %d cells' % nbits)
-        #a.set_xlabel('DJS (bits)')
-        #a.set_ylabel('probability density (1 / log10(DJS))', size=20)
-
-        a.set_xticklabels(['', '0.001', '0.01', '0.1', '']) # hack!
-
-        for label in a.get_xticklabels():
-            label.set_size(30)
-        for label in a.get_yticklabels():
-            label.set_size(30)
-
-        a.legend([ bars[model][0] for model in models ], ['pairwise', 'independent'], prop=mpl.font_manager.FontProperties(size=20) ) # grab the first bar for each model, label it with the model name
-
+        if publication:
+            a1.set_xticklabels(['', '0.001', '0.01', '0.1', '']) # hack!
+            for label in a1.get_xticklabels():
+                label.set_size(30)
+            for label in a1.get_yticklabels():
+                label.set_size(30)
+            a1.legend([ bars[model][0] for model in self.models ], ['pairwise', 'independent'], prop=mpl.font_manager.FontProperties(size=20) ) # grab the first bar for each model, label it with the model name
+        else:
+            a1.set_title('Jensen-Shannon divergence histogram\n%s' % lastcmd())
+            a1.set_ylabel('number of groups of %d cells' % self.nbits)
+            a1.set_xlabel('DJS (bits)')
+            a1.set_ylabel('probability density (1 / log10(DJS))')
+            a1.legend([ bars[model][0] for model in self.models ], ['pairwise', 'independent'])
         # plot DJSratios
-        if len(models) == 2:
+        if len(self.models) == 2:
             f2 = figure()
             a2 = f2.add_subplot(111)
-            a1 = a
-            a = [a1, a2]
+            nratios = histogram(self.DJSratios, bins=x, normed=False)[0] # bin heights for the DJSratios
             a2.bar(left=x, height=nratios, width=barwidths, color='g', edgecolor='g')
             a2.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
             gcfm().frame.SetTitle(lastcmd())
             a2.set_title('Jensen-Shannon divergence ratios histogram\n%s' % lastcmd())
-            a2.set_ylabel('number of groups of %d cells' % nbits)
-            a2.set_xlabel('DJS ratio (%s / %s)' % (models[1], models[0]))
+            a2.set_ylabel('number of groups of %d cells' % self.nbits)
+            a2.set_xlabel('DJS ratio (%s / %s)' % (self.models[1], self.models[0]))
 
-        return dictattr(niss=niss, DJSs=DJSs, DJSratios=DJSratios, a=a, x=x, heights=heights)
+        self.f1 = f1
+        self.a1 = a1
+        self.f2 = f2
+        self.a2 = a2
+        return self
+
+
+class NetstateOtherStuff(BaseNetstate):
+
 
     def S1INvsN(self, minN=4, maxN=15, maxnsamples=10, tres=CODETRES):
         """Plots the average independent cell entropy S1 and average network multi-information IN (IN = S1 - SN)
@@ -1495,24 +1507,27 @@ class NetstateOtherStuff(BaseNetstate):
 
 class RecordingNetstate(BaseRecording):
     """Mix-in class that defines Netstate related Recording methods"""
-    def ns_(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=0):
+    def ns_(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a BaseNetstate object"""
         return BaseNetstate(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
-    def ns_isinghist(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=0):
+    def ns_isinghist(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateIsingHist object"""
         return NetstateIsingHist(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase)
-    def ns_nspikingpmf(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=0):
+    def ns_nspikingpmf(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateNspikingPMF object"""
         return NetstateNspikingPMF(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
-    def ns_scatter(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=0):
+    def ns_scatter(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateScatter object"""
         return NetstateScatter(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
-    def ns_i2vsin(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=0):
+    def ns_i2vsin(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateI2vsIN object"""
         return NetstateI2vsIN(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
+    def ns_djshist(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
+        """Returns a NetstateDJSHist object"""
+        return NetstateDJSHist(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
 
 
-    def ns_other(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=0):
+    def ns_other(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateOtherStuff object"""
         return NetstateOtherStuff(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
 
