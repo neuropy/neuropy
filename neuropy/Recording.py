@@ -720,8 +720,8 @@ class NetstateIsingHist(BaseNetstate):
             self.ims.append(im)
             self.his.append(im.hi)
             self.Jijs.append(im.Jij)
-            cancel = not pd.Update(groupi, newmsg='groupi = %d' % groupi)
-            if cancel:
+            cont, skip = pd.Update(groupi, newmsg='groupi = %d' % groupi)
+            if not cont:
                 pd.Destroy()
                 return
         pd.Destroy()
@@ -1013,8 +1013,8 @@ class NetstateI2vsIN(BaseNetstate):
             I2 = S1 - S2
             I2s.append(I2 / self.tres * 1e6) # convert to bits/sec
             INs.append(IN / self.tres * 1e6)
-            cancel = not pd.Update(groupi, newmsg='groupi = %d' % (groupi+1))
-            if cancel:
+            cont, skip = pd.Update(groupi, newmsg='groupi = %d' % (groupi+1))
+            if not cont:
                 pd.Destroy()
                 return
         pd.Destroy()
@@ -1075,8 +1075,8 @@ class NetstateDJSHist(BaseNetstate):
                 so.calc(nbits=self.nbits, model=model, shufflecodes=self.shufflecodes, algorithm=self.algorithm)
 
                 self.DJSs[model].append(DJS(so.pobserved, so.pexpected))
-                cancel = not pd.Update(groupi*len(self.models)+modeli, newmsg='groupi = %d\nmodel = %s' % (groupi, model))
-                if cancel:
+                cont, skip = pd.Update(groupi*len(self.models)+modeli, newmsg='groupi = %d\nmodel = %s' % (groupi, model))
+                if not cont:
                     pd.Destroy()
                     return
         pd.Destroy()
@@ -1149,86 +1149,107 @@ class NetstateDJSHist(BaseNetstate):
         return self
 
 
-class NetstateOtherStuff(BaseNetstate):
-
-
-    def S1INvsN(self, minN=4, maxN=15, maxnsamples=10, tres=CODETRES):
-        """Plots the average independent cell entropy S1 and average network multi-information IN (IN = S1 - SN)
-        vs network size N. IN is how much less entropy there is in the system due to correlated network activity.
+class NetstateS1INvsN(BaseNetstate):
+    """Analysis of uncorrelated entropy and reduction by correlated entropy for increasing network size N"""
+    def calc(self, minN=4, maxN=15, maxnsamples=10):
+        """Calculates the average independent (uncorrelated) cell entropy S1
+        and average network multi-information IN (IN = S1 - SN) vs network size N.
+        IN is how much the correlated entropy reduces the total entropy of the system.
         For each network size up to maxN, averages S1 and IN over maxnsamples (or less if that many aren't possible)
         number of groups at each value of N"""
-        S1ss= [] # as f'n of N
-        INss = []
-        N = range(minN, maxN+1) # network sizes from minN up to maxN
-        #tstart = time.clock()
-        nsamples = [ min(nCr(self.nneurons, r), maxnsamples) for r in N ] # nsamples as a f'n of N. For each value of N, take up to maxnsamples of all the other neurons, if that many are even possible
+        self.minN = minN
+        self.maxN = maxN
+        self.maxnsamples = maxnsamples
 
-        pd = wx.ProgressDialog(title='S1INvsN progress', message='', maximum=sum(nsamples), # create a progress dialog
+        self.S1ss= [] # as f'n of N
+        self.INss = []
+        self.N = range(self.minN, self.maxN+1) # network sizes from minN up to maxN
+        #tstart = time.clock()
+        self.nsamples = [ min(nCr(self.nneurons, r), self.maxnsamples) for r in self.N ] # nsamples as a f'n of N. For each value of N, take up to maxnsamples of all the other neurons, if that many are even possible
+
+        pd = wx.ProgressDialog(title='S1INvsN progress', message='', maximum=sum(self.nsamples), # create a progress dialog
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
-        for ni, n in enumerate(N): # for all network sizes
+        for ni, n in enumerate(self.N): # for all network sizes
             # get a list of lists of neuron indices
             niss = nCrsamples(objects=self.neurons.keys(),
                               r=n, # pick n neurons
-                              nsamples=nsamples[ni] ) # do it at most maxnsamples times
+                              nsamples=self.nsamples[ni] ) # do it at most maxnsamples times
             S1s = []
             INs = []
             for nisi, nis in enumerate(niss):
-                cancel = not pd.Update(ni*maxnsamples+nisi, newmsg='N = %d\nsamplei = %d' % (n, nisi))
-                if cancel:
+                cont, skip = pd.Update(ni*self.maxnsamples+nisi, newmsg='N = %d\nsamplei = %d' % (n, nisi))
+                if not cont:
                     pd.Destroy()
                     return
                 #t2 = time.clock()
-                p1 = asarray(self.intcodesFPDF(nis=nis, tres=tres)[0]) # indep model
-                pN = asarray(self.intcodesPDF(nis=nis, tres=tres)[0]) # observed word probs
+                p1 = asarray(self.intcodesFPDF(nis=nis)[0]) # indep model
+                pN = asarray(self.intcodesPDF(nis=nis)[0]) # observed word probs
                 #print 'calcing ps took: %f sec' % (time.clock()-t2)
                 S1 = entropy_no_sing(p1) # ignore any singularities
                 SN = entropy_no_sing(pN)
                 assert S1 > SN or approx(S1, SN), 'S1 is %.20f, SN is %.20f' % (S1, SN) # better be, indep model assumes the least structure
                 IN = S1 - SN
                 #print S1, SN, IN
-                S1s.append(S1 / tres * 1e6) # convert to bits/sec
-                INs.append(IN / tres * 1e6)
-            S1ss.append(S1s)
-            INss.append(INs)
+                S1s.append(S1 / self.tres * 1e6) # convert to bits/sec
+                INs.append(IN / self.tres * 1e6)
+            self.S1ss.append(S1s)
+            self.INss.append(INs)
         pd.Destroy()
-        S1mean = [ asarray(S1s).mean() for S1s in S1ss ]
-        S1std = [ asarray(S1s).std() for S1s in S1ss ]
-        S1sem = asarray(S1std) / sqrt(asarray(nsamples))
-        INmean = [ asarray(INs).mean() for INs in INss ]
-        INstd = [ asarray(INs).std() for INs in INss ]
-        INsem = asarray(INstd) / sqrt(asarray(nsamples))
+        self.S1mean = [ asarray(S1s).mean() for S1s in self.S1ss ]
+        self.S1std = [ asarray(S1s).std() for S1s in self.S1ss ]
+        self.S1sem = asarray(self.S1std) / sqrt(asarray(self.nsamples))
+        self.INmean = [ asarray(INs).mean() for INs in self.INss ]
+        self.INstd = [ asarray(INs).std() for INs in self.INss ]
+        self.INsem = asarray(self.INstd) / sqrt(asarray(self.nsamples))
+
+        return self
+
+    def plot(self, xlim=(1e0, 1e3), ylim=(1e-2, 1e4)):
+        """Plots the average independent (uncorrelated) cell entropy S1
+        and average network multi-information IN (IN = S1 - SN) vs network size N."""
+
+        try: self.S1ss
+        except: self.calc()
+
         f = figure()
         gcfm().frame.SetTitle(lastcmd())
         a = f.add_subplot(111)
         a.hold(True)
-        for n, S1s in zip(N, S1ss): # plot all the samples before plotting the means with errorbars
+        for n, S1s in zip(self.N, self.S1ss): # plot all the samples before plotting the means with errorbars
             a.plot([n]*len(S1s), S1s, '_', markersize=4, color='lightblue')
-        for n, INs in zip(N, INss):
+        for n, INs in zip(self.N, self.INss):
             a.plot([n]*len(INs), INs, '_', markersize=4, color='pink')
-        S1line = a.errorbar(N, S1mean, yerr=S1sem, fmt='b.')[0]
-        INline = a.errorbar(N, INmean, yerr=INsem, fmt='r.')[0]
-        # do some linear regression in log10 space
-        mS1, bS1 = sp.polyfit(log10(N), log10(S1mean), 1) # returns slope and y intercept
-        mIN, bIN = sp.polyfit(log10(N), log10(INmean), 1)
+        S1line = a.errorbar(self.N, self.S1mean, yerr=self.S1sem, fmt='b.')[0]
+        INline = a.errorbar(self.N, self.INmean, yerr=self.INsem, fmt='r.')[0]
+        # do least squares polynomial fit in log10 space
+        mS1, bS1 = sp.polyfit(log10(self.N), log10(self.S1mean), 1) # returns slope and y intercept
+        mIN, bIN = sp.polyfit(log10(self.N), log10(self.INmean), 1)
         xintersect = (bIN - bS1) / (mS1 - mIN)
         x = array([-1, 3]) # define x in log10 space, this is really [0.1, 1000]
-        yS1 = mS1*x + bS1 # y = mx + b
-        yIN = mIN*x + bIN
-        a.plot(10.0**x, 10.0**yS1, 'b-') # raise them to the power to make up for the fact that both the x and y scales will be log
-        a.plot(10.0**x, 10.0**yIN, 'r-')
+        self.yS1 = mS1*x + bS1 # y = mx + b
+        self.yIN = mIN*x + bIN
+        a.plot(10.0**x, 10.0**self.yS1, 'b-') # take their power to make up for both the x and y scales being log
+        a.plot(10.0**x, 10.0**self.yIN, 'r-')
         a.set_xscale('log')
         a.set_yscale('log')
-        a.set_xlim(1e0, 1e3)
-        a.set_ylim(1e-2, 1e4)
+        a.set_xlim(xlim)
+        a.set_ylim(ylim)
         a.set_xlabel('Number of cells')
         a.set_ylabel('bits / sec')
         a.set_title('S1 & IN vs N\n%s' % lastcmd())
         a.legend((S1line, INline), ('S1, slope=%.3f' % mS1, 'IN, slope=%.3f' % mIN), loc='lower right')
         a.text(0.99, 0.98, 'Nc=%d' % np.round(10**xintersect), # add text box to upper right corner of axes
-            transform = a.transAxes,
-            horizontalalignment = 'right',
-            verticalalignment = 'top')
-        return S1mean, INmean, N
+                           transform = a.transAxes,
+                           horizontalalignment = 'right',
+                           verticalalignment = 'top')
+
+        self.f = f
+        self.a = a
+        return self
+
+
+class NetstateOtherStuff(BaseNetstate):
+
 
     def NMmutualinfo(self, nis=None, mis=None, Nbinarray=None, Mbinarray=None, verbose=False):
         """Calculates information that N cells provide about M cells (ie,
@@ -1335,8 +1356,8 @@ class NetstateOtherStuff(BaseNetstate):
                 for samplei, sample in enumerate(samples): # collect nsamples different combinations of the N other cells
                     niis = np.array([ nis2niis(s) for s in toiter(sample) ]) # most of the time (for n>1), sample will be a sequence of nis. Build an array of niis out of it to use as indices into the binary code array. Sometimes (for n=1) sample will be a scalar, hence the need to push it through toiter()
                     IdivS[ni, Nplus1i, samplei] = self.NMmutualinfo(Nbinarray=self.cs.c[niis], Mbinarray=self.cs.c[mii]) # do it
-                    cancel = not pd.Update(counter, newmsg='N: %d; N+1th neuron: %d; samplei: %d' % (n, Nplus1, samplei))
-                    if cancel:
+                    cont, skip = pd.Update(counter, newmsg='N: %d; N+1th neuron: %d; samplei: %d' % (n, Nplus1, samplei))
+                    if not cont:
                         pd.Destroy()
                         return
                     counter += 1
@@ -1525,7 +1546,9 @@ class RecordingNetstate(BaseRecording):
     def ns_djshist(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateDJSHist object"""
         return NetstateDJSHist(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
-
+    def ns_s1invsn(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
+        """Returns a NetstateS1INvsN object"""
+        return NetstateS1INvsN(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
 
     def ns_other(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateOtherStuff object"""

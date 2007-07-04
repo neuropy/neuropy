@@ -754,8 +754,8 @@ class STA(RevCorr):
         tstart = time.clock()
         pd = wx.ProgressDialog(title='n%d STA progress' % self.neuron.id, message='', maximum=self.tis[-1], style=1) # create a progress dialog
         for ti in self.tis:
-            cancel = not pd.Update(ti-1, newmsg='timepoint: %dms\nelapsed: %.1fs' % (self.t[ti], time.clock()-tstart))
-            if cancel:
+            cont, skip = pd.Update(ti-1, newmsg='timepoint: %dms\nelapsed: %.1fs' % (self.t[ti], time.clock()-tstart))
+            if not cont:
                 #self.rf = zeros([self.nt, self.height, self.width], dtype=np.float64) # set back to zeros
                 pd.Destroy()
                 self.done = False
