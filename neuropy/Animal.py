@@ -11,7 +11,7 @@ class Animal(object):
     for clarity, since ids could be confusing (would id==5 mean Cat 5 or Rat 5?)"""
     def __init__(self, name=None, parent=None):
         self.level = 1 # level in the hierarchy
-        self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         self.d = parent # save the parent Data object
         self.name = name
         self.path = os.path.join(self.d.path, self.name)

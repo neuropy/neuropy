@@ -14,7 +14,7 @@ class Rip(object):
 
     def __init__(self, id=None, name=None, parent=Recording):
         self.level = 4 # level in the hierarchy
-        #self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
+        #self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         try:
             self.r = parent() # init parent Recording object
         except TypeError: # parent is an instance, not a class

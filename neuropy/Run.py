@@ -13,7 +13,7 @@ class Run(object):
         from System import System
 
         self.level = 3 # level in the hierarchy
-        self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         if parent == None:
             try:
                 self.s = _model.s[SYSTEMNAME] # see if the default System has already been init'd

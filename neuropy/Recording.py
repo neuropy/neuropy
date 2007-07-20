@@ -2,8 +2,16 @@
 
 #print 'importing Recording'
 
+"""
+Good setting for presentation plots:
+pl.rcParams['lines.markersize'] = 10
+pl.rcParams['xtick.labelsize'] = 20
+pl.rcParams['ytick.labelsize'] = 20
+"""
+
 from Core import *
 from Core import _data # ensure it's imported, in spite of leading _
+
 
 class BaseRecording(object):
     """A Recording corresponds to a single SURF file, ie everything recorded between when
@@ -15,7 +23,7 @@ class BaseRecording(object):
         from Track import Track
 
         self.level = 3 # level in the hierarchy
-        self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         if parent == None:
             try:
                 self.t = _data.a[ANIMALNAME].t[TRACKID] # see if the default Track has already been init'd
@@ -470,6 +478,11 @@ class CodeCorrPDF(object):
                 code2 = self.r.code(cni2, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
                 cc = ((code1 * code2).mean() - means[cni1] * means[cni2]) / (stds[cni1] * stds[cni2]) # (mean of product - product of means) / by product of stds
                 self.corrs.append(cc)
+
+        self.corrs = [ corr for corr in self.corrs if corr < 0.5 ] # ignore distant but few outliers at rho2 > 0.5. This is really just to make mean rho2 value jive with the distribution you see with the default x limits...
+
+        self.meancorr = mean(self.corrs)
+
         '''
         # simpler, but slower way:
         self.corrs = [ self.r.codecorr(cnis[cnii1], cnis[cnii2], tranges=self.tranges, kind=self.kind, self.tres, self.phase)
@@ -508,6 +521,11 @@ class CodeCorrPDF(object):
         else:
             a.set_ylabel('count')
         a.set_xlabel('correlation coefficient')
+        a.text(0.99, 0.99, 'mean = %.3f' % self.meancorr, # add stuff to top right of plot
+                            transform = a.transAxes,
+                            horizontalalignment='right',
+                            verticalalignment='top')
+
 
 
 class RecordingCode(BaseRecording):
@@ -764,24 +782,23 @@ class NetstateIsingHist(BaseNetstate):
         a2.set_xlabel('Jij')
         a2.set_xlim(Jijrange)
 
-        self.f1 = f1
-        self.a1 = a1
-        self.f2 = f2
-        self.a2 = a2
+        self.f = {1:f1, 2:f2}
+        self.a = {1:a1, 2:a2}
         return self
 
 
 class NetstateNspikingPMF(BaseNetstate):
     """Netstate PMF of number of cells spiking in the same bin. See 2006 Schneidman fig 1e"""
-    def calc(self):
+    def calc(self, nbits=CODEWORDLEN):
         """Calcs the PMF of observing n cells spiking in the same time bin,
         as well as the PMF for indep cells (shuffled codes)"""
         if self.niswasNone:
-            self.nis = random.sample(self.cs.nis, CODEWORDLEN) # randomly sample CODEWORDLEN bits of the nis
+            self.nis = random.sample(self.cs.nis, nbits) # randomly sample nbits of the nis
             self.nis.sort()
-            print 'nis = %r' % self.nis
+            self.nbits = nbits
         else:
             self.nis = self.cs.nis
+            self.nbits = len(self.nis)
         self.words = {}
         self.nspiking = {}
         self.pnspiking = {}
@@ -802,25 +819,28 @@ class NetstateNspikingPMF(BaseNetstate):
 
         return self
 
-    def plot(self, xrange=[-0.5, 15]):
+    def plot(self, nbits=CODEWORDLEN, xlim=(-0.5, 15.5), ylim=(10**-6, 10**0)):
         """Plots nspikingPMF, for both observed and shuffled (forcing independence) codes"""
 
         try: self.pnspiking, self.bins
-        except AttributeError: self.calc()
+        except AttributeError: self.calc(nbits=nbits)
 
         f = figure()
         a = f.add_subplot(111)
         a.hold(True)
         a.plot(self.bins, self.pnspiking[False], 'r.-')
         a.plot(self.bins, self.pnspiking[True], 'b.-')
-        titlestr = 'PMF of observing n cells spiking in the same time bin'
+        titlestr = ''#'PMF of observing n cells spiking in the same time bin'
         titlestr += '\n%s' % lastcmd()
         if self.niswasNone:
             titlestr += '\nnis: %r' % self.nis
         a.set_title(titlestr)
         a.legend(('observed', 'indep (shuffled)'))
         a.set_yscale('log')
-        a.set_xlim(xrange)
+        if xlim:
+            a.set_xlim(xlim)
+        if ylim:
+            a.set_ylim(ylim)
         gcfm().frame.SetTitle(lastcmd())
         a.set_xlabel('number of spiking cells in a bin')
         a.set_ylabel('probability')
@@ -846,7 +866,6 @@ class NetstateScatter(BaseNetstate):
         if self.niswasNone:
             self.nis = random.sample(self.cs.nis, self.nbits) # randomly sample nbits of the nis
             self.nis.sort()
-            print 'nis = %r' % self.nis
         else:
             self.nis = self.cs.nis
 
@@ -864,22 +883,23 @@ class NetstateScatter(BaseNetstate):
             self.expectedwords = ising.intsamplespace
             self.pindepexpected = self.intcodesFPDF(nis=self.nis)[0] # expected, assuming independence
         else:
-            raise ValueError, 'Unknown model %r' % model
+            raise ValueError, 'Unknown model %r' % self.model
         assert (self.observedwords == self.expectedwords).all() # make sure we're comparing apples to apples
 
         return self
 
-
-    def plot(self, color=False):
+    def plot(self, model='both', scale='rate', xlim=(10**-4, 10**2), ylim=(10**-11, 10**2), color=False):
         """Scatterplots the expected probabilities of all possible population codes (y axis)
         vs their observed probabilities (x axis). nis are in LSB to MSB order"""
 
         try: self.pobserved, self.pexpected
-        except AttributeError: self.calc()
+        except AttributeError: self.calc(model=model)
 
         f = figure()
         a = f.add_subplot(111)
-        a.plot([10**-6, 1], [10**-6, 1], 'b-') # plot a y=x line
+        lo = min(xlim[0], ylim[0])
+        hi = max(xlim[1], ylim[1])
+        a.plot((lo, hi), (lo, hi), 'b-') # plot a y=x line
         a.hold(True)
 
         self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
@@ -895,6 +915,13 @@ class NetstateScatter(BaseNetstate):
 
         # colour each scatter point according to how many 1s are in the population code word it represents.
         # This is done very nastily, could use a cleanup:
+        if scale == 'rate':
+            norm = self.tres / 1e6 # convert scale to patter rate in Hz
+        elif scale == 'prob':
+            norm = 1 # leave scale as pattern probabilities
+        else:
+            raise ValueError, 'Unknown scale %r' % scale
+
         if color:
             inds = []
             for nspikes in range(0, 5):
@@ -911,19 +938,28 @@ class NetstateScatter(BaseNetstate):
             pobserved[inds[3]], pexpected[inds[3]] = None, None
             pobserved[inds[4]], pexpected[inds[4]] = None, None
 
+
+        colorguide = ''
         if self.model == 'both': # plot the indep model too, and plot it first
-            a.loglog(self.pobserved, self.pindepexpected, color='lightsteelblue', marker='.', linestyle='None')
+            a.loglog(self.pobserved/norm, self.pindepexpected/norm, color='blue', marker='.', linestyle='None')
+            colorguide = ' red: ising\n' + \
+                         'blue: indep\n'
         # plot whichever model was specified
         if color:
-            a.loglog(pobserved, pexpected, 'k.') # plots what's left in black
-            a.loglog(pobserved4, pexpected4, 'm.')
-            a.loglog(pobserved3, pexpected3, 'c.')
-            a.loglog(pobserved2, pexpected2, 'y.')
-            a.loglog(pobserved1, pexpected1, 'r.')
+            a.loglog(pobserved/norm, pexpected/norm, '.', color='black') # plots what's left in black
+            a.loglog(pobserved4/norm, pexpected4/norm, '.', color='magenta')
+            a.loglog(pobserved3/norm, pexpected3/norm, '.', color='blue')
+            a.loglog(pobserved2/norm, pexpected2/norm, '.', color=(0, 1, 0))
+            a.loglog(pobserved1/norm, pexpected1/norm, '.', color='red')
+            colorguide = '    red: 1 spike patterns\n' + \
+                         '  green: 2 spike patterns\n' + \
+                         '   blue: 3 spike patterns\n' + \
+                         'magenta: 4 spike patterns\n' + \
+                         '  black: other patterns  \n'
         else:
-            a.loglog(self.pobserved, self.pexpected, 'r.')
+            a.loglog(self.pobserved/norm, self.pexpected/norm, 'r.')
         '''
-        a.plot(pobserved, pexpected, 'k.')
+        a.plot(pobserved/norm, pexpected/norm, 'k.')
         '''
         gcfm().frame.SetTitle(lastcmd())
         missingcodeis = (self.pobserved == 0).nonzero()[0]
@@ -937,19 +973,28 @@ class NetstateScatter(BaseNetstate):
             maxp = pexpectedmissing[maxpi]
             maxpcode = self.expectedwords[missingcodeis[maxpi]]
             missingcodetext += '\n nmissingcodes: %d, maxpmissingcode: (%r, pexpected=%.3g)' % (nmissing, bin(maxpcode, minbits=self.nbits), maxp)
-        a.set_title('%s\nneurons: %s' % (lastcmd(), self.nis))# + missingcodetext)
-        a.set_xlabel('observed population code probability')
-        a.set_ylabel('expected population code probability')
-        a.set_ylim(ymin=10**-11, ymax=10**0) # this makes all plots consistent, some might be missing a scatter point or two
+        titletext = lastcmd()
+        if self.niswasNone:
+            titletext += '\nneurons: %s' % self.nis # + missingcodetext)
+        a.set_title(titletext)
+        if scale == 'rate':
+            a.set_xlabel('observed population code rate (Hz)')
+            a.set_ylabel('expected population code rate (Hz)')
+        elif scale == 'prob':
+            a.set_xlabel('observed population code probability')
+            a.set_ylabel('expected population code probability')
+        a.set_xlim(xlim)
+        a.set_ylim(ylim)
         if self.model =='both':
             DJSstring = '(%.4f, %.4f)' % (DJS(self.pobserved, self.pindepexpected), DJS(self.pobserved, self.pexpected))
         else:
             DJSstring = '%.4f' % DJS(self.pobserved, self.pexpected)
-        a.text(0.99, 0.01, '%.1f%% missing\nDJS=%s' % (percentmissing, DJSstring), # add DJS to bottom right of plot
-            transform = a.transAxes,
-            horizontalalignment = 'right',
-            verticalalignment = 'bottom')
-        print 'nis = %r' % self.nis # print out the nis so they can easily be copied and pasted elsewhere
+        a.text(0.99, 0.01, ('%s' +
+                            '%.1f%% missing\n' +
+                            'DJS=%s') % (colorguide, percentmissing, DJSstring), # add stuff to bottom right of plot
+                            transform = a.transAxes,
+                            horizontalalignment='right',
+                            verticalalignment='bottom')
 
         self.f = f
         self.a = a
@@ -983,6 +1028,7 @@ class NetstateScatter(BaseNetstate):
                 self.tooltip.Enable(False) # disable the tooltip
         else: # mouse is outside the axes
             self.tooltip.Enable(False) # disable the tooltip
+
 
 class NetstateI2vsIN(BaseNetstate):
     """Netstate I2/IN vs IN (fraction of pairwise correlated entropy vs all correlated entropy) analysis.
@@ -1087,11 +1133,11 @@ class NetstateDJSHist(BaseNetstate):
 
         return self
 
-    def plot(self, logrange=(-3.667, -0.333), nbins=50, publication=False):
+    def plot(self, ngroups=5, logrange=(-3.667, -0.333), nbins=50, publication=False):
         """Plots histogram DJSs and DJSratios in logspace"""
 
         try: self.niss, self.DJSs
-        except AttributeError: self.calc()
+        except AttributeError: self.calc(ngroups=ngroups)
 
         x = np.logspace(start=logrange[0], stop=logrange[1], num=nbins, endpoint=True, base=10.0)
         n = {} # stores a list of the bin heights in a separate key for each model
@@ -1117,6 +1163,7 @@ class NetstateDJSHist(BaseNetstate):
         a1.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
         a1.set_xlim(xmin=10**logrange[0], xmax=10**logrange[1])
         gcfm().frame.SetTitle(lastcmd())
+        a1.set_title('%s' % lastcmd())
         if publication:
             a1.set_xticklabels(['', '0.001', '0.01', '0.1', '']) # hack!
             for label in a1.get_xticklabels():
@@ -1125,7 +1172,6 @@ class NetstateDJSHist(BaseNetstate):
                 label.set_size(30)
             a1.legend([ bars[model][0] for model in self.models ], ['pairwise', 'independent'], prop=mpl.font_manager.FontProperties(size=20) ) # grab the first bar for each model, label it with the model name
         else:
-            a1.set_title('Jensen-Shannon divergence histogram\n%s' % lastcmd())
             a1.set_ylabel('number of groups of %d cells' % self.nbits)
             a1.set_xlabel('DJS (bits)')
             a1.set_ylabel('probability density (1 / log10(DJS))')
@@ -1142,10 +1188,8 @@ class NetstateDJSHist(BaseNetstate):
             a2.set_ylabel('number of groups of %d cells' % self.nbits)
             a2.set_xlabel('DJS ratio (%s / %s)' % (self.models[1], self.models[0]))
 
-        self.f1 = f1
-        self.a1 = a1
-        self.f2 = f2
-        self.a2 = a2
+        self.f = {1:f1, 2:f2}
+        self.a = {1:a1, 2:a2}
         return self
 
 
@@ -1161,7 +1205,7 @@ class NetstateS1INvsN(BaseNetstate):
         self.maxN = maxN
         self.maxnsamples = maxnsamples
 
-        self.S1ss= [] # as f'n of N
+        self.S1ss = [] # as f'n of N
         self.INss = []
         self.N = range(self.minN, self.maxN+1) # network sizes from minN up to maxN
         #tstart = time.clock()

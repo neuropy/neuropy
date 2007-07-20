@@ -12,7 +12,7 @@ class Track(object):
         from Animal import Cat, Rat
 
         self.level = 2 # level in the hierarchy
-        self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         if parent == None:
             try:
                 self.a = _data.a[ANIMALNAME] # see if the default Animal has already been init'd

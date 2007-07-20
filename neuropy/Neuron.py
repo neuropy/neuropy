@@ -14,7 +14,7 @@ class BaseNeuron(object):
 
     def __init__(self, id=None, name=None, parent=Rip): # neuron names don't include the '.spk' ending, although neuron filenames do
         self.level = 5 # level in the hierarchy
-        #self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
+        #self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         try:
             self.rip = parent() # init parent Rip object
         except TypeError: # parent is an instance, not a class

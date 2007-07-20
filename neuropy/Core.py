@@ -9,7 +9,7 @@ import types
 import __main__
 import struct
 import re
-import cStringIO
+import StringIO
 import random
 import math
 
@@ -52,7 +52,7 @@ else:
 
 TRACKID = '7c'
 RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording/Run
-MOVIEPATH = os.path.join(os.sep, 'pub', 'Movies')
+MOVIEPATH = os.path.join(os.sep, 'pub', 'movies', 'mseq')
 MOVIENAME = 'mseq32.m'
 
 SYSTEMNAME = 'example model system'
@@ -69,7 +69,7 @@ class Data(object):
     """Abstract data class. Data can have multiple Animals in it"""
     def __init__(self, dataPath=DATAPATH):
         self.level = 0 # level in the hierarchy
-        self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         self.name = 'Data'
         self.path = dataPath
         self.a = dictattr() # store Animals in a dictionary with attrib access
@@ -105,7 +105,7 @@ class Model(Data):
     """Abstract model class. Model can have multiple model Systems"""
     def __init__(self, modelPath=MODELPATH):
         self.level = 0 # level in the hierarchy
-        self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         self.name = 'Model'
         self.path = modelPath
         self.s = dictattr() # store model Systems in a dictionary with attrib access
@@ -1204,8 +1204,13 @@ def DJS(p, q):
 
 
 class Ising(object):
-    """Ising maximum entropy model"""
+    """Maximum entropy Ising model"""
     def __init__(self, means, pairmeans, algorithm='CG'):
+        """means is a list of mean activity values [-1 to 1] for each neuron code.
+        pairmeans is list of products of activity values for all pairs of neuron codes.
+        'Returns a maximum-entropy (exponential-form) model on a discrete sample space'
+            -- scipy.maxent.model
+        """
 
         from scipy import maxentropy
 

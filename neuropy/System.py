@@ -9,7 +9,7 @@ class System(object):
     """A model System can have multiple modelling Runs"""
     def __init__(self, name=SYSTEMNAME, parent=_model):
         self.level = 1 # level in the hierarchy
-        self.treebuf = cStringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         self.m = parent # save parent Model object
         self.name = name
         self.path = os.path.join(self.m.path, self.name)
