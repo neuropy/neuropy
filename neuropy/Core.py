@@ -1169,10 +1169,11 @@ def entropy_no_sing(p):
     return -(p * log2_no_sing(p, subval=0.0)).sum()
 
 
-def mutualinfo(XY):
+def MI(XY):
     """Given the joint PDF of two variables, returns the mutual information (in bits) between the two
     I = sum_X sum_Y P(x, y) * log2( P(x, y) / (P(x) * P(y)) )
-    where P(x) and P(y) are the marginal distributions taken from the joint"""
+    where P(x) and P(y) are the marginal distributions taken from the joint
+    Is this slow? Needs optimization? Already implemented in scipy???????????????"""
     XY = asarray(XY)
     assert XY.ndim == 2
     XY = ensurenormed(XY)
@@ -1187,6 +1188,52 @@ def mutualinfo(XY):
             else:
                 I += XY[xi, yi] * log2( XY[xi, yi] / (x * y) )
     return I
+
+def MIbinarrays(Nbinarray=None, Mbinarray=None, verbose=False):
+    """Calculates information that N cells provide about M cells (ie,
+    their mutual information), as a fraction of the M cells' marginal entropy.
+    Takes cell activities as binary arrays (on or off), with
+    cells in the rows and time bins in the columns."""
+    Nbinarray = to2d(Nbinarray) # make it 2D if it's 1D
+    N = len(Nbinarray) # gets the number of rows
+    Nintcodes = binarray2int(Nbinarray)
+    Mbinarray = to2d(Mbinarray) # make it 2D if it's 1D
+    M = len(Mbinarray) # gets the number of rows
+    Mintcodes = binarray2int(Mbinarray)
+    # build up joint pdf of all the possible N words, and the two possible N+1th values (0 and 1)
+    xedges = arange(2**N+1) # values 0 to 2**N - 1, plus 2**N which is needed as the rightmost bin edge for histogram2d (annoying)
+    yedges = arange(2**M+1)
+    bins = [xedges, yedges]
+    jpdf, xedgesout, yedgesout = histogram2d(Nintcodes, Mintcodes, bins, normed='pmf') # generate joint pdf
+    #print 'jpdf\n', jpdf.__repr__()
+    #print 'jpdf.sum()', jpdf.sum()
+    assert (np.float64(xedges) == xedgesout).all() # sanity check
+    assert (np.float64(yedges) == yedgesout).all()
+    # pdf of N cells
+    #Npdf, Nedges = histogram(Nintcodes, bins=range(2**N), normed='pmf')
+    #print 'first 100 Npdf\n', Npdf[:100].__repr__()
+    # pdf of M cells
+    #Mpdf, Medges = histogram(Mintcodes, bins=arange(2**M), normed='pmf')
+    #print 'first 100 Mpdf\n', Mpdf[:100].__repr__()
+    marginalMpdf = jpdf.sum(axis=0)
+    #assert approx(Mpdf, marginalMpdf).all() # make sure what you get from the joint is what you get when just building up the pdf straight up on its own
+    I = MI(jpdf)
+    IdivS = I / entropy(marginalMpdf) # return mutual info as fraction of entropy in M group of cells
+    if verbose:
+        print 'nis', nis
+        print 'mis', mis
+        #print 'Mpdf', Mpdf
+        #print 'entropy(Mpdf)', entropy(Mpdf)
+        print 'marginal Mpdf', marginalMpdf
+        print 'entropy(marginal Mpdf)', entropy(marginalMpdf)
+        print 'I', I
+        print 'I/entropy', IdivS
+    if not 0.0 <= IdivS <= 1.0+1e-10:
+        import pdb; pdb.set_trace()
+        print 'IdivS is out of range'
+        print 'IdivS is %.16f' % IdivS
+
+    return dictattr(I=I, IdivS=IdivS)
 
 def DKL(p, q):
     """Kullback-Leibler divergence from true probability distribution p to arbitrary distribution q"""
