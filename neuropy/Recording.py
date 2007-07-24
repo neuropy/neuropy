@@ -1165,7 +1165,7 @@ class NetstateDJSHist(BaseNetstate):
         gcfm().frame.SetTitle(lastcmd())
         a1.set_title('%s' % lastcmd())
         if publication:
-            a1.set_xticklabels(['', '0.001', '0.01', '0.1', '']) # hack!
+            a1.set_xticklabels(['', '0.001', '0.01', '0.1', '']) # hack!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             for label in a1.get_xticklabels():
                 label.set_size(30)
             for label in a1.get_yticklabels():
@@ -1253,7 +1253,7 @@ class NetstateS1INvsN(BaseNetstate):
         and average network multi-information IN (IN = S1 - SN) vs network size N."""
 
         try: self.S1ss
-        except: self.calc()
+        except AttributeError: self.calc()
 
         f = figure()
         gcfm().frame.SetTitle(lastcmd())
@@ -1347,7 +1347,7 @@ class NetstateNNplus1(BaseNetstate):
         """Plots the figure with error bars"""
 
         try: self.IdivS
-        except: self.calc(maxN=maxN, maxnsamples=maxnsamples)
+        except AttributeError: self.calc(maxN=maxN, maxnsamples=maxnsamples)
 
         f = figure()
         gcfm().frame.SetTitle(lastcmd())
@@ -1382,8 +1382,6 @@ class NetstateNNplus1(BaseNetstate):
         self.f = f
         self.a = a
         return self
-
-
         '''
         # plot the distributions of IdivS
         for ni, n in enumerate(self.N):
@@ -1416,10 +1414,11 @@ class NetstateNNplus1(BaseNetstate):
             a2.set_ylabel('count')
         '''
 
-class NetstateOtherStuff(object):
-
-    def _checkcell(self, ni=None, othernis=None, shufflecodes=False):
-        """Returns the joint pdf of cell ni activity and the number of cells in
+class NetstateCheckcells(BaseNetstate):
+    """Analysis of how activity rates of each cell in the population vary with
+    the overall amount of activity in the rest of the population"""
+    def _calc(self, ni=None, othernis=None, shufflecodes=False):
+        """Calculates the joint pdf of cell ni activity and the number of cells in
         othernis being active at the same time. ni should not be in othernis"""
         assert ni not in othernis
         nis2niis = self.cs.nis2niis
@@ -1447,69 +1446,89 @@ class NetstateOtherStuff(object):
             jpdf[:, coli] = normalize(jpdf[:, coli]) # save the normalized column back to the jpdf
         return jpdf
 
-    def checkcells(self, nis=None, othernis=None, nothers=None, nsamples=10, shufflecodes=False):
-        """Plots the probability of each cell (in nis) being active vs. the number of
-        other active cells (in the Recording) at that time. For each ni, an average over
+    def calc(self, nis=None, othernis=None, nothers=None, nsamples=10, shufflecodes=False):
+        """Calcs the probability of each cell (in nis) being active vs. the number of
+        other active cells (in the Recording) at that time. For each ni, calcs an average over
         nsamples, each being a different sample of nothers from othernis.
         See Schneidman figure 5c"""
         if nis == None:
-            nis = self.cs.nis
+            self.nis = self.cs.nis
         else:
-            nis = toiter(nis)
+            self.nis = toiter(nis)
         if othernis == None:
-            othernis = self.cs.nis
+            self.othernis = self.cs.nis
         else:
-            othernis = toiter(nis)
+            self.othernis = toiter(othernis)
         if nothers == None:
             less = 0
-            while nCr(len(othernis), len(othernis)-less) < nsamples:
+            while nCr(len(self.othernis), len(self.othernis)-less) < nsamples:
                 less += 1
-            nothers = len(othernis) - 1 - less # -1 to remove ni, -less again to allow for at least nsamples combos of othernis
-        N = arange(nothers+1)
-        saved_othernis = copy(othernis) # save a copy so we can mess with the original
+            nothers = len(self.othernis) - 1 - less # -1 to remove ni, -less again to allow for at least nsamples combos of othernis
+        self.N = arange(nothers+1)
 
-        for ni in nis:
-            if saved_othernis == None:
-                othernis = copy(self.cs.nis)
-            else:
-                othernis = copy(saved_othernis)
+        try: self.jpdfss
+        except AttributeError:
+            # init dicts to store jpdfs and other stuff in
+            self.jpdfss = {}
+            self.jpdfmeans = {}
+            self.jpdfstds = {}
+            self.jpdfsems = {}
+
+        for ni in self.nis:
             try:
-                othernis.remove(ni) # all the other possible nis, excluding the current ni
-            except ValueError: # ni isn't in othernis, nothing to remove
-                pass
-            otherniss = nCrsamples(objects=othernis, r=nothers, nsamples=nsamples) # get nsamples unique random samples of length nothers from othernis
+                self.jpdfss[ni]
+            except KeyError:
+                othernis = copy(self.othernis) # don't modify the original
+                try:
+                    othernis.remove(ni) # all the other possible nis, excluding the current ni
+                except ValueError: # ni isn't in othernis, nothing to remove
+                    pass
+                otherniss = nCrsamples(objects=othernis, r=nothers, nsamples=nsamples) # get nsamples unique random samples of length nothers from othernis
+                jpdfs = []
+                for othernis in otherniss: # collect jpdfs across all random samples
+                    jpdf = self._calc(ni=ni, othernis=othernis, shufflecodes=shufflecodes)
+                    jpdfs.append(jpdf)
+                jpdfs = asarray(jpdfs) # this is an nsamples x 2 x (1+nothers) matrix
+                self.jpdfss[ni] = jpdfs
+                self.jpdfmeans[ni] = jpdfs.mean(axis=0) # find the mean jpdf across all nsamples jpdfs
+                self.jpdfstds[ni] = jpdfs.std(axis=0) # find the stdev across all nsamples jpdfs
+                self.jpdfsems[ni] = self.jpdfstds[ni] / sqrt(nsamples)
+        return self
 
-            jpdfs = []
-            for othernis in otherniss: # collect jpdfs across all random samples
-                jpdf = self._checkcell(ni=ni, othernis=othernis, shufflecodes=shufflecodes)
-                jpdfs.append(jpdf)
-
-            jpdfs = asarray(jpdfs) # this is an nsamples x 2 x (1+nothers) matrix
-            jpdfmean = jpdfs.mean(axis=0) # find the mean jpdf across all nsamples jpdfs
-            jpdfstd = jpdfs.std(axis=0) # find the stdev across all nsamples jpdfs
-            jpdfsem = jpdfstd / sqrt(nsamples)
-
-            # plot it
+    def plot(self, nis=None, nothers=None, nsamples=10):
+        """Plots the desired neurons so you can see if they behave like check cells"""
+        try: self.jpdfss
+        except AttributeError: self.calc(nis=nis, nothers=nothers, nsamples=nsamples)
+        try: self.f
+        except AttributeError: self.f = {}
+        try: self.a
+        except AttributeError: self.a = {}
+        if nis == None:
+            nis = self.nis
+        else:
+            nis = toiter(nis)
+        for ni in nis:
             f = figure()
             gcfm().frame.SetTitle('%s for ni=%d' % (lastcmd(), ni))
             a = f.add_subplot(111)
             a.hold(True)
             # plot all the samples first
-            for jpdf in jpdfs: # iter over the hyperrows
-                a.plot(N, jpdf[1], '_', markersize=4, color=0.6) # marginal pdf of getting a 1 for the check cell
+            for jpdf in self.jpdfss[ni]: # iter over the hyperrows
+                a.plot(self.N, jpdf[1], '_', markersize=4, color='grey') # marginal pdf of getting a 1 for the check cell
             # plot the stdevs, means, and sems of marginal pdf of getting a 1 for the check cell
-            #a.errorbar(N, jpdfmean[1], yerr=jpdfstd[1], fmt=None, capsize=0, ecolor='grey')
-            a.errorbar(N, jpdfmean[1], yerr=jpdfsem[1], fmt='k.-')
+            #a.errorbar(self.N, self.jpdfmeans[ni][1], yerr=self.jpdfstds[ni][1], fmt=None, capsize=0, ecolor='grey')
+            a.errorbar(self.N, self.jpdfmeans[ni][1], yerr=self.jpdfsems[ni][1], fmt='k.-')
             a.set_ylim(ymin=0, ymax=1)
 
             titlestr = '%s\nni=%d' % (lastcmd(), ni)
-            if nsamples == 1:
-                titlestr += ', othernis=%r' % othernis
-            else:
-                titlestr += ', nsamples=%d' % nsamples
+            titlestr += ', nsamples=%d' % nsamples
             a.set_title(titlestr)
             a.set_xlabel('Number of other active cells')
             a.set_ylabel('Probability of cell ni being active')
+
+            self.f[ni] = f
+            self.a[ni] = a
+        return self
 
 
 class RecordingNetstate(BaseRecording):
@@ -1538,10 +1557,9 @@ class RecordingNetstate(BaseRecording):
     def ns_nnplus1(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateNNplus1 object"""
         return NetstateNNplus1(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
-
-    def ns_other(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
-        """Returns a NetstateOtherStuff object"""
-        return NetstateOtherStuff(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
+    def ns_checkcells(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
+        """Returns a NetstateCheckcells object"""
+        return NetstateCheckcells(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
 
 
 class Recording(RecordingRaster,
