@@ -182,7 +182,7 @@ class PopulationRaster(object):
                 self.a.xaxis.set_major_formatter(self.formatter)
                 self.a.set_yticks([]) # turn off y axis
             gcfm().frame.SetTitle(lastcmd())
-            self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
+            self.tooltip = wx.ToolTip(tip='') # create a tooltip
             self.tooltip.Enable(False) # leave disabled for now
             self.tooltip.SetDelay(0) # set popup delay in ms
             gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
@@ -593,7 +593,6 @@ class RecordingCode(BaseRecording):
 class BaseNetstate(object):
     """Base class of Network state analyses.
     Implements a lot of the analyses on network states found in the 2006 Schneidman paper"""
-
     def __init__(self, recording, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         self.r = recording
         if experiments == None:
@@ -902,7 +901,7 @@ class NetstateScatter(BaseNetstate):
         a.plot((lo, hi), (lo, hi), 'b-') # plot a y=x line
         a.hold(True)
 
-        self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
+        self.tooltip = wx.ToolTip(tip='') # create a tooltip
         self.tooltip.Enable(False) # leave disabled for now
         self.tooltip.SetDelay(0) # set popup delay in ms
         gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
@@ -921,6 +920,7 @@ class NetstateScatter(BaseNetstate):
             norm = 1 # leave scale as pattern probabilities
         else:
             raise ValueError, 'Unknown scale %r' % scale
+        self.norm = norm
 
         if color:
             inds = []
@@ -1004,8 +1004,8 @@ class NetstateScatter(BaseNetstate):
         """Called during mouse motion over scatterplot figure. Pops up the corresponding
         population code word and its int representation when hovering over a neuron scatter point"""
         if event.xdata != None and event.ydata != None: # if mouse is inside the axes
-            i  = approx(event.xdata, self.pobserved, rtol=5e-2, atol=0).nonzero()[0] # find for what indices (if any) xdata == pobserved
-            ii = approx(event.ydata, self.pexpected[i], rtol=1e-1, atol=0).nonzero()[0] # for those above, find for what index (if any) ydata == pexpected
+            i  = approx(event.xdata, self.pobserved/self.norm, rtol=1e-1, atol=0).nonzero()[0] # find for what indices (if any) xdata == pobserved
+            ii = approx(event.ydata, self.pexpected[i]/self.norm, rtol=1e-1, atol=0).nonzero()[0] # for those above, find for what index (if any) ydata == pexpected
             codeis = i[ii]
             if codeis.size > 0:
                 #tip += 'i: %r' % i
