@@ -307,6 +307,10 @@ def str2(data):
         if len(s) == 1:
             s = '0'+s # add a leading zero for single digits
 '''
+def intround(n):
+    """Round to the nearest integer, return an integer"""
+    return int(round(n))
+
 def pad0s(val, ndigits=2):
     """Returns a string rep of val, padded with enough leading 0s
     to give you a string rep with ndigits in it"""
@@ -362,7 +366,7 @@ def renameSpikeFiles(path, newname):
                 print newfname
                 os.rename(os.path.join(path, fname), os.path.join(path, newfname))
 
-def csv2binary(fin, multiplier=1e6):
+def csv2binary(fin, multiplier=1e6, skipfirstline=True):
     """Exports spike data in a csv file, with cells in the columns and times down the rows,
     into int64 binary files, one for each neuron. Takes csv values and multiplies them by
     multiplier before saving"""
@@ -371,7 +375,8 @@ def csv2binary(fin, multiplier=1e6):
     print 'Exporting %s to:' % fi.name
     firstline = fi.next()
     nneurons = len(firstline.split(','))
-    fi.seek(0)
+    if not skipfirstline: # ie first line isn't just column headers
+        fi.seek(0)
     data = [] # nested list, one entry per neuron
     for ni in range(nneurons):
         data.append([]) # init each neuron's list
@@ -380,17 +385,17 @@ def csv2binary(fin, multiplier=1e6):
         line = line.split(',')
         for ni, strval in enumerate(line): # going horizontally across the line
             try:
-                data[ni].append(int(round(float(strval)*multiplier)))
+                data[ni].append(intround(float(strval)*multiplier))
             except ValueError: # strval is empty string
                 pass
     fi.close()
     #return data
-    path = os.path.splitext(fi.name)[0] # extensionless filename
+    path = os.path.splitext(fi.name)[0] # extensionless path + filename
     try:
         os.mkdir(path) # make a dir with that name
     except OSError: # dir already exists
         pass
-    tail = os.path.split(path)[-1] # just the extensionless filename
+    tail = os.path.split(path)[-1].replace(' ', '_') # just the extensionless filename, replace spaces with underscores
     for ni, neuron in enumerate(data):
         fname = os.path.join(path, tail) + '_t' + pad0s(ni, ndigits=len(str(nneurons))) + '.spk'
         fo = file(fname, 'wb') # for writing in binary mode

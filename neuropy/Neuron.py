@@ -660,8 +660,8 @@ class RevCorr(object):
         self.movie = self.experiment.stims[0]
         self.nt = nt # number of revcorr timepoints
         self.tis = range(0, nt, 1) # revcorr timepoint indices
-        self.t = [ int(round(ti * self.movie.sweeptimeMsec)) for ti in self.tis ] # revcorr timepoint values, stored in a list. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
-        self.ndinperframe = int(round(self.movie.sweeptimeMsec / float(self.experiment.REFRESHTIME / 1000.)))
+        self.t = [ intround(ti * self.movie.sweeptimeMsec) for ti in self.tis ] # revcorr timepoint values, stored in a list. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
+        self.ndinperframe = intround(self.movie.sweeptimeMsec / float(self.experiment.REFRESHTIME / 1000.))
         self.width = self.movie.data.shape[-1]
         self.height = self.movie.data.shape[-2]
         self.done = False # hasn't yet successfully completed its calc() method

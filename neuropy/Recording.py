@@ -182,7 +182,7 @@ class PopulationRaster(object):
                 self.a.xaxis.set_major_formatter(self.formatter)
                 self.a.set_yticks([]) # turn off y axis
             gcfm().frame.SetTitle(lastcmd())
-            self.tooltip = wx.ToolTip(tip='') # create a tooltip
+            self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
             self.tooltip.Enable(False) # leave disabled for now
             self.tooltip.SetDelay(0) # set popup delay in ms
             gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
@@ -250,7 +250,7 @@ class PopulationRaster(object):
     def _goto(self):
         """Bring up a dialog box to jump to timepoint, mark it with a dotted line"""
         ted = wx.TextEntryDialog(parent=None, message='Go to timepoint (ms):', caption='Goto',
-                                 defaultValue=str(int(round(self.left / self.tconv))), #wx.EmptyString,
+                                 defaultValue=str(intround(self.left / self.tconv)), #wx.EmptyString,
                                  style=wx.TextEntryDialogStyle, pos=wx.DefaultPosition)
         if ted.ShowModal() == wx.ID_OK: # if OK button has been clicked
             response = ted.GetValue()
@@ -587,7 +587,6 @@ class RecordingCode(BaseRecording):
         cco.calc() # no matching object was found, calculate it
         self._codecorrpdfs.append(cco) # add it to the object list
         return cco
-    codecorrpdf.__doc__ += '\nCodeCorrPDF: '+getargstr(CodeCorrPDF.__init__)
 
 
 class BaseNetstate(object):
@@ -631,7 +630,7 @@ class BaseNetstate(object):
                             phase=self.phase,
                             shufflecodes=shufflecodes)
 
-    def wordts(self, nis=None, mis=None):
+    def get_wordts(self, nis=None, mis=None):
         """Returns word times, ie the times of the left bin edges for which all the
         neurons in the mis in this Netstate object have a 1 in them, and all
         the rest have a 0 in them. nis lists the total population of neuron ids"""
@@ -648,12 +647,12 @@ class BaseNetstate(object):
         i = (mis_high * notmis_low).nonzero()[0] # indices where mis are 1 and all the others are 0
         return cs.t[i] # return the times at those indices
 
-    def wordtsms(self, nis=None, mis=None):
+    def get_wordtsms(self, nis=None, mis=None):
         """Returns word times to the nearest msec, with the on bits specified in mis.
         nis lists the total population of neuron ids"""
-        return np.int32(np.round(self.wordts(nis=nis, mis=mis) / 1e3))
+        return np.int32(np.round(self.get_wordts(nis=nis, mis=mis) / 1e3))
 
-    def intcodes(self, nis=None, shufflecodes=False):
+    def get_intcodes(self, nis=None, shufflecodes=False):
         """Given neuron indices (ordered LSB to MSB top to bottom), returns an array of the integer representation
         of the neuronal population binary code for each time bin"""
         assert self.kind == 'binary'
@@ -666,7 +665,7 @@ class BaseNetstate(object):
         labelled according to their integer representation"""
         if nis == None:
             nis = random.sample(self.cs.nis, CODEWORDLEN) # randomly sample CODEWORDLEN bits of the nis
-        intcodes = self.intcodes(nis=nis)
+        intcodes = self.get_intcodes(nis=nis)
         nbits = len(nis)
         p, bins = histogram(intcodes, bins=arange(2**nbits), normed='pmf')
         return p, bins
@@ -804,7 +803,7 @@ class NetstateNspikingPMF(BaseNetstate):
         self.bins = {}
 
         for shufflecodes in (False, True):
-            self.words[shufflecodes] = self.intcodes(nis=self.nis, shufflecodes=shufflecodes)
+            self.words[shufflecodes] = self.get_intcodes(nis=self.nis, shufflecodes=shufflecodes)
             # collect observances of the number of cells spiking for each pop code time bin
             self.nspiking[shufflecodes] = [ np.binary_repr(word).count('1') for word in self.words[shufflecodes] ] # convert the word at each time bin to binary, count the number of 1s in it. np.binary_repr() is a bit faster than using neuropy.Core.bin()
             self.pnspiking[shufflecodes], self.bins[shufflecodes] = histogram(self.nspiking[shufflecodes],
@@ -862,14 +861,15 @@ class NetstateScatter(BaseNetstate):
         self.shufflecodes = shufflecodes
         self.algorithm = algorithm
 
-        if self.niswasNone:
+        if self.niswasNone: # nis weren't specified in __init__
             self.nis = random.sample(self.cs.nis, self.nbits) # randomly sample nbits of the nis
             self.nis.sort()
-        else:
+        else: # nis were specified in __init__
             self.nis = self.cs.nis
+            self.nbits = min(len(self.nis), self.nbits) # make sure nbits isn't > len(nis)
 
-        self._intcodes = self.intcodes(nis=self.nis, shufflecodes=self.shufflecodes)
-        self.pobserved, self.observedwords = histogram(self._intcodes, bins=arange(2**self.nbits), normed='pmf')
+        self.intcodes = self.get_intcodes(nis=self.nis, shufflecodes=self.shufflecodes)
+        self.pobserved, self.observedwords = histogram(self.intcodes, bins=arange(2**self.nbits), normed='pmf')
         if self.model == 'indep':
             self.pexpected, self.expectedwords = self.intcodesFPDF(nis=self.nis) # expected, assuming independence
         elif self.model == 'ising':
@@ -884,10 +884,9 @@ class NetstateScatter(BaseNetstate):
         else:
             raise ValueError, 'Unknown model %r' % self.model
         assert (self.observedwords == self.expectedwords).all() # make sure we're comparing apples to apples
-
         return self
 
-    def plot(self, model='both', scale='rate', xlim=(10**-4, 10**2), ylim=(10**-11, 10**2), color=False):
+    def plot(self, model='indep', scale='rate', xlim=(10**-4, 10**2), ylim=(10**-11, 10**2), color=True):
         """Scatterplots the expected probabilities of all possible population codes (y axis)
         vs their observed probabilities (x axis). nis are in LSB to MSB order"""
 
@@ -901,7 +900,7 @@ class NetstateScatter(BaseNetstate):
         a.plot((lo, hi), (lo, hi), 'b-') # plot a y=x line
         a.hold(True)
 
-        self.tooltip = wx.ToolTip(tip='') # create a tooltip
+        self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
         self.tooltip.Enable(False) # leave disabled for now
         self.tooltip.SetDelay(0) # set popup delay in ms
         gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
@@ -1017,7 +1016,7 @@ class NetstateScatter(BaseNetstate):
                 tip += '\nintcodes: %r' % list(intcodes)
                 activenis = [ list(asarray(self.nis)[::-1][charfind(code, '1')]) for code in codes ]
                 tip += '\nactivenis: %r' % activenis
-                tip += '\npattern counts: %r' % [ (self._intcodes == intcode).sum() for intcode in intcodes ]
+                tip += '\npattern counts: %r' % [ (self.intcodes == intcode).sum() for intcode in intcodes ]
                 tip += '\npattern rates (Hz): %s' % repr([ '%.3g' % (p / self.tres * 1e6) for p in self.pobserved[codeis] ]).replace('\'', '')
                 tip += '\n(pobserved, pexpected): %s' % repr(zip([ '%.3g' % val for val in self.pobserved[codeis] ], [ '%.3g' % val for val in self.pexpected[codeis] ])).replace('\'', '')
                 tip += '\npobserved / pexpected: %s' % repr([ '%.3g' % (o/float(e)) for o, e in zip(self.pobserved[codeis], self.pexpected[codeis]) ]).replace('\'', '')
@@ -1531,6 +1530,18 @@ class NetstateCheckcells(BaseNetstate):
         return self
 
 
+class NetstateTriggeredAverage(BaseNetstate):
+    """Analysis that reverse correlates the occurence of a specific netstate
+    to the stimuli in the Experiments in this Recording to build up a netstate
+    triggered average"""
+    def calc(self, intcode=None):
+        self.wordts = binarray2int(self.codes(nis=nis, shufflecodes=shufflecodes).c)
+
+        self.get_wordts(intcode=intcode)
+    def plot(self):
+
+
+
 class RecordingNetstate(BaseRecording):
     """Mix-in class that defines Netstate related Recording methods"""
     def ns_(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
@@ -1560,6 +1571,9 @@ class RecordingNetstate(BaseRecording):
     def ns_checkcells(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateCheckcells object"""
         return NetstateCheckcells(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
+    def ns_nsta(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
+        """Returns a NetstateTriggeredAverage object"""
+        return NetstateTriggeredAverage(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
 
 
 class Recording(RecordingRaster,

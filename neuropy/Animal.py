@@ -44,7 +44,7 @@ class Cat(Animal):
     def __init__(self, id=CATID, parent=_data):
         #id = pad0s(id, ndigits=2) # returns a string
         name = 'Cat ' + str(id)
-        self.id = int(id) # save it as an int (this will again remove any leading zeros)
+        self.id = int(id) # save it as an int
         super(Cat, self).__init__(name=name, parent=parent)
 
 
@@ -53,5 +53,8 @@ class Rat(Animal):
     def __init__(self, id=RATID, parent=_data):
         #id = pad0s(id, ndigits=2) # returns a string
         name = 'Rat ' + str(id)
-        self.id = int(id) # save it as an int (this will again remove any leading zeros)
+        try:
+            self.id = int(id) # save it as an int
+        except ValueError:
+            self.id = id # id is a string, like say "Rat J" would have id "J"
         super(Rat, self).__init__(name=name, parent=parent)

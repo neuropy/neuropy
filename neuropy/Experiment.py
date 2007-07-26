@@ -138,7 +138,7 @@ class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dims
                     self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
 
         try:
-            self.REFRESHTIME = int(round(1/float(self.REFRESHRATE)*1000000)) # in us, keep 'em integers
+            self.REFRESHTIME = intround(1/float(self.REFRESHRATE)*1000000) # in us, keep 'em integers
         except AttributeError:
             self.REFRESHTIME = self.din[1,0] - self.din[0,0] # use the time difference between the first two din instead
         #self.buildsweepranges()
@@ -246,7 +246,7 @@ class RevCorrs(object):
         self.movie = self.experiment.stims[0]
         self.nt = nt # number of revcorr timepoints
         self.tis = range(0, nt, 1) # revcorr timepoint indices
-        self.t = [ int(round(ti * self.movie.sweeptimeMsec)) for ti in self.tis ] #list(array(self.tis) * self.movie.sweeptimeMsec) # revcorr timepoint values,
+        self.t = [ intround(ti * self.movie.sweeptimeMsec) for ti in self.tis ] #list(array(self.tis) * self.movie.sweeptimeMsec) # revcorr timepoint values,
     def plot(self, interp='nearest', normed=True, title='ReceptiveFieldFrame', scale=2.0, **kwargs):
         """Plots the RFs as bitmaps in a wx.Frame. normed = 'global'|True|False"""
         rfs = [] # list of receptive fields to pass to ReceptiveFieldFrame object
@@ -265,7 +265,7 @@ class RevCorrs(object):
                     norm = mpl.colors.normalize(vmin=None, vmax=None, clip=True) # create a normalization object to map luminance to the range [0,1], autoscale
                     rf[ti] = norm(rf[ti]) # normalize the rf separately at each timepoint
             cmap = mpl.cm.jet # get a colormap object
-            rf = cmap(rf)[::,::,::,0:3] # convert normalized luminance to RGB via the colormap, throw away alpha channel (not used for now in ReceptiveFieldFrame)
+            rf = cmap(rf)[::, ::, ::, 0:3] # convert normalized luminance to RGB via the colormap, throw away alpha channel (not used for now in ReceptiveFieldFrame)
             rf = rf * 255 # scale up to 8 bit values
             rf = rf.round().astype(np.uint8) # downcast from float to uint8 for feeding to ReceptiveFieldFrame
             rfs.append(rf)
@@ -283,8 +283,6 @@ class STAs(RevCorrs):
     def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
         super(STAs, self).plot(interp=interp, normed=normed,
                                title=lastcmd(),
-                               #title='r%d.e[%d].sta().plot(interp=%r, normed=%r, scale=%r)' %
-                               #(self.experiment.r.id, self.experiment.id, interp, normed, scale),
                                scale=scale,
                                **kwargs)
     plot.__doc__ = RevCorrs.plot.__doc__
@@ -301,8 +299,6 @@ class STCs(RevCorrs):
     def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
         super(STCs, self).plot(interp=interp, normed=normed,
                                title=lastcmd(),
-                               #title='STC: r[%d], e[%d], interp=%r, normed=%r, scale=%r' %
-                               #(self.experiment.r.id, self.experiment.id, interp, normed, scale),
                                scale=scale,
                                **kwargs)
     plot.__doc__ = RevCorrs.plot.__doc__
