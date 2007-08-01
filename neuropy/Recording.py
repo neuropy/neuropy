@@ -591,7 +591,11 @@ class RecordingCode(BaseRecording):
 
 class BaseNetstate(object):
     """Base class of Network state analyses.
-    Implements a lot of the analyses on network states found in the 2006 Schneidman paper"""
+    Implements a lot of the analyses on network states found in the 2006 Schneidman paper
+
+    WARNING!!!!!! not sure if self.tranges, which derives from self.experiments, is being used at all yet!!!!!!!!!!!!!
+
+    """
     def __init__(self, recording, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         self.r = recording
         if experiments == None:
@@ -1534,12 +1538,121 @@ class NetstateTriggeredAverage(BaseNetstate):
     """Analysis that reverse correlates the occurence of a specific netstate
     to the stimuli in the Experiments in this Recording to build up a netstate
     triggered average"""
-    def calc(self, intcode=None):
-        self.wordts = binarray2int(self.codes(nis=nis, shufflecodes=shufflecodes).c)
+    def cut(self, trange):
+        """Cuts network state word times according to trange"""
+        lo, hi = self.wordts.searchsorted([trange[0], trange[1]]) # returns indices where tstart and tend would fit in wordts
+        if trange[1] == self.wordts[min(hi, len(self.wordts)-1)]: # if tend matches a word time (protect from going out of index bounds when checking)
+            hi += 1 # inc to include a word time if it happens to exactly equal tend. This gives us end inclusion
+            hi = min(hi, len(self.wordts)) # limit hi to max slice index (==max value index + 1)
+        cutwordts = self.wordts[lo:hi] # slice it
+        return cutwordts
 
-        self.get_wordts(intcode=intcode)
-    def plot(self):
+    def calc(self, intcode=None, nt=10, ti0=-4):
+        """Calculate the network state triggered average for word intcode, using nt revcorr timepoints,
+        starting at revcorr timepoint index ti0.
 
+        For now, this uses the Codes object created across the entire Recording
+        """
+        self.intcode = intcode
+        self.nt = nt # number of revcorr timepoints
+        self.ti0 = ti0
+        self.tis = range(ti0, ti0+nt, 1) # revcorr timepoint indices, can be -ve. these will be multiplied by the movie frame time
+        words = binarray2int(self.cs.c)
+        i = (words == intcode)
+        self.wordts = self.cs.t[i] # netstate intcode word times
+
+        if self.e == None:
+            self.e = self.r.e # if no specific experiments were specified to revcorr to in __init__, revcorr to all of them
+        self.frames = {} # accumulates movie frames separately for each timepoint across all Experiments' movies
+        for ti in self.tis:
+            self.frames[ti] = []
+        tstart = time.clock()
+        pd = wx.ProgressDialog(title='NSTA progress: loading movies, collecting frames', message='',
+                               maximum=len(self.e), style=1) # create a progress dialog
+        for ei, e in enumerate(self.e.values()):
+            cont, skip = pd.Update(ei-1, newmsg='experiment %d\nelapsed: %.1fs' % (e.id,
+                                   time.clock()-tstart))
+            if not cont:
+                pd.Destroy()
+                return
+            # for now, we're using the Codes object created across the entire Recording. It might be slightly more correct to generate a separate codes object for each Experiment. That way, the wordts for would be aligned to the start of each Experiment, as opposed to the start of the Recording, as they are now.
+            cutwordts = self.cut(e.trange) # get wordts that were active during this experiment. This isn't really necessary is it???????????????????????????
+            rcdini = e.din[:, 0].searchsorted(cutwordts) - 1 # revcorr dini. Find where the cutwordts times fall in the din, dec so you get indices that point to the most recent din value for each cutwordt
+            #self.din = e.din[rcdini, 1] # get the din (frame indices) at the rcdini
+            # for now, only do revcorr if experiment.stims has only one entry. Stims no longer exists in dimstim >= 0.16 anyway
+            assert len(e.stims) == 1
+            movie = e.stims[0] # this will have to change for dimstim >= 0.16
+            movie.load() # ensure movie is loaded
+            data = movie.data
+            try:
+                self.width
+            except AttributeError: # init stuff
+                self.width = movie.data.shape[-1]
+                self.height = movie.data.shape[-2] # dims are nframes, height, width
+                self.sweeptimeMsec = movie.sweeptimeMsec # changes in dimstim >= 0.16
+                self.ndinperframe = intround(movie.sweeptimeMsec / float(e.REFRESHTIME / 1000.)) # changes in dimstim >= 0.16
+                self.regionwidthDeg = movie.regionwidthDeg
+                self.regionheightDeg = movie.regionheightDeg
+                self.origDeg = e.origDeg
+            # assert that all movies are the same size and in the same spot. that way you can just accumulate frames in a single array
+            assert self.width == movie.data.shape[-1] # dims are nframes, height, width
+            assert self.height == movie.data.shape[-2]
+            assert self.sweeptimeMsec == movie.sweeptimeMsec # changes in dimstim >= 0.16
+            assert self.regionwidthDeg == movie.regionwidthDeg
+            assert self.regionheightDeg == movie.regionheightDeg
+            assert self.origDeg == e.origDeg
+            for ti in self.tis:
+                shiftedrcdini = rcdini - ti*self.ndinperframe # this can unintentionally introduce -ve valued indices at the left boundary, or out of range values at right boundary
+                shiftedrcdini = shiftedrcdini[shiftedrcdini >= 0] # remove any -ve valued indices. Is this the most efficient way to do this?
+                shiftedrcdini = shiftedrcdini[shiftedrcdini <= len(e.din)-1] # remove any out of range values
+                frameis = e.din[shiftedrcdini, 1] # get the din values (frame indices) at the rcdini for this timepoint
+                # in Cat 15, we erroneously duplicated the first frame of the mseq movies at the end, giving us one more frame (0 to 65535 for mseq32) than we should have had (0 to 65534 for mseq32). We're now using the correct movies, but the din for Cat 15 mseq experiments still have those erroneous frame indices (65535 and 16383 for mseq32 and mseq16 respectively), so we'll just ignore them for revcorr purposes.
+                if movie.oname == 'mseq32':
+                    frameis = frameis[frameis != 65535] # remove all occurences of 65535
+                elif movie.oname == 'mseq16':
+                    frameis = frameis[frameis != 16383] # remove all occurences of 16383
+                frames = data.take(frameis.astype(np.int32), axis=0) # collect the relevant frames for this timepoint, take is much faster than direct indexing, but have to typecast indices to int32, maybe cuz this machine is 32bit?
+                self.frames[ti].append(frames)
+            pd.Destroy()
+
+
+        # now that we're outside the experiment loop, get the mean for each timepoint across all experiments
+        self.rf = zeros([self.nt, self.height, self.width], dtype=np.float64) # 3D matrix to store the NSTA at each timepoint. rf == 'receptive field'
+        self.t = [ ti*intround(self.sweeptimeMsec) for ti in self.tis ]
+        pd = wx.ProgressDialog(title='NSTA progress: averaging frames', message='',
+                               maximum=self.nt, style=1) # create a progress dialog
+        for tii, ti in enumerate(self.tis):
+            cont, skip = pd.Update(tii-1, newmsg='timepoint: %dms\nelapsed: %.1fs' % (self.t[tii], time.clock()-tstart))
+            if not cont:
+                pd.Destroy()
+                return
+            self.frames[ti] = cat(tuple(self.frames[ti])) # need to concatenate all lists for this ti into a single array
+            self.rf[tii] = mean_accum(self.frames[ti]) # this is much faster than frames.mean()
+            #self.rf[ti] = mean_accum2(data, frameis)
+        pd.Destroy()
+        return self
+
+    def plot(self, intcode=None, nt=10, ti0=-4, interp='nearest', normed=True, scale=2.0):
+        """Plots the spatiotemporal RF as bitmaps in a wx.Frame"""
+        try:
+            self.rf
+        except AttributeError:
+            self.calc(intcode=intcode, nt=nt, ti0=ti0)
+        rf = self.rf.copy() # create a copy to manipulate for display purposes, (nt, width, height)
+        if normed: # normalize across the timepoints for this RevCorr
+            norm = mpl.colors.normalize(vmin=rf.min(), vmax=rf.max(), clip=True) # create a single normalization object to map luminance to the range [0,1]
+            rf = norm(rf) # normalize the rf the same way across all timepoints
+        else: # don't normalize across timepoints, leave each one to autoscale
+            for ti in range(self.nt):
+                norm = mpl.colors.normalize(vmin=None, vmax=None, clip=True) # create a normalization object to map luminance to the range [0,1], autoscale
+                rf[ti] = norm(rf[ti]) # normalize the rf separately at each timepoint
+        cmap = mpl.cm.jet # get a colormap object
+        rf = cmap(rf)[::, ::, ::, 0:3] # convert luminance to RGB via the colormap, throw away alpha channel (not used for now in ReceptiveFieldFrame)
+        rf = rf * 255 # scale up to 8 bit values
+        rf = rf.round().astype(np.uint8) # downcast from float to uint8 for feeding to ReceptiveFieldFrame
+        self.rfframe = NetstateReceptiveFieldFrame(title=lastcmd(), rfs=[rf], intcodes=self.intcode, t=self.t, scale=scale)
+        self.rfframe.Show()
+        return self
 
 
 class RecordingNetstate(BaseRecording):
@@ -1571,7 +1684,7 @@ class RecordingNetstate(BaseRecording):
     def ns_checkcells(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateCheckcells object"""
         return NetstateCheckcells(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
-    def ns_nsta(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
+    def ns_ta(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateTriggeredAverage object"""
         return NetstateTriggeredAverage(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
 

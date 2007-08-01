@@ -655,14 +655,15 @@ class RevCorr(object):
         else:
             self.trange = trange
         # for now, only do revcorr if experiment.stims has only one entry
-        # TODO: multiple (different) movies in self.stims (and hence also in experiment.playlist), sparse noise stims
+        # TODO for Cat 15: multiple (different) movies in self.stims (and hence also in experiment.playlist), sparse noise stims
         assert len(self.experiment.stims) == 1
         self.movie = self.experiment.stims[0]
+        self.movie.load() # ensure the movie's data is loaded
         self.nt = nt # number of revcorr timepoints
         self.tis = range(0, nt, 1) # revcorr timepoint indices
-        self.t = [ intround(ti * self.movie.sweeptimeMsec) for ti in self.tis ] # revcorr timepoint values, stored in a list. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
+        self.t = [ intround(ti * self.movie.sweeptimeMsec) for ti in self.tis ] # revcorr timepoint values, stored in a list, not an array. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
         self.ndinperframe = intround(self.movie.sweeptimeMsec / float(self.experiment.REFRESHTIME / 1000.))
-        self.width = self.movie.data.shape[-1]
+        self.width = self.movie.data.shape[-1] # dims are nframes, height, width
         self.height = self.movie.data.shape[-2]
         self.done = False # hasn't yet successfully completed its calc() method
     def __eq__(self, other):
@@ -677,9 +678,9 @@ class RevCorr(object):
     def calc(self):
         """General calc step that has to be performed for all kinds of reverse correlations"""
         spikes = self.neuron.cut(self.trange)
-        self.rcdini = self.experiment.din[:,0].searchsorted(spikes) - 1 # revcorr dini. Find where the spike times fall in the din, dec so you get indices that point to the most recent din value for each spike
-        #self.din = self.experiment.din[rcdini,1] # get the din (frame indices) at the rcdini
-    def plot(self, interp='nearest', normed=True, title='ReceptiveFieldFrame', scale=2.0, **kwargs):
+        self.rcdini = self.experiment.din[:, 0].searchsorted(spikes) - 1 # revcorr dini. Find where the spike times fall in the din, dec so you get indices that point to the most recent din value for each spike
+        #self.din = self.experiment.din[rcdini, 1] # get the din (frame indices) at the rcdini
+    def plot(self, interp='nearest', normed=True, title='ReceptiveFieldFrame', scale=2.0):
         """Plots the spatiotemporal RF as bitmaps in a wx.Frame"""
         rf = self.rf.copy() # create a copy to manipulate for display purposes, (nt, width, height)
         if normed: # normalize across the timepoints for this RevCorr
@@ -690,10 +691,10 @@ class RevCorr(object):
                 norm = mpl.colors.normalize(vmin=None, vmax=None, clip=True) # create a normalization object to map luminance to the range [0,1], autoscale
                 rf[ti] = norm(rf[ti]) # normalize the rf separately at each timepoint
         cmap = mpl.cm.jet # get a colormap object
-        rf = cmap(rf)[::,::,::,0:3] # convert luminance to RGB via the colormap, throw away alpha channel (not used for now in ReceptiveFieldFrame)
+        rf = cmap(rf)[::, ::, ::, 0:3] # convert luminance to RGB via the colormap, throw away alpha channel (not used for now in ReceptiveFieldFrame)
         rf = rf * 255 # scale up to 8 bit values
         rf = rf.round().astype(np.uint8) # downcast from float to uint8 for feeding to ReceptiveFieldFrame
-        frame = ReceptiveFieldFrame(title=title, rfs=[rf], neurons=[self.neuron], t=self.t, scale=scale, **kwargs)
+        frame = ReceptiveFieldFrame(title=title, rfs=[rf], neurons=[self.neuron], t=self.t, scale=scale)
         frame.Show()
     '''
     def oldplot(self, interp='nearest', normed=True):
@@ -762,7 +763,7 @@ class STA(RevCorr):
                 return
             rcdini = self.rcdini - ti*self.ndinperframe # this can unintentionally introduce -ve valued indices at the left boundary
             rcdini = rcdini[rcdini >= 0] # remove any -ve valued indices. Is this the most efficient way to do this?
-            frameis = self.experiment.din[rcdini,1] # get the din values (frame indices) at the rcdini for this timepoint
+            frameis = self.experiment.din[rcdini, 1] # get the din values (frame indices) at the rcdini for this timepoint
             # in Cat 15, we erroneously duplicated the first frame of the mseq movies at the end, giving us one more frame (0 to 65535 for mseq32) than we should have had (0 to 65534 for mseq32). We're now using the correct movies, but the din for Cat 15 mseq experiments still have those erroneous frame indices (65535 and 16383 for mseq32 and mseq16 respectively), so we'll just ignore them for revcorr purposes.
             if self.movie.oname == 'mseq32':
                 frameis = frameis[frameis != 65535] # remove all occurences of 65535
@@ -781,16 +782,14 @@ class STA(RevCorr):
             # much faster way:
             self.rf[ti] = mean_accum(frames)
             #self.rf[ti] = mean_accum2(data, frameis)
-        #pd.Close()
         pd.Destroy()
         self.done = True
-    def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
+    def plot(self, interp='nearest', normed=True, scale=2.0):
         super(STA, self).plot(interp=interp, normed=normed,
                               title=lastcmd(),
                               #title='r%d.n[%d].sta().plot(interp=%r, normed=%r, scale=%r)' %
                               #(self.experiment.r.id, self.neuron.id, interp, normed, scale),
-                              scale=scale,
-                              **kwargs)
+                              scale=scale)
     plot.__doc__ = RevCorr.plot.__doc__
 
 

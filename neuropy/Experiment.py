@@ -5,6 +5,7 @@
 import dimstim.Experiment
 
 from Core import *
+from Core import _data
 import Neuron
 from Recording import PopulationRaster, Codes, CodeCorrPDF
 
@@ -40,7 +41,7 @@ class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dims
     def load(self):
 
         from Recording import Recording
-        from Movie import Movie, MSEQ32, MSEQ16
+        from Movie import Movie
 
         f = file(os.path.join(self.path, self.name) + '.din', 'rb') # open the din file for reading in binary mode
         self.din = np.fromfile(f, dtype=np.int64).reshape(-1, 2) # reshape to nrows x 2 columns
@@ -72,44 +73,36 @@ class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dims
             except AttributeError:
                 self.__cat__ = self.r.t.a.id # haven't considered what to do with a rat...
             if self.__cat__ >= 16: # post major refactoring of dimstim
-                # need to at least check if this Experiment uses a default movie like mseq32 or mseq16
-                # as in "for defaultm in [MSEQ32, MSEQ16]:" code block in self.loadprecat16exp()
+                # need to at least check if this Experiment uses movies
+                # as in "for m in _data.movies:" code block in self.loadprecat16exp()
                 pass
             else:
                 self.loadprecat16exp()
 
     def loadprecat16exp(self):
 
-        from Movie import Movie, MSEQ32, MSEQ16
+        from Movie import Movie
 
         try:
             self.stims = unique(self.playlist) # self.stims is a non-repeating list of object oriented stim objects (Movie is the only possible kind right now) in this Experiment
         except AttributeError: # this was a simple non object-oriented stim, has no playlist
             self.stims = []
         for s in self.stims:
-            s.e = self # If you inited stim object(s) (like a movie) while execing the textheader, you didn't have a chance to pass this exp as the parent in the init. So just set the attribute manually:
-
-
+            s.e = self # If you inited stim object(s) (like a movie) while execing the textheader, you didn't have a chance to pass this exp as the parent in the init. So just set the attribute manually
             try: # this'll probably only apply to Movies stim, cuz others won't have fnames
-                if s.name == None:
-                    s.name = os.path.split(s.fname)[-1] # need this for printing in tree hierarchy, fname should've been defined when loading in the textheader
-            except AttributeError: # probably not a Movie stim
+                s.name = os.path.splitext(s.fname)[0] # extensionless fname, fname should've been defined in the textheader
+            except AttributeError: # s.fname doesn't exist? probably not a Movie stim
                 pass
+            # Search self.moviepath string (from textheader) for 'Movies' word (preferably case insensitive). Everything after that is the relative path to your base movies folder. Eg, if self.moviepath = 'C:\\Desktop\\Movies\\reliability\\e\\single\\', then set self.relpath = '\\reliability\\e\\single\\'
+            spath = splitpath(self.moviepath)
+            try:
+                matchi = spath.index('Movies')
+            except ValueError:
+                matchi = spath.index('movies')
+            s.relpath = joinpath(spath[matchi+1 ::])
+            s.path = os.path.join(MOVIEPATH, s.relpath)
 
-            # Search self.moviepath string (from textheader) for 'Movies' word (preferably case insensitive). Everything after that is the relative path to your base movies folder. Eg, if self.moviepath = 'C:\\Desktop\\Movies\\reliability\\e\\single\\', then set self.relpath = 'reliability\\e\\single\\'
-            try:
-                s.relpath = s.moviepath[ s.moviepath.index('Movies')+len('Movies') :: ]
-                s.path = path + s.relpath
-            except AttributeError: # this Movie was manually inited, not loaded from a textheader. s.moviepath doesn't exist, use s.path instead. Or it might not even be a Movie
-                pass
-            '''
-            # Also, if you inited a stim that needs to be loaded (like a movie), maybe you should also load it now (this wasn't done when execing the textheader)
-            try:
-                s.load()
-            except:
-                pass
-            '''
-        # Generate the sweeptable here, no need to load if from files anymore...
+        # Generate the sweeptable here, no need to load it from files anymore...
         # self.sweeptable = {[]} # dictionary of lists, ie sweeptable={'ori':[0,45,90], 'sfreq':[1,1,1]}
         # so you index into it with self.sweeptable['var'][sweepi]
         # vars = self.sweeptable.keys()
@@ -126,17 +119,13 @@ class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dims
                 varvals[var] = eval('self.'+var) # generate a dictionary with var:val entries, to pass to buildSweepTable
             self.sweepTable = dimstim.Core.buildSweepTable(self.varlist, varvals, self.nruns, self.shuffleRuns, self.blankSweep, self.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
 
-        for defaultm in [MSEQ32, MSEQ16]: # check if this Experiment uses specific default movies
-            for s in self.stims: # for all OO stims inited by the textheader
-                if s.name == defaultm.name and isinstance(s, Movie):
-                    try:
-                        defaultm.data # see if this default movie has yet to be loaded
-                    except AttributeError:
-                        defaultm.load() # load this default movie
-                    s.data = defaultm.data # point this movie's data to default movie data
-                    treestr = s.level*TAB + s.name
-                    self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-
+        # for all (Movie) stims inited by the textheader, enter each Movie into _data.movies
+        for s in self.stims:
+            assert s.__class__ == Movie
+            if s.name not in _data.movies:
+                _data.movies[s.name] = s # add the Movie stim to the movies dictattr, with the extensionless fname as the key
+                #treestr = s.level*TAB + os.path.join(s.path, s.fname)
+                #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
         try:
             self.REFRESHTIME = intround(1/float(self.REFRESHRATE)*1000000) # in us, keep 'em integers
         except AttributeError:
@@ -247,7 +236,7 @@ class RevCorrs(object):
         self.nt = nt # number of revcorr timepoints
         self.tis = range(0, nt, 1) # revcorr timepoint indices
         self.t = [ intround(ti * self.movie.sweeptimeMsec) for ti in self.tis ] #list(array(self.tis) * self.movie.sweeptimeMsec) # revcorr timepoint values,
-    def plot(self, interp='nearest', normed=True, title='ReceptiveFieldFrame', scale=2.0, **kwargs):
+    def plot(self, interp='nearest', normed=True, title='ReceptiveFieldFrame', scale=2.0):
         """Plots the RFs as bitmaps in a wx.Frame. normed = 'global'|True|False"""
         rfs = [] # list of receptive fields to pass to ReceptiveFieldFrame object
         if normed == 'global': # normalize across all timepoints for all neurons
@@ -269,7 +258,7 @@ class RevCorrs(object):
             rf = rf * 255 # scale up to 8 bit values
             rf = rf.round().astype(np.uint8) # downcast from float to uint8 for feeding to ReceptiveFieldFrame
             rfs.append(rf)
-        frame = ReceptiveFieldFrame(title=title, rfs=rfs, neurons=self.neurons, t=self.t, scale=scale, **kwargs)
+        frame = ReceptiveFieldFrame(title=title, rfs=rfs, neurons=self.neurons, t=self.t, scale=scale)
         frame.Show()
 
 class STAs(RevCorrs):
@@ -280,11 +269,10 @@ class STAs(RevCorrs):
         for neuron in self.neurons:
             stao = neuron.sta(experiment=self.experiment, trange=self.trange, nt=self.nt)
             self.stas.append(stao)
-    def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
+    def plot(self, interp='nearest', normed=True, scale=2.0):
         super(STAs, self).plot(interp=interp, normed=normed,
                                title=lastcmd(),
-                               scale=scale,
-                               **kwargs)
+                               scale=scale)
     plot.__doc__ = RevCorrs.plot.__doc__
 
 
@@ -296,11 +284,10 @@ class STCs(RevCorrs):
         for neuron in self.neurons:
             stco = neuron.stc(experiment=self.experiment, trange=self.trange, nt=self.nt)
             self.stcs.append(stco)
-    def plot(self, interp='nearest', normed=True, scale=2.0, **kwargs):
+    def plot(self, interp='nearest', normed=True, scale=2.0):
         super(STCs, self).plot(interp=interp, normed=normed,
                                title=lastcmd(),
-                               scale=scale,
-                               **kwargs)
+                               scale=scale)
     plot.__doc__ = RevCorrs.plot.__doc__
 
 

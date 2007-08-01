@@ -31,7 +31,7 @@ from Recording import Recording
 from Run import Run
 from Experiment import Experiment
 from Rip import Rip
-from Movie import Movie, MSEQ32, MSEQ16
+from Movie import Movie
 from Neuron import Neuron
 
 from Test import test

@@ -52,8 +52,7 @@ else:
 
 TRACKID = '7c'
 RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording/Run
-MOVIEPATH = os.path.join(os.sep, 'pub', 'movies', 'mseq')
-MOVIENAME = 'mseq32.m'
+MOVIEPATH = os.path.join(os.sep, 'pub', 'movies')
 
 SYSTEMNAME = 'example model system'
 
@@ -73,6 +72,7 @@ class Data(object):
         self.name = 'Data'
         self.path = dataPath
         self.a = dictattr() # store Animals in a dictionary with attrib access
+        self.movies = dictattr() # store Movies in a dict with attrib access, Movies don't have to have parents, but we still want to store them here to prevent loading each movie more than once
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
@@ -236,13 +236,12 @@ frame.__doc__ += '\n\n**kwargs:\n' + getargstr(CanvasFrame.__init__)
 class ReceptiveFieldFrame(wx.Frame):
     """A wx.Frame for plotting a scrollable 2D grid of receptive fields, with neuron and time labels.
     rfs is a list of (nt, width, height) sized receptive fields of uint8 RGB data, one per neuron"""
-    def __init__(self, parent=None, id=-1, title='ReceptiveFieldFrame', rfs=None, neurons=None, t=None, scale=2.0, **kwargs):
+    def __init__(self, parent=None, id=-1, title='ReceptiveFieldFrame', rfs=None, neurons=None, t=None, scale=2.0):
         self.rfs = rfs
         self.neurons = neurons
         self.t = t
         self.title = title
-        kwargs['style'] = wx.DEFAULT_FRAME_STYLE
-        wx.Frame.__init__(self, parent=parent, id=id, title=title, **kwargs)
+        wx.Frame.__init__(self, parent=parent, id=id, title=title, style=wx.DEFAULT_FRAME_STYLE)
         self.panel = wx.ScrolledWindow(self, -1, style=wx.TAB_TRAVERSAL)
 
         self.bitmaps = {}
@@ -300,15 +299,55 @@ class ReceptiveFieldFrame(wx.Frame):
         #sizer_1.SetSizeHints(self) # prevents the frame from being resized to something smaller than the above fit size
         self.Layout()
 
-'''
-def str2(data):
-    if type(data) is types.IntTypes:
-        s = str(data)
-        if len(s) == 1:
-            s = '0'+s # add a leading zero for single digits
-'''
+
+class NetstateReceptiveFieldFrame(ReceptiveFieldFrame):
+    """A wx.Frame for plotting a scrollable 2D grid of netstate receptive fields, with netstate and time labels.
+    rfs is a list of (nt, width, height) sized receptive fields of uint8 RGB data, one per netstate"""
+    def __init__(self, parent=None, id=-1, title='NetstateReceptiveFieldFrame',
+                 rfs=None, intcodes=None, t=None, scale=2.0):
+        self.rfs = rfs
+        self.intcodes = tolist(intcodes)
+        self.t = t
+        self.title = title
+        wx.Frame.__init__(self, parent=parent, id=id, title=title, style=wx.DEFAULT_FRAME_STYLE)
+        self.panel = wx.ScrolledWindow(self, -1, style=wx.TAB_TRAVERSAL)
+        self.bitmaps = {}
+        for ii, i in enumerate(self.intcodes):
+            self.bitmaps[ii] = {}
+            for ti, t in enumerate(self.t):
+                rf = self.rfs[ii][ti]
+                im = wx.ImageFromData(width=rf.shape[0], height=rf.shape[1], data=rf.data) # expose rf as databuffer
+                im = im.Scale(width=im.GetWidth()*scale, height=im.GetHeight()*scale)
+                self.bitmaps[ii][t] = wx.StaticBitmap(parent=self.panel, bitmap=im.ConvertToBitmap())
+        self.__set_properties()
+        self.__do_layout()
+    def __set_properties(self):
+        self.SetTitle(self.title)
+        self.panel.SetBackgroundColour(wx.Colour(255, 255, 255))
+        self.panel.SetScrollRate(10, 10)
+    def __do_layout(self):
+        sizer_1 = wx.GridSizer(1, 1, 0, 0)
+        grid_sizer_1 = wx.FlexGridSizer(rows=len(self.intcodes)+1, cols=len(self.t)+1, vgap=2, hgap=2) # add an extra row and column for the text labels
+        grid_sizer_1.Add((1, 1), 0, wx.ADJUST_MINSIZE, 0) # spacer in top left corner
+        for t in self.t:
+            grid_sizer_1.Add(wx.StaticText(self.panel, -1, "%sms" % t), 0, wx.ADJUST_MINSIZE, 0) # text row along top
+        for ii, i in enumerate(self.intcodes):
+            grid_sizer_1.Add(wx.StaticText(self.panel, -1, "ns%d" % i), 0, wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL|wx.ADJUST_MINSIZE, 0) # text down left side
+            for t in self.t:
+                grid_sizer_1.Add(self.bitmaps[ii][t], 1, wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL, 0)
+        self.panel.SetAutoLayout(True)
+        self.panel.SetSizer(grid_sizer_1)
+        grid_sizer_1.Fit(self.panel)
+        sizer_1.Add(self.panel, 1, wx.ADJUST_MINSIZE|wx.EXPAND, 0)
+        self.SetAutoLayout(True)
+        self.SetSizer(sizer_1)
+        sizer_1.Fit(self)
+        self.Layout()
+
+
 def intround(n):
-    """Round to the nearest integer, return an integer"""
+    """Round to the nearest integer, return an integer.
+    Saves on parentheses"""
     return int(round(n))
 
 def pad0s(val, ndigits=2):
@@ -474,17 +513,17 @@ def to2d(arr):
         arr = arr.reshape(1, -1)
     return arr
 
-'''
-def tolist(obj):
-    """Takes either scalar or sequence input and returns a list,
-    useful when you want to iterate over an object (like in a for loop),
-    and you don't want to have to do type checking or handle exceptions
-    when the object isn't a sequence"""
-    try: # assume obj is a sequence
-        return list(obj) # converts any sequence to a list
-    except TypeError: # obj is probably a scalar
-        return [obj] # converts any scalar to a list
-'''
+def splitpath(path):
+    """Unlike os.path.split(), returns all segments between path separators in a list"""
+    return path.split(os.sep)
+
+def joinpath(pathlist):
+    """Unlike os.path.join(), takes a list of path segments, returns them joined in a string with path separators"""
+    path = ''
+    for segment in pathlist:
+        path = os.path.join(path, segment)
+    return path
+
 def approx(a, b, rtol=1.e-14, atol=1.e-14):
     """Returns a boolean array describing which components of a and b are equal
     subject to given tolerances. The relative error rtol must be positive and << 1.0
@@ -1172,7 +1211,6 @@ def entropy_no_sing(p):
     Ignore singularities in p (assumes their contribution to entropy is zero)"""
     p = ensurenormed(p)
     return -(p * log2_no_sing(p, subval=0.0)).sum()
-
 
 def MI(XY):
     """Given the joint PDF of two variables, returns the mutual information (in bits) between the two
