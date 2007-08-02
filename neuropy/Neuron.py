@@ -87,7 +87,7 @@ class BaseNeuron(object):
         Another possibility could be to use a masked array instead?
         '''
         lo, hi = self.spikes.searchsorted([tstart, tend]) # returns indices where tstart and tend would fit in spikes
-        if tend  == self.spikes[min(hi, self.nspikes-1)]: # if tend matches a spike (protect from going out of index bounds when checking)
+        if tend == self.spikes[min(hi, self.nspikes-1)]: # if tend matches a spike (protect from going out of index bounds when checking)
             hi += 1 # inc to include a spike if it happens to exactly equal tend. This gives us end inclusion
             hi = min(hi, self.nspikes) # limit hi to max slice index (==max value index + 1)
         cutspikes = self.spikes[lo:hi] # slice it

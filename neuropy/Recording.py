@@ -1547,7 +1547,7 @@ class NetstateTriggeredAverage(BaseNetstate):
         cutwordts = self.wordts[lo:hi] # slice it
         return cutwordts
 
-    def calc(self, intcode=None, nt=10, ti0=-4):
+    def calc(self, intcode=None, nt=9, ti0=-4):
         """Calculate the network state triggered average for word intcode, using nt revcorr timepoints,
         starting at revcorr timepoint index ti0.
 
@@ -1559,6 +1559,7 @@ class NetstateTriggeredAverage(BaseNetstate):
         self.tis = range(ti0, ti0+nt, 1) # revcorr timepoint indices, can be -ve. these will be multiplied by the movie frame time
         words = binarray2int(self.cs.c)
         i = (words == intcode)
+        assert i.any(), 'netstate intcode %d never occured'
         self.wordts = self.cs.t[i] # netstate intcode word times
 
         if self.e == None:
@@ -1576,7 +1577,7 @@ class NetstateTriggeredAverage(BaseNetstate):
                 pd.Destroy()
                 return
             # for now, we're using the Codes object created across the entire Recording. It might be slightly more correct to generate a separate codes object for each Experiment. That way, the wordts for would be aligned to the start of each Experiment, as opposed to the start of the Recording, as they are now.
-            cutwordts = self.cut(e.trange) # get wordts that were active during this experiment. This isn't really necessary is it???????????????????????????
+            cutwordts = self.cut(e.trange) # get wordts that were active during this experiment. This isn't really necessary is it??????????????????????????? Might speed things up for the next searchsorted call, since cutwordts is shorter than wordts
             rcdini = e.din[:, 0].searchsorted(cutwordts) - 1 # revcorr dini. Find where the cutwordts times fall in the din, dec so you get indices that point to the most recent din value for each cutwordt
             #self.din = e.din[rcdini, 1] # get the din (frame indices) at the rcdini
             # for now, only do revcorr if experiment.stims has only one entry. Stims no longer exists in dimstim >= 0.16 anyway

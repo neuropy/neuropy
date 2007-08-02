@@ -84,13 +84,15 @@ class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dims
         from Movie import Movie
 
         try:
-            self.stims = unique(self.playlist) # self.stims is a non-repeating list of object oriented stim objects (Movie is the only possible kind right now) in this Experiment
+            self.stims = unique(self.playlist) # self.stims is a non-repeating list of object oriented stim objects (Movie is the only possible type) in this Experiment
         except AttributeError: # this was a simple non object-oriented stim, has no playlist
             self.stims = []
         for s in self.stims:
             s.e = self # If you inited stim object(s) (like a movie) while execing the textheader, you didn't have a chance to pass this exp as the parent in the init. So just set the attribute manually
             try: # this'll probably only apply to Movies stim, cuz others won't have fnames
                 s.name = os.path.splitext(s.fname)[0] # extensionless fname, fname should've been defined in the textheader
+                if s.name not in _data.movies: # and it very well may not be, cuz the textheader inits movies with no args, leaving fname==None at first, which prevents it from being added to _data.movies
+                    _data.movies[s.name] = s # add s to _data.movies dictattr
             except AttributeError: # s.fname doesn't exist? probably not a Movie stim
                 pass
             # Search self.moviepath string (from textheader) for 'Movies' word (preferably case insensitive). Everything after that is the relative path to your base movies folder. Eg, if self.moviepath = 'C:\\Desktop\\Movies\\reliability\\e\\single\\', then set self.relpath = '\\reliability\\e\\single\\'

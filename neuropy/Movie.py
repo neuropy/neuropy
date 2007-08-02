@@ -17,8 +17,10 @@ class Movie(object): # DON'T inherit from dimstim.Movie class!
         if self.name == None and self.fname != None:
             self.path, self.fname = os.path.split(self.fname) # separate path from fname
             self.name = os.path.splitext(self.fname)[0] # extentionless fname
-        if self.name not in _data.movies:
-            _data.movies[self.name] = self # add self to _data.movies dictattr
+            if self.name not in _data.movies:
+                _data.movies[self.name] = self # add self to _data.movies dictattr
+        else:
+            pass # both self.name and self.fname are None, this happens when executing Cat 15 textheaders, where you init a movie with m = Movie(), and only later assign its fname field. In this case, the .loadprecat16exp() method handles adding movies init'd from textheader to the _data.movies dictattr
 
     def load(self):
         """Load movie data"""
