@@ -1,5 +1,11 @@
 """Runs on PyShell/PyCrust startup, as well as IPython startup"""
 
+try:
+    shell.run('from __future__ import division')
+except: # we're running in some environment where shell isn't defined, like ipython
+    pass
+
+
 from minimal_startup import * # I keep this in ~/scripts
 import __main__ # has _, needs to be imported explicitly
 

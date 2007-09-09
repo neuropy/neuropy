@@ -479,6 +479,7 @@ class CodeCorrPDF(object):
                 cc = ((code1 * code2).mean() - means[cni1] * means[cni2]) / (stds[cni1] * stds[cni2]) # (mean of product - product of means) / by product of stds
                 self.corrs.append(cc)
 
+        print 'Danger, the following code is a scary hack! Be careful with conclusions...'
         self.corrs = [ corr for corr in self.corrs if corr < 0.5 ] # ignore distant but few outliers at rho2 > 0.5. This is really just to make mean rho2 value jive with the distribution you see with the default x limits...
 
         self.meancorr = mean(self.corrs)
