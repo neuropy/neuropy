@@ -17,19 +17,17 @@ import StringIO
 import random
 import math
 
-import pylab as pl
 import matplotlib as mpl
+mpl.use('WXAgg')
+mpl.interactive(True)
+
 import scipy as sp
 import scipy.signal as sig
 import scipy.weave as weave
 
 from numpy.core.ma import array as mar
-from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
 import wx
-from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 
-mpl.use('WXAgg')
-mpl.interactive(True)
 
 #shell.redirectStdout(redirect=True) # does this actually do anything in PyShell?
 
@@ -61,3 +59,7 @@ print 'importing neuropy'
 import neuropy
 from neuropy import *
 from neuropy import _data # ensure it's imported, in spite of leading _, useful for user examination of default Data object
+
+import pylab as pl
+from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg

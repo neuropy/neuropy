@@ -18,20 +18,21 @@ from pprint import pprint
 printraw = sys.stdout.write # useful for raw printing
 
 import numpy as np
-import pylab as pl
-import matplotlib as mpl
 import scipy as sp
 import scipy.signal as sig
 import scipy.weave as weave
 from numpy.random import rand, randn, randint
 from numpy import arange, array, array as ar, asarray, asarray as aar, log, log2, log10, sqrt, zeros, ones, diff, concatenate, concatenate as cat, mean, median, std
 from numpy.core.ma import array as mar
+
+import matplotlib as mpl
+mpl.use('WXAgg')
+mpl.interactive(True)
+import pylab as pl
 from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
 import wx
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 
-mpl.use('WXAgg')
-mpl.interactive(True)
 
 from dimstim.Core import dictattr # Dictionary with attribute access
 
