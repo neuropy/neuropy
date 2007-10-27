@@ -45,13 +45,25 @@ class Rip(object):
         neuronNames = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(self.path)
                         if os.path.isfile(os.path.join(self.path, fname))
                         and fname.endswith('.spk') ] # returns spike filenames without their .spk extension
+
+        # Look for neuron2pos.py file, which contains a dict mapping from neuron id to (x, y) position
+        if 'neuron2pos.py' in os.listdir(self.path):
+            os.chdir(self.path)
+            from neuron2pos import neuron2pos
+
         for neuronName in neuronNames:
             neuron = Neuron(id=None, name=neuronName, parent=self) # make an instance using just the neuron name (let it figure out the neuron id)
             neuron.load() # load the neuron
             self.n[neuron.id] = neuron # save it
             # repeat for ConstrainedNeurons
-            constrainedneuron = ConstrainedNeuron(id=None, name=neuronName, parent=self)
-            constrainedneuron.load()
-            self.cn[neuron.id] = constrainedneuron
+            cneuron = ConstrainedNeuron(id=None, name=neuronName, parent=self)
+            cneuron.load()
+            self.cn[cneuron.id] = cneuron
+            try: # binding neuron (x, y) positions
+                neuron.pos = neuron2pos[neuron.id]
+                cneuron.pos = neuron2pos[cneuron.id]
+            except NameError: # there was no neuron2pos file
+                pass
+
         # then, maybe add something that loads info about the rip, say from some file describing the template used, and all the thresholds, exported to the same folder by SURF
         # maybe also load the template file used for the rip, perhaps also stored in the same folder

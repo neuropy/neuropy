@@ -525,6 +525,11 @@ def joinpath(pathlist):
         path = os.path.join(path, segment)
     return path
 
+def dist(a, b):
+    """Returns the Euclidean distance between two coordinates.
+    Both a and b must be (x, y) tuples"""
+    return math.sqrt( (b[0]-a[0])**2 + (b[1]-a[1])**2 )
+
 def approx(a, b, rtol=1.e-14, atol=1.e-14):
     """Returns a boolean array describing which components of a and b are equal
     subject to given tolerances. The relative error rtol must be positive and << 1.0

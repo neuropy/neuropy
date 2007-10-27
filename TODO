@@ -2,6 +2,8 @@
 - get rid of all use of python's built-in random module, use numpy.random instead
 - if an analysis method needs to return more than one object, have return them in a dictattr of results
 
+- the whole ContrainedNeuron thing seems pretty retarted to me after not looking at it for a while... Is it really necessary? Why are there two separate sets loaded for each rip (both Neurons *and* ConstrainedNeurons)?
+
 Netstate stuff:
     - for the time bins, try lots of different phases, see if this changes things at all
         - look if the most common states remain the most common

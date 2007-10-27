@@ -1,33 +1,80 @@
 # Neuron max channels for 2a polytrode Cat 15 Track 7c liberal spikes.rip
 #             {neuronid: chanid}
-'''
-neuron2chan = {0: 21,
-               1: 27,
-               2: 20,
-               3: 33,
-               4: 43,
-               5: 0,
-               6: 20,
-               8: 7,
-               9: 46,
-              10: 40,
-              11: 49,
-              12: 14,
-              13: 30,
-              14: 13,
-              15: 9,
-              16: 28,
-              17: 25,
-              18: 24,
-              19: 39,
-              20: 28,
-              22: 44,
-              23: 50,
-              24: 41,
-              25: 21,
-              26: 21,
-              27: 6}
+# {neuronid: [(chanid, chanid...), (weight1, weight2...)]} # this is like a crude manual spatial localization, taking a weighted mean of a few channels
 
+neuron2chan = {0: [(21, 31), (0.6, 0.4)],
+               1: [(27, 25), (0.7, 0.3)],
+               2: [(20, 21), (0.8, 0.2)],
+               3: [(33, 20), (0.6, 0.4)],
+               4: [(43, 9), (0.55, 0.45)],
+               5: [(0, 51), (0.6, 0.4)],
+               6: [(20, 21), (0.9, 0.1)],
+               8: [(7, 46), (0.6, 0.4)],
+               9: [(46, 7), (0.8, 0.2)],
+              10: [(40, 13), (0.6, 0.4)],
+              11: [(49, 4), (0.9, 0.1)],
+              12: [(14, 13, 39), (0.7, 0.2, 0.1)],
+              13: [(30, 22), (0.6, 0.4)],
+              14: [(13, 40), (0.55, 0.45)],
+              15: [(9, 10, 43), (0.5, 0.4, 0.1)],
+              16: [(28, 26), (0.95, 0.05)],
+              17: [(25, 27), (0.85, 0.15)],
+              18: [(24, 28), (0.8, 0.2)],
+              19: [(39, 14, 13), (0.4, 0.3, 0.3)],
+              20: [(28, 24), (0.95, 0.05)],
+              22: [(44, 9, 8), (0.4, 0.3, 0.3)],
+              23: [(50, 3), (0.6, 0.4)],
+              24: [(41, 11, 42), (0.4, 0.3, 0.3)],
+              25: [(21, 31), (0.85, 0.15)],
+              26: [(21, 31), (0.8, 0.2)],
+              27: [(6, 7), (0.9, 0.1)]
+              }
+
+p2a = Polytrode_2a()
+neuron2pos = {}
+
+for n, cw in neuron2chan.items():
+    pos = array([0, 0])
+    for c, w in zip(cw[0], cw[1]):
+        pos += array(p2a.SiteLoc[c]) * w
+    neuron2pos[n] = pos
+
+# to get it to look nice for display, ie get rid of the array() in the printout
+for k, v in neuron2pos.items():
+    neuron2pos[k] = tuple(v)
+
+'''
+here's the result:
+
+neuron2pos = {0: (-4, 1442),
+              1: (10, 1731),
+              2: (-27, 1378),
+              3: (4, 1345),
+              4: (2, 631),
+              5: (-4, 1221),
+              6: (-27, 1371),
+              8: (-4, 792),
+              9: (16, 805),
+              10: (4, 409),
+              11: (22, 1003),
+              12: (-21, 340),
+              13: (4, 1514),
+              14: (-2, 403),
+              15: (-22, 620),
+              16: (24, 1655),
+              17: (-18, 1749),
+              18: (-16, 1683),
+              19: (-6, 356),
+              20: (24, 1658),
+              22: (-6, 681),
+              23: (4, 1059),
+              24: (10, 515),
+              25: (-18, 1434),
+              26: (-16, 1436),
+              27: (-27, 838)
+              }
+
+old stuff used while making the Track7c_RFs_along_polytrode2a.png figure:
 
 ypos2neuron = [(325, 12), (357, 19), (390, 14), (422, 10), (487, 24), (617, 4), (650, 15), (682, 22), (780, 8), (812, 9), (845, 27), (1007, 11), (1072, 23), (1235, 5), (1332, 3), (1365, 2), (1365, 6), (1430, 0), (1430, 25), (1430, 26), (1527, 13), (1657, 16), (1657, 20), (1690, 18), (1722, 1), (1755, 17)]
 
@@ -108,7 +155,7 @@ neuron2chan = {0: 46,
 
 # Neuron max channels for 2b polytrode Cat 13 Track 8 '2004-04-28 - 07 - +-55uV trig, 0-10 mins random sample.tem; 2006-05-15 rip, some templates deleted by MAS.tem'
 #             {neuronid: chanid}
-#'''
+'''
 neuron2chan = {0: 29,
                1: 28,
                2: 23,
@@ -139,12 +186,13 @@ neuron2chan = {0: 29,
               27: 10,
               28: 27,
               29: 11}
-#'''
+'''
 
 
 """Here's a BaseLayout class with the different Polytrode designs as subclasses"""
 
 class BaseLayout(object):
+    """(x, y) SiteLoc origin seems to be at the middle of the top edge of the polytrode"""
     pass
 
 
@@ -460,7 +508,7 @@ class Polytrode_2b(BaseLayout):
 
 #################################################################
 
-
+'''
 def chan2pos(polytrode=None, chanid=None):
     SiteLoc = {} # init a dict
     if polytrode == '1a':
@@ -647,7 +695,7 @@ for neuronid, chanid in neuron2chan.iteritems():
     x, y = chan2pos(polytrode='2b', chanid=chanid) # unpack the tuple
     print neuronid, x, y
 
-'''
+
 Results for Cat 15 Track 7c liberal spikes.rip:
 
 neuronid xcoord ycoord

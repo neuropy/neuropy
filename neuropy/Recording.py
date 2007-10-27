@@ -3,7 +3,7 @@
 #print 'importing Recording'
 
 """
-Good setting for presentation plots:
+Good global setting for presentation plots:
 pl.rcParams['lines.markersize'] = 10
 pl.rcParams['xtick.labelsize'] = 20
 pl.rcParams['ytick.labelsize'] = 20
@@ -429,13 +429,13 @@ class Codes(object):
     '''
 
 class CodeCorrPDF(object):
-    """A PDF of the correlations of the codes of all cell pairs in this Recording
-    See 2006 Schneidman fig 1d"""
+    """A PDF of the correlations of the codes of all cell pairs (or of all cell pairs within
+    some radius in um) in this Recording. See Schneidman2006 fig 1d"""
     def __init__(self, recording=None, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         self.r = recording
         if experiments != None:
             assert experiments.__class__ == dictattr
-        self.e = experiments # save it, should be a dict if not None
+        self.e = experiments # save it, should be a dictattr if not None
         if self.e != None: # specific experiments were specified
             self.tranges = [ e.trange for e in self.e.values() ]
         else:
@@ -443,6 +443,8 @@ class CodeCorrPDF(object):
         self.kind = kind
         self.tres = tres
         self.phase = phase
+    '''
+    # this was used to save on calc time by seeing if a CCPDF object with the same attribs had already been calc'd, seems dumb and unsafe, commented out
     def __eq__(self, other):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
@@ -454,7 +456,8 @@ class CodeCorrPDF(object):
             return True
         else:
             return False
-    def calc(self):
+    '''
+    def calc(self, radius):
         """Works on ConstrainedNeurons, but is constrained even further if experiments
         were passed and their tranges were used to generate self.tranges (see __init__)"""
         cnis = self.r.cn.keys() # ConstrainedNeuron indices
@@ -474,10 +477,11 @@ class CodeCorrPDF(object):
             for cnii2 in range(cnii1+1, ncneurons):
                 cni1 = cnis[cnii1]
                 cni2 = cnis[cnii2]
-                code1 = self.r.code(cni1, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
-                code2 = self.r.code(cni2, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
-                cc = ((code1 * code2).mean() - means[cni1] * means[cni2]) / (stds[cni1] * stds[cni2]) # (mean of product - product of means) / by product of stds
-                self.corrs.append(cc)
+                if radius == None or dist(self.r.cn[cni1].pos, self.r.cn[cni2].pos) < radius:
+                    code1 = self.r.code(cni1, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
+                    code2 = self.r.code(cni2, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
+                    cc = ((code1 * code2).mean() - means[cni1] * means[cni2]) / (stds[cni1] * stds[cni2]) # (mean of product - product of means) / by product of stds
+                    self.corrs.append(cc)
 
         print 'Danger, the following code is a scary hack! Be careful with conclusions...'
         self.corrs = [ corr for corr in self.corrs if corr < 0.5 ] # ignore distant but few outliers at rho2 > 0.5. This is really just to make mean rho2 value jive with the distribution you see with the default x limits...
@@ -489,7 +493,7 @@ class CodeCorrPDF(object):
         self.corrs = [ self.r.codecorr(cnis[cnii1], cnis[cnii2], tranges=self.tranges, kind=self.kind, self.tres, self.phase)
                        for cnii1 in range(0,ncneurons) for cnii2 in range(cnii1+1,ncneurons) ]
         '''
-    def plot(self, figsize=(7.5, 6.5), crange=[-0.05, 0.3], nbins=40, normed='pdf'):
+    def plot(self, figsize=(7.5, 6.5), crange=[-0.1, 0.5], nbins=30, normed='pdf'):
         self.crange = crange
         self.nbins = nbins
         self.normed = normed
@@ -575,18 +579,19 @@ class RecordingCode(BaseRecording):
         code2 = self.code(neuron2, kind=kind, tres=tres, phase=phase)
         return corrcoef(code1.c, code2.c)
 
-    def codecorrpdf(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
+    def codecorrpdf(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE, radius=None):
         """Returns an existing CodeCorrPDF object, or creates a new one if necessary"""
-        try:
-            self._codecorrpdfs
-        except AttributeError: # doesn't exist yet
-            self._codecorrpdfs = [] # create a list that'll hold CodeCorrPDF objects
+        # 2007-10-26 Got rid of all this saved calc() stuff, calculating these really doesn't take too long, and it's annoying having to redo it manually, and possibly unsafe
+        #try:
+        #    self._codecorrpdfs
+        #except AttributeError: # doesn't exist yet
+        #    self._codecorrpdfs = [] # create a list that'll hold CodeCorrPDF objects
         cco = CodeCorrPDF(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase) # init a new one
-        for ccpdf in self._codecorrpdfs:
-            if cco == ccpdf: # need to define special == method for class CodeCorrPDF()
-                return ccpdf # returns the first object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._codecorrpdfs
-        cco.calc() # no matching object was found, calculate it
-        self._codecorrpdfs.append(cco) # add it to the object list
+        #for ccpdf in self._codecorrpdfs:
+        #    if cco == ccpdf: # need to define special == method for class CodeCorrPDF()
+        #        return ccpdf # returns the first object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._codecorrpdfs
+        cco.calc(radius) # no matching object was found, calculate it
+        #self._codecorrpdfs.append(cco) # add it to the object list
         return cco
 
 
