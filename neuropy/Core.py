@@ -26,7 +26,10 @@ from numpy import arange, array, array as ar, asarray, asarray as aar, log, log2
 from numpy.core.ma import array as mar
 
 import matplotlib as mpl
-mpl.use('WXAgg')
+try:
+    mpl.use('WXAgg')
+except RuntimeError: # pylab's already been imported, we might be doing a refresh
+    pass
 mpl.interactive(True)
 import pylab as pl
 from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow

@@ -2,15 +2,17 @@
 
 #print 'importing Recording'
 
-"""
-Good global setting for presentation plots:
-pl.rcParams['lines.markersize'] = 10
-pl.rcParams['xtick.labelsize'] = 20
-pl.rcParams['ytick.labelsize'] = 20
-"""
-
 from Core import *
 from Core import _data # ensure it's imported, in spite of leading _
+
+# Good global setting for presentation plots:
+pl.rcParams['axes.labelsize'] = 30
+pl.rcParams['xtick.labelsize'] = 25
+pl.rcParams['ytick.labelsize'] = 25
+pl.rcParams['xtick.major.size'] = 7
+pl.rcParams['ytick.major.size'] = 7
+pl.rcParams['lines.markersize'] = 10
+# use gca().set_position([0.15, 0.15, 0.8, 0.8]) or just the 'configure subplots' widget to make all the labels fit within the figure
 
 
 class BaseRecording(object):
@@ -434,7 +436,13 @@ class CodeCorrPDF(object):
     def __init__(self, recording=None, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         self.r = recording
         if experiments != None:
-            assert experiments.__class__ == dictattr
+            try:
+                assert experiments.__class__ == dictattr
+            except AssertionError: # maybe it's a seq of exp ids?
+                eids = toiter(experiments)
+                experiments = dictattr()
+                for eid in eids:
+                    experiments[eid] = self.r.e[eid]
         self.e = experiments # save it, should be a dictattr if not None
         if self.e != None: # specific experiments were specified
             self.tranges = [ e.trange for e in self.e.values() ]
@@ -460,6 +468,7 @@ class CodeCorrPDF(object):
     def calc(self, radius):
         """Works on ConstrainedNeurons, but is constrained even further if experiments
         were passed and their tranges were used to generate self.tranges (see __init__)"""
+        self.radius = radius
         cnis = self.r.cn.keys() # ConstrainedNeuron indices
         ncneurons = len(cnis)
         # it's more efficient to precalculate the means and stds of each cell's codetrain,
@@ -482,28 +491,37 @@ class CodeCorrPDF(object):
                     code2 = self.r.code(cni2, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
                     cc = ((code1 * code2).mean() - means[cni1] * means[cni2]) / (stds[cni1] * stds[cni2]) # (mean of product - product of means) / by product of stds
                     self.corrs.append(cc)
-
-        print 'Danger, the following code is a scary hack! Be careful with conclusions...'
-        self.corrs = [ corr for corr in self.corrs if corr < 0.5 ] # ignore distant but few outliers at rho2 > 0.5. This is really just to make mean rho2 value jive with the distribution you see with the default x limits...
-
-        self.meancorr = mean(self.corrs)
-
+        self.corrs = array(self.corrs)
         '''
         # simpler, but slower way:
         self.corrs = [ self.r.codecorr(cnis[cnii1], cnis[cnii2], tranges=self.tranges, kind=self.kind, self.tres, self.phase)
                        for cnii1 in range(0,ncneurons) for cnii2 in range(cnii1+1,ncneurons) ]
         '''
-    def plot(self, figsize=(7.5, 6.5), crange=[-0.1, 0.5], nbins=30, normed='pdf'):
+    def plot(self, figsize=(7.5, 6.5), crange=[-0.1, 0.5], limitstats=True, nbins=30, normed='pdf'):
+        """Plots the corrs. If limitstats, the stats displayed exclude any corr values that fall outside of crange"""
         self.crange = crange
         self.nbins = nbins
         self.normed = normed
         f = figure(figsize=figsize)
         a = f.add_subplot(111)
         try: # figure out the bin edges
-            c = np.linspace(start=self.crange[0], stop=self.crange[1], num=self.nbins, endpoint=True)
+            bins = np.linspace(start=self.crange[0], stop=self.crange[1], num=self.nbins, endpoint=True)
         except TypeError: # self.crange is None, let histogram() figure out the bin edges
-            c = self.nbins
-        self.n, self.c = histogram(self.corrs, bins=c, normed=self.normed)
+            bins = self.nbins
+        self.n, self.c = histogram(self.corrs, bins=bins, normed=self.normed)
+
+        if limitstats:
+            corrs = self.corrs[(self.corrs >= crange[0]) * (self.corrs <= crange[1])]
+            n, c = histogram(corrs, bins=bins, normed=self.normed)
+        else:
+            corrs = self.corrs
+            n = self.n
+            c = self.c
+        self.mean = mean(corrs)
+        self.median = median(corrs)
+        argmode = n.argmax()
+        self.mode = mean([c[argmode], c[argmode + 1]]) # find middle of tallest bin
+
         try:
             barwidth = (self.crange[1] - self.crange[0]) / float(self.nbins)
         except TypeError: # self.crange is None, take width of first bin in self.c
@@ -514,10 +532,11 @@ class CodeCorrPDF(object):
         except TypeError: # self.crange is None
             pass
         gcfm().frame.SetTitle(lastcmd())
-        #gcfm().frame.SetTitle('r%d.codecorrpdf(nbins=%d)' % (self.r.id, self.nbins))
-        titlestring = 'neuron pair code correlation pdf'
-        titlestring += '\n%s' % lastcmd()
-        a.set_title(titlestring)
+        #titlestr = 'neuron pair code correlation pdf'
+        #titlestr += '\n%s' % lastcmd()
+        titlestr = '%s' % lastcmd()
+        a.set_title(titlestr)
+        '''
         if self.normed:
             if self.normed == 'pmf':
                 a.set_ylabel('probability mass')
@@ -526,7 +545,9 @@ class CodeCorrPDF(object):
         else:
             a.set_ylabel('count')
         a.set_xlabel('correlation coefficient')
-        a.text(0.99, 0.99, 'mean = %.3f' % self.meancorr, # add stuff to top right of plot
+        '''
+        a.text(0.99, 0.99, 'mean = %.3f\nmedian = %.3f\nmode = %.3f'
+                            % (self.mean, self.median, self.mode), # add stuff to top right of plot
                             transform = a.transAxes,
                             horizontalalignment='right',
                             verticalalignment='top')
@@ -896,7 +917,8 @@ class NetstateScatter(BaseNetstate):
         assert (self.observedwords == self.expectedwords).all() # make sure we're comparing apples to apples
         return self
 
-    def plot(self, model='indep', scale='rate', xlim=(10**-4, 10**2), ylim=(10**-11, 10**2), color=True):
+    def plot(self, model='indep', scale='rate',
+             xlim=(10**-4, 10**2), ylim=(10**-11, 10**2), color=False):
         """Scatterplots the expected probabilities of all possible population codes (y axis)
         vs their observed probabilities (x axis). nis are in LSB to MSB order"""
 
@@ -947,7 +969,6 @@ class NetstateScatter(BaseNetstate):
             pobserved[inds[3]], pexpected[inds[3]] = None, None
             pobserved[inds[4]], pexpected[inds[4]] = None, None
 
-
         colorguide = ''
         if self.model == 'both': # plot the indep model too, and plot it first
             a.loglog(self.pobserved/norm, self.pindepexpected/norm, color='blue', marker='.', linestyle='None')
@@ -987,11 +1008,11 @@ class NetstateScatter(BaseNetstate):
             titletext += '\nneurons: %s' % self.nis # + missingcodetext)
         a.set_title(titletext)
         if scale == 'rate':
-            a.set_xlabel('observed population code rate (Hz)')
-            a.set_ylabel('expected population code rate (Hz)')
+            labelend = 'state rate (Hz)'
         elif scale == 'prob':
-            a.set_xlabel('observed population code probability')
-            a.set_ylabel('expected population code probability')
+            labelend = 'state probability'
+        a.set_xlabel('observed ' + labelend)
+        a.set_ylabel('predicted ' + labelend)
         a.set_xlim(xlim)
         a.set_ylim(ylim)
         if self.model =='both':
