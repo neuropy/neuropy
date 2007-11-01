@@ -1315,7 +1315,7 @@ class Ising(object):
 
         nbits = len(means)
         npairs = len(pairmeans)
-        assert npairs == nCr(nbits, 2) # sanity
+        assert npairs == nCr(nbits, 2) # sanity check
         self.intsamplespace = range(0, 2**nbits)
         table = getbinarytable(nbits=nbits) # words are in the columns, MSB at bottom row
         self.binsamplespace = ar([ table[::-1, wordi] for wordi in range(0, 2**nbits) ]) # all possible binary words (each is MSB to LSB), as arrays of 0s and 1s
@@ -1323,14 +1323,23 @@ class Ising(object):
         # return the i'th bit (LSB to MSB) of binary word x
         f1s = [ lambda x, i=i: x[-1-i] for i in range(0, nbits) ] # have to do i=i to statically assign value (gets around scope closure problem)
         # return product of the i'th and j'th bit (LSB to MSB) of binary word
-        f2s = [ lambda x, i=i, j=j: x[-1-i] * x[-1-j] for i in range(0, nbits) for j in range(i+1, nbits) ]
+        f2s = []
+        pairmeansi = 0
+        for i in range(0, nbits):
+            for j in range(i+1, nbits):
+                if pairmeans[pairmeansi] != None:
+                    f2s.append(lambda x, i=i, j=j: x[-1-i] * x[-1-j])
+                pairmeansi += 1
+        #f2s = [ lambda x, i=i, j=j: x[-1-i] * x[-1-j] for i in range(0, nbits) for j in range(i+1, nbits) if pairmeans[i*nbits+j-1] != None ]
         f = cat((f1s, f2s))
         self.model = maxentropy.model(f, self.samplespace)
         #self.model.mindual = -10000
         #self.model.log = None # needed to make LBFGSB algorithm work
         # Now set the desired feature expectations
         means = asarray(means)
-        pairmeans = asarray(pairmeans)
+        pairmeans = asarray(pairmeans) # if it has Nones, it's an object array
+        pairmeans = np.float64(pairmeans[pairmeans != [None]]) # remove the Nones, convert from object array to float array
+        npairs = len(pairmeans) # update npairs
         #pairmeans /= 2.0 # add the one half in front of each coefficient, NOT TOO SURE IF THIS SHOULD GO HERE! causes convergence problems
         K = cat((means, pairmeans))
         self.model.verbose = False
