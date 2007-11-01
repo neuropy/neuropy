@@ -483,8 +483,9 @@ class CodeCorrPDF(object):
                                               kind=self.kind,
                                               tres=self.tres,
                                               phase=self.phase).c.std() ) for cni in cnis ) # store each code std in a dict
+
         if self.shuffleids:
-            scnis = shuffle(cnis) # shuffled neuron ids, this is a control to see if it's the radius of neurons included in the analysis, or the number of neurons included that's important. Turns out, neither is. The distribs look pretty much the same regardless of radius or shuffling
+            scnis = shuffle(cnis) # shuffled neuron ids, this is a control to see if it's the radius of neurons included in the analysis, or the number of neurons included that's important. It seems that both are.
         else:
             scnis = cnis
 
@@ -734,13 +735,19 @@ class BaseNetstate(object):
         intcodeps = x.prod(axis=0) # take the product along the 0th axis (the columns) to get the prob of each population code word
         return intcodeps, intcodes
 
-    def ising(self, nis=None, radius=None, algorithm='CG'):
+    def ising(self, nis=None, radius=None, shuffleids=False, algorithm='CG'):
         """Returns an Ising maximum entropy model that takes into account pairwise correlations within neuron codes
         algorithm can be 'CG', 'BFGS', 'LBFGSB', 'Powell', or 'Nelder-Mead'"""
         if nis == None:
             nis = self.cs.nis[0:CODEWORDLEN]
         #print 'nis:', nis.__repr__()
         codeso = self.codes(nis=nis)
+
+        if shuffleids:
+            snis = shuffle(nis) # shuffled neuron ids, this is a control to see if it's the radius of neurons included in the analysis, or the number of neurons included that's important. Seems like both are
+        else:
+            snis = nis
+
         #c = codeso.c
         # convert values in codes object from [0, 1] to [-1, 1] by mutliplying by 2 and subtracting 1
         c = codeso.c.copy() # don't modify the original
@@ -751,7 +758,7 @@ class BaseNetstate(object):
         pairmeans = []
         for i in range(0, nrows):
             for j in range(i+1, nrows):
-                if radius == None or dist(self.r.n[nis[i]].pos, self.r.n[nis[j]].pos) < radius:
+                if radius == None or dist(self.r.n[snis[i]].pos, self.r.n[snis[j]].pos) < radius:
                     pairmeans.append((c[i]*c[j]).mean()) # take a pair of rows, find the mean of their elementwise product
                 else:
                     pairmeans.append(None) # pair are outside the radius, ignore their pairmeans
@@ -894,7 +901,7 @@ class NetstateNspikingPMF(BaseNetstate):
 
 class NetstateScatter(BaseNetstate):
     """Netstate scatter analysis object. See Schneidman Figures 1f and 2a"""
-    def calc(self, nbits=None, model='both', radius=None, shufflecodes=False, algorithm='CG'):
+    def calc(self, nbits=None, model='both', radius=None, shuffleids=False, shufflecodes=False, algorithm='CG'):
         """Calculates the expected probabilities, assuming a model in ['indep', 'ising', 'both'],
         of all possible population codes vs their observed probabilities.
         self's nis are treated in LSB to MSB order"""
@@ -903,6 +910,7 @@ class NetstateScatter(BaseNetstate):
             self.nbits = CODEWORDLEN
         self.model = model
         self.radius = radius
+        self.shuffleids = shuffleids
         self.shufflecodes = shufflecodes
         self.algorithm = algorithm
 
@@ -918,11 +926,11 @@ class NetstateScatter(BaseNetstate):
         if self.model == 'indep':
             self.pexpected, self.expectedwords = self.intcodesFPDF(nis=self.nis) # expected, assuming independence
         elif self.model == 'ising':
-            ising = self.ising(nis=self.nis, radius=self.radius, algorithm=self.algorithm) # returns a maxent Ising model
+            ising = self.ising(nis=self.nis, radius=self.radius, shuffleids=self.shuffleids, algorithm=self.algorithm) # returns a maxent Ising model
             self.pexpected = ising.p # expected, assuming maxent Ising model
             self.expectedwords = ising.intsamplespace
         elif self.model == 'both':
-            ising = self.ising(nis=self.nis, radius=self.radius, algorithm=self.algorithm) # returns a maxent Ising model
+            ising = self.ising(nis=self.nis, radius=self.radius, shuffleids=self.shuffleids, algorithm=self.algorithm) # returns a maxent Ising model
             self.pexpected = ising.p # expected, assuming maxent Ising model
             self.expectedwords = ising.intsamplespace
             self.pindepexpected = self.intcodesFPDF(nis=self.nis)[0] # expected, assuming independence
@@ -1142,12 +1150,14 @@ class NetstateI2vsIN(BaseNetstate):
 class NetstateDJSHist(BaseNetstate):
     """Jensen-Shannon histogram analysis. See Schneidman 2006 figure 2b"""
     def calc(self, nbits=CODEWORDLEN, ngroups=5, models=['ising', 'indep'],
-                   shufflecodes=False, algorithm='CG'):
+                   radius=None, shuffleids=False, shufflecodes=False, algorithm='CG'):
         """Calculates Jensen-Shannon divergences and their ratios
         for ngroups random groups of cells, each of length nbits."""
         self.nbits = nbits
         self.ngroups = ngroups
         self.models = models
+        self.radius = radius
+        self.shuffleids = shuffleids
         self.shufflecodes = shufflecodes
         self.algorithm = algorithm
 
@@ -1161,8 +1171,9 @@ class NetstateDJSHist(BaseNetstate):
             nis = random.sample(self.cs.nis, self.nbits) # randomly sample nbits of the Netstate Codes' nis attrib
             self.niss.append(nis)
             for modeli, model in enumerate(self.models): # for each model, use the same nis
-                so = self.r.ns_scatter(experiments=self.e, nis=nis, kind=self.kind, tres=self.tres, phase=self.phase) # netstate scatter object
-                so.calc(nbits=self.nbits, model=model, shufflecodes=self.shufflecodes, algorithm=self.algorithm)
+                so = NetstateScatter(recording=self.r, experiments=self.e, nis=nis,
+                                     kind=self.kind, tres=self.tres, phase=self.phase)
+                so.calc(nbits=self.nbits, model=model, radius=self.radius, shuffleids=self.shuffleids, shufflecodes=self.shufflecodes, algorithm=self.algorithm)
 
                 self.DJSs[model].append(DJS(so.pobserved, so.pexpected))
                 cont, skip = pd.Update(groupi*len(self.models)+modeli, newmsg='groupi = %d\nmodel = %s' % (groupi, model))
@@ -1708,17 +1719,23 @@ class RecordingNetstate(BaseRecording):
     def ns_nspikingpmf(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateNspikingPMF object"""
         return NetstateNspikingPMF(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
-    def ns_scatter(self, experiments=None, nis=None, radius=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
+    def ns_scatter(self, experiments=None, nis=None, radius=None, shuffleids=False,
+                   kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateScatter object"""
-        ns_so = NetstateScatter(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
-        ns_so.calc(radius=radius)
+        ns_so = NetstateScatter(recording=self, experiments=experiments, nis=nis,
+                                kind=kind, tres=tres, phase=phase)
+        ns_so.calc(radius=radius, shuffleids=shuffleids)
         return ns_so
     def ns_i2vsin(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateI2vsIN object"""
         return NetstateI2vsIN(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
-    def ns_djshist(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
+    def ns_djshist(self, experiments=None, nis=None, ngroups=5, radius=None, shuffleids=False,
+                   kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateDJSHist object"""
-        return NetstateDJSHist(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
+        ns_djso = NetstateDJSHist(recording=self, experiments=experiments, nis=nis,
+                                  kind=kind, tres=tres, phase=phase)
+        ns_djso.calc(ngroups=ngroups, radius=radius, shuffleids=shuffleids)
+        return ns_djso
     def ns_s1invsn(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateS1INvsN object"""
         return NetstateS1INvsN(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
