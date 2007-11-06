@@ -433,7 +433,7 @@ class Codes(object):
 
 class CodeCorrPDF(object):
     """A PDF of the correlations of the codes of all cell pairs (or of all cell pairs within
-    some radius in um) in this Recording. See Schneidman2006 fig 1d"""
+    some torus of radii R=(R0, R1) in um) in this Recording. See Schneidman2006 fig 1d"""
     def __init__(self, recording=None, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         self.r = recording
         if experiments != None:
@@ -466,10 +466,12 @@ class CodeCorrPDF(object):
         else:
             return False
     '''
-    def calc(self, radius=None, shuffleids=False):
+    def calc(self, R=None, shuffleids=False):
         """Works on ConstrainedNeurons, but is constrained even further if experiments
         were passed and their tranges were used to generate self.tranges (see __init__)"""
-        self.radius = radius
+        if R:
+            assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
+        self.R = R
         self.shuffleids = shuffleids
         cnis = self.r.cn.keys() # ConstrainedNeuron indices
         ncneurons = len(cnis)
@@ -485,7 +487,7 @@ class CodeCorrPDF(object):
                                               phase=self.phase).c.std() ) for cni in cnis ) # store each code std in a dict
 
         if self.shuffleids:
-            scnis = shuffle(cnis) # shuffled neuron ids, this is a control to see if it's the radius of neurons included in the analysis, or the number of neurons included that's important. It seems that both are.
+            scnis = shuffle(cnis) # shuffled neuron ids, this is a control to see if it's the locality of neurons included in the analysis, or the number of neurons included that's important. It seems that both are.
         else:
             scnis = cnis
 
@@ -494,12 +496,13 @@ class CodeCorrPDF(object):
             for cnii2 in range(cnii1+1, ncneurons):
                 cni1 = cnis[cnii1]; scni1 = scnis[cnii1]
                 cni2 = cnis[cnii2]; scni2 = scnis[cnii2]
-                if radius == None or dist(self.r.cn[scni1].pos, self.r.cn[scni2].pos) < self.radius:
+                if R == None or self.R[0] < dist(self.r.cn[scni1].pos, self.r.cn[scni2].pos) < self.R[1]:
                     code1 = self.r.code(cni1, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
                     code2 = self.r.code(cni2, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
                     cc = ((code1 * code2).mean() - means[cni1] * means[cni2]) / (stds[cni1] * stds[cni2]) # (mean of product - product of means) / by product of stds
                     self.corrs.append(cc)
         self.corrs = array(self.corrs)
+        self.npairs = len(self.corrs)
         '''
         # simpler, but slower way:
         self.corrs = [ self.r.codecorr(cnis[cnii1], cnis[cnii2], tranges=self.tranges, kind=self.kind, self.tres, self.phase)
@@ -534,7 +537,7 @@ class CodeCorrPDF(object):
             barwidth = (self.crange[1] - self.crange[0]) / float(self.nbins)
         except TypeError: # self.crange is None, take width of first bin in self.c
             barwidth = self.c[1] - self.c[0]
-        a.bar(left=self.c, height=self.n, width=barwidth, bottom=0, color='k', yerr=None, xerr=None, ecolor='k', capsize=3)
+        a.bar(left=c, height=n, width=barwidth, bottom=0, color='k', yerr=None, xerr=None, ecolor='k', capsize=3)
         try:
             a.set_xlim(self.crange)
         except TypeError: # self.crange is None
@@ -554,8 +557,8 @@ class CodeCorrPDF(object):
             a.set_ylabel('count')
         a.set_xlabel('correlation coefficient')
         '''
-        a.text(0.99, 0.99, 'mean = %.3f\nmedian = %.3f\nmode = %.3f'
-                            % (self.mean, self.median, self.mode), # add stuff to top right of plot
+        a.text(0.99, 0.99, 'mean = %.3f\nmedian = %.3f\nmode = %.3f\nR = %r\nnpairs = %d'
+                            % (self.mean, self.median, self.mode, self.R, self.npairs), # add stuff to top right of plot
                             transform = a.transAxes,
                             horizontalalignment='right',
                             verticalalignment='top')
@@ -608,19 +611,10 @@ class RecordingCode(BaseRecording):
         code2 = self.code(neuron2, kind=kind, tres=tres, phase=phase)
         return corrcoef(code1.c, code2.c)
 
-    def codecorrpdf(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE, radius=None, shuffleids=False):
-        """Returns an existing CodeCorrPDF object, or creates a new one if necessary"""
-        # 2007-10-26 Got rid of all this saved calc() stuff, calculating these really doesn't take too long, and it's annoying having to redo it manually, and possibly unsafe
-        #try:
-        #    self._codecorrpdfs
-        #except AttributeError: # doesn't exist yet
-        #    self._codecorrpdfs = [] # create a list that'll hold CodeCorrPDF objects
-        cco = CodeCorrPDF(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase) # init a new one
-        #for ccpdf in self._codecorrpdfs:
-        #    if cco == ccpdf: # need to define special == method for class CodeCorrPDF()
-        #        return ccpdf # returns the first object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._codecorrpdfs
-        cco.calc(radius, shuffleids) # no matching object was found, calculate it
-        #self._codecorrpdfs.append(cco) # add it to the object list
+    def codecorrpdf(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE, R=None, shuffleids=False):
+        """Returns a CodeCorrPDF object"""
+        cco = CodeCorrPDF(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase)
+        cco.calc(R, shuffleids)
         return cco
 
 
@@ -735,16 +729,17 @@ class BaseNetstate(object):
         intcodeps = x.prod(axis=0) # take the product along the 0th axis (the columns) to get the prob of each population code word
         return intcodeps, intcodes
 
-    def ising(self, nis=None, radius=None, shuffleids=False, algorithm='CG'):
-        """Returns an Ising maximum entropy model that takes into account pairwise correlations within neuron codes
-        algorithm can be 'CG', 'BFGS', 'LBFGSB', 'Powell', or 'Nelder-Mead'"""
+    def ising(self, nis=None, R=None, shuffleids=False, algorithm='CG'):
+        """Returns an Ising maximum entropy model that takes into account pairwise correlations within neuron codes. R = (R0, R1) torus. Algorithm can be 'CG', 'BFGS', 'LBFGSB', 'Powell', or 'Nelder-Mead'"""
         if nis == None:
             nis = self.cs.nis[0:CODEWORDLEN]
         #print 'nis:', nis.__repr__()
+        if R:
+            assert len(R) == 2 and R[0] < R[1] # should be R = (R0, R1) torus
         codeso = self.codes(nis=nis)
 
         if shuffleids:
-            snis = shuffle(nis) # shuffled neuron ids, this is a control to see if it's the radius of neurons included in the analysis, or the number of neurons included that's important. Seems like both are
+            snis = shuffle(nis) # shuffled neuron ids, this is a control to see if it's the locality of neurons included in the analysis, or the number of neurons included that's important. Seems like both are
         else:
             snis = nis
 
@@ -758,10 +753,10 @@ class BaseNetstate(object):
         pairmeans = []
         for i in range(0, nrows):
             for j in range(i+1, nrows):
-                if radius == None or dist(self.r.n[snis[i]].pos, self.r.n[snis[j]].pos) < radius:
+                if R == None or R[0] < dist(self.r.n[snis[i]].pos, self.r.n[snis[j]].pos) < R[1]:
                     pairmeans.append((c[i]*c[j]).mean()) # take a pair of rows, find the mean of their elementwise product
                 else:
-                    pairmeans.append(None) # pair are outside the radius, ignore their pairmeans
+                    pairmeans.append(None) # pair are outside the torus, ignore their pairmeans
         isingo = Core.Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
         return isingo
 
@@ -901,15 +896,17 @@ class NetstateNspikingPMF(BaseNetstate):
 
 class NetstateScatter(BaseNetstate):
     """Netstate scatter analysis object. See Schneidman Figures 1f and 2a"""
-    def calc(self, nbits=None, model='both', radius=None, shuffleids=False, shufflecodes=False, algorithm='CG'):
+    def calc(self, nbits=None, model='both', R=None, shuffleids=False, shufflecodes=False, algorithm='CG'):
         """Calculates the expected probabilities, assuming a model in ['indep', 'ising', 'both'],
-        of all possible population codes vs their observed probabilities.
+        of all possible population codes vs their observed probabilities. R = (R0, R1) torus.
         self's nis are treated in LSB to MSB order"""
         self.nbits = nbits
         if self.nbits == None:
             self.nbits = CODEWORDLEN
         self.model = model
-        self.radius = radius
+        self.R = R
+        if R:
+            assert len(R) == 2 and R[0] < R[1] # should be R = (R0, R1) torus
         self.shuffleids = shuffleids
         self.shufflecodes = shufflecodes
         self.algorithm = algorithm
@@ -926,11 +923,11 @@ class NetstateScatter(BaseNetstate):
         if self.model == 'indep':
             self.pexpected, self.expectedwords = self.intcodesFPDF(nis=self.nis) # expected, assuming independence
         elif self.model == 'ising':
-            ising = self.ising(nis=self.nis, radius=self.radius, shuffleids=self.shuffleids, algorithm=self.algorithm) # returns a maxent Ising model
+            ising = self.ising(nis=self.nis, R=self.R, shuffleids=self.shuffleids, algorithm=self.algorithm) # returns a maxent Ising model
             self.pexpected = ising.p # expected, assuming maxent Ising model
             self.expectedwords = ising.intsamplespace
         elif self.model == 'both':
-            ising = self.ising(nis=self.nis, radius=self.radius, shuffleids=self.shuffleids, algorithm=self.algorithm) # returns a maxent Ising model
+            ising = self.ising(nis=self.nis, R=self.R, shuffleids=self.shuffleids, algorithm=self.algorithm) # returns a maxent Ising model
             self.pexpected = ising.p # expected, assuming maxent Ising model
             self.expectedwords = ising.intsamplespace
             self.pindepexpected = self.intcodesFPDF(nis=self.nis)[0] # expected, assuming independence
@@ -940,7 +937,9 @@ class NetstateScatter(BaseNetstate):
         return self
 
     def plot(self, model='both', scale='freq',
-             xlim=(10**-4, 10**2), ylim=(10**-11, 10**2), color=False):
+             xlim=(10**-4, 10**2), ylim=(10**-11, 10**2),
+             yticks=(10**-11, 10**-9, 10**-7, 10**-5, 10**-3, 10**-1, 10**1),
+             color=False):
         """Scatterplots the expected probabilities of all possible population codes (y axis)
         vs their observed probabilities (x axis). nis are in LSB to MSB order"""
 
@@ -1037,6 +1036,8 @@ class NetstateScatter(BaseNetstate):
         a.set_ylabel('predicted ' + labelend)
         a.set_xlim(xlim)
         a.set_ylim(ylim)
+        if yticks:
+            a.set_yticks(yticks)
         if self.model =='both':
             DJSstring = '(%.4f, %.4f)' % (DJS(self.pobserved, self.pindepexpected), DJS(self.pobserved, self.pexpected))
         else:
@@ -1150,13 +1151,15 @@ class NetstateI2vsIN(BaseNetstate):
 class NetstateDJSHist(BaseNetstate):
     """Jensen-Shannon histogram analysis. See Schneidman 2006 figure 2b"""
     def calc(self, nbits=CODEWORDLEN, ngroups=5, models=['ising', 'indep'],
-                   radius=None, shuffleids=False, shufflecodes=False, algorithm='CG'):
+                   R=None, shuffleids=False, shufflecodes=False, algorithm='CG'):
         """Calculates Jensen-Shannon divergences and their ratios
-        for ngroups random groups of cells, each of length nbits."""
+        for ngroups random groups of cells, each of length nbits. R = (R0, R1) torus"""
         self.nbits = nbits
         self.ngroups = ngroups
         self.models = models
-        self.radius = radius
+        self.R = R
+        if R:
+            assert len(R) == 2 and R[0] < R[1] # should be R = (R0, R1) torus
         self.shuffleids = shuffleids
         self.shufflecodes = shufflecodes
         self.algorithm = algorithm
@@ -1173,7 +1176,7 @@ class NetstateDJSHist(BaseNetstate):
             for modeli, model in enumerate(self.models): # for each model, use the same nis
                 so = NetstateScatter(recording=self.r, experiments=self.e, nis=nis,
                                      kind=self.kind, tres=self.tres, phase=self.phase)
-                so.calc(nbits=self.nbits, model=model, radius=self.radius, shuffleids=self.shuffleids, shufflecodes=self.shufflecodes, algorithm=self.algorithm)
+                so.calc(nbits=self.nbits, model=model, R=self.R, shuffleids=self.shuffleids, shufflecodes=self.shufflecodes, algorithm=self.algorithm)
 
                 self.DJSs[model].append(DJS(so.pobserved, so.pexpected))
                 cont, skip = pd.Update(groupi*len(self.models)+modeli, newmsg='groupi = %d\nmodel = %s' % (groupi, model))
@@ -1221,16 +1224,19 @@ class NetstateDJSHist(BaseNetstate):
         a1.set_title('%s' % lastcmd())
         if publication:
             a1.set_xticklabels(['', '0.001', '0.01', '0.1', '']) # hack!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            a1.set_ylim(ymin=0, ymax=4)
+            a1.set_yticks((0, 2, 4))
             for label in a1.get_xticklabels():
                 label.set_size(30)
             for label in a1.get_yticklabels():
                 label.set_size(30)
-            a1.legend([ bars[model][0] for model in self.models ], ['pairwise', 'independent'], prop=mpl.font_manager.FontProperties(size=20) ) # grab the first bar for each model, label it with the model name
+            a1.legend([ bars[model][0] for model in self.models ], ['pairwise', 'independent'], loc='upper left',
+                      prop=mpl.font_manager.FontProperties(size=20) ) # grab the first bar for each model, label it with the model name
         else:
             a1.set_ylabel('number of groups of %d cells' % self.nbits)
             a1.set_xlabel('DJS (bits)')
             a1.set_ylabel('probability density (1 / log10(DJS))')
-            a1.legend([ bars[model][0] for model in self.models ], ['pairwise', 'independent'])
+            a1.legend([ bars[model][0] for model in self.models ], ['pairwise', 'independent'], loc='upper left')
         # plot DJSratios
         if len(self.models) == 2:
             f2 = figure()
@@ -1719,22 +1725,22 @@ class RecordingNetstate(BaseRecording):
     def ns_nspikingpmf(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateNspikingPMF object"""
         return NetstateNspikingPMF(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
-    def ns_scatter(self, experiments=None, nis=None, radius=None, shuffleids=False,
+    def ns_scatter(self, experiments=None, nis=None, R=None, shuffleids=False,
                    kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateScatter object"""
         ns_so = NetstateScatter(recording=self, experiments=experiments, nis=nis,
                                 kind=kind, tres=tres, phase=phase)
-        ns_so.calc(radius=radius, shuffleids=shuffleids)
+        ns_so.calc(R=R, shuffleids=shuffleids)
         return ns_so
     def ns_i2vsin(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateI2vsIN object"""
         return NetstateI2vsIN(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
-    def ns_djshist(self, experiments=None, nis=None, ngroups=5, radius=None, shuffleids=False,
+    def ns_djshist(self, experiments=None, nis=None, ngroups=5, R=None, shuffleids=False,
                    kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateDJSHist object"""
         ns_djso = NetstateDJSHist(recording=self, experiments=experiments, nis=nis,
                                   kind=kind, tres=tres, phase=phase)
-        ns_djso.calc(ngroups=ngroups, radius=radius, shuffleids=shuffleids)
+        ns_djso.calc(ngroups=ngroups, R=R, shuffleids=shuffleids)
         return ns_djso
     def ns_s1invsn(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateS1INvsN object"""

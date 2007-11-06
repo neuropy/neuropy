@@ -1327,7 +1327,7 @@ class Ising(object):
         pairmeansi = 0
         for i in range(0, nbits):
             for j in range(i+1, nbits):
-                if pairmeans[pairmeansi] != None:
+                if pairmeans[pairmeansi] != None: # None indicates we should ignore this pair
                     f2s.append(lambda x, i=i, j=j: x[-1-i] * x[-1-j])
                 pairmeansi += 1
         #f2s = [ lambda x, i=i, j=j: x[-1-i] * x[-1-j] for i in range(0, nbits) for j in range(i+1, nbits) if pairmeans[i*nbits+j-1] != None ]
@@ -1338,7 +1338,7 @@ class Ising(object):
         # Now set the desired feature expectations
         means = asarray(means)
         pairmeans = asarray(pairmeans) # if it has Nones, it's an object array
-        pairmeans = np.float64(pairmeans[pairmeans != [None]]) # remove the Nones, convert from object array to float array
+        pairmeans = asarray(list(pairmeans[pairmeans != [None]])) # remove the Nones, convert to list to get rid of object array, then convert back to array to get a normal, non-object array (probably a float64 array)
         npairs = len(pairmeans) # update npairs
         #pairmeans /= 2.0 # add the one half in front of each coefficient, NOT TOO SURE IF THIS SHOULD GO HERE! causes convergence problems
         K = cat((means, pairmeans))
