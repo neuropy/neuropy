@@ -12,7 +12,7 @@ from Recording import PopulationRaster, Codes, CodeCorrPDF
 class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dimstim???????????????????????????
     """An Experiment corresponds to a single contiguous VisionEgg stimulus session.
     It contains information about the stimulus during that session, including
-    the DIN values, the text header, and any Movies that were involved"""
+    the DIN values and the text header"""
 
     from Recording import Recording
 
@@ -119,7 +119,7 @@ class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dims
             varvals = {} # init a dictionary that will contain variable values
             for var in self.varlist:
                 varvals[var] = eval('self.'+var) # generate a dictionary with var:val entries, to pass to buildSweepTable
-            self.sweepTable = dimstim.Core.buildSweepTable(self.varlist, varvals, self.nruns, self.shuffleRuns, self.blankSweep, self.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
+            self.sweepTable = self.buildprecat16SweepTable(self.varlist, varvals, self.nruns, self.shuffleRuns, self.blankSweep, self.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
 
         # for all (Movie) stims inited by the textheader, enter each Movie into _data.movies
         for s in self.stims:
@@ -135,6 +135,264 @@ class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dims
         #self.buildsweepranges()
 
         self.trange = (self.din[0,0], self.din[-1,0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
+
+    def buildprecat16SweepTable(self, varlist, varvals, nruns=1, shuffleRuns=0, blankSweep=(0,0),
+                                shuffleBlankSweeps=0, makeSweepTableText=0):
+        """Deprecated: kept only for backward compatibility with Cat 15
+        Builds a sweep table
+        Returns: 'sweeptable': a dictionary where each entry (key) is a variable name, followed
+                               by its values, one value per unique sweep (ie permutation of dims)
+                 'dimlist': a dictionary of renumbered dimensions
+                 'sweeplist': stores the # of times and in what order we'll be stepping through
+                              sweeptable during the experiment
+                 'sweeptabletext': a formatted tab-separated string printout of 'sweeptable'
+        Passed:  'varlist': a dictionary (see below)
+                 'varvals': a dictionary with var:val(s) key:value(s) entries
+                 'nruns': number of times to run the whole combination of parameters
+                 'blankSweep': (n,duration) tuple, do a blank sweep every n'th sweep for
+                               duration in seconds, n must be in: {0=off ,2,3,4....}
+                 'shuffleBlankSweeps': shuffle the position of the blank sweeps? (0=no, 1=yes)
+                 'makeSweepTableText': generate text printout of sweeptable? (0=no, 1=yes)
+
+        Each entry in 'varlist' represents one variable. Each entry is itself made up of a 2-entry dictionary with 'shuffle' and 'dim' fields. The 'shuffle' field is a flag (0=leave ordered, 1=shuffle, 2=randomize). shuffle==1 shuffles the variable's dimension during the experiment, shuffle==2 randomly samples it instead. Variable position in the varlist doesn't matter. However, the variable's associated 'dim' value relative to all the other 'dim' values in the variable list determines its order in the nested for loops that generate the combinations of values for each sweep: the variable with the lowest 'dim' value becomes the outermost for loop and changes least often; the variable with the highest 'dim' value becomes the innermost for loop and changes on every sweep. 'dim' must be an integer (+ve, -ve, or 0). Variables with the same 'dim' value are part of the same dimension, are shuffled together, and must therefore be assigned the same number of values and the same shuffle flag"""
+
+        # Do some error checking
+        if nruns.__class__ != int or nruns < 0:
+            raise ValueError, 'nruns must be a non-negative integer'
+        if shuffleRuns.__class__ != int or shuffleRuns not in (0, 1):
+            raise ValueError, 'shuffleRuns must be 0 or 1'
+        if blankSweep.__class__ != tuple or blankSweep[0].__class__ != int or blankSweep[0] == 1 or blankSweep[0] < 0:
+            raise ValueError, 'blankSweep must be a tuple, and blankSweep[0] must be a non-negative integer and cannot equal 1'
+        if shuffleBlankSweeps.__class__ != int or shuffleBlankSweeps not in (0, 1):
+            raise ValueError, 'shuffleBlankSweeps must be 0 or 1'
+        # check that shuffle flag is valid for each variable
+        for var in varlist:
+            if varlist[var]['shuffle'].__class__ != int or varlist[var]['shuffle'] not in (0, 1, 2):
+                raise ValueError, 'Variable %s has a shuffle value outside of (0, 1, 2)' % var
+
+        for (key, val) in varvals.items():
+            if val == None:
+                raise ValueError, 'Variable %s was passed with value None. Can\'t generate a sweeptable with None values' % key
+            if val.__class__ != list:
+                val = [val] # turn any single value non-list vals into single value list vals
+            exec(key + '=' + str(val)) # locally allocate the vals for all vars in varlist - bad!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        nvars = len(varlist)
+
+        # Print out values for vars in varlist, as well as the shuffle and dim fields for each var
+        #print 'varlist with vals:'
+        #for var in varlist:
+        #    print var + ' =', eval(var), ',', varlist[var]
+        #print
+
+        # First find total number of distinct dimensions in varlist. The dimension numbers entered in the 'dim' field in varlist don't have to be consecutive. Eg, they could be: 0,5,5,5,2,666,-74,...
+        dimindexlist = []
+        for key in varlist:
+            dim = varlist[key]['dim']
+            if dim not in dimindexlist:
+                dimindexlist.append(dim)
+        ndims = len(dimindexlist)
+        dimindexlist.sort()
+
+        # Now, renumber all the dimensions 0,1,2,3... according to their numerical order. Also, copy info stored in the varlist dictionary into simpler lists that can then be easily used to generate the sweeptable
+        dimlist = [] # Every n'th entry in dimlist is a dictionary that corresponds to dimension n. Keys in each dictionary include 'vars' (list of variable names that belong to the dim), 'shuffle' (shuffle flag), and 'dim' (n)
+        dimlengths = [] # stores the length of each dimension (the # of conds of each of its vars, all vars in a dim should have the same # of conds)
+        dimshuffles = [] # stores the shuffle flag for each dimensionas
+        dimvars = [] # stores the variable names that belong to each dimension
+        for dim in range(ndims): # for all dimensions
+            varlengths=[] # this will temporarily store the lengths of each var in this dim
+            varshuffles=[] # this will temporarily store the shuffle flags of each var in this dim
+            dimvars.append([]) # init dimvars for this dim, ready to add the variable names that belong to this dim
+            dimi = dimindexlist[dim] # dimi is the original dimension # assigned in varlist, dim is the corresponding 0 based dimension #
+            # go through varlist, grabbing dimi number from each member in varlist
+            for (var, vardict) in varlist.items(): # varlist is a dictionary of dictionaries, var is the variable name
+                if vardict['dim']==dimi:
+                    vardict['dim']=dim # overwrite dimi with dim, so dim nums are 0 based and consecutive, note that this overwrites the dimi value in varlist (OK) cuz it was passed by reference and we're stepping through it by reference!
+                    if eval(var).__class__ == list:
+                        varlengths.append(len(eval(var))) # store the variable's length
+                    else:
+                        varlengths.append(1) # store length of single numbers (non-lists) as 1
+                    varshuffles.append(vardict['shuffle']) # store the shuffle flag for this var in this dim
+                    dimvars[dim].append(var) # store the variable names that are in this dimension
+            # check if each var in this dim has the same length as the first var, and if they don't all have the same length, raise error
+            for varlength in varlengths:
+                if varlength != varlengths[0]:
+                    raise ValueError, 'Dimension %d contains variables with an unequal number of conditions' % dimi
+            dimlengths.append(varlength) # store the length of this dimension
+            # check if each var in this dim has the same shuffle flag as the first var
+            for varshuffle in varshuffles:
+                if varshuffle != varshuffles[0]:
+                    raise ValueError, 'Dimension %d contains variables with different shuffle flags' % dimi
+            dimshuffles.append(varshuffle) # store the shuffle flag for this dimension
+
+            dimlist.append({}) # add a dictionary for this dim in dimlist
+            dimlist[dim]={'vars':dimvars[dim], 'shuffle':dimshuffles[dim], 'dim':dim} # write the entry for this dim into dimlist
+
+        # Print dimlist
+        #print 'Dimension list:'
+        #for dim in range(ndims):
+        #    print dimlist[dim]
+        #print
+
+        # Build the ordered (unshuffled/unrandomized) indextable
+        vali = [None]*ndims # stores the index we're on in each dimension
+        indextable = [] # stores the ordered table of indices for all dimensions over all sweeps
+        # generate code with the right number of nested for loops
+        code = ''
+        tabs = ''
+        for dim in range(ndims): # here come the nested for loops...
+
+            code += tabs+'for vali['+str(dim)+'] in xrange(dimlengths['+str(dim)+']):\n' # val index for this dim, used for all vars in this dim
+            tabs +='\t'
+
+        code += tabs+'indextable.append(vali[:])\n' # here's the innermost part of the nested for loops, val[:] returns a copy (important!)
+        #print code
+        #print
+        exec(code) # run the generated code, this builds the ordered indextable with all the permutations
+
+        # example of what the generated code looks like for 3 dimensions:
+        #for vali[0] in range(dimlengths[0]):
+        #    for vali[1] in range(dimlengths[1]):
+        #        for vali[2] in range(dimlengths[2]):
+        #            indextable.append(vali[:])
+
+        nsweeps = len(indextable)
+
+        # Now use indextable to build the sweeptable
+        sweeptable = {}
+        for var in varlist:
+            sweeptable[var] = [None]*nsweeps # init with all the var names as the key names
+        for dimi in range(ndims):
+            for var in dimvars[dimi]:
+                evalvar = eval(var)
+                for sweepi in range(nsweeps):
+                    sweeptable[var][sweepi] = evalvar[ indextable[sweepi][dimi] ] # eg sweeptable['ori'][sweepi]=ori[ indextable[sweepi][dimi] ]
+
+        #sweeptable['sweepi'] = range(nsweeps) # add ordered sweep indices to a new key in sweeptable called 'sweepi'
+
+        # The 'sweeplist' will store the # of times and in what order we'll be stepping through the sweeptable during the experiment
+        if shuffleRuns:
+            nshuffles = nruns # re-shuffle sweeplist for each run
+            ncopies = 1 # make sweeplist ncopies of itself long after shuffling
+        else:
+            nshuffles = 1 # shuffle sweeplist only once, use same sweeplist for each run
+            ncopies = nruns # make sweeplist ncopies of itself long after shuffling
+
+        #t1 = time.clock()
+        sweeplistlist = [None]*nsweeps*nshuffles # init list of concatenated sweeplists for speed
+        for shufflei in range(nshuffles):
+            sweeplist = range(nsweeps) # init with an ordered sweeplist for each shuffle run
+
+            # Do the appropriate shuffling by overwriting the appropriate entries in sweeplist in the appropriate way
+
+            # check if all dims are set to shuffle/randomize, if so, do it the fast way
+            allshuffled = 1
+            allrandomized = 1
+            for dimi in range(ndims):
+                allshuffled *= (dimshuffles[dimi]==1)
+                allrandomized *= (dimshuffles[dimi]==2)
+            if allshuffled:
+                sweeplist = shuffle(sweeplist)
+            elif allrandomized:
+                sweeplist = randomize(sweeplist)
+            else: # shuffle/randomize each dim individually (slower)
+                for dimi in xrange(ndims):
+                    if dimshuffles[dimi] in (1, 2): # if flag is set to shuffle or randomize
+                        col = [None]*nsweeps # init for speed
+                        for sweepi in sweeplist: # extract column from indextable for dimi
+                            col[sweepi] = indextable[sweepi][dimi]
+                        #col = [ indextable[sweepi][dimi] for sweepi in sweeplist ]
+                        # use numpy's argsort instead: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                        colvi = [ (v, i) for i, v in enumerate(col) ] # load up col values and indices into a list of tuples
+                        colvi.sort() # sort the pair according to v (first entry in (v,i) tuple), the indices will go along for the ride
+                        sortindices = [ i for v, i in colvi ] # unload the sorted indices, these are the indices into sweeplist that would get you a sorted sweeplist
+                        sortedsweeplist = [None]*nsweeps # init for speed
+                        for i, si in enumerate(sortindices): # create sweeplist sorted in order of dimi
+                            sortedsweeplist[i] = sweeplist[si]
+                        #sortedsweeplist = [ sweeplist[si] for si in sortindices ]
+
+                        offset = 1 # offset is the product of the lengths of all dims other than dimi
+                        for dimj in xrange(ndims):
+                            if dimj != dimi: # for all dims other than dimi
+                                offset *= dimlengths[dimj]
+
+                        ldimi = dimlengths[dimi] # length of dimi, including pre-shuffle repeats
+                        if nsweeps % ldimi != 0:
+                            raise ValueError, 'Somehow, nsweeps isn\'t an integer multiple of length (including pre-shuffle repeats) of dim %d' % dimi
+                        ncollections = nsweeps // ldimi # can safely divide now
+
+                        for colli in xrange(ncollections):
+                            # collis is a collection of indices to shuffle over, made up of every offset'th index, starting from colli
+                            collis = [None]*ldimi # init for speed
+                            for i, j in enumerate(xrange(colli, offset*ldimi, offset)):
+                                collis[i] = j
+                            #collis = [ j for j in xrange(colli,offset*ldimi,offset) ]
+                            if dimshuffles[dimi] == 1: # shuffle this dim
+                                shuffcollis = shuffle(collis)
+                            elif dimshuffles[dimi] == 2: # randomize this dim
+                                shuffcollis = randomize(collis)
+                            for i in xrange(len(collis)):
+                                sweeplist[sortindices[collis[i]]] = sortedsweeplist[shuffcollis[i]] # update sweeplist appropriately, this is the trickiest bit
+            for i, j in enumerate(range(nsweeps*shufflei, nsweeps*(shufflei+1))):
+                sweeplistlist[j] = sweeplist[i] # enters a copy of sweeplist for this shuffle into the concatenated list of sweeplists
+
+        sweeplist = sweeplistlist # rename it now that we're done the shuffle loop
+        #t2 = time.clock()
+        #print 'shuffling took', t2-t1
+
+        sweeplist *= ncopies # does nothing if shuffleRuns==1 (ncopies is 1), make nruns copies of sweeplist if shuffleRuns==0 (ncopies is nruns)
+
+        nuniquesweeps = nsweeps
+        nsweeps = len(sweeplist) # now nsweeps includes repeats (if any)
+
+        # If blank sweeps are requested, then build the stimulus state list (stimOn[sweepi]: 0=stimulus off, 1=stimulus on) and use it to insert blank sweeps (None values) into sweeplist
+        if blankSweep[0]:
+            # increment nsweeps to have correct additional amount to account for added blank sweeps
+            addedsweeps = 0 # number of sweeps added to nsweeps
+            addsweeps = nsweeps // blankSweep[0] # both nsweeps and blankSweep[0] are integers
+            while addsweeps > 0:
+                nsweeps += addsweeps
+                addedsweeps += addsweeps
+                addsweeps = nsweeps // blankSweep[0] - addedsweeps
+            stimOn = [1]*nsweeps # init stimOn to all 1s (stim is on for all sweeps)
+            for sweepi in xrange(nsweeps):
+                if (sweepi+1) % blankSweep[0] == 0: # if 1 based sweepi is multiple of blankSweep[0]
+                    stimOn[sweepi] = 0 # stimulus will be off on sweepi
+            if shuffleBlankSweeps == 1:
+                stimOn = shuffle(stimOn) # shuffle the stimulus state list
+            #print 'stimOn is', stimOn
+            # insert blank sweeps into sweeplist, according to stimulus state list
+            for sweepi in xrange(nsweeps): # for all sweeps (values) in stimulus table
+                if stimOn[sweepi] == 0: # if we're on a blank sweep
+                    insertioni = min(sweepi, len(sweeplist)-1) # insert at the lesser of sweepi or what's currently the last index in sweeplist. This prevents the case where many of the zeros in a shuffled stimOn are clustered at the end, and you end up trying to insert a repeat at an index value that's out of range of sweeplist
+                    sweeplist.insert(insertioni, None) # insert a 'None' value into sweeplist at insertioni, this indicates a blank sweep
+        #print 'sweeplist is', sweeplist
+
+        # Print sweeptable as formatted text to string
+        if makeSweepTableText:
+            f = cStringIO.StringIO() # create a string file-like object, implemented in C, fast
+            f.write('sweepi\t') # 'sweepi' column header
+            for dim in xrange(ndims): # print out column headers in dim order
+                f.write( str(dimvars[dim]) + '\t' )
+            f.seek(-1, 2) # move the file pointer back one relative to end
+            f.truncate() # get rid of the last tab
+            f.write('\n')
+            for sweepi in xrange(nuniquesweeps):
+                f.write('%.6s\t' % sweepi) # write the sweep index in the first column
+                for dimi in xrange(ndims): # print out columns in dim order
+                    for var in dimvars[dimi]:
+                        f.write('%.6s\t' % sweeptable[var][sweepi])
+                f.seek(-1, 2) # move the file pointer back one relative to end
+                f.truncate() # get rid of the last tab
+                f.write('\n')
+            f.seek(-1, 2) # move the file pointer back one relative to end
+            f.truncate() # get rid of the last newline
+            sweeptabletext = f.getvalue()
+        else:
+            sweeptabletext = None
+
+        return sweeptable, dimlist, sweeplist, sweeptabletext
+
+
 
     def buildsweepranges(self):
         print 'INCOMPLETE!!!!!!!!!!!!!!!!'
