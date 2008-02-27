@@ -16,13 +16,16 @@ class Animal(object):
         self.path = os.path.join(self.d.path, self.id)
         self.d.a[self.id] = self # add/overwrite this Animal to its parent's dict of Animals, in case this Animal wasn't loaded by its parent
         self.t = dictattr() # store Tracks in a dictionary with attrib access
+
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
+
     def writetree(self, string):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
         self.d.writetree(string)
+
     def load(self):
 
         from Track import Track

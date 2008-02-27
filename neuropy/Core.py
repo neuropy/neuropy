@@ -1,4 +1,4 @@
-"""Defines base neuropy Data and Model classes, as well as other miscellaneous functions and classes"""
+"""Defines base neuropy Data class, as well as other miscellaneous functions and classes"""
 
 #print 'importing Core'
 
@@ -42,19 +42,12 @@ from dimstim.Core import dictattr # Dictionary with attribute access
 # GLOBAL DEFAULTS
 
 DATAPATH = os.path.join(os.sep, 'data')
-MODELPATH = os.path.join(os.sep, 'model')
-
-SPECIES = 'Cat'
-CATID = 15
-RATID = 0
 
 ANIMAL = 'ptc15'
 TRACK = '7c'
 
-RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording/Run
+RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording
 MOVIEPATH = os.path.join(os.sep, 'pub', 'movies')
-
-SYSTEMNAME = 'example model system'
 
 CODEKIND = 'binary'
 CODETRES = 20000 # us
@@ -73,13 +66,16 @@ class Data(object):
         self.path = dataPath
         self.a = dictattr() # store Animals in a dictionary with attrib access
         self.movies = dictattr() # store Movies in a dict with attrib access, Movies don't have to have parents, but we still want to store them here to prevent loading each movie more than once
+
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
+
     def writetree(self, string):
         """Write to self's tree buffer"""
         self.treebuf.write(string)
         # Data has no parent to write to
+
     def load(self):
 
         from Animal import Cat, Rat
@@ -99,30 +95,6 @@ class Data(object):
                 self.a[rat.name] = rat # save it, using its (dir)name as the dict key
 
 _data = Data() # init a default Data object to use as a container for everything that falls under the data object hierarchy
-
-
-class Model(Data):
-    """Abstract model class. Model can have multiple model Systems"""
-    def __init__(self, modelPath=MODELPATH):
-        self.level = 0 # level in the hierarchy
-        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
-        self.name = 'Model'
-        self.path = modelPath
-        self.s = dictattr() # store model Systems in a dictionary with attrib access
-    def load(self):
-
-        from System import System
-
-        treestr = self.level*TAB + self.name + '/'
-        self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        systemNames = [ dirname for dirname in os.listdir(self.path)
-                        if os.path.isdir(os.path.join(self.path, dirname)) ]
-        for systemName in systemNames:
-            system = System(name=systemName, parent=self) # make an instance using the systemName
-            system.load() # load the System
-            self.s[system.name] = system # save it
-
-_model = Model() # init a default Model object to use as a container for everything that falls under the model object hierarchy
 
 
 def getargstr(obj):
@@ -265,10 +237,12 @@ class ReceptiveFieldFrame(wx.Frame):
     def OnMouseWheel(self, event):
         """This could be useful..."""
         pass
+
     def __set_properties(self):
         self.SetTitle(self.title)
         self.panel.SetBackgroundColour(wx.Colour(255, 255, 255))
         self.panel.SetScrollRate(10, 10)
+
     def __do_layout(self):
         sizer_1 = wx.GridSizer(1, 1, 0, 0)
         grid_sizer_1 = wx.FlexGridSizer(rows=len(self.neurons)+1, cols=len(self.t)+1, vgap=2, hgap=2) # add an extra row and column for the text labels
@@ -321,10 +295,12 @@ class NetstateReceptiveFieldFrame(ReceptiveFieldFrame):
                 self.bitmaps[ii][t] = wx.StaticBitmap(parent=self.panel, bitmap=im.ConvertToBitmap())
         self.__set_properties()
         self.__do_layout()
+
     def __set_properties(self):
         self.SetTitle(self.title)
         self.panel.SetBackgroundColour(wx.Colour(255, 255, 255))
         self.panel.SetScrollRate(10, 10)
+
     def __do_layout(self):
         sizer_1 = wx.GridSizer(1, 1, 0, 0)
         grid_sizer_1 = wx.FlexGridSizer(rows=len(self.intcodes)+1, cols=len(self.t)+1, vgap=2, hgap=2) # add an extra row and column for the text labels

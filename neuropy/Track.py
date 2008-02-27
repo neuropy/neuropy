@@ -32,13 +32,16 @@ class Track(object):
         self.path = os.path.join(self.a.path, self.name)
         self.a.t[self.id] = self # add/overwrite this Track to its parent Animal's dict of Tracks, in case this Track wasn't loaded by its parent
         self.r = dictattr() # store Recordings in a dictionary with attrib access
+
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
+
     def writetree(self, string):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
         self.a.writetree(string)
+
     def id2name(self, path, id):
         name = [ dirname for dirname in os.listdir(path)
                  if os.path.isdir(os.path.join(path, dirname))
@@ -47,6 +50,7 @@ class Track(object):
             raise NameError, 'Ambiguous or non-existent Track id: %s' % id
         else:
             return name[0] # pull the string out of the list
+
     def name2id(self, name):
         id = name.lower().replace('tr', '', 1) # replace first occurrence of 'tr' with nothing, keep the rest
         if not id:
@@ -56,6 +60,7 @@ class Track(object):
         except ValueError:
             pass # it's alphanumeric, leave it as a string
         return id
+
     def load(self):
 
         from Recording import Recording

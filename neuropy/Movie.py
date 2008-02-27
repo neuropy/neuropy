@@ -1,5 +1,9 @@
 """Defines the Movie class. This is really just a place to hold movie data,
-don't confuse with dimstim.Movie subclass of dimstim.Experiment"""
+don't confuse with dimstim.Movie subclass of dimstim.Experiment
+
+FIXME: what's the point of this class now? Why not just let dimstim init a Movie experiment?
+    - can understand that neuropy.Movie is needed for dimstim < 0.16
+"""
 
 #print 'importing Movie'
 

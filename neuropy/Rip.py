@@ -7,8 +7,7 @@ from Core import *
 class Rip(object):
     """A Rip is a single spike extraction. Generally, Rips of the same name within the same Track
     were generated with the same spike template, though of course Rips in different Tracks must
-    be generated from different templates, even if the Rips have the same name. In the context of a
-    Model, a Rip is a set of spike times generated with a certain set of modelling parameters."""
+    be generated from different templates, even if the Rips have the same name"""
 
     from Recording import Recording
 
@@ -31,6 +30,7 @@ class Rip(object):
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
+
     def writetree(self, string):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)

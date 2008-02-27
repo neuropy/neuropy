@@ -32,6 +32,7 @@ class BaseNeuron(object):
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
+
     def writetree(self,string):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
@@ -51,6 +52,7 @@ class BaseNeuron(object):
             raise NameError, 'Ambiguous or non-existent Neuron id: %s' % id
         else:
             return name[0] # pull the string out of the list
+
     def name2id(self, name):
         try:
             id = name[name.rindex('_t')+2::] # everything from just after the last '_t' to the end of the neuron name, rindex() raises ValueError if it can't be found
@@ -61,6 +63,7 @@ class BaseNeuron(object):
         except ValueError:
             pass # it's alphanumeric, leave it as a string
         return id
+
     def load(self):
         #treestr = self.level*TAB + self.name + '/'
         #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
@@ -221,6 +224,7 @@ class XCorr(object):
             pass
         self.n2 = n2
         self.trange = trange
+
     def calc(self):
         dts = []
         for spike in self.n1.spikes:
@@ -293,6 +297,7 @@ class BaseCode(object):
             self.tranges = [ self.neuron.trange ]
         else:
             self.tranges = tolist(tranges)
+
     def __eq__(self, other):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
@@ -302,6 +307,7 @@ class BaseCode(object):
             return True
         else:
             return False
+
     def plot(self):
         # plot some kind of long grid of white and black elements?
         pass
@@ -317,6 +323,7 @@ class BinaryCode(BaseCode):
         self.kind = 'binary'
         self.tres = tres
         self.phase = phase # in degrees of tres
+
     def calc(self):
         self.t = array([], dtype=np.int64) # set up empty arrays with correct dtypes (otherwise, when appending to them later, they'd default to float64s)
         self.s = array([], dtype=np.int64)
@@ -332,6 +339,7 @@ class BinaryCode(BaseCode):
             self.t = np.append(self.t, t) # save 'em
             self.s = np.append(self.s, s)
             self.c = np.append(self.c, c)
+
     def plot(self):
         super(BinaryCode, self).plot()
         title('neuron %d - binary spike code' % self.neuron.id)
@@ -366,6 +374,7 @@ class BaseRate(object):
             self.trange = self.neuron.trange
         else:
             self.trange = trange
+
     def __eq__(self, other):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
@@ -375,6 +384,7 @@ class BaseRate(object):
             return True
         else:
             return False
+
     def plot(self):
         figure()
         plot(self.t, self.r)
@@ -390,6 +400,7 @@ class BinRate(BaseRate):
         super(BinRate, self).__init__(neuron=neuron, trange=trange)
         self.kind = 'bin'
         self.tres = tres
+
     def calc(self):
         # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. Do the same for the end of the timepoints. This way, timepoints will line up for different code objects
         tstart = self.trange[0] - (self.trange[0] % self.tres)
@@ -398,6 +409,7 @@ class BinRate(BaseRate):
         s = self.neuron.cut(trange) # spike times
         self.r, self.t = histogramSorted(self.neuron.spikes, bins=t) # assumes spikes are in chrono order
         self.r = self.r / float(self.tres) * 1000000 # spikes/sec
+
     def plot(self):
         super(BinRate, self).plot()
         title('neuron %d - binned spike rate' % self.neuron.id)
@@ -411,6 +423,7 @@ class nISIRate(BaseRate):
         self.nisi = nisi
         self.tres = tres
         self.interp = interp
+
     def calc(self):
         s = self.neuron.cut(self.trange) # spike times
         #n0 = self.n-1 # 0-based n
@@ -436,6 +449,7 @@ class nISIRate(BaseRate):
             # or maybe try sig.resample() instead
         else:
             raise ValueError, 'unknown interpolation method: %s' % self.interp
+
     def plot(self):
         super(nISIRate, self).plot()
         title('neuron %d - %d-inter-spike-interval spike rate, %s interpolation' % (self.neuron.id, self.nisi, self.interp))
@@ -453,6 +467,7 @@ class IDPRate(BaseRate):
         super(IDPRate, self).__init__(neuron=neuron, trange=trange)
         self.kind = 'idp'
         self.tres = tres
+
     def calc(self):
 
         # Step 1: find sudden changes in ISI distribution
@@ -507,9 +522,11 @@ class GaussRate(BaseRate):
         super(GaussRate, self).__init__(neuron=neuron, trange=trange)
         self.kind = 'gauss'
         self.width = width
+
     def calc(self):
         # use scipy.signal.gaussian, use just left half to keep it causal
         raise NotImplementedError
+
     def plot(self):
         super(GaussRate, self).plot()
         title('Gaussian sliding window spike rate')
@@ -521,9 +538,11 @@ class RectRate(BaseRate):
         super(RectRate, self).__init__(neuron=neuron, trange=trange)
         self.kind = 'rect'
         self.width = width
+
     def calc(self):
         # use scipy.signal.boxcar
         raise NotImplementedError
+
     def plot(self):
         super(RectRate, self).plot()
         title('rectangular sliding window spike rate')
@@ -539,6 +558,7 @@ class RatePDF(object):
         self.scale = scale
         self.normed = normed
         self.rate = neuron.rate(**kwargs) # returns a Rate object of some kind
+
     def __eq__(self, other):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
@@ -548,6 +568,7 @@ class RatePDF(object):
             return True
         else:
             return False
+
     def calc(self):
         if self.scale == 'log':
             safe = list(self.rrange) # convert from immutable tuple to mutable list
@@ -563,6 +584,7 @@ class RatePDF(object):
         else:
             raise ValueError, 'Unknown scale: %r' % scale
         self.n, self.r = histogram(self.rate.r, bins=r, normed=self.normed)
+
     def plot(self):
         figure()
         if self.scale == 'log':
@@ -646,7 +668,7 @@ class NeuronRate(BaseNeuron):
 
 
 class RevCorr(object):
-    """Base class for doing reverse correlation of spikes to simulus"""
+    """Base class for doing reverse correlation of spikes to stimulus"""
     def __init__(self, neuron=None, experiment=None, trange=None, nt=10):
         self.neuron = neuron
         self.experiment = experiment
@@ -666,6 +688,7 @@ class RevCorr(object):
         self.width = self.movie.data.shape[-1] # dims are nframes, height, width
         self.height = self.movie.data.shape[-2]
         self.done = False # hasn't yet successfully completed its calc() method
+
     def __eq__(self, other):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
@@ -675,11 +698,13 @@ class RevCorr(object):
             return True
         else:
             return False
+
     def calc(self):
         """General calc step that has to be performed for all kinds of reverse correlations"""
         spikes = self.neuron.cut(self.trange)
         self.rcdini = self.experiment.din[:, 0].searchsorted(spikes) - 1 # revcorr dini. Find where the spike times fall in the din, dec so you get indices that point to the most recent din value for each spike
         #self.din = self.experiment.din[rcdini, 1] # get the din (frame indices) at the rcdini
+
     def plot(self, interp='nearest', normed=True, title='ReceptiveFieldFrame', scale=2.0):
         """Plots the spatiotemporal RF as bitmaps in a wx.Frame"""
         rf = self.rf.copy() # create a copy to manipulate for display purposes, (nt, width, height)
@@ -784,6 +809,7 @@ class STA(RevCorr):
             #self.rf[ti] = mean_accum2(data, frameis)
         pd.Destroy()
         self.done = True
+
     def plot(self, interp='nearest', normed=True, scale=2.0):
         super(STA, self).plot(interp=interp, normed=normed,
                               title=lastcmd(),
@@ -798,6 +824,7 @@ class STC(RevCorr):
     def calc(self):
         print 'INCOMPLETE'
         super(STC, self).calc() # run the general calc() steps
+
     def plot(self):
         print 'INCOMPLETE'
         vals = super(STC, self).plot()

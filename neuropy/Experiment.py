@@ -9,28 +9,32 @@ from Core import _data
 import Neuron
 from Recording import PopulationRaster, Codes, CodeCorrPDF
 
-class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dimstim???????????????????????????
+class BaseExperiment(object):
     """An Experiment corresponds to a single contiguous VisionEgg stimulus session.
     It contains information about the stimulus during that session, including
-    the DIN values and the text header"""
+    the DIN values and the text header. For data generated with dimstim >= 0.16,
+    it includes the entire dimstim.Experiment object as an attribute (.e)
+    a neuropy.Experiment is basically a container for a dimstim.Experiment"""
 
     from Recording import Recording
 
-    def __init__(self, id=None, name=None, parent=Recording):
+    def __init__(self, id=None, name=None, parent=None):
         self.level = 4 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
-        try:
-            self.r = parent() # init parent Recording object
-        except TypeError: # parent is an instance, not a class
+        if parent:
             self.r = parent # save parent Recording object
+        else:
+            self.r = Recording() # init parent Recording object
         if name is None:
             raise ValueError, 'Experiment name can\'t be None'
         self.id = id # not really used by the Experiment class, just there for user's info
         self.name = name
         self.path = self.r.path
+
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
+
     def writetree(self, string):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
@@ -51,10 +55,7 @@ class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dims
             self.textheader = f.read() # read it all in
             f.close()
         except IOError:
-            if self.r.__class__ == Recording: # parent is a Recording, which normally have textheaders in their Experiments
-                warn('Error reading: <%s>, text header not loaded' % f.name)
-            else: # parent is probably a Run, which don't have textheaders in their Experiments, don't print a warning
-                pass
+            warn('Error reading: <%s>, text header not loaded' % f.name)
             self.textheader = '' # set to empty
 
         treestr = self.level*TAB + self.name + '/'
@@ -69,15 +70,20 @@ class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dims
             for newname in newnames:
                 self.__setattr__(newname, eval(newname)) # for each variable that was defined in the textheader, bind it as an attribute of this Experiment
             try:
-                self.__cat__ # text header didn't have a cat number in it
+                self.__version__ # dimtim up to ptc15 didn't have a version
             except AttributeError:
-                self.__cat__ = self.r.t.a.id # haven't considered what to do with a rat...
-            if self.__cat__ >= 16: # post major refactoring of dimstim
-                # need to at least check if this Experiment uses movies
-                # as in "for m in _data.movies:" code block in self.loadprecat16exp()
-                pass
+                self.__version__ = 0.0
+            if self.__version__ >= 0.16: # after major refactoring of dimstim
+                # TODO:
+                # - check if this Experiment uses movies
+                # - probably some other stuff too
+                self.REFRESHTIME = intround(1/float(self.I.REFRESHRATE)*1000000) # in us, keep 'em integers
             else:
                 self.loadprecat16exp()
+        else:
+            self.REFRESHTIME = self.din[1, 0] - self.din[0, 0] # use the time difference between the first two din instead
+
+        self.trange = (self.din[0, 0], self.din[-1, 0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
 
     def loadprecat16exp(self):
 
@@ -131,10 +137,7 @@ class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dims
         try:
             self.REFRESHTIME = intround(1/float(self.REFRESHRATE)*1000000) # in us, keep 'em integers
         except AttributeError:
-            self.REFRESHTIME = self.din[1,0] - self.din[0,0] # use the time difference between the first two din instead
-        #self.buildsweepranges()
-
-        self.trange = (self.din[0,0], self.din[-1,0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
+            pass
 
     def buildprecat16SweepTable(self, varlist, varvals, nruns=1, shuffleRuns=0, blankSweep=(0,0),
                                 shuffleBlankSweeps=0, makeSweepTableText=0):
@@ -393,12 +396,6 @@ class BaseExperiment(dimstim.Experiment.Experiment): # wise to inherit from dims
         return sweeptable, dimlist, sweeplist, sweeptabletext
 
 
-
-    def buildsweepranges(self):
-        print 'INCOMPLETE!!!!!!!!!!!!!!!!'
-        self.sweepranges = {}
-
-
 class ExperimentCode(BaseExperiment):
     """Mix-in class that defines the spike code related Experiment methods"""
     def code(self, neuron=None, **kwargs):
@@ -496,6 +493,7 @@ class RevCorrs(object):
         self.nt = nt # number of revcorr timepoints
         self.tis = range(0, nt, 1) # revcorr timepoint indices
         self.t = [ intround(ti * self.movie.sweeptimeMsec) for ti in self.tis ] #list(array(self.tis) * self.movie.sweeptimeMsec) # revcorr timepoint values,
+
     def plot(self, interp='nearest', normed=True, title='ReceptiveFieldFrame', scale=2.0):
         """Plots the RFs as bitmaps in a wx.Frame. normed = 'global'|True|False"""
         rfs = [] # list of receptive fields to pass to ReceptiveFieldFrame object
@@ -529,6 +527,7 @@ class STAs(RevCorrs):
         for neuron in self.neurons:
             stao = neuron.sta(experiment=self.experiment, trange=self.trange, nt=self.nt)
             self.stas.append(stao)
+
     def plot(self, interp='nearest', normed=True, scale=2.0):
         super(STAs, self).plot(interp=interp, normed=normed,
                                title=lastcmd(),
@@ -544,6 +543,7 @@ class STCs(RevCorrs):
         for neuron in self.neurons:
             stco = neuron.stc(experiment=self.experiment, trange=self.trange, nt=self.nt)
             self.stcs.append(stco)
+
     def plot(self, interp='nearest', normed=True, scale=2.0):
         super(STCs, self).plot(interp=interp, normed=normed,
                                title=lastcmd(),

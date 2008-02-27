@@ -47,13 +47,16 @@ class BaseRecording(object):
         self.t.r[self.id] = self # add/overwrite this Recording to its parent's dict of Recordings, in case this Recording wasn't loaded by its parent
         self.e = dictattr() # store Experiments in a dictionary with attrib access
         self.rip = dictattr() # store Rips in a dictionary with attrib access
+
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
+
     def writetree(self, string):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
         self.t.writetree(string)
+
     def id2name(self, path, id):
         name = [ dirname for dirname in os.listdir(path)
                  if os.path.isdir(os.path.join(path, dirname))
@@ -62,6 +65,7 @@ class BaseRecording(object):
             raise NameError, 'Ambiguous or non-existent Recording id: %s' % id
         else:
             return name[0] # pull the string out of the list
+
     def name2id(self, name):
         id = name.split()[0] # return the first word in the name, using whitespace as separators
         try:
@@ -73,6 +77,7 @@ class BaseRecording(object):
         except ValueError:
             pass # it's alphanumeric (but starts with a number), leave it as a string
         return id
+
     def load(self):
 
         from Experiment import Experiment
@@ -234,6 +239,7 @@ class PopulationRaster(object):
             else:
                 self.a.vlines(x=x, ymin=nii-0.5, ymax=nii+0.5, fmt='k-')
         self.a.set_xlim(left/self.tconv, (left+width)/self.tconv) # convert t
+
     def _panx(self, npages=None, left=None):
         """Pans the raster along the x axis by npages, or to position left"""
         self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
@@ -242,6 +248,7 @@ class PopulationRaster(object):
         else: # use npages instead
             self.plot(left=self.left+self.width*npages, width=self.width)
         self.f.canvas.draw() # redraw the figure
+
     def _zoomx(self, factor):
         """Zooms the raster along the x axis by factor"""
         self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
@@ -250,6 +257,7 @@ class PopulationRaster(object):
         left = centre - width / 2.0
         self.plot(left=left, width=width)
         self.f.canvas.draw() # redraw the figure
+
     def _goto(self):
         """Bring up a dialog box to jump to timepoint, mark it with a dotted line"""
         ted = wx.TextEntryDialog(parent=None, message='Go to timepoint (ms):', caption='Goto',
@@ -263,6 +271,7 @@ class PopulationRaster(object):
                 self.f.canvas.draw() # redraw the figure
             except ValueError: # response wasn't a valid number
                 pass
+
     def _cyclethousandssep(self):
         """Cycles the tick formatter through thousands separators"""
         if self.formatter.thousandsSep == ',':
@@ -302,6 +311,7 @@ class PopulationRaster(object):
             self.tooltip.Enable(True) # make sure it's enabled
         else: # mouse is outside the axes
             self.tooltip.Enable(False) # disable the tooltip
+
     def _onkeypress(self, event):
         """Called during a figure keypress"""
         key = event.guiEvent.GetKeyCode() # wx dependent
@@ -378,6 +388,7 @@ class Codes(object):
         self.nis = [ neuron.id for neuron in self.neurons ]
         self.nneurons = len(self.neurons)
         self.nis2niisdict = dict(zip(self.nis, range(self.nneurons))) # make a dict from keys:self.nis, vals:range(self.nneurons). This converts from nis to niis (from neuron indices to indices into the binary code array self.c)
+
     def nis2niis(self, nis=None):
         """Converts from nis to niis (from neuron indices to indices into the binary code array self.c).
         nis can be a sequence"""
@@ -385,6 +396,7 @@ class Codes(object):
             return [ self.nis2niisdict[ni] for ni in nis ]
         except TypeError: # iteration over non-sequence, nis is a scalar
             return self.nis2niisdict[nis]
+
     def calc(self):
         self.s = [] # stores the corresponding spike times for each neuron, just for reference
         self.c = [] # stores the 2D code array
@@ -402,17 +414,21 @@ class Codes(object):
         nneurons = len(self.neurons)
         nbins = len(self.c[0]) # all entries in the list should be the same length
         self.c = cat(self.c).reshape(nneurons, nbins)
+
     def syncis(self):
         """Returns synch indices, ie the indices of the bins for which all the
         neurons in this Codes object have a 1 in them"""
         return self.c.prod(axis=0).nonzero()[0] # take product down all rows, only synchronous events across all cells will survive
+
     def syncts(self):
         """Returns synch times, ie times of the left bin edges for which
         all the neurons in this Codes object have a 1 in them"""
         return self.t[self.syncis()]
+
     def synctsms(self):
         """Returns synch times in ms, to the nearest ms"""
         return np.int32(np.round(self.syncts() / 1e3))
+
     def copy(self):
         """Returns a copy of the Codes object"""
         return copy(self)
@@ -562,7 +578,6 @@ class CodeCorrPDF(object):
                             transform = a.transAxes,
                             horizontalalignment='right',
                             verticalalignment='top')
-
 
 
 class RecordingCode(BaseRecording):
@@ -1719,12 +1734,15 @@ class RecordingNetstate(BaseRecording):
     def ns_(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a BaseNetstate object"""
         return BaseNetstate(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
+
     def ns_isinghist(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateIsingHist object"""
         return NetstateIsingHist(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase)
+
     def ns_nspikingpmf(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateNspikingPMF object"""
         return NetstateNspikingPMF(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
+
     def ns_scatter(self, experiments=None, nis=None, R=None, shuffleids=False,
                    kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateScatter object"""
@@ -1732,9 +1750,11 @@ class RecordingNetstate(BaseRecording):
                                 kind=kind, tres=tres, phase=phase)
         ns_so.calc(R=R, shuffleids=shuffleids)
         return ns_so
+
     def ns_i2vsin(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateI2vsIN object"""
         return NetstateI2vsIN(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
+
     def ns_djshist(self, experiments=None, nis=None, ngroups=5, R=None, shuffleids=False,
                    kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateDJSHist object"""
@@ -1742,15 +1762,19 @@ class RecordingNetstate(BaseRecording):
                                   kind=kind, tres=tres, phase=phase)
         ns_djso.calc(ngroups=ngroups, R=R, shuffleids=shuffleids)
         return ns_djso
+
     def ns_s1invsn(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateS1INvsN object"""
         return NetstateS1INvsN(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
+
     def ns_nnplus1(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateNNplus1 object"""
         return NetstateNNplus1(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
+
     def ns_checkcells(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateCheckcells object"""
         return NetstateCheckcells(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
+
     def ns_ta(self, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
         """Returns a NetstateTriggeredAverage object"""
         return NetstateTriggeredAverage(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)

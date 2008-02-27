@@ -1,20 +1,20 @@
 r"""Experimental and model neuronal and stimulus data analysis in Python
 
-                         object hierarchies:
+          object hierarchy:
 
                                 level:
 
-                Data              0                Model
-                  |                                  |
-                Animal            1               System
-                  |                                  |
-                Track             2                  |
-                  |                                  |
-              Recording           3                 Run
-             /         \                           /   \
-       Experiment      Rip        4       Experiment    Rip
-            |           |                      |         |
-          Movie       Neuron      5          Movie     Neuron
+                Data              0
+                  |
+                Animal            1
+                  |
+                Track             2
+                  |
+              Recording           3
+             /         \
+       Experiment      Rip        4
+            |           |
+          Movie       Neuron      5
 """
 
 __author__ = "Martin Spacek"
@@ -25,10 +25,8 @@ from Core import *
 from Core import _data # ensure it's imported, in spite of leading _, useful for user examination of default Data object
 
 from Animal import Animal
-from System import System
 from Track import Track
 from Recording import Recording
-from Run import Run
 from Experiment import Experiment
 from Rip import Rip
 from Movie import Movie
