@@ -1,6 +1,11 @@
+- make objects in hierarchy directly accessible in parent's namespace, if that name isn't already taken.
+    - e.g. ptc15.t7c.r81 instead of having to type ptc15.t['7c'].r[81]
+
 - need to deal with change of dimstim movie sweep time from sweeptimeMsec to sweepSec for Cat 16+
+
 - get rid of all use of python's built-in random module, use numpy.random instead
-- if an analysis method needs to return more than one object, have return them in a dictattr of results
+
+- if an analysis method needs to return more than one object, have them return in a dictattr of results
 
 - the whole ContrainedNeuron thing seems pretty retarted to me after not looking at it for a while... Is it really necessary? Why are there two separate sets loaded for each rip (both Neurons *and* ConstrainedNeurons)?
 
@@ -42,7 +47,7 @@ Netstate stuff:
 
 - spike interval histograms with log scale (see Lundstrom + Fairhall 2006)
 
-- LFPs! how to export them from surfbawd, and handle them in neuropy?
+- LFPs! how to export them from surfbawd, and handle them in neuropy? forget that, access them directly with spyke
 
 - rasters
     - multi trial single neuron raster plots

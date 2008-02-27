@@ -24,7 +24,7 @@ __author__ = "Martin Spacek"
 from Core import *
 from Core import _data # ensure it's imported, in spite of leading _, useful for user examination of default Data object
 
-from Animal import Cat, Rat
+from Animal import Animal
 from System import System
 from Track import Track
 from Recording import Recording

@@ -7,27 +7,23 @@ from Core import _data # ensure it's imported, in spite of leading _
 
 class Track(object):
     """A Track can have multiple Recordings"""
-    def __init__(self, id=TRACKID, name=None, parent=None):
+    def __init__(self, id=TRACK, name=None, parent=None):
 
-        from Animal import Cat, Rat
+        from Animal import Animal
 
         self.level = 2 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         if parent == None:
             try:
-                self.a = _data.a[ANIMALNAME] # see if the default Animal has already been init'd
+                self.a = _data.a[ANIMAL] # see if the default Animal has already been init'd
             except KeyError: # it hasn't, init the default animal, save it in self.a, and add it to _data.a
-                if SPECIES == 'Cat':
-                    defaultanimal = Cat(id=CATID, parent=_data)
-                elif SPECIES == 'Rat':
-                    defaultanimal = Rat(id=RATID, parent=_data)
-                self.a = defaultanimal
-                _data.a[defaultanimal.name] = defaultanimal
+                self.a = Animal(id=ANIMAL, parent=_data)
+                _data.a[self.a.id] = self.a
         else:
             self.a = parent # save parent Animal object
-        if id is not None:
+        if id != None:
             name = self.id2name(self.a.path, id) # use the id to get the name
-        elif name is not None:
+        elif name != None:
             id = self.name2id(name) # use the name to get the id
         else:
             raise ValueError, 'Track id and name can\'t both be None'
@@ -46,13 +42,13 @@ class Track(object):
     def id2name(self, path, id):
         name = [ dirname for dirname in os.listdir(path)
                  if os.path.isdir(os.path.join(path, dirname))
-                 and dirname.startswith('Track %s' % id) ]
+                 and dirname.lower() == 'tr%s' % id ]
         if len(name) != 1:
             raise NameError, 'Ambiguous or non-existent Track id: %s' % id
         else:
             return name[0] # pull the string out of the list
     def name2id(self, name):
-        id = name.replace('Track ', '', 1) # replace first occurrence of 'Track ' with nothing, keep the rest
+        id = name.lower().replace('tr', '', 1) # replace first occurrence of 'tr' with nothing, keep the rest
         if not id:
             raise NameError, 'Badly formatted Track name: %s' % name
         try:
@@ -65,10 +61,11 @@ class Track(object):
         from Recording import Recording
 
         treestr = self.level*TAB + self.name + '/'
-        self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
+        self.writetree(treestr+'\n') # print string to tree hierarchy,
+        print treestr # and to screen
         dirnames = [ dirname for dirname in os.listdir(self.path)
                      if os.path.isdir(os.path.join(self.path, dirname))
-                     and dirname[0].isdigit() ] # 1st char in dirname must be a digit, that's all
+                     and dirname[0].isdigit() ] # collect recording names: 1st char in dirname must be a digit, that's all
         for dirname in dirnames:
             recording = Recording(id=None, name=dirname, parent=self) # make an instance using just the recording name (let it figure out the recording id)
             recording.load() # load the Recording

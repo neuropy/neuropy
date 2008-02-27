@@ -29,10 +29,10 @@ class BaseRecording(object):
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         if parent == None:
             try:
-                self.t = _data.a[ANIMALNAME].t[TRACKID] # see if the default Track has already been init'd
+                self.t = _data.a[ANIMAL].t[TRACK] # see if the default Track has already been init'd
             except KeyError:
                 self.t = Track() # init the default Track...
-                _data.a[ANIMALNAME].t[self.t.id] = self.t  # ...and add it to the default Animal's list of Tracks
+                _data.a[ANIMAL].t[self.t.id] = self.t  # ...and add it to the default Animal's list of Tracks
         else:
             self.t = parent # save parent Track object
         if id is not None:

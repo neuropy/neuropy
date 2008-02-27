@@ -47,14 +47,10 @@ MODELPATH = os.path.join(os.sep, 'model')
 SPECIES = 'Cat'
 CATID = 15
 RATID = 0
-if SPECIES == 'Cat':
-    ANIMALNAME = '%s %d' % (SPECIES, CATID)
-elif SPECIES == 'Rat':
-    ANIMALNAME = '%s %d' % (SPECIES, RATID)
-else:
-    raise ValueError, 'unknown species %s' % SPECIES
 
-TRACKID = '7c'
+ANIMAL = 'ptc15'
+TRACK = '7c'
+
 RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording/Run
 MOVIEPATH = os.path.join(os.sep, 'pub', 'movies')
 
@@ -390,7 +386,7 @@ def convertalltxtdin2binarydin(path=None):
 
     for fname in listing:
         if fname.endswith('.csv'):
-            dinfnames.append(fname.rstrip('.csv')) # text din filenames without the .csv extension
+            dinfnames.append(fname[:-len('.csv')]) # text din filenames without the .csv extension
 
     for dinfname in dinfnames:
         fin = os.path.join(path, dinfname) + '.csv'
