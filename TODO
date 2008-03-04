@@ -1,6 +1,8 @@
 - make objects in hierarchy directly accessible in parent's namespace, if that name isn't already taken.
     - e.g. ptc15.t7c.r81 instead of having to type ptc15.t['7c'].r[81]
 
+- from __future__ import division
+
 - need to deal with change of dimstim movie sweep time from sweeptimeMsec to sweepSec for Cat 16+
 
 - get rid of all use of python's built-in random module, use numpy.random instead

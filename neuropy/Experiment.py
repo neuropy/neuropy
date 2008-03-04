@@ -45,7 +45,6 @@ class BaseExperiment(object):
     def load(self):
 
         from Recording import Recording
-        from Movie import Movie
 
         f = file(os.path.join(self.path, self.name) + '.din', 'rb') # open the din file for reading in binary mode
         self.din = np.fromfile(f, dtype=np.int64).reshape(-1, 2) # reshape to nrows x 2 columns
@@ -70,23 +69,37 @@ class BaseExperiment(object):
             for newname in newnames:
                 self.__setattr__(newname, eval(newname)) # for each variable that was defined in the textheader, bind it as an attribute of this Experiment
             try:
-                self.__version__ # dimtim up to ptc15 didn't have a version
+                self.__version__ # dimtim up to ptc15 didn't have a version, neither did NVS display
             except AttributeError:
                 self.__version__ = 0.0
             if self.__version__ >= 0.16: # after major refactoring of dimstim
-                # TODO:
-                # - check if this Experiment uses movies
-                # - probably some other stuff too
-                self.REFRESHTIME = intround(1/float(self.I.REFRESHRATE)*1000000) # in us, keep 'em integers
+                self.sweeptable = Core.SweepTable(experiment=self) # build the sweep table
+                self.st = self.sweeptable.data # synonym, used a lot by Experiment subclasses
+                self.xorig = deg2pix(self.static.xorigDeg) + I.SCREENWIDTH / 2
+                self.yorig = deg2pix(self.static.yorigDeg) + I.SCREENHEIGHT / 2
+
+                self.REFRESHTIME = intround(1 / float(self.I.REFRESHRATE) * 1000000) # in us, keep 'em integers
             else:
-                self.loadprecat16exp()
+                self.loadCat15exp()
         else:
             self.REFRESHTIME = self.din[1, 0] - self.din[0, 0] # use the time difference between the first two din instead
 
         self.trange = (self.din[0, 0], self.din[-1, 0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
 
-    def loadprecat16exp(self):
+    def loadCat15exp(self):
 
+        ## TODO: - fake a .e dimstim.Experiment object, to replace what used to be the .stims object for Movie experiments
+        '''           - self.movie = self.experiment.stims[0]
+                - need to convert sweeptimeMsec to sweepSec
+                   - assert len(self.experiment.stims) == 1
+                   - self.movie = self.experiment.stims[0]
+                   - self.movie.load() # ensure the movie's data is loaded
+
+            if self.movie.oname == 'mseq32':
+                frameis = frameis[frameis != 65535] # remove all occurences of 65535
+            elif self.movie.oname == 'mseq16':
+                frameis = frameis[frameis != 16383] # remove all occurences of 16383
+        '''
         from Movie import Movie
 
         try:
@@ -119,13 +132,13 @@ class BaseExperiment(object):
             for s in self.stims:
                 varvals = {} # init a dictionary that will contain variable values
                 for var in s.varlist:
-                    varvals[var] = eval('s.'+var) # generate a dictionary with var:val entries, to pass to buildSweepTable
+                    varvals[var] = eval('s.' + var) # generate a dictionary with var:val entries, to pass to buildSweepTable
                 s.sweepTable = dimstim.Core.buildSweepTable(s.varlist, varvals, s.nruns, s.shuffleRuns, s.blankSweep, s.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
         else: # this is a simple stim (not object oriented)
             varvals = {} # init a dictionary that will contain variable values
             for var in self.varlist:
-                varvals[var] = eval('self.'+var) # generate a dictionary with var:val entries, to pass to buildSweepTable
-            self.sweepTable = self.buildprecat16SweepTable(self.varlist, varvals, self.nruns, self.shuffleRuns, self.blankSweep, self.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
+                varvals[var] = eval('self.' + var) # generate a dictionary with var:val entries, to pass to buildSweepTable
+            self.sweepTable = self.buildCat15SweepTable(self.varlist, varvals, self.nruns, self.shuffleRuns, self.blankSweep, self.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
 
         # for all (Movie) stims inited by the textheader, enter each Movie into _data.movies
         for s in self.stims:
@@ -135,12 +148,12 @@ class BaseExperiment(object):
                 #treestr = s.level*TAB + os.path.join(s.path, s.fname)
                 #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
         try:
-            self.REFRESHTIME = intround(1/float(self.REFRESHRATE)*1000000) # in us, keep 'em integers
+            self.REFRESHTIME = intround(1 / float(self.REFRESHRATE) * 1000000) # in us, keep 'em integers
         except AttributeError:
             pass
 
-    def buildprecat16SweepTable(self, varlist, varvals, nruns=1, shuffleRuns=0, blankSweep=(0,0),
-                                shuffleBlankSweeps=0, makeSweepTableText=0):
+    def buildCat15SweepTable(self, varlist, varvals, nruns=1, shuffleRuns=0, blankSweep=(0,0),
+                             shuffleBlankSweeps=0, makeSweepTableText=0):
         """Deprecated: kept only for backward compatibility with Cat 15
         Builds a sweep table
         Returns: 'sweeptable': a dictionary where each entry (key) is a variable name, followed
@@ -489,10 +502,9 @@ class RevCorrs(object):
             self.trange = self.experiment.trange
         else:
             self.trange = trange
-        self.movie = self.experiment.stims[0]
         self.nt = nt # number of revcorr timepoints
         self.tis = range(0, nt, 1) # revcorr timepoint indices
-        self.t = [ intround(ti * self.movie.sweeptimeMsec) for ti in self.tis ] #list(array(self.tis) * self.movie.sweeptimeMsec) # revcorr timepoint values,
+        self.t = [ intround(ti * self.experiment.e.dynamic.sweepSec * 1000) for ti in self.tis ] # revcorr timepoint values, in ms
 
     def plot(self, interp='nearest', normed=True, title='ReceptiveFieldFrame', scale=2.0):
         """Plots the RFs as bitmaps in a wx.Frame. normed = 'global'|True|False"""

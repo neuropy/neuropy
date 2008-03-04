@@ -3,6 +3,7 @@
 #print 'importing Neuron'
 
 from Core import *
+import dimstim
 
 class BaseNeuron(object):
     """A Neuron object's spike data spans all the Experiments within a Recording.
@@ -676,17 +677,19 @@ class RevCorr(object):
             self.trange = self.experiment.trange
         else:
             self.trange = trange
-        # for now, only do revcorr if experiment.stims has only one entry
-        # TODO for Cat 15: multiple (different) movies in self.stims (and hence also in experiment.playlist), sparse noise stims
-        assert len(self.experiment.stims) == 1
-        self.movie = self.experiment.stims[0]
-        self.movie.load() # ensure the movie's data is loaded
+        assert self.experiment.e.__class__ == dimstim.Movie.Movie
+        self.movie = self.experiment.e
+        try:
+            self.movie.frames # check if movie frames have been loaded from file
+        except AttributeError:
+            self.movie.load(asarray=True, flip=False) # Load as 3D array instead of as a list of 2D arrays, more convenient for analysis, although will cause memory problems for really big (>1GB movies). Don't flip the movie frames vertically for OpenGL's bottom left origin, since we aren't using OpenGL for analysis
         self.nt = nt # number of revcorr timepoints
         self.tis = range(0, nt, 1) # revcorr timepoint indices
-        self.t = [ intround(ti * self.movie.sweeptimeMsec) for ti in self.tis ] # revcorr timepoint values, stored in a list, not an array. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
-        self.ndinperframe = intround(self.movie.sweeptimeMsec / float(self.experiment.REFRESHTIME / 1000.))
-        self.width = self.movie.data.shape[-1] # dims are nframes, height, width
-        self.height = self.movie.data.shape[-2]
+        self.t = [ intround(ti * self.movie.dynamic.sweepSec * 1000) for ti in self.tis ] # revcorr timepoint values, stored in a list, not an array. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
+        self.ndinperframe = intround(self.movie.dynamic.sweepSec * 1000000 / self.experiment.REFRESHTIME)
+        #self.movie.frames = asarray(self.movie.frames)
+        self.width = self.movie.frames.shape[-1] # (nframes, height, width)
+        self.height = self.movie.frames.shape[-2]
         self.done = False # hasn't yet successfully completed its calc() method
 
     def __eq__(self, other):
@@ -775,8 +778,8 @@ class STA(RevCorr):
         super(STA, self).calc() # run the base calc() steps first
         #sys.stdout.write('n%d' % self.neuron.id) # prevents trailing space and newline
         self.rf = zeros([self.nt, self.height, self.width], dtype=np.float64) # init a 3D matrix to store the STA at each timepoint. rf == 'receptive field'
-        #data = np.float64(self.movie.data) # converting from uint8 to float64 seems to speed up mean() method a bit
-        data = self.movie.data
+        #frames = np.float64(self.movie.frames) # converting from uint8 to float64 seems to speed up mean() method a bit
+        frames = self.movie.frames
         tstart = time.clock()
         pd = wx.ProgressDialog(title='n%d STA progress' % self.neuron.id, message='', maximum=self.tis[-1], style=1) # create a progress dialog
         for ti in self.tis:
@@ -790,23 +793,23 @@ class STA(RevCorr):
             rcdini = rcdini[rcdini >= 0] # remove any -ve valued indices. Is this the most efficient way to do this?
             frameis = self.experiment.din[rcdini, 1] # get the din values (frame indices) at the rcdini for this timepoint
             # in Cat 15, we erroneously duplicated the first frame of the mseq movies at the end, giving us one more frame (0 to 65535 for mseq32) than we should have had (0 to 65534 for mseq32). We're now using the correct movies, but the din for Cat 15 mseq experiments still have those erroneous frame indices (65535 and 16383 for mseq32 and mseq16 respectively), so we'll just ignore them for revcorr purposes.
-            if self.movie.oname == 'mseq32':
+            if 'MSEQ32' in self.movie.static.fname:
                 frameis = frameis[frameis != 65535] # remove all occurences of 65535
-            elif self.movie.oname == 'mseq16':
+            elif 'MSEQ16' in self.movie.static.fname:
                 frameis = frameis[frameis != 16383] # remove all occurences of 16383
             # take the mean of all the frames at this timepoint:
             '''
             # slowest way:
-            self.rf[ti] = data[frameis].mean(axis=0)
+            self.rf[ti] = frames[frameis].mean(axis=0)
             '''
-            frames = data.take(frameis.astype(np.int32), axis=0) # collect the relevant frames for this timepoint, take is much faster than direct indexing, but have to typecast indices to int32, maybe cuz this machine is 32bit?
+            pickedframes = frames.take(frameis.astype(np.int32), axis=0) # collect the relevant frames for this timepoint, take is much faster than direct indexing, but have to typecast indices to int32, maybe cuz this machine is 32bit?
             '''
             # faster way:
             self.rf[ti] = frames.mean(axis=0)
             '''
             # much faster way:
-            self.rf[ti] = mean_accum(frames)
-            #self.rf[ti] = mean_accum2(data, frameis)
+            self.rf[ti] = mean_accum(pickedframes)
+            #self.rf[ti] = mean_accum2(frames, frameis)
         pd.Destroy()
         self.done = True
 
