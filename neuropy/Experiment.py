@@ -1,13 +1,20 @@
 """Defines the Experiment class and all of its support classes."""
 
-#print 'importing Experiment'
-
-import dimstim.Experiment
+import dimstim.Core
 
 from Core import *
+from Core import Cat15Movie as Movie # need to name it Movie since that's what they're called in the Cat 15 textheader
 from Core import _data
+
 import Neuron
 from Recording import PopulationRaster, Codes, CodeCorrPDF
+
+
+class FakeDimstimExperiment(object):
+    """Just an empty class to bind Cat 15 textheader stuff to
+    and modify to mimic a dimstim >= 0.16 Experiment and all of its
+    attribs"""
+
 
 class BaseExperiment(object):
     """An Experiment corresponds to a single contiguous VisionEgg stimulus session.
@@ -44,8 +51,6 @@ class BaseExperiment(object):
 
     def load(self):
 
-        from Recording import Recording
-
         f = file(os.path.join(self.path, self.name) + '.din', 'rb') # open the din file for reading in binary mode
         self.din = np.fromfile(f, dtype=np.int64).reshape(-1, 2) # reshape to nrows x 2 columns
         f.close()
@@ -58,28 +63,32 @@ class BaseExperiment(object):
             self.textheader = '' # set to empty
 
         treestr = self.level*TAB + self.name + '/'
-        self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
+        self.writetree(treestr+'\n') # print string to tree hierarchy...
+        print treestr # ...and screen
 
         if self.textheader: # if it isn't empty
             names1 = locals().copy() # namespace before execing the textheader
-            # should this instead be done line by line, using some regexps, as in dimstim?????????????
-            exec(self.textheader) # execute the textheader as Python code. TODO: maybe add some checks here to prevent changes to filesystem from accidental code, unload the os or sys modules or something? But that wouldn't prevent 'accidental' code from 'accidentally' re-importing such modules
+            exec(self.textheader)
             names2 = locals().copy() # namespace after
             newnames = [ n2 for n2 in names2 if n2 not in names1 and n2 != 'names1' ] # names that were added to the namespace, excluding the 'names1' name itself
-            for newname in newnames:
-                self.__setattr__(newname, eval(newname)) # for each variable that was defined in the textheader, bind it as an attribute of this Experiment
             try:
-                self.__version__ # dimtim up to ptc15 didn't have a version, neither did NVS display
-            except AttributeError:
+                self.__version__ = eval('__version__') # dimstim up to Cat 15 didn't have a version, neither did NVS display
+            except NameError:
                 self.__version__ = 0.0
             if self.__version__ >= 0.16: # after major refactoring of dimstim
-                self.sweeptable = Core.SweepTable(experiment=self) # build the sweep table
+                for newname in newnames:
+                    self.__setattr__(newname, eval(newname)) # bind each variable in the textheader as an attrib of self
+                self.sweeptable = dimstim.Core.SweepTable(experiment=self.e) # build the sweep table, given dimstim exp
                 self.st = self.sweeptable.data # synonym, used a lot by Experiment subclasses
-                self.xorig = deg2pix(self.static.xorigDeg) + I.SCREENWIDTH / 2
-                self.yorig = deg2pix(self.static.yorigDeg) + I.SCREENHEIGHT / 2
-
+                self.e.xorig = dimstim.Core.deg2pix(self.e.static.xorigDeg) + I.SCREENWIDTH / 2 # may as well
+                self.e.yorig = dimstim.Core.deg2pix(self.e.static.yorigDeg) + I.SCREENHEIGHT / 2
                 self.REFRESHTIME = intround(1 / float(self.I.REFRESHRATE) * 1000000) # in us, keep 'em integers
+                #TODO: _data.movies[self.e.fname] = e # add Movie Experiment to _data.movies dictattr to prevent from ever loading its frames data more than once
             else:
+                fde = FakeDimstimExperiment() # fake a dimstim Experiment
+                for newname in newnames:
+                    fde.__setattr__(newname, eval(newname)) # bind each variable in the textheader as an attrib of fde
+                self.e = fde # bind it as .e, to mimic dimstim 0.16 textheaders
                 self.loadCat15exp()
         else:
             self.REFRESHTIME = self.din[1, 0] - self.din[0, 0] # use the time difference between the first two din instead
@@ -100,10 +109,8 @@ class BaseExperiment(object):
             elif self.movie.oname == 'mseq16':
                 frameis = frameis[frameis != 16383] # remove all occurences of 16383
         '''
-        from Movie import Movie
-
         try:
-            self.stims = unique(self.playlist) # self.stims is a non-repeating list of object oriented stim objects (Movie is the only possible type) in this Experiment
+            self.stims = unique(self.e.playlist) # self.stims is a non-repeating list of object oriented stim objects (Movie is the only possible type) in this Experiment
         except AttributeError: # this was a simple non object-oriented stim, has no playlist
             self.stims = []
         for s in self.stims:
@@ -114,8 +121,8 @@ class BaseExperiment(object):
                     _data.movies[s.name] = s # add s to _data.movies dictattr
             except AttributeError: # s.fname doesn't exist? probably not a Movie stim
                 pass
-            # Search self.moviepath string (from textheader) for 'Movies' word (preferably case insensitive). Everything after that is the relative path to your base movies folder. Eg, if self.moviepath = 'C:\\Desktop\\Movies\\reliability\\e\\single\\', then set self.relpath = '\\reliability\\e\\single\\'
-            spath = splitpath(self.moviepath)
+            # Search self.e.moviepath string (from textheader) for 'Movies' word (preferably case insensitive). Everything after that is the relative path to your base movies folder. Eg, if self.e.moviepath = 'C:\\Desktop\\Movies\\reliability\\e\\single\\', then set self.e.relpath = '\\reliability\\e\\single\\'
+            spath = splitpath(self.e.moviepath)
             try:
                 matchi = spath.index('Movies')
             except ValueError:
@@ -133,12 +140,12 @@ class BaseExperiment(object):
                 varvals = {} # init a dictionary that will contain variable values
                 for var in s.varlist:
                     varvals[var] = eval('s.' + var) # generate a dictionary with var:val entries, to pass to buildSweepTable
-                s.sweepTable = dimstim.Core.buildSweepTable(s.varlist, varvals, s.nruns, s.shuffleRuns, s.blankSweep, s.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
+                s.sweepTable = self.buildCat15SweepTable(s.varlist, varvals, s.nruns, s.shuffleRuns, s.blankSweep, s.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
         else: # this is a simple stim (not object oriented)
             varvals = {} # init a dictionary that will contain variable values
-            for var in self.varlist:
-                varvals[var] = eval('self.' + var) # generate a dictionary with var:val entries, to pass to buildSweepTable
-            self.sweepTable = self.buildCat15SweepTable(self.varlist, varvals, self.nruns, self.shuffleRuns, self.blankSweep, self.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
+            for var in self.e.varlist:
+                varvals[var] = eval('self.e.' + var) # generate a dictionary with var:val entries, to pass to buildSweepTable
+            self.sweepTable = self.buildCat15SweepTable(self.e.varlist, varvals, self.e.nruns, self.e.shuffleRuns, self.e.blankSweep, self.e.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
 
         # for all (Movie) stims inited by the textheader, enter each Movie into _data.movies
         for s in self.stims:
@@ -146,9 +153,10 @@ class BaseExperiment(object):
             if s.name not in _data.movies:
                 _data.movies[s.name] = s # add the Movie stim to the movies dictattr, with the extensionless fname as the key
                 #treestr = s.level*TAB + os.path.join(s.path, s.fname)
-                #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
+                #self.writetree(treestr+'\n')
+                #print treestr
         try:
-            self.REFRESHTIME = intround(1 / float(self.REFRESHRATE) * 1000000) # in us, keep 'em integers
+            self.REFRESHTIME = intround(1 / float(self.e.REFRESHRATE) * 1000000) # in us, keep 'em integers
         except AttributeError:
             pass
 

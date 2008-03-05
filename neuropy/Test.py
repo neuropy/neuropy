@@ -1,7 +1,5 @@
 """A test suite for neuropy"""
 
-#print 'importing Test'
-
 from Core import *
 
 def test():

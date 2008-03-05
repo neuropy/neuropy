@@ -1,7 +1,5 @@
 """Defines the Rip class"""
 
-#print 'importing Rip'
-
 from Core import *
 
 class Rip(object):

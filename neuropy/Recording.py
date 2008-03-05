@@ -1,7 +1,5 @@
 """Defines the Recording class and all of its support classes"""
 
-#print 'importing Recording'
-
 import Core
 from Core import *
 from Core import _data # ensure it's imported, in spite of leading _

@@ -1,7 +1,5 @@
 """Defines the Animal class"""
 
-#print 'importing Animal'
-
 from Core import *
 from Core import _data # ensure it's imported, in spite of leading _
 

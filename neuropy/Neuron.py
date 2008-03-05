@@ -1,7 +1,5 @@
 """Defines the Neuron class and all of its support classes"""
 
-#print 'importing Neuron'
-
 from Core import *
 import dimstim
 
