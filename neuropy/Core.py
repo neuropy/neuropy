@@ -45,7 +45,10 @@ ANIMAL = 'ptc15'
 TRACK = '7c'
 
 RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording
-MOVIEPATH = os.path.join(os.sep, 'pub', 'movies')
+MOVIEPATH = os.path.join(os.sep, 'mov')
+# local mseq movie names
+MSEQ16 = 'MSEQ16' # formerly mseq16.m
+MSEQ32 = 'MSEQ32' # formerly mseq32.m
 
 CODEKIND = 'binary'
 CODETRES = 20000 # us
@@ -89,6 +92,7 @@ _data = Data() # init a default Data object to use as a container for everything
 
 
 class Cat15Movie(object):
+    """dimstim >= 0.16 Experiments use the dimstim Experiment (subclassed by say, Movie) object directly"""
     def __init__(self, fname=None, name=None, parent=None):
         """Movies don't need parents, they can just exist on their own and be used by anyone"""
         self.level = 5 # level in the hierarchy
@@ -101,45 +105,67 @@ class Cat15Movie(object):
             if self.name not in _data.movies:
                 _data.movies[self.name] = self # add self to _data.movies dictattr
         else:
-            pass # both self.name and self.fname are None, this happens when executing Cat 15 textheaders, where you init a movie with m = Movie(), and only later assign its fname field. In this case, the .loadprecat16exp() method handles adding movies init'd from textheader to the _data.movies dictattr
+            pass # both self.name and self.fname are None, this happens when executing Cat 15 textheaders, where you init a movie with m = Movie(), and only later assign its fname field. In this case, the .loadCat15exp() method handles adding movies init'd from textheader to the _data.movies dictattr
 
-    def load(self):
-        """Load movie data"""
+    def load(self, asarray=True, flip=False):
+        """Load movie frames"""
         try:
-            self.data # movie's already been loaded, don't do anything
+            self.frames # movie's already been loaded, don't do anything
             return
         except AttributeError:
             pass
         try:
-            self.data = _data.movies[self.name].data # if a Movie init'd with the same name already has its data loaded, use it
+            self.frames = _data.movies[self.name].frames # if a Movie init'd with the same name already has its data loaded, use it
+            return
         except AttributeError:
-            f = file(os.path.join(self.path, self.fname), 'rb') # open the movie file for reading in binary format
-            headerstring = f.read(5)
-            if headerstring == 'movie': # a header has been added to the start of the file
-                self.ncellswide, = struct.unpack('H', f.read(2)) # 'H'== unsigned short int
-                self.ncellshigh, = struct.unpack('H', f.read(2))
-                self.nframes, = struct.unpack('H', f.read(2))
-                if self.nframes == 0: # this was used in Cat 15 mseq movies to indicate 2**16 frames, shouldn't really worry about this, cuz we're using slightly modified mseq movies now that we don't have the extra frame at the end that the Cat 15 movies had (see comment in Experiment module), and therefore never have a need to indicate 2**16 frames
-                    self.nframes = 2**16
-                self.offset = 11 # header is this long
-            else: # there's no header at the start of the file, set the file pointer back to the beginning and use these hard coded values:
-                f.seek(0)
-                self.ncellswide = self.ncellshigh = 64
-                self.nframes = 6000
-                self.offset = 0 # header is this long
-            # read in all of the frames
-            self.data = np.fromfile(f, np.uint8, count=self.nframes*self.ncellshigh*self.ncellswide)
-            self.data = self.data.reshape(self.nframes, self.ncellshigh, self.ncellswide)
-            #self.data = numarray.fromfile(f, np.UInt8, (self.nframes,self.ncellshigh,self.ncellswide))
-            leftover = f.read() # check if there are any leftover bytes in the file
-            if leftover != '':
-                pprint(leftover)
-                print self.ncellswide, self.ncellshigh, self.nframes
-                raise RuntimeError, 'There are unread bytes in movie file %r. Width, height, or nframes is incorrect in the movie file header.' % self.fname
-            #self.data = self.data[::, ::-1, ::] # don't need to flip the movie frames vertically for OpenGL's bottom left origin
-            f.close() # close the movie file
-            treestr = self.level*TAB + os.path.join(self.path, self.fname)
-            print treestr
+            pass
+
+        self.f = file(self.fname, 'rb') # open the movie file for reading in binary format
+        headerstring = self.f.read(5)
+        if headerstring == 'movie': # a header has been added to the start of the file
+            self.ncellswide, = struct.unpack('H', self.f.read(2)) # 'H'== unsigned short int
+            self.ncellshigh, = struct.unpack('H', self.f.read(2))
+            self.nframes, = struct.unpack('H', self.f.read(2))
+            if self.nframes == 0: # this was used in Cat 15 mseq movies to indicate 2**16 frames, shouldn't really worry about this, cuz we're using slightly modified mseq movies now that we don't have the extra frame at the end that the Cat 15 movies had (see comment in Experiment module), and therefore never have a need to indicate 2**16 frames
+                self.nframes = 2**16
+            self.offset = self.f.tell() # header is 11 bytes long
+        else: # there's no header at the start of the file, set the file pointer back to the beginning and use these hard coded values:
+            self.f.seek(0)
+            self.ncellswide = self.ncellshigh = 64
+            self.nframes = 6000
+            self.offset = self.f.tell() # header is 0 bytes long
+        self.framesize = self.ncellshigh*self.ncellswide
+
+        # read in all of the frames
+        # maybe check first to see if file is > 1GB, if so, _loadaslist() to prevent trying to allocate one huge piece of contiguous memory and raising a MemoryError, or worse, segfaulting
+        if asarray:
+            self._loadasarray(flip=flip)
+        else:
+            self._loadaslist(flip=flip)
+        leftover = self.f.read() # check if there are any leftover bytes in the file
+        if leftover != '':
+            pprint(leftover)
+            print self.ncellswide, self.ncellshigh, self.nframes
+            raise RuntimeError, 'There are unread bytes in movie file %r. Width, height, or nframes is incorrect in the movie file header.' % self.fname
+        self.f.close() # close the movie file
+        treestr = self.level*TAB + self.fname
+        print treestr
+
+    def _loadasarray(self, flip=False):
+        self.frames = np.fromfile(self.f, np.uint8, count=self.nframes*self.framesize)
+        self.frames.shape = (self.nframes, self.ncellshigh, self.ncellswide)
+        self.f.seek(self.offset + self.nframes*self.framesize) # seek to what should be EOF
+        if flip:
+            self.frames = self.frames[::, ::-1, ::] # flip all frames vertically for OpenGL's bottom left origin
+
+    def _loadaslist(self, flip=False):
+        self.frames = []
+        for framei in xrange(self.nframes): # one frame at a time...
+            frame = np.fromfile(self.f, np.uint8, count=self.framesize) # load the next frame
+            frame.shape = (self.ncellshigh, self.ncellswide)
+            if flip:
+                frame = frame[::-1, ::] # flip all frames vertically for OpenGL's bottom left origin
+            self.frames.append(frame)
 
 
 def getargstr(obj):
@@ -428,7 +454,7 @@ def renameSpikeFiles(path, newname):
                 os.rename(os.path.join(path, fname), os.path.join(path, newfname))
 
 def csv2binary(fin, multiplier=1e6, skipfirstline=True):
-    """Exports spike data in a csv file, with cells in the columns and times down the rows,
+    """Converts spike data in a csv file, with cells in the columns and times down the rows,
     into int64 binary files, one for each neuron. Takes csv values and multiplies them by
     multiplier before saving"""
     fin = os.path.normpath(fin)

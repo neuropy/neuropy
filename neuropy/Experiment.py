@@ -3,25 +3,20 @@
 import dimstim.Core
 
 from Core import *
-from Core import Cat15Movie as Movie # need to name it Movie since that's what they're called in the Cat 15 textheader
+from Core import Cat15Movie
+Movie = Cat15Movie # synonym for Cat 15 textheader
 from Core import _data
 
 import Neuron
 from Recording import PopulationRaster, Codes, CodeCorrPDF
 
 
-class FakeDimstimExperiment(object):
-    """Just an empty class to bind Cat 15 textheader stuff to
-    and modify to mimic a dimstim >= 0.16 Experiment and all of its
-    attribs"""
-
-
 class BaseExperiment(object):
     """An Experiment corresponds to a single contiguous VisionEgg stimulus session.
     It contains information about the stimulus during that session, including
     the DIN values and the text header. For data generated with dimstim >= 0.16,
-    it includes the entire dimstim.Experiment object as an attribute (.e)
-    a neuropy.Experiment is basically a container for a dimstim.Experiment"""
+    it includes the entire dimstim.Experiment object as an attribute (.e).
+    A neuropy.Experiment is basically a container for a dimstim.Experiment"""
 
     from Recording import Recording
 
@@ -83,12 +78,11 @@ class BaseExperiment(object):
                 self.e.xorig = dimstim.Core.deg2pix(self.e.static.xorigDeg) + I.SCREENWIDTH / 2 # may as well
                 self.e.yorig = dimstim.Core.deg2pix(self.e.static.yorigDeg) + I.SCREENHEIGHT / 2
                 self.REFRESHTIME = intround(1 / float(self.I.REFRESHRATE) * 1000000) # in us, keep 'em integers
-                #TODO: _data.movies[self.e.fname] = e # add Movie Experiment to _data.movies dictattr to prevent from ever loading its frames data more than once
+                #TODO: _data.movies[self.e.static.fname] = e # add Movie Experiment to _data.movies dictattr to prevent from ever loading its frames data more than once
             else:
-                fde = FakeDimstimExperiment() # fake a dimstim Experiment
+                self.oldparams = dictattr()
                 for newname in newnames:
-                    fde.__setattr__(newname, eval(newname)) # bind each variable in the textheader as an attrib of fde
-                self.e = fde # bind it as .e, to mimic dimstim 0.16 textheaders
+                    self.oldparams[newname] = eval(newname) # bind each variable in the textheader to oldparams
                 self.loadCat15exp()
         else:
             self.REFRESHTIME = self.din[1, 0] - self.din[0, 0] # use the time difference between the first two din instead
@@ -109,54 +103,115 @@ class BaseExperiment(object):
             elif self.movie.oname == 'mseq16':
                 frameis = frameis[frameis != 16383] # remove all occurences of 16383
         '''
+        # Add .static and .dynamic params to fake dimstim Experiment
+        self.e = dictattr()
+        self.e.I = dictattr() # fake InternalParams object
+        self.e.static = dictattr() # fake StaticParams object
+        self.e.dynamic = dictattr() # fake DynamicParams object
+        # maps Cat 15 param names to dimstim 0.16 param types and names, wherever possible
+        ## TODO: fill in params for experiment types other than Movie??
+        _15to16 = {'EYE': ('I', 'EYE'),
+                   'PIXPERCM': ('I', 'PIXPERCM'),
+                   'REFRESHRATE': ('I', 'REFRESHRATE'),
+                   'SCREENDISTANCECM': ('I', 'SCREENDISTANCECM'),
+                   'SCREENHEIGHT': ('I', 'SCREENHEIGHT'),
+                   'SCREENHEIGHTCM': ('I', 'SCREENHEIGHTCM'),
+                   'SCREENWIDTH': ('I', 'SCREENWIDTH'),
+                   'SCREENWIDTHCM': ('I', 'SCREENWIDTHCM'),
+
+                   'fname': ('static', 'fname'),
+                   'preexpSec': ('static', 'preexpSec'),
+                   'postexpSec': ('static', 'postexpSec'),
+                   'orioff': ('static', 'orioff'),
+                   'regionwidthDeg': ('static', 'widthDeg'),
+                   'regionheightDeg': ('static', 'heightDeg'),
+                   'mask': ('static', 'mask'),
+                   'diameterDeg': ('static', 'diameterDeg'),
+                   'GAMMA': ('static', 'gamma'),
+
+                   'framei': ('dynamic', 'framei'),
+                   'ori': ('dynamic', 'ori'),
+                   'polarity': ('dynamic', 'invert'),
+                   'bgbrightness': ('dynamic', 'bgbrightness'),
+                   'sweeptimeMsec': ('dynamic', 'sweepSec'),
+                   'postsweepMsec': ('dynamic', 'postsweepSec'),
+                   }
+
+        # collect any Cat 15 movie attribs and add them to self.oldparams
         try:
-            self.stims = unique(self.e.playlist) # self.stims is a non-repeating list of object oriented stim objects (Movie is the only possible type) in this Experiment
-        except AttributeError: # this was a simple non object-oriented stim, has no playlist
-            self.stims = []
-        for s in self.stims:
-            s.e = self # If you inited stim object(s) (like a movie) while execing the textheader, you didn't have a chance to pass this exp as the parent in the init. So just set the attribute manually
-            try: # this'll probably only apply to Movies stim, cuz others won't have fnames
-                s.name = os.path.splitext(s.fname)[0] # extensionless fname, fname should've been defined in the textheader
-                if s.name not in _data.movies: # and it very well may not be, cuz the textheader inits movies with no args, leaving fname==None at first, which prevents it from being added to _data.movies
-                    _data.movies[s.name] = s # add s to _data.movies dictattr
-            except AttributeError: # s.fname doesn't exist? probably not a Movie stim
-                pass
-            # Search self.e.moviepath string (from textheader) for 'Movies' word (preferably case insensitive). Everything after that is the relative path to your base movies folder. Eg, if self.e.moviepath = 'C:\\Desktop\\Movies\\reliability\\e\\single\\', then set self.e.relpath = '\\reliability\\e\\single\\'
-            spath = splitpath(self.e.moviepath)
+            assert len(unique(self.oldparams.playlist)) == 1 # can't really handle more than 1 movie, since dimstim 0.16 doesn't
+            self.movie = self.oldparams.playlist[0] # bind it, movie was the only possible stim object anyway in Cat 15
+            movieparams = self.oldparams[self.movie.oname].__dict__ # returns a dict of name:val pair attribs excluding __ and methods
+            self.oldparams.update(movieparams)
+        except AttributeError: # no playlist, no movies, and therefore no movie attribs to deal with
+            pass
+
+        # convert Cat 15 params to dimstim 0.16
+        for oldname, val in self.oldparams.items():
+            if 'msec' in oldname.lower():
+                val = val / 1000. # convert to sec
+            elif oldname == 'polarity':
+                val = bool(val) # convert from 0/1 to boolean
+            if oldname == 'origDeg': # split old origDeg into new separate xposDeg and yposDeg
+                self.e.dynamic.xposDeg = val[0]
+                self.e.dynamic.yposDeg = val[1]
+            else:
+                try:
+                    paramtype, newname = _15to16[oldname]
+                    self.e[paramtype][newname] = val
+                except KeyError: # oldname doesn't have a newname equivalent
+                    pass
+
+        try:
+            m = self.movie
+        except AttributeError:
+            m = None
+
+        if m:
+            # make fake dimstim experiment a Cat15Movie object, bind all of the attribs of the existing fake dimstim experiment
+            old_e = self.e
+            self.e = m
+            for name, val in old_e.__dict__.items():
+                self.e.__setattr__(name, val) # bind each variable in the textheader as an attrib of self
+            # deal with movie filename
+            m.e = self # didn't have a chance to pass this exp as the parent in the movie init. So just set the attribute manually
+            # if fname refers to a movie whose local name is different, rename it to match the local movie name
+            _old2new = {'mseq16.m': MSEQ16, 'mseq32.m': MSEQ32}
             try:
-                matchi = spath.index('Movies')
-            except ValueError:
-                matchi = spath.index('movies')
-            s.relpath = joinpath(spath[matchi+1 ::])
-            s.path = os.path.join(MOVIEPATH, s.relpath)
+                m.fname = _old2new[m.fname]
+            except KeyError:
+                pass # old name not in _old2new, leave it be
+            self.e.static.fname = m.fname # update fake dimstim experiment's fname too
+            m.name = os.path.splitext(m.fname)[0] # extensionless fname, fname should've been defined in the textheader
+            if m.name not in _data.movies: # and it very well may not be, cuz the textheader inits movies with no args, leaving fname==None at first, which prevents it from being added to _data.movies
+                _data.movies[m.name] = m # add m to _data.movies dictattr
+            # Search self.e.moviepath string (from textheader) for 'Movies' word. Everything after that is the relative path to your base movies folder. Eg, if self.e.moviepath = 'C:\\Desktop\\Movies\\reliability\\e\\single\\', then set self.e.relpath = '\\reliability\\e\\single\\'
+            spath = splitpath(self.oldparams.moviepath)
+            matchi = spath.index('Movies')
+            relpath = joinpath(spath[matchi+1 ::])
+            path = os.path.join(MOVIEPATH, relpath)
+            m.fname = os.path.join(path, m.fname)
+            self.e.static.fname = m.fname # update
 
-        # Generate the sweeptable here, no need to load it from files anymore...
-        # self.sweeptable = {[]} # dictionary of lists, ie sweeptable={'ori':[0,45,90], 'sfreq':[1,1,1]}
-        # so you index into it with self.sweeptable['var'][sweepi]
-        # vars = self.sweeptable.keys()
-        # need to check if varlist exists, if so use it (we're dealing with Cat 15), if not, use revamped dimstim.SweepTable class
-        if len(self.stims) > 0: # this Experiment has object-oriented stim(s)
-            for s in self.stims:
-                varvals = {} # init a dictionary that will contain variable values
-                for var in s.varlist:
-                    varvals[var] = eval('s.' + var) # generate a dictionary with var:val entries, to pass to buildSweepTable
-                s.sweepTable = self.buildCat15SweepTable(s.varlist, varvals, s.nruns, s.shuffleRuns, s.blankSweep, s.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
-        else: # this is a simple stim (not object oriented)
+            # Generate the sweeptable
+            # self.sweeptable = {[]} # dictionary of lists, ie sweeptable={'ori':[0,45,90], 'sfreq':[1,1,1]}
+            # so you index into it with self.sweeptable['var'][sweepi]
+            # vars = self.sweeptable.keys()
+            # need to check if varlist exists, if so use it (we're dealing with Cat 15), if not, use revamped dimstim.SweepTable class
             varvals = {} # init a dictionary that will contain variable values
-            for var in self.e.varlist:
-                varvals[var] = eval('self.e.' + var) # generate a dictionary with var:val entries, to pass to buildSweepTable
-            self.sweepTable = self.buildCat15SweepTable(self.e.varlist, varvals, self.e.nruns, self.e.shuffleRuns, self.e.blankSweep, self.e.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
+            for var in m.varlist:
+                varvals[var] = eval('m.' + var) # generate a dictionary with var:val entries, to pass to buildSweepTable
+            m.sweepTable = self.buildCat15SweepTable(m.varlist, varvals, m.nruns, m.shuffleRuns, m.blankSweep, m.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
+        else: # this is a simple stim (not object oriented movie)
+            varvals = {} # init a dictionary that will contain variable values
+            for var in self.oldparams.varlist:
+                varvals[var] = eval('self.oldparams.' + var) # generate a dictionary with var:val entries, to pass to buildSweepTable
+            self.sweepTable = self.buildCat15SweepTable(self.oldparams.varlist, varvals, self.oldparams.nruns,
+                                                        self.oldparams.shuffleRuns, self.oldparams.blankSweep,
+                                                        self.oldparams.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
 
-        # for all (Movie) stims inited by the textheader, enter each Movie into _data.movies
-        for s in self.stims:
-            assert s.__class__ == Movie
-            if s.name not in _data.movies:
-                _data.movies[s.name] = s # add the Movie stim to the movies dictattr, with the extensionless fname as the key
-                #treestr = s.level*TAB + os.path.join(s.path, s.fname)
-                #self.writetree(treestr+'\n')
-                #print treestr
         try:
-            self.REFRESHTIME = intround(1 / float(self.e.REFRESHRATE) * 1000000) # in us, keep 'em integers
+            self.REFRESHTIME = intround(1 / float(self.oldparams.REFRESHRATE) * 1000000) # in us, keep 'em integers
         except AttributeError:
             pass
 

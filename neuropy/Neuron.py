@@ -675,7 +675,8 @@ class RevCorr(object):
             self.trange = self.experiment.trange
         else:
             self.trange = trange
-        assert self.experiment.e.__class__ == dimstim.Movie.Movie
+        import dimstim.Movie
+        assert self.experiment.e.__class__ in (dimstim.Movie.Movie, Cat15Movie)
         self.movie = self.experiment.e
         try:
             self.movie.frames # check if movie frames have been loaded from file
@@ -791,9 +792,9 @@ class STA(RevCorr):
             rcdini = rcdini[rcdini >= 0] # remove any -ve valued indices. Is this the most efficient way to do this?
             frameis = self.experiment.din[rcdini, 1] # get the din values (frame indices) at the rcdini for this timepoint
             # in Cat 15, we erroneously duplicated the first frame of the mseq movies at the end, giving us one more frame (0 to 65535 for mseq32) than we should have had (0 to 65534 for mseq32). We're now using the correct movies, but the din for Cat 15 mseq experiments still have those erroneous frame indices (65535 and 16383 for mseq32 and mseq16 respectively), so we'll just ignore them for revcorr purposes.
-            if 'MSEQ32' in self.movie.static.fname:
+            if MSEQ32 in self.movie.static.fname:
                 frameis = frameis[frameis != 65535] # remove all occurences of 65535
-            elif 'MSEQ16' in self.movie.static.fname:
+            elif MSEQ16 in self.movie.static.fname:
                 frameis = frameis[frameis != 16383] # remove all occurences of 16383
             # take the mean of all the frames at this timepoint:
             '''

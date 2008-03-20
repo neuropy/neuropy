@@ -14,7 +14,7 @@ r"""Experimental and model neuronal and stimulus data analysis in Python
              /         \
        Experiment      Rip        4
             |           |
-          Movie       Neuron      5
+      (Cat15Movie)    Neuron      5
 """
 
 __author__ = "Martin Spacek"
@@ -27,7 +27,6 @@ from Track import Track
 from Recording import Recording
 from Experiment import Experiment
 from Rip import Rip
-from Movie import Movie
 from Neuron import Neuron
 
 from Test import test
