@@ -73,3 +73,4 @@ class Track(object):
             recording = Recording(id=None, name=dirname, parent=self) # make an instance using just the recording name (let it figure out the recording id)
             recording.load() # load the Recording
             self.r[recording.id] = recording # save it
+            self.__setattr__('r' + str(recording.id), recording) # add shortcut attrib

@@ -53,10 +53,12 @@ class Rip(object):
             neuron = Neuron(id=None, name=neuronName, parent=self) # make an instance using just the neuron name (let it figure out the neuron id)
             neuron.load() # load the neuron
             self.n[neuron.id] = neuron # save it
+            self.__setattr__('n' + str(neuron.id), neuron) # add shortcut attrib
             # repeat for ConstrainedNeurons
             cneuron = ConstrainedNeuron(id=None, name=neuronName, parent=self)
             cneuron.load()
             self.cn[cneuron.id] = cneuron
+            self.__setattr__('cn' + str(cneuron.id), cneuron) # add shortcut attrib
             try: # binding neuron (x, y) positions
                 neuron.pos = neuron2pos[neuron.id]
                 cneuron.pos = neuron2pos[cneuron.id]

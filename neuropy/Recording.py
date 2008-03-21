@@ -90,6 +90,8 @@ class BaseRecording(object):
             experiment = Experiment(id=experimentid, name=experimentName, parent=self) # pass both the id and the name
             experiment.load() # load the Experiment
             self.e[experiment.id] = experiment # save it
+            self.__setattr__('e' + str(experiment.id), experiment) # add shortcut attrib
+
         ripNames = [ dirname[0:dirname.rfind('.rip')] for dirname in os.listdir(self.path)
                      if os.path.isdir(os.path.join(self.path, dirname))
                      and dirname.endswith('.rip') ] # returns rip folder names without their .rip extension
@@ -103,6 +105,7 @@ class BaseRecording(object):
             rip = Rip(id=ripid, name=ripName, parent=self) # pass both the id and the name
             rip.load() # load the Rip
             self.rip[rip.name] = rip # save it
+            self.__setattr__('rip' + str(rip.id), rip) # add shortcut attrib, by id (name typically has too many non-alphanum chars)
             # make the Neurons from the default Rip (if it exists in the Recording path) available in the Recording, so you can access them via r.n[nid] instead of having to do r.rip[name].n[nid]. Make them just another pointer to the data in r.rip[ripName].n
             for ripkeyword in RIPKEYWORDS[::-1]: # reverse the keywords so last one gets processed first
                 if ripkeyword in rip.name:

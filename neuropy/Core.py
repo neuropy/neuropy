@@ -40,6 +40,7 @@ from dimstim.Core import dictattr # Dictionary with attribute access
 # GLOBAL DEFAULTS
 
 DATAPATH = os.path.join(os.sep, 'data')
+ANIMALPREFIX = 'pt'
 
 ANIMAL = 'ptc15'
 TRACK = '7c'
@@ -85,12 +86,13 @@ class Data(object):
         self.writetree(treestr+'\n')
         print treestr
         dirnames = [ dirname for dirname in os.listdir(self.path)
-                     if dirname.startswith('pt')
+                     if dirname.startswith('ANIMALPREFIX')
                      and os.path.isdir(os.path.join(self.path, dirname)) ]
         for dirname in dirnames:
             a = Animal(id=dirname, parent=self) # make an instance using just the dirname
             a.load() # load the Animal
             self.a[a.id] = a # save it, using its id as the dict key
+
 
 _data = Data() # init a default Data object to use as a container for everything that falls under the data object hierarchy
 

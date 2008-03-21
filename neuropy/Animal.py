@@ -37,3 +37,4 @@ class Animal(object):
             track = Track(id=None, name=dirname, parent=self) # make an instance using just the track name (let it figure out the track id)
             track.load() # load the Track
             self.t[track.id] = track # save it
+            self.__setattr__('t' + str(track.id), track) # add shortcut attrib
