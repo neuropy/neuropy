@@ -78,15 +78,19 @@ class Data(object):
         # Data has no parent to write to
 
     def load(self):
+
+        from Animal import Animal
+
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n')
         print treestr
         dirnames = [ dirname for dirname in os.listdir(self.path)
-                     if os.path.isdir(os.path.join(self.path, dirname)) ]
+                     if dirname.startswith('pt')
+                     and os.path.isdir(os.path.join(self.path, dirname)) ]
         for dirname in dirnames:
-            a = Animal(name=dirname, parent=self) # make an instance using just the dirname
+            a = Animal(id=dirname, parent=self) # make an instance using just the dirname
             a.load() # load the Animal
-            self.a[a.name] = a # save it, using its (dir)name as the dict key
+            self.a[a.id] = a # save it, using its id as the dict key
 
 _data = Data() # init a default Data object to use as a container for everything that falls under the data object hierarchy
 
