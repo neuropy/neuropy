@@ -78,7 +78,10 @@ class BaseExperiment(object):
                 self.e.xorig = dimstim.Core.deg2pix(self.e.static.xorigDeg) + I.SCREENWIDTH / 2 # may as well
                 self.e.yorig = dimstim.Core.deg2pix(self.e.static.yorigDeg) + I.SCREENHEIGHT / 2
                 self.REFRESHTIME = intround(1 / float(self.I.REFRESHRATE) * 1000000) # in us, keep 'em integers
-                #TODO: _data.movies[self.e.static.fname] = e # add Movie Experiment to _data.movies dictattr to prevent from ever loading its frames data more than once
+                if self.e.__class__ == dimstim.Movie.Movie: # prevent replication of movie frame data in memory
+                    fname = os.path.split(self.e.static.fname)[-1] # pathless fname
+                    if fname not in _data.movies:
+                        _data.movies[fname] = e # add Movie Experiment, indexed according to movie data file name, to prevent from ever loading its frames more than once
             else:
                 self.oldparams = dictattr()
                 for newname in newnames:
