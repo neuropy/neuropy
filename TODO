@@ -1,6 +1,10 @@
-- from __future__ import division
+- change best rip from being part of foldername (which causes problems when renaming folders with svn when you wanna temporarily change which rip folder is used for analysis) to just being an empty file called "BEST" or something within that rip's folder, or maybe a text file called "DEFAULT" in the Track's folder that has the default rip folder's name in it
 
-- need to deal with change of dimstim movie sweep time from sweeptimeMsec to sweepSec for Cat 16+
+- _data.movies is empty after doing sta on rat data, not so after doing it on ptc15
+
+- since I'm now shuffling mseq frames in dimstim experiments, check to make sure STA code doesn't assume mseq frames are in numerical order (which I'm almost certain it doesn't). If it does, this would help explain why I haven't been finding mseq fields in rat
+
+- from __future__ import division
 
 - get rid of all use of python's built-in random module, use numpy.random instead
 
@@ -53,7 +57,7 @@ Netstate stuff:
     - make rasters faster when large number of spikes on screen (instead of deleting and recreating all vlines, do so just for ones that disappear and appear?)
     - get scrolly wheel detection to zoom in and out (not possible using mpl events? have to go to wx events?)
 
-- tuning curves
+- tuning curves - driftbars and gratings
 - STC
 - revcorr to sparse bars, or any stimulus really, by directly sampling VisionEgg's framebuffer - easy! just use screen.get_framebuffer_as_array - see r72 makesparsemovie file. Need to refactor Dimstim (new version, call it lowercase dimstim?) into more OOP to really do this nicely
 - maybe change experiment names to include only everything after the exp id in the .srf filename, prevents cluttery repetition of recording name. In case there's only one experiment, use the full .srf filename less the leading recording id and - at the start?
@@ -109,3 +113,7 @@ Netstate stuff:
     - look for check cells
     - do the maximum entropy Ising model
     - see if cortical data extrapolates to the same sort of ideal network size, ~200 neurons
+
+
+- need to deal with change of dimstim movie sweep time from sweeptimeMsec to sweepSec for Cat 16+
+- neuron shortcut names in Recording don't seem to exist. Only exist in rips?

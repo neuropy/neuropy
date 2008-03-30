@@ -110,7 +110,11 @@ class BaseRecording(object):
             for ripkeyword in RIPKEYWORDS[::-1]: # reverse the keywords so last one gets processed first
                 if ripkeyword in rip.name:
                     self.n = self.rip[rip.name].n # make it the default Rip
+                    for neuron in self.n.values():
+                        self.__setattr__('n' + str(neuron.id), neuron) # add shortcut attrib
                     self.cn = self.rip[rip.name].cn # make it the default Rip for ConstrainedNeurons too
+                    for cneuron in self.cn.values():
+                        self.__setattr__('cn' + str(cneuron.id), cneuron) # add shortcut attrib
         if len(self.rip) == 1: # there's only one rip, make it the default Rip, even if it doesn't have a ripkeyword in it
             self.n = self.rip.values()[0].n # make it the default Rip
             self.cn = self.rip.values()[0].cn # make it the default Rip for ConstrainedNeurons too
