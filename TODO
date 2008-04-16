@@ -3,6 +3,7 @@
 - since I'm now shuffling mseq frames in dimstim experiments, check to make sure STA code doesn't assume mseq frames are in numerical order (which I'm almost certain it doesn't). If it does, this would help explain why I haven't been finding mseq fields in rat
 
 - tuning curves for various parameters (ori, sfreq, tfreq, phase,...), for driftbars and gratings, for both Cat 15 and dimstim 0.16
+    - this should probably be some kinda TuningCurve object, analogous to all the other analysis objects I've got
 
 - from __future__ import division
 
