@@ -24,13 +24,17 @@ im = Image.open(fname)
 assert im.mode == 'L', 'image file should be luminance only (greyscale)'
 imdata = np.asarray(im)
 height, width = imdata.shape
-meanval = int(round(imdata.mean()))
-print 'Mean pixel value is', meanval
 maxval = imdata.max()
 minval = imdata.min()
+meanval = int(round(imdata.mean()))
 span = maxval - minval
 step = span / nframes
 threshes = [minval + (i+1)*step for i in range(nframes)] # pixel threshold values
+print 'max pixel value is', maxval
+print 'min pixel value is', minval
+print 'mean pixel value is', meanval
+print 'span is', span
+print 'step is', step
 
 # init movie
 frames = meanval * np.ones((nframes, height, width), dtype=np.uint8) # all pixels same as mean image pix val
