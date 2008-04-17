@@ -9,7 +9,7 @@ import sys
 import os
 import struct
 
-nframes = 16 # plus noise frame at the end
+nframes = 8 # plus noise frame at the end
 moviepath = '/mov/latency/'
 
 assert len(sys.argv) <= 2
@@ -54,6 +54,8 @@ np.random.shuffle(noise.ravel()) # shuffle flattened array in place, flattening 
 # save to a movie file
 outfname, ext = os.path.splitext(fname)
 outfname = outfname.upper() # same as image name, but no ext, all caps
+outfname = outfname.replace('X', 'x') # keep x's lowercase
+outfname = outfname + 'x%d' % nframes # append nframes
 print 'Writing to movie file', moviepath+outfname
 f = file(moviepath+outfname, 'wb') # open a movie file for writing in binary format
 # write movie header
