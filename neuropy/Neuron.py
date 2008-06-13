@@ -85,7 +85,9 @@ class BaseNeuron(object):
         '''
         # this is what we're trying to do:
         return self.spikes[ (self.spikes >= tstart) & (self.spikes <= tend) ]
-        self.searchsorted(values) method does it faster. It returns an index where the value would fit in self. The index is such that self[index-1] < value <= self[index]. In this formula self[self.size]=inf and self[-1]= -inf
+        self.searchsorted(values) method does it faster. It returns an index where
+        the value would fit in self. The index is such that self[index-1] < value <= self[index].
+        In this formula self[self.size]=inf and self[-1]= -inf
         Another possibility could be to use a masked array instead?
         '''
         lo, hi = self.spikes.searchsorted([tstart, tend]) # returns indices where tstart and tend would fit in spikes

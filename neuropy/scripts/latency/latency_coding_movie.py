@@ -9,7 +9,7 @@ import sys
 import os
 import struct
 
-nframes = 8 # plus noise frame at the end
+nframes = 16 # plus noise frame at the end
 moviepath = '/mov/latency/'
 
 assert len(sys.argv) <= 2

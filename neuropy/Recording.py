@@ -295,7 +295,7 @@ class PopulationRaster(object):
     def _onmotion(self, event):
         """Called during mouse motion over figure. Pops up neuron and
         experiment info in a tooltip when hovering over a neuron row."""
-        if event.xdata != None and event.ydata != None: # if mouse is inside the axes
+        if event.inaxes: # if mouse is inside the axes
             nii = int(math.floor(event.ydata)) # use ydata to get index into sorted list of neurons
             ni = self.nis[nii]
             neuron = self.neurons[ni]
@@ -1367,10 +1367,10 @@ class NetstateS1INvsN(BaseNetstate):
                            transform = a.transAxes,
                            horizontalalignment = 'right',
                            verticalalignment = 'top')
-
         self.f = f
         self.a = a
         return self
+
 
 class NetstateNNplus1(BaseNetstate):
     """Analysis of amount of mutual information between N cells and the N+1th cell"""

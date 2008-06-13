@@ -1,3 +1,9 @@
+TODO:
+
+- get rid of all use of super(), replace with direct call of base class instead
+
+- use the .picker attrib of an artist (like a line) to specify whether it first a pickevent when clicked on within a certain pixel range, use this for the Schneidman scatter plots, much much easier. See pick_event_demo.py in mpl examples, or spyke.plot
+
 - change best rip from being part of foldername (which causes problems when renaming folders with svn when you wanna temporarily change which rip folder is used for analysis) to just being an empty file called "BEST" or something within that rip's folder, or maybe a text file called "DEFAULT" in the Track's folder that has the default rip folder's name in it
 
 - since I'm now shuffling mseq frames in dimstim experiments, check to make sure STA code doesn't assume mseq frames are in numerical order (which I'm almost certain it doesn't). If it does, this would help explain why I haven't been finding mseq fields in rat
