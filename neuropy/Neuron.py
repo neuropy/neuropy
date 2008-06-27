@@ -407,7 +407,7 @@ class BinRate(BaseRate):
         tstart = self.trange[0] - (self.trange[0] % self.tres)
         tend   = self.trange[1] - (self.trange[1] % self.tres)
         t = arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to trange[1] to make t end inclusive
-        s = self.neuron.cut(trange) # spike times
+        s = self.neuron.cut(self.trange) # spike times
         self.r, self.t = histogramSorted(self.neuron.spikes, bins=t) # assumes spikes are in chrono order
         self.r = self.r / float(self.tres) * 1000000 # spikes/sec
 
