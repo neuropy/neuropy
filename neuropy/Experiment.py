@@ -633,14 +633,14 @@ class ExperimentRevCorr(BaseExperiment):
     """Mix-in class that defines the reverse correlation related Experiment methods"""
     def sta(self, neurons=None, **kwargs):
         """Returns an STAs RevCorrs object"""
-        if neurons == None: # no Neurons were passed, use all the Neurons from the default Rip for this experiment's Recording
+        if neurons == None: # no Neurons were passed, use all the Neurons from the default Sort for this experiment's Recording
             keyvals = self.r.n.items() # get key val pairs in a list of tuples
             keyvals.sort() # make sure they're sorted by key
             neurons = []
             for key, val in keyvals:
                 neurons.append(val)
         else:
-            try: # assume neurons is a Neuron id or list of Neuron ids, get the associated Neuron objects from the default Rip for this experiment's Recording
+            try: # assume neurons is a Neuron id or list of Neuron ids, get the associated Neuron objects from the default Sort for this experiment's Recording
                 neurons = [ self.r.n[ni] for ni in tolist(neurons) ]
             except KeyError: # neurons is probably a list of Neuron objects
                 pass
@@ -652,14 +652,14 @@ class ExperimentRevCorr(BaseExperiment):
 
     def stc(self, neurons=None, **kwargs):
         """Returns an STCs RevCorrs object"""
-        if neurons == None: # no Neurons were passed, use all the Neurons from the default Rip for this experiment's Recording
+        if neurons == None: # no Neurons were passed, use all the Neurons from the default Sort for this experiment's Recording
             keyvals = self.r.n.items() # get key val pairs in a list of tuples
             keyvals.sort() # make sure they're sorted by key
             neurons = []
             for key, val in keyvals:
                 neurons.append(val)
         else:
-            try: # assume neurons is a Neuron id or list of Neuron ids, get the associated Neuron objects from the default Rip for this experiment's Recording
+            try: # assume neurons is a Neuron id or list of Neuron ids, get the associated Neuron objects from the default Sort for this experiment's Recording
                 neurons = [ self.r.n[ni] for ni in tolist(neurons) ]
             except KeyError: # neurons is probably a list of Neuron objects
                 pass

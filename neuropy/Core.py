@@ -24,10 +24,10 @@ from numpy import arange, array, array as ar, asarray, asarray as aar, log, log2
 from numpy.core.ma import array as mar
 
 import matplotlib as mpl
-try:
-    mpl.use('WXAgg')
-except RuntimeError: # pylab's already been imported, we might be doing a refresh
-    pass
+#try:
+#    mpl.use('WXAgg')
+#except RuntimeError: # pylab's already been imported, we might be doing a refresh
+#    pass
 mpl.interactive(True)
 import pylab as pl
 from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
@@ -45,7 +45,7 @@ ANIMALPREFIX = 'pt'
 ANIMAL = 'ptc15'
 TRACK = '7c'
 
-RIPKEYWORDS = ['best'] # a Rip with one of these keywords (listed in decreasing priority) will be loaded as the default Rip for its Recording
+SORTKEYWORDS = ['best'] # a Sort with one of these keywords (listed in decreasing priority) will be loaded as the default Sort for its Recording
 MOVIEPATH = os.path.join(os.sep, 'mov')
 # local mseq movie names
 MSEQ16 = 'MSEQ16' # formerly mseq16.m

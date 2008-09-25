@@ -2,9 +2,21 @@ TODO:
 
 - get rid of all use of super(), replace with direct call of base class instead
 
+- limit each Recording to only one Sort object, which is by default either the one that says 'best' in its filename, or the first one alphabetically. Override default by specifying the sorts filename as an arg to Recording.__init__ and/or .load(). Maybe add a Recording.get_sortnames method that lists available sort filenames (minus their .sort extension)
+    - if you want to work with multiple Sorts at the same time, create multiple Recordings, each with a different Sort
+    - this needs to work with the sort (formerly rip) folders as well, for data exported from SurfBawd
+
+- maybe the object hierarchy or some functionality within it could be changed somehow to clarify that neuron x from Recording y is the same as neuron x from Recording z. Need to rely on the same IDs being assigned during spike sorting, but would be nice if this was then reconciled in neuropy
+
 - use the .picker attrib of an artist (like a line) to specify whether it first a pickevent when clicked on within a certain pixel range, use this for the Schneidman scatter plots, much much easier. See pick_event_demo.py in mpl examples, or spyke.plot
 
+- could use "fnmatch" module to do filename matching in the data folders
+
+- add code to load .sort files
+
+
 - change best rip from being part of foldername (which causes problems when renaming folders with svn when you wanna temporarily change which rip folder is used for analysis) to just being an empty file called "BEST" or something within that rip's folder, or maybe a text file called "DEFAULT" in the Track's folder that has the default rip folder's name in it
+    - this won't work once we start replacing rip folders with .sort files...
 
 - since I'm now shuffling mseq frames in dimstim experiments, check to make sure STA code doesn't assume mseq frames are in numerical order (which I'm almost certain it doesn't). If it does, this would help explain why I haven't been finding mseq fields in rat
 
@@ -124,3 +136,4 @@ Netstate stuff:
 - need to deal with change of dimstim movie sweep time from sweeptimeMsec to sweepSec for Cat 16+
 - neuron shortcut names in Recording don't seem to exist. Only exist in rips?
 - _data.movies is empty after doing sta on rat data, not so after doing it on ptc15
+- rename Rip to Sort, and .rip to .sort, to jive with new .sort file and (Sort)Session object in spyke

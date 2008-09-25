@@ -12,7 +12,7 @@ r"""Experimental and model neuronal and stimulus data analysis in Python
                   |
               Recording           3
              /         \
-       Experiment      Rip        4
+       Experiment      Sort       4
             |           |
       (Cat15Movie)    Neuron      5
 """
@@ -26,7 +26,7 @@ from Animal import Animal
 from Track import Track
 from Recording import Recording
 from Experiment import Experiment
-from Rip import Rip
+from Sort import Sort
 from Neuron import Neuron
 
 from Test import test

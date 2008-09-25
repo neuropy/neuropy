@@ -1,11 +1,11 @@
-"""Defines the Rip class"""
+"""Defines the Sort class"""
 
 from Core import *
 
-class Rip(object):
-    """A Rip is a single spike extraction. Generally, Rips of the same name within the same Track
-    were generated with the same spike template, though of course Rips in different Tracks must
-    be generated from different templates, even if the Rips have the same name"""
+class Sort(object):
+    """A Sort is a single spike extraction. Generally, Sorts of the same name within the same Track
+    were generated with the same spike template, though of course Sorts in different Tracks must
+    be generated from different templates, even if the Sorts have the same name"""
 
     from Recording import Recording
 
@@ -17,11 +17,11 @@ class Rip(object):
         except TypeError: # parent is an instance, not a class
             self.r = parent # save parent Recording object
         if name is None:
-            raise ValueError, 'rip name can\'t be None'
-        # rips don't have ids, at least for now. Just names
-        self.id = id # not really used by the Rip class, just there for user's info
+            raise ValueError, 'sort name can\'t be None'
+        # sorts don't have ids, at least for now. Just names
+        self.id = id # not really used by the Sort class, just there for user's info
         self.name = name
-        self.path = os.path.join(self.r.path, self.name) + '.rip' # have to add .rip extension to rip name to get its actual folder name
+        self.path = os.path.join(self.r.path, self.name) + '.sort' # have to add .sort extension to sort name to get its actual folder name
         self.n = dictattr() # store Neurons in a dictionary with attrib access
         self.cn = dictattr() # store ConstrainedNeurons in a dictionary with attrib acces
     '''
@@ -65,5 +65,5 @@ class Rip(object):
             except NameError: # there was no neuron2pos file
                 pass
 
-        # then, maybe add something that loads info about the rip, say from some file describing the template used, and all the thresholds, exported to the same folder by SURF
-        # maybe also load the template file used for the rip, perhaps also stored in the same folder
+        # then, maybe add something that loads info about the sort, say from some file describing the template used, and all the thresholds, exported to the same folder by SURF
+        # maybe also load the template file used for the sort, perhaps also stored in the same folder

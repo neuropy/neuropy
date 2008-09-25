@@ -18,7 +18,7 @@ class BaseRecording(object):
     """A Recording corresponds to a single SURF file, ie everything recorded between when
     the user hits record and when the user hits stop and closes the SURF file, including any
     pauses in between Experiments within that Recording. A Recording can have multiple Experiments,
-    and multiple spike extractions, called Rips"""
+    and multiple spike extractions, called Sorts"""
     def __init__(self, id=None, name=None, parent=None):
 
         from Track import Track
@@ -44,7 +44,7 @@ class BaseRecording(object):
         self.path = os.path.join(self.t.path, self.name)
         self.t.r[self.id] = self # add/overwrite this Recording to its parent's dict of Recordings, in case this Recording wasn't loaded by its parent
         self.e = dictattr() # store Experiments in a dictionary with attrib access
-        self.rip = dictattr() # store Rips in a dictionary with attrib access
+        self.sort = dictattr() # store Sorts in a dictionary with attrib access
 
     def tree(self):
         """Print tree hierarchy"""
@@ -79,7 +79,7 @@ class BaseRecording(object):
     def load(self):
 
         from Experiment import Experiment
-        from Rip import Rip
+        from Sort import Sort
 
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
@@ -91,33 +91,34 @@ class BaseRecording(object):
             experiment.load() # load the Experiment
             self.e[experiment.id] = experiment # save it
             self.__setattr__('e' + str(experiment.id), experiment) # add shortcut attrib
-
-        ripNames = [ dirname[0:dirname.rfind('.rip')] for dirname in os.listdir(self.path)
+        # TODO: put code to load .sort files here?
+        # TODO: should this be left as is to work with existing .sort folders from surfbawd?
+        sortNames = [ dirname[0:dirname.rfind('.sort')] for dirname in os.listdir(self.path)
                      if os.path.isdir(os.path.join(self.path, dirname))
-                     and dirname.endswith('.rip') ] # returns rip folder names without their .rip extension
-        defaultRipNames = [ ripName for ripName in ripNames for ripkeyword in RIPKEYWORDS
-                            if ripkeyword in ripName ]
-        if len(defaultRipNames) < 1:
-            warn('Couldn\'t find a default Rip for Recording(%s)' % self.id)
-        if len(defaultRipNames) > 1: # This could just be a warning instead of an exception, but really, some folder renaming is in order
-            raise RuntimeError, 'More than one Rip folder in Recording(%s) has a default keyword: %s' % (self.id, defaultRipNames)
-        for ripid, ripName in enumerate(ripNames): # ripids will be according to alphabetical order of ripNames
-            rip = Rip(id=ripid, name=ripName, parent=self) # pass both the id and the name
-            rip.load() # load the Rip
-            self.rip[rip.name] = rip # save it
-            self.__setattr__('rip' + str(rip.id), rip) # add shortcut attrib, by id (name typically has too many non-alphanum chars)
-            # make the Neurons from the default Rip (if it exists in the Recording path) available in the Recording, so you can access them via r.n[nid] instead of having to do r.rip[name].n[nid]. Make them just another pointer to the data in r.rip[ripName].n
-            for ripkeyword in RIPKEYWORDS[::-1]: # reverse the keywords so last one gets processed first
-                if ripkeyword in rip.name:
-                    self.n = self.rip[rip.name].n # make it the default Rip
+                     and dirname.endswith('.sort') ] # returns sort folder names without their .sort extension
+        defaultSortNames = [ sortName for sortName in sortNames for sortkeyword in SORTKEYWORDS
+                            if sortkeyword in sortName ]
+        if len(defaultSortNames) < 1:
+            warn('Couldn\'t find a default Sort for Recording(%s)' % self.id)
+        if len(defaultSortNames) > 1: # This could just be a warning instead of an exception, but really, some folder renaming is in order
+            raise RuntimeError, 'More than one Sort folder in Recording(%s) has a default keyword: %s' % (self.id, defaultSortNames)
+        for sortid, SortName in enumerate(sortNames): # sortids will be according to alphabetical order of sortNames
+            sort = Sort(id=sortid, name=sortName, parent=self) # pass both the id and the name
+            sort.load() # load the Sort
+            self.sort[sort.name] = sort # save it
+            self.__setattr__('sort' + str(sort.id), sort) # add shortcut attrib, by id (name typically has too many non-alphanum chars)
+            # make the Neurons from the default Sort (if it exists in the Recording path) available in the Recording, so you can access them via r.n[nid] instead of having to do r.sort[name].n[nid]. Make them just another pointer to the data in r.sort[sortName].n
+            for sortkeyword in SORTKEYWORDS[::-1]: # reverse the keywords so last one gets processed first
+                if sortkeyword in sort.name:
+                    self.n = self.sort[sort.name].n # make it the default Sort
                     for neuron in self.n.values():
                         self.__setattr__('n' + str(neuron.id), neuron) # add shortcut attrib
-                    self.cn = self.rip[rip.name].cn # make it the default Rip for ConstrainedNeurons too
+                    self.cn = self.sort[sort.name].cn # make it the default Sort for ConstrainedNeurons too
                     for cneuron in self.cn.values():
                         self.__setattr__('cn' + str(cneuron.id), cneuron) # add shortcut attrib
-        if len(self.rip) == 1: # there's only one rip, make it the default Rip, even if it doesn't have a ripkeyword in it
-            self.n = self.rip.values()[0].n # make it the default Rip
-            self.cn = self.rip.values()[0].cn # make it the default Rip for ConstrainedNeurons too
+        if len(self.sort) == 1: # there's only one sort, make it the default Sort, even if it doesn't have a sortkeyword in it
+            self.n = self.sort.values()[0].n # make it the default Sort
+            self.cn = self.sort.values()[0].cn # make it the default Sort for ConstrainedNeurons too
         try:
             firstexp = min(self.e.keys())
             lastexp = max(self.e.keys())
@@ -750,7 +751,7 @@ class BaseNetstate(object):
         return intcodeps, intcodes
 
     def ising(self, nis=None, R=None, shuffleids=False, algorithm='CG'):
-        """Returns an Ising maximum entropy model that takes into account pairwise correlations within neuron codes. R = (R0, R1) torus. Algorithm can be 'CG', 'BFGS', 'LBFGSB', 'Powell', or 'Nelder-Mead'"""
+        """Returns a maximum entropy Ising model that takes into account pairwise correlations within neuron codes. R = (R0, R1) torus. Algorithm can be 'CG', 'BFGS', 'LBFGSB', 'Powell', or 'Nelder-Mead'"""
         if nis == None:
             nis = self.cs.nis[0:CODEWORDLEN]
         #print 'nis:', nis.__repr__()

@@ -5,28 +5,28 @@ import dimstim
 
 class BaseNeuron(object):
     """A Neuron object's spike data spans all the Experiments within a Recording.
-    If different Recordings have Rips with the same name, you can assume that the
+    If different Recordings have Sorts with the same name, you can assume that the
     same spike template was used for all of those Recordings, and that therefore
     the neuron ids are the same"""
 
-    from Rip import Rip
+    from Sort import Sort
 
-    def __init__(self, id=None, name=None, parent=Rip): # neuron names don't include the '.spk' ending, although neuron filenames do
+    def __init__(self, id=None, name=None, parent=Sort): # neuron names don't include the '.spk' ending, neuron filenames do
         self.level = 5 # level in the hierarchy
         #self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
         try:
-            self.rip = parent() # init parent Rip object
+            self.sort = parent() # init parent Sort object
         except TypeError: # parent is an instance, not a class
-            self.rip = parent # save parent Rip object
+            self.sort = parent # save parent Sort object
         if id is not None:
-            name = self.id2name(self.rip.path, id) # use the id to get the name
+            name = self.id2name(self.sort.path, id) # use the id to get the name
         elif name is not None:
             id = self.name2id(name) # use the name to get the id
         else:
             raise ValueError, 'Neuron id and name can\'t both be None'
         self.id = id
         self.name = name
-        self.path = self.rip.path
+        self.path = self.sort.path
     '''
     def tree(self):
         """Print tree hierarchy"""
@@ -35,7 +35,7 @@ class BaseNeuron(object):
     def writetree(self,string):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
-        self.rip.writetree(string)
+        self.sort.writetree(string)
     '''
     def id2name(self, path, id):
         #if len(str(id)) == 1: # if id is only 1 digit long
@@ -146,7 +146,7 @@ class BaseNeuron(object):
         to make a copy of the Neuron before appending other Neurons to it. That sounds best.
 
         All Neurons must have the same id and be of the same Track. The user needs to ensure
-        that the same template was used to rip all the Neurons
+        that the same template was used to sort all the Neurons
 
         If you want to recover the original spike times so as to compare with stimuli,
         you need to cut the spikes with the appropriate trange in tranges, and then subtract
@@ -169,15 +169,15 @@ class BaseNeuron(object):
         neurons.extend(others) # put self and all others into a single list of Neurons
         for other in others:
             assert self.id == other.id, 'Neuron ids are different'
-            #assert self.rip == other.rip, 'Rips are different' # forget this, only the user can really know if they used the same template
-            assert self.rip.r.t == other.rip.r.t, 'Tracks are different'
+            #assert self.sort == other.sort, 'Sorts are different' # forget this, only the user can really know if they used the same template
+            assert self.sort.r.t == other.sort.r.t, 'Tracks are different'
         uberneuron = self.copy() # create a copy of self
         uberneuron.spikes = array([], dtype=np.int64) # clear its spikes attrib
         uberneuron.name = '' # clear it
         uberneuron.path = '' # clear it
-        uberneuron.rip = [] # clear, and init a list
+        uberneuron.sort = [] # clear, and init a list
         # sort the Neurons according to their Recording id
-        rids = [ (n.rip.r.id, i) for i, n in enumerate(neurons) ]
+        rids = [ (n.sort.r.id, i) for i, n in enumerate(neurons) ]
         rids.sort() # sorts according to first entry in each tuple
         sortedis = [ i for r, i in rids ]
         neurons = [ neurons[i] for i in sortedis ]
@@ -195,7 +195,7 @@ class BaseNeuron(object):
                 uberneuron.offsets.append(offset)
             uberneuron.name += n.name + ', ' # keep it as a single string
             uberneuron.path += n.path + ', ' # keep it as a single string
-            uberneuron.rip.append(n.rip) # concatenate all rips into a list
+            uberneuron.sort.append(n.sort) # concatenate all sorts into a list
             offset += n.spikes[-1] # for next Recordings spikes, inc offset by the last spike in this Recording
         uberneuron.spikes.sort() # make sure spiketimes remain sorted
         uberneuron.nspikes = len(uberneuron.spikes) # update it
@@ -219,8 +219,8 @@ class XCorr(object):
     def __init__(self, n1=None, n2=None, trange=(-100000, 100000)):
         """Cross-correlation object. n1 has to be a Neuron, n2 can be a Neuron or a Neuron id"""
         self.n1 = n1
-        try: # assume n2 is a Neuron id from the same Rip as n1, get the associated Neuron object
-            n2 = self.n1.rip.n[n2]
+        try: # assume n2 is a Neuron id from the same Sort as n1, get the associated Neuron object
+            n2 = self.n1.sort.n[n2]
         except KeyError: # n2 is probably a Neuron object
             pass
         self.n2 = n2
@@ -265,7 +265,7 @@ class XCorr(object):
             n = n / float(barwidth)
         bar(left=t, height=n, width=barwidth)
         gcfm().frame.SetTitle(lastcmd())
-        #gcfm().frame.SetTitle('r%d.n[%d].xcorr(%d)' % (self.n1.rip.r.id, self.n1.id, self.n2.id))
+        #gcfm().frame.SetTitle('r%d.n[%d].xcorr(%d)' % (self.n1.sort.r.id, self.n1.id, self.n2.id))
         a.set_title('n%d spikes relative to n%d spikes' % (self.n2.id, self.n1.id))
         a.set_xlabel('time (msec)')
         if style == 'rate':
@@ -845,10 +845,10 @@ class NeuronRevCorr(BaseNeuron):
         except AttributeError: # self._stas doesn't exist yet
             self._stas = [] # create a list that'll hold STA objects
         if experiment == None: # no Experiment was passed, use the first experiment this Neuron was involved in
-            experiment = self.rip.r.e[0]
+            experiment = self.sort.r.e[0]
         else:
             try: # assume experiment is an Experiment id, get the associated object
-                experiment = self.rip.r.e[experiment]
+                experiment = self.sort.r.e[experiment]
             except KeyError: # experiment is probably an Experiment object
                 pass
         stao = STA(neuron=self, experiment=experiment, **kwargs) # init a new STA object
@@ -873,10 +873,10 @@ class NeuronRevCorr(BaseNeuron):
         except AttributeError: # self._stcs doesn't exist yet
             self._stcs = [] # create a list that'll hold STC objects
         if experiment == None: # no Experiment was passed, use the first experiment this Neuron was involved in
-            experiment = self.rip.r.e[0]
+            experiment = self.sort.r.e[0]
         else:
             try: # assume experiment is an Experiment id, get the associated object
-                experiment = self.rip.r.e[experiment]
+                experiment = self.sort.r.e[experiment]
             except KeyError: # experiment is probably an Experiment object
                 pass
         stco = STC(neuron=self, experiment=experiment, **kwargs) # init a new STC object
@@ -907,8 +907,8 @@ class ConstrainedNeuron(Neuron):
         cspikes = array([], dtype=np.int64) # init a temporary array
         #self.tranges = np.empty((len(self.r.e), 2), dtype=np.int64) # give it shape(numexps, 2)
         self.tranges = []
-        if self.rip.r.e != {}: # if it ain't empty, ie if there are Experiments in this Rip's Recording
-            for exp in self.rip.r.e.values():
+        if self.sort.r.e != {}: # if it ain't empty, ie if there are Experiments in this Sort's Recording
+            for exp in self.sort.r.e.values():
                 cspikes = np.append(cspikes, self.cut(exp.trange), axis=0)
                 self.tranges.append(exp.trange)
             cspikes.sort() # make sure they're sorted, in case Experiments weren't in temporal order for some reason
