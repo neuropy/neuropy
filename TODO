@@ -1,5 +1,7 @@
 TODO:
 
+- changing the global default, say, ANIMAL in neuropy.Core on the fly doesn't seem to work
+
 - get rid of all use of super(), replace with direct call of base class instead
 
 - limit each Recording to only one Sort object, which is by default either the one that says 'best' in its filename, or the first one alphabetically. Override default by specifying the sorts filename as an arg to Recording.__init__ and/or .load(). Maybe add a Recording.get_sortnames method that lists available sort filenames (minus their .sort extension)
