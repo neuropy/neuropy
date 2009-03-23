@@ -1,3 +1,5 @@
 To install:
 
 >>> python setup.py install
+
+neuropy depends on dimstim, so you'll need to install dimstim before you run neuropy. You might be able to skip installing any of dimstim's extra dependencies. I've never actually tried.
