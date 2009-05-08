@@ -1,4 +1,4 @@
-"""A test suite for neuropy"""
+"""A (very incomplete) test suite for neuropy"""
 
 from Core import *
 

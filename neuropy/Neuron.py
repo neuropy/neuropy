@@ -1,7 +1,6 @@
 """Defines the Neuron class and all of its support classes"""
 
 from Core import *
-import dimstim
 
 class BaseNeuron(object):
     """A Neuron object's spike data spans all the Experiments within a Recording.
@@ -677,8 +676,10 @@ class RevCorr(object):
             self.trange = self.experiment.trange
         else:
             self.trange = trange
-        import dimstim.Movie
-        assert self.experiment.e.__class__ in (dimstim.Movie.Movie, Cat15Movie)
+        # this type checking is a hack to remove need to import dimstim:
+        assert str(type(self.experiment.e)) in (
+            "<class 'dimstim.Movie.Movie'>",
+            "<class 'neuropy.Core.Cat15Movie'>")
         self.movie = self.experiment.e
         try:
             self.movie.frames # check if movie frames have been loaded from file

@@ -1,7 +1,5 @@
 """Defines the Experiment class and all of its support classes."""
 
-import dimstim.Core
-
 from Core import *
 from Core import Cat15Movie
 Movie = Cat15Movie # synonym for Cat 15 textheader
@@ -71,6 +69,9 @@ class BaseExperiment(object):
             except NameError:
                 self.__version__ = 0.0
             if self.__version__ >= 0.16: # after major refactoring of dimstim
+
+                import dimstim.Core # can't put this off any longer
+
                 for newname in newnames:
                     self.__setattr__(newname, eval(newname)) # bind each variable in the textheader as an attrib of self
                 self.sweeptable = dimstim.Core.SweepTable(experiment=self.e) # build the sweep table, given dimstim exp
