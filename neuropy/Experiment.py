@@ -71,6 +71,7 @@ class BaseExperiment(object):
             if self.__version__ >= 0.16: # after major refactoring of dimstim
 
                 import dimstim.Core # can't put this off any longer
+                import dimstim.Movie
 
                 for newname in newnames:
                     self.__setattr__(newname, eval(newname)) # bind each variable in the textheader as an attrib of self
@@ -79,7 +80,7 @@ class BaseExperiment(object):
                 self.e.xorig = dimstim.Core.deg2pix(self.e.static.xorigDeg) + I.SCREENWIDTH / 2 # may as well
                 self.e.yorig = dimstim.Core.deg2pix(self.e.static.yorigDeg) + I.SCREENHEIGHT / 2
                 self.REFRESHTIME = intround(1 / float(self.I.REFRESHRATE) * 1000000) # in us, keep 'em integers
-                if self.e.__class__ == dimstim.Movie.Movie: # prevent replication of movie frame data in memory
+                if type(self.e) == dimstim.Movie.Movie: # prevent replication of movie frame data in memory
                     fname = os.path.split(self.e.static.fname)[-1] # pathless fname
                     if fname not in _data.movies:
                         _data.movies[fname] = e # add Movie Experiment, indexed according to movie data file name, to prevent from ever loading its frames more than once
@@ -240,23 +241,23 @@ class BaseExperiment(object):
         Each entry in 'varlist' represents one variable. Each entry is itself made up of a 2-entry dictionary with 'shuffle' and 'dim' fields. The 'shuffle' field is a flag (0=leave ordered, 1=shuffle, 2=randomize). shuffle==1 shuffles the variable's dimension during the experiment, shuffle==2 randomly samples it instead. Variable position in the varlist doesn't matter. However, the variable's associated 'dim' value relative to all the other 'dim' values in the variable list determines its order in the nested for loops that generate the combinations of values for each sweep: the variable with the lowest 'dim' value becomes the outermost for loop and changes least often; the variable with the highest 'dim' value becomes the innermost for loop and changes on every sweep. 'dim' must be an integer (+ve, -ve, or 0). Variables with the same 'dim' value are part of the same dimension, are shuffled together, and must therefore be assigned the same number of values and the same shuffle flag"""
 
         # Do some error checking
-        if nruns.__class__ != int or nruns < 0:
+        if type(nruns) != int or nruns < 0:
             raise ValueError, 'nruns must be a non-negative integer'
-        if shuffleRuns.__class__ != int or shuffleRuns not in (0, 1):
+        if type(shuffleRuns) != int or shuffleRuns not in (0, 1):
             raise ValueError, 'shuffleRuns must be 0 or 1'
-        if blankSweep.__class__ != tuple or blankSweep[0].__class__ != int or blankSweep[0] == 1 or blankSweep[0] < 0:
+        if type(blankSweep) != tuple or type(blankSweep[0]) != int or blankSweep[0] == 1 or blankSweep[0] < 0:
             raise ValueError, 'blankSweep must be a tuple, and blankSweep[0] must be a non-negative integer and cannot equal 1'
-        if shuffleBlankSweeps.__class__ != int or shuffleBlankSweeps not in (0, 1):
+        if type(shuffleBlankSweeps) != int or shuffleBlankSweeps not in (0, 1):
             raise ValueError, 'shuffleBlankSweeps must be 0 or 1'
         # check that shuffle flag is valid for each variable
         for var in varlist:
-            if varlist[var]['shuffle'].__class__ != int or varlist[var]['shuffle'] not in (0, 1, 2):
+            if type(varlist[var]['shuffle']) != int or varlist[var]['shuffle'] not in (0, 1, 2):
                 raise ValueError, 'Variable %s has a shuffle value outside of (0, 1, 2)' % var
 
         for (key, val) in varvals.items():
             if val == None:
                 raise ValueError, 'Variable %s was passed with value None. Can\'t generate a sweeptable with None values' % key
-            if val.__class__ != list:
+            if type(val) != list:
                 val = [val] # turn any single value non-list vals into single value list vals
             exec(key + '=' + str(val)) # locally allocate the vals for all vars in varlist - bad!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         nvars = len(varlist)
@@ -290,7 +291,7 @@ class BaseExperiment(object):
             for (var, vardict) in varlist.items(): # varlist is a dictionary of dictionaries, var is the variable name
                 if vardict['dim']==dimi:
                     vardict['dim']=dim # overwrite dimi with dim, so dim nums are 0 based and consecutive, note that this overwrites the dimi value in varlist (OK) cuz it was passed by reference and we're stepping through it by reference!
-                    if eval(var).__class__ == list:
+                    if type(eval(var)) == list:
                         varlengths.append(len(eval(var))) # store the variable's length
                     else:
                         varlengths.append(1) # store length of single numbers (non-lists) as 1

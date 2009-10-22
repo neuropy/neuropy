@@ -38,7 +38,7 @@ class BaseRecording(object):
         elif name is not None:
             id = self.name2id(name) # use the name to get the id
         else:
-            raise ValueError, 'Recording id and name can\'t both be None'
+            raise ValueError('Recording id and name can\'t both be None')
         self.id = id
         self.name = name
         self.path = os.path.join(self.t.path, self.name)
@@ -60,21 +60,30 @@ class BaseRecording(object):
                  if os.path.isdir(os.path.join(path, dirname))
                  and dirname.startswith(str(id)) ]
         if len(name) != 1:
-            raise NameError, 'Ambiguous or non-existent Recording id: %s' % id
+            raise NameError('Ambiguous or non-existent Recording id: %s' % id)
         else:
             return name[0] # pull the string out of the list
 
     def name2id(self, name):
-        id = name.split()[0] # return the first word in the name, using whitespace as separators
+        # return the first word in the name, using whitespace or - as separators
+        ids = name.split()[0], name.split('-')[0]
+        for id in ids:
+            try:
+                self.checkid(id)
+                return id
+            except ValueError:
+                continue
+        raise ValueError("Couldn't convert Recording name %r to an ID" % name)
+
+    def checkid(self, id):
         try:
             int(id[0]) # first character of Recording id better be an integer
         except ValueError:
-            raise ValueError, 'First character of Recording name %r should be a number' % name
+            raise ValueError('First character of Recording name %r should be a number' % name)
         try:
             id = int(id) # convert entire id to int if possible
         except ValueError:
-            pass # it's alphanumeric (but starts with a number), leave it as a string
-        return id
+            raise ValueError('Recording ID should be numeric, not alphanumeric')
 
     def load(self):
 
@@ -101,7 +110,8 @@ class BaseRecording(object):
         if len(defaultSortNames) < 1:
             warn('Couldn\'t find a default Sort for Recording(%s)' % self.id)
         if len(defaultSortNames) > 1: # This could just be a warning instead of an exception, but really, some folder renaming is in order
-            raise RuntimeError, 'More than one Sort folder in Recording(%s) has a default keyword: %s' % (self.id, defaultSortNames)
+            raise RuntimeError('More than one Sort folder in Recording(%s) has a default keyword: %s'
+                               % (self.id, defaultSortNames))
         for sortid, SortName in enumerate(sortNames): # sortids will be according to alphabetical order of sortNames
             sort = Sort(id=sortid, name=sortName, parent=self) # pass both the id and the name
             sort.load() # load the Sort
@@ -953,7 +963,7 @@ class NetstateScatter(BaseNetstate):
             self.expectedwords = ising.intsamplespace
             self.pindepexpected = self.intcodesFPDF(nis=self.nis)[0] # expected, assuming independence
         else:
-            raise ValueError, 'Unknown model %r' % self.model
+            raise ValueError('Unknown model %r' % self.model)
         assert (self.observedwords == self.expectedwords).all() # make sure we're comparing apples to apples
         return self
 
@@ -992,7 +1002,7 @@ class NetstateScatter(BaseNetstate):
         elif scale == 'prob':
             norm = 1 # leave scale as pattern probabilities
         else:
-            raise ValueError, 'Unknown scale %r' % scale
+            raise ValueError('Unknown scale %r' % scale)
         self.norm = norm
 
         if color:
