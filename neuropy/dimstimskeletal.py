@@ -6,7 +6,7 @@ from copy import copy
 
 import numpy as np
 
-from Core import dictattr, TAB
+from core import dictattr, TAB
 
 
 def deg2pix(deg, I):

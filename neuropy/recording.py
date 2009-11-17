@@ -1,8 +1,9 @@
 """Defines the Recording class and all of its support classes"""
 
-import Core
-from Core import *
-from Core import _data # ensure it's imported, in spite of leading _
+import core
+# TODO: stop doing this:
+from core import *
+from core import _data # ensure it's imported, in spite of leading _
 
 # Good global setting for presentation plots:
 pl.rcParams['axes.labelsize'] = 30
@@ -21,7 +22,7 @@ class BaseRecording(object):
     and multiple spike extractions, called Sorts"""
     def __init__(self, id=None, name=None, parent=None):
 
-        from Track import Track
+        from track import Track
 
         self.level = 3 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
@@ -87,8 +88,8 @@ class BaseRecording(object):
 
     def load(self):
 
-        from Experiment import Experiment
-        from Sort import Sort
+        from experiment import Experiment
+        from sort import Sort
 
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen

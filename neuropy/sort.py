@@ -1,13 +1,13 @@
 """Defines the Sort class"""
 
-from Core import *
+from core import *
 
 class Sort(object):
     """A Sort is a single spike extraction. Generally, Sorts of the same name within the same Track
     were generated with the same spike template, though of course Sorts in different Tracks must
     be generated from different templates, even if the Sorts have the same name"""
 
-    from Recording import Recording
+    from recording import Recording
 
     def __init__(self, id=None, name=None, parent=Recording):
         self.level = 4 # level in the hierarchy
@@ -36,7 +36,7 @@ class Sort(object):
     '''
     def load(self):
 
-        from Neuron import Neuron, ConstrainedNeuron
+        from neuron import Neuron, ConstrainedNeuron
 
         #treestr = self.level*TAB + self.name + '/'
         #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen

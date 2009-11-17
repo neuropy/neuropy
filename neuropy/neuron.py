@@ -1,9 +1,9 @@
 """Defines the Neuron class and all of its support classes"""
 
 # TODO: stop doing this!
-from Core import *
-#from Core import Cat15Movie
-from dimstimSkeletal import Movie
+from core import *
+#from core import Cat15Movie
+from dimstimskeletal import Movie
 
 class BaseNeuron(object):
     """A Neuron object's spike data spans all the Experiments within a Recording.
@@ -11,7 +11,7 @@ class BaseNeuron(object):
     same spike template was used for all of those Recordings, and that therefore
     the neuron ids are the same"""
 
-    from Sort import Sort
+    from sort import Sort
 
     def __init__(self, id=None, name=None, parent=Sort): # neuron names don't include the '.spk' ending, neuron filenames do
         self.level = 5 # level in the hierarchy

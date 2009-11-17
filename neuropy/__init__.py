@@ -19,17 +19,17 @@ r"""Experimental and model neuronal and stimulus data analysis in Python
 
 __author__ = "Martin Spacek"
 
-from Core import *
-from Core import _data # ensure it's imported, in spite of leading _, useful for user examination of default Data object
+from core import *
+from core import _data # ensure it's imported, in spite of leading _, useful for user examination of default Data object
 
-from Animal import Animal
-from Track import Track
-from Recording import Recording
-from Experiment import Experiment
-from Sort import Sort
-from Neuron import Neuron
+from animal import Animal
+from track import Track
+from recording import Recording
+from experiment import Experiment
+from sort import Sort
+from neuron import Neuron
 
-from Test import test
+#from test import test
 
 # init and load some neuropy objects:
 '''

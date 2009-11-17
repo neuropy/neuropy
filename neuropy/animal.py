@@ -1,7 +1,8 @@
 """Defines the Animal class"""
 
-from Core import *
-from Core import _data # ensure it's imported, in spite of leading _
+# TODO: stop doing this:
+from core import *
+from core import _data # ensure it's imported, in spite of leading _
 
 class Animal(object):
     """An Animal can have multiple Tracks.
@@ -26,7 +27,7 @@ class Animal(object):
 
     def load(self):
 
-        from Track import Track
+        from track import Track
 
         treestr = self.level*TAB + self.id + '/'
         self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen

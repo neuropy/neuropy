@@ -1,14 +1,14 @@
 """Defines the Experiment class and all of its support classes."""
 
-from Core import *
-#from Core import Cat15Movie # use dimstimSkeletal.Movie for both ptc15 and ptc16+
-from Core import _data
+from core import *
+#from core import Cat15Movie # use dimstimSkeletal.Movie for both ptc15 and ptc16+
+from core import _data
 
-import Neuron
-from Recording import PopulationRaster, Codes, CodeCorrPDF
-from dimstimSkeletal import deg2pix, InternalParams, StaticParams, DynamicParams, Variable, Variables, Runs, BlankSweeps
-from dimstimSkeletal import Dimension, SweepTable
-from dimstimSkeletal import Movie, Grating, Bar, SparseNoise, BlankScreen
+import neuron
+from recording import PopulationRaster, Codes, CodeCorrPDF
+from dimstimskeletal import deg2pix, InternalParams, StaticParams, DynamicParams, Variable, Variables, Runs, BlankSweeps
+from dimstimskeletal import Dimension, SweepTable
+from dimstimskeletal import Movie, Grating, Bar, SparseNoise, BlankScreen
 
 
 class BaseExperiment(object):
@@ -18,7 +18,7 @@ class BaseExperiment(object):
     it includes the entire dimstim.Experiment object as an attribute (.e).
     A neuropy.Experiment is basically a container for a dimstim.Experiment"""
 
-    from Recording import Recording
+    from recording import Recording
 
     def __init__(self, id=None, name=None, parent=None):
         self.level = 4 # level in the hierarchy
@@ -493,8 +493,8 @@ class ExperimentCode(BaseExperiment):
         except AttributeError:
             return self.r.n[neuron].code(tranges=[self.trange], **kwargs) # neuron is probably a Neuron id
     code.__doc__ += '\n\n**kwargs:'
-    code.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code)
-    code.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__)
+    code.__doc__ += '\nNeuron.code: '+getargstr(neuron.Neuron.code)
+    code.__doc__ += '\nbinary: '+getargstr(neuron.BinaryCode.__init__)
 
     def codes(self, neurons=None, **kwargs):
         """Returns a 2D array where each row is a neuron code constrained to the time range of this Experiment"""
@@ -505,8 +505,8 @@ class ExperimentCode(BaseExperiment):
         return codeso
     codes.__doc__ += '\n\n**kwargs:'
     codes.__doc__ += '\nCodes: '+getargstr(Codes.__init__)
-    codes.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code)
-    codes.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__)
+    codes.__doc__ += '\nNeuron.code: '+getargstr(neuron.Neuron.code)
+    codes.__doc__ += '\nbinary: '+getargstr(neuron.BinaryCode.__init__)
 
     def codecorr(self, neuron1, neuron2, **kwargs):
         """Calculates the correlation of two Neuron.Code objects"""
@@ -514,8 +514,8 @@ class ExperimentCode(BaseExperiment):
         code2 = self.code(neuron2, **kwargs)
         return corrcoef(code1.c, code2.c)
     codecorr.__doc__ += '\n\n**kwargs:'
-    codecorr.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code)
-    codecorr.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__)
+    codecorr.__doc__ += '\nNeuron.code: '+getargstr(neuron.Neuron.code)
+    codecorr.__doc__ += '\nbinary: '+getargstr(neuron.BinaryCode.__init__)
 
     def codecorrpdf(self, **kwargs):
         """Returns an existing CodeCorrPDF object, or creates a new one if necessary"""
@@ -532,8 +532,8 @@ class ExperimentCode(BaseExperiment):
         return cco
     codecorrpdf.__doc__ += '\n\n**kwargs:'
     codecorrpdf.__doc__ += '\nCodeCorrPDF: '+getargstr(CodeCorrPDF.__init__)
-    codecorrpdf.__doc__ += '\nNeuron.code: '+getargstr(Neuron.Neuron.code)
-    codecorrpdf.__doc__ += '\nbinary: '+getargstr(Neuron.BinaryCode.__init__)
+    codecorrpdf.__doc__ += '\nNeuron.code: '+getargstr(neuron.Neuron.code)
+    codecorrpdf.__doc__ += '\nbinary: '+getargstr(neuron.BinaryCode.__init__)
     '''
     def netstate(self):
         """Returns a Netstate object"""
@@ -554,7 +554,7 @@ class ExperimentRate(BaseExperiment):
         except AttributeError:
             return self.r.n[neuron].rate(trange=self.trange, **kwargs) # neuron is probably a Neuron id
     rate.__doc__ += '\n\n**kwargs:'
-    rate.__doc__ += Neuron.Neuron._rateargs
+    rate.__doc__ += neuron.Neuron._rateargs
 
     def ratepdf(self, neuron, **kwargs):
         """Returns a Neuron.RatePDF object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
@@ -563,9 +563,9 @@ class ExperimentRate(BaseExperiment):
         except AttributeError:
             return self.r.n[neuron].ratepdf(trange=self.trange, **kwargs) # neuron is probably a Neuron id
     ratepdf.__doc__ += '\n\n**kwargs:'
-    ratepdf.__doc__ += '\nNeuron.RatePDF: '+getargstr(Neuron.RatePDF.__init__)
-    ratepdf.__doc__ += '\nNeuron.rate: '+getargstr(Neuron.Neuron.rate)
-    ratepdf.__doc__ += Neuron.Neuron._rateargs
+    ratepdf.__doc__ += '\nNeuron.RatePDF: '+getargstr(neuron.RatePDF.__init__)
+    ratepdf.__doc__ += '\nNeuron.rate: '+getargstr(neuron.Neuron.rate)
+    ratepdf.__doc__ += neuron.Neuron._rateargs
 
 
 class RevCorrs(object):

@@ -1,6 +1,6 @@
 """A (very incomplete) test suite for neuropy"""
 
-from Core import *
+from core import *
 
 def test():
 

@@ -1,13 +1,13 @@
 """Defines the Track class"""
 
-from Core import *
-from Core import _data # ensure it's imported, in spite of leading _
+from core import *
+from core import _data # ensure it's imported, in spite of leading _
 
 class Track(object):
     """A Track can have multiple Recordings"""
     def __init__(self, id=TRACK, name=None, parent=None):
 
-        from Animal import Animal
+        from animal import Animal
 
         self.level = 2 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
@@ -61,7 +61,7 @@ class Track(object):
 
     def load(self):
 
-        from Recording import Recording
+        from recording import Recording
 
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n') # print string to tree hierarchy,

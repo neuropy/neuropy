@@ -98,7 +98,7 @@ class Data(object):
 
     def load(self):
 
-        from Animal import Animal
+        from animal import Animal
 
         treestr = self.level*TAB + self.name + '/'
         self.writetree(treestr+'\n')
