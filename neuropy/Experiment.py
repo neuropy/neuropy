@@ -1,12 +1,14 @@
 """Defines the Experiment class and all of its support classes."""
 
 from Core import *
-from Core import Cat15Movie
-Movie = Cat15Movie # synonym for Cat 15 textheader
+#from Core import Cat15Movie # use dimstimSkeletal.Movie for both ptc15 and ptc16+
 from Core import _data
 
 import Neuron
 from Recording import PopulationRaster, Codes, CodeCorrPDF
+from dimstimSkeletal import deg2pix, InternalParams, StaticParams, DynamicParams, Variable, Variables, Runs, BlankSweeps
+from dimstimSkeletal import Dimension, SweepTable
+from dimstimSkeletal import Movie, Grating, Bar, SparseNoise, BlankScreen
 
 
 class BaseExperiment(object):
@@ -60,6 +62,8 @@ class BaseExperiment(object):
         print treestr # ...and screen
 
         if self.textheader: # if it isn't empty
+            # comment out all lines starting with "from dimstim"
+            self.textheader = self.textheader.replace('from dimstim', '#from dimstim')
             names1 = locals().copy() # namespace before execing the textheader
             exec(self.textheader)
             names2 = locals().copy() # namespace after
@@ -69,21 +73,24 @@ class BaseExperiment(object):
             except NameError:
                 self.__version__ = 0.0
             if self.__version__ >= 0.16: # after major refactoring of dimstim
-
-                import dimstim.Core # can't put this off any longer
-                import dimstim.Movie
-
                 for newname in newnames:
                     self.__setattr__(newname, eval(newname)) # bind each variable in the textheader as an attrib of self
-                self.sweeptable = dimstim.Core.SweepTable(experiment=self.e) # build the sweep table, given dimstim exp
+                self.sweeptable = SweepTable(experiment=self.e) # build the sweep table, given dimstim exp
                 self.st = self.sweeptable.data # synonym, used a lot by Experiment subclasses
-                self.e.xorig = dimstim.Core.deg2pix(self.e.static.xorigDeg) + I.SCREENWIDTH / 2 # may as well
-                self.e.yorig = dimstim.Core.deg2pix(self.e.static.yorigDeg) + I.SCREENHEIGHT / 2
+                # this doesn't work for textheaders from dimstim 0.16, since xorigDeg and yorigDeg
+                # were accidentally omitted from all the experiment scripts and hence the textheaders too:
+                '''
+                self.e.xorig = deg2pix(self.e.static.xorigDeg, self.I) + self.I.SCREENWIDTH / 2 # may as well
+                self.e.yorig = deg2pix(self.e.static.yorigDeg, self.I) + self.I.SCREENHEIGHT / 2
+                '''
                 self.REFRESHTIME = intround(1 / float(self.I.REFRESHRATE) * 1000000) # in us, keep 'em integers
-                if type(self.e) == dimstim.Movie.Movie: # prevent replication of movie frame data in memory
+                # prevent replication of movie frame data in memory
+                if type(self.e) == Movie:
                     fname = os.path.split(self.e.static.fname)[-1] # pathless fname
                     if fname not in _data.movies:
-                        _data.movies[fname] = e # add Movie Experiment, indexed according to movie data file name, to prevent from ever loading its frames more than once
+                        # add Movie Experiment, indexed according to movie data file name,
+                        # to prevent from ever loading its frames more than once
+                        _data.movies[fname] = e
             else:
                 self.oldparams = dictattr()
                 for newname in newnames:

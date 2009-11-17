@@ -114,7 +114,7 @@ class Data(object):
 
 _data = Data() # init a default Data object to use as a container for everything that falls under the data object hierarchy
 
-
+'''
 class Cat15Movie(object):
     """dimstim >= 0.16 Experiments use the dimstim Experiment (subclassed by say, Movie) object directly"""
     def __init__(self, fname=None, name=None, parent=None):
@@ -190,7 +190,7 @@ class Cat15Movie(object):
             if flip:
                 frame = frame[::-1, ::] # flip all frames vertically for OpenGL's bottom left origin
             self.frames.append(frame)
-
+'''
 
 def getargstr(obj):
     """Returns object's argument list as a string. Stolen from wx.py package?"""
