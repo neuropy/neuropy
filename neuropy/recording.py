@@ -789,7 +789,7 @@ class BaseNetstate(object):
                     pairmeans.append((c[i]*c[j]).mean()) # take a pair of rows, find the mean of their elementwise product
                 else:
                     pairmeans.append(None) # pair are outside the torus, ignore their pairmeans
-        isingo = Core.Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
+        isingo = core.Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
         return isingo
 
 
@@ -883,7 +883,7 @@ class NetstateNspikingPMF(BaseNetstate):
         for shufflecodes in (False, True):
             self.words[shufflecodes] = self.get_intcodes(nis=self.nis, shufflecodes=shufflecodes)
             # collect observances of the number of cells spiking for each pop code time bin
-            self.nspiking[shufflecodes] = [ np.binary_repr(word).count('1') for word in self.words[shufflecodes] ] # convert the word at each time bin to binary, count the number of 1s in it. np.binary_repr() is a bit faster than using neuropy.Core.bin()
+            self.nspiking[shufflecodes] = [ np.binary_repr(word).count('1') for word in self.words[shufflecodes] ] # convert the word at each time bin to binary, count the number of 1s in it. np.binary_repr() is a bit faster than using neuropy.core.bin()
             self.pnspiking[shufflecodes], self.bins[shufflecodes] = histogram(self.nspiking[shufflecodes],
                                                                               bins=arange(self.nneurons+1),
                                                                               normed='pmf') # want all probs to add to 1, not their area, so use pmf

@@ -7,7 +7,7 @@ import pymedia.audio.acodec as acodec
 import pymedia.video.vcodec as vcodec
 
 from neuropy.Movie import Movie
-from neuropy.Core import enlarge
+from neuropy.core import enlarge
 
 m = Movie(name='ns1-64p-50h-2m-mnNAT-ctNAT', path='C:/pub/Movies/tracking/', parent=None)
 m.load()

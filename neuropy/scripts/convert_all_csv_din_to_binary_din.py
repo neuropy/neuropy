@@ -1,1 +1,1 @@
-"""use convertalltxtdin2binarydin() in neuropy.Core"""
+"""use convertalltxtdin2binarydin() in neuropy.core"""

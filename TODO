@@ -5,6 +5,10 @@ TODO:
     - maybe by default use the most recently generated .sort folder (as designated by its now auto-generated name with the datetime stamp in it), or if any of them have a DEFAULT file inside, use that one as an override
     - if .sort files exist in the path, and none of the .sort folders have a DEFAULT file inside them, use the most recently generated .sort file (again, as designated by the datetime stamp in its filename)
 
+- NVS: xcorr RFs, find pairs that have very correlated RFs, then check if those two cells really are different cells, according to their spike waveforms. If waveforms really are different, then compare responses to natural scenes. This way, you can test if an mseq RF is in any way useful for predicting responses to nat scenes. If responses are different to nat scenes, yet RFs are the same, then visual neuroscience is hosed!
+
+- NVS: normalize so that Rfs have the same 0 point, ie same 0 colour
+
 - stop using "import *"
 
 - changing the global default, say, ANIMAL in neuropy.Core on the fly doesn't seem to work

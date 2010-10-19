@@ -1,6 +1,6 @@
 """colortable used for displaying rf array obtained by reverse correlation"""
 
-from Core import *
+from core import *
 
 def rcLUT(n=256):
     """n is the number of entries you want in the returned colortable. Defaults to 256"""

@@ -38,7 +38,7 @@ def refreshmod(mod, importall=False):
 '''
 # set neuropy's __all__ attrib for designating which names will be imported when
 # you go 'from neuropy import *'
-__importall__ = [Core] # list of mods imported above as "from mod import *"
+__importall__ = [core] # list of mods imported above as "from mod import *"
 __all__ = ['Neuron', 'Experiment', 'test']
 import types
 for mod in __importall__:

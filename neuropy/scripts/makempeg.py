@@ -2,7 +2,7 @@
 
 import sys
 from neuropy.Movie import Movie
-from neuropy.Core import enlarge
+from neuropy.core import enlarge
 
 #import pymedia
 #import pymedia.video
