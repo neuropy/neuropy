@@ -10,7 +10,7 @@ from distutils.core import setup
 import os
 
 setup(name='neuropy',
-      version='0.1',
+      version='0.2',
       license='BSD',
       description='Neuronal spike data and stimulus analysis in Python',
       author='Martin Spacek',
