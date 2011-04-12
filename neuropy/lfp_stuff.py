@@ -29,7 +29,7 @@ def load_lfp(lfpfname='/data/ptc15/tr7c/92 - track 7c mseq32 0.4deg/92_-_track_7
     f = np.load(lfpfname)
     data = f['data']
     chans = f['chans']
-    ts = np.arange(f['t0'], f['tend'], f['tres'])
+    ts = np.arange(f['t0'], f['t1'], f['tres'])
     wave = WaveForm(data=data, ts=ts, chans=chans)
     wave.tres = f['tres']
     return wave
