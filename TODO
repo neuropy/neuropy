@@ -1,5 +1,7 @@
 TODO:
 
+- replace move file paths in read back textheaders with local movie file path as defined by core.MOVIEPATH - right now I've simply made a symbolic link in root called /mov which points to /home/mspacek/data/mov
+
 - change best rip from being part of foldername (which causes problems when renaming folders with svn when you wanna temporarily change which rip folder is used for analysis) to just being an empty file called "BEST" or something within that rip's folder, or maybe a text file called "DEFAULT" in the Track's folder that has the default rip folder's name in it
     - this won't work once we start replacing rip folders with .sort files...
     - maybe by default use the most recently generated .sort folder (as designated by its now auto-generated name with the datetime stamp in it), or if any of them have a DEFAULT file inside, use that one as an override

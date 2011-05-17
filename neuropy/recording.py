@@ -113,7 +113,7 @@ class BaseRecording(object):
         if len(defaultSortNames) > 1: # This could just be a warning instead of an exception, but really, some folder renaming is in order
             raise RuntimeError('More than one Sort folder in Recording(%s) has a default keyword: %s'
                                % (self.id, defaultSortNames))
-        for sortid, SortName in enumerate(sortNames): # sortids will be according to alphabetical order of sortNames
+        for sortid, sortName in enumerate(sortNames): # sortids will be according to alphabetical order of sortNames
             sort = Sort(id=sortid, name=sortName, parent=self) # pass both the id and the name
             sort.load() # load the Sort
             self.sort[sort.name] = sort # save it

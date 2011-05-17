@@ -37,14 +37,14 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 
 # GLOBAL DEFAULTS
 
-DATAPATH = os.path.join(os.sep, 'data')
+DATAPATH = '/home/mspacek/data'
 ANIMALPREFIX = 'pt'
 
-ANIMAL = 'ptc15'
-TRACK = '7c'
+ANIMAL = 'ptc17'
+TRACK = '1'
 
 SORTKEYWORDS = ['best'] # a Sort with one of these keywords (listed in decreasing priority) will be loaded as the default Sort for its Recording
-MOVIEPATH = os.path.join(os.sep, 'mov')
+MOVIEPATH = '/home/mspacek/data/mov'
 # local mseq movie names
 MSEQ16 = 'MSEQ16' # formerly mseq16.m
 MSEQ32 = 'MSEQ32' # formerly mseq32.m
