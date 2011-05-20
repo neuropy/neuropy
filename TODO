@@ -2,6 +2,11 @@ TODO:
 
 - replace move file paths in read back textheaders with local movie file path as defined by core.MOVIEPATH - right now I've simply made a symbolic link in root called /mov which points to /home/mspacek/data/mov
 
+- STA is really slow for some reason
+    - reduce din entries down to unique values - ie get rid of repeated frame values, to make searchsorted faster - for a 40ms mseq, you'd go from 8 entries per frame (5 ms each) down to just one
+    - also, maybe reduce mseq black and white pix values from 0, 255 to 0, 1, so you can accumulate in a smaller sized data type (maybe pure int instead of float, for int speed)
+    - also maybe keep in mind what NVS said about finding average of a large number of floats by first adding them up and then dividing at the end: you lose precision because of the limited mantissa. Hopefully I'm adding up ints anyway, so this shouldn't apply
+
 - change best rip from being part of foldername (which causes problems when renaming folders with svn when you wanna temporarily change which rip folder is used for analysis) to just being an empty file called "BEST" or something within that rip's folder, or maybe a text file called "DEFAULT" in the Track's folder that has the default rip folder's name in it
     - this won't work once we start replacing rip folders with .sort files...
     - maybe by default use the most recently generated .sort folder (as designated by its now auto-generated name with the datetime stamp in it), or if any of them have a DEFAULT file inside, use that one as an override

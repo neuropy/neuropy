@@ -8,9 +8,10 @@ to create binary distribution:
 
 from distutils.core import setup
 import os
+from neuropy import __version__
 
 setup(name='neuropy',
-      version='0.2',
+      version=__version__,
       license='BSD',
       description='Neuronal spike data and stimulus analysis in Python',
       author='Martin Spacek',

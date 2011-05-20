@@ -17,7 +17,8 @@ r"""Experimental and model neuronal and stimulus data analysis in Python
       (Cat15Movie)    Neuron      5
 """
 
-__author__ = "Martin Spacek"
+__authors__ = ["Martin Spacek"]
+__version__ = 0.2
 
 from core import *
 from core import _data # ensure it's imported, in spite of leading _, useful for user examination of default Data object
