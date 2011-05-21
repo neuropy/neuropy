@@ -14,6 +14,7 @@ from IPython.core import ultratb
 from IPython.frontend.terminal.ipapp import load_default_config
 # has to come before Qt imports:
 from IPython.frontend.qt.console.ipython_widget import IPythonWidget
+from IPython.frontend.qt.kernelmanager import QtKernelManager
 
 from PyQt4 import QtCore, QtGui, uic
 #from PyQt4.QtCore import Qt
@@ -26,11 +27,28 @@ class NeuropyWindow(QtGui.QMainWindow):
         self.ui = NeuropyUi()
         self.ui.setupUi(self) # lay it out
 
-        ipyqtwidget = IPythonWidget()
+        # might need local_kernel=True kwarg
+        # can set paging style, like 'vsplit', 'hsplit', 'none', default is 'inside'
+        ipyqtwidget = IPythonWidget(parent=self, local_kernel=True)
+        self.ipyqtwidget = ipyqtwidget
+        ipyqtwidget.config = load_default_config() # doesn't seem to work
+        kernel_manager = QtKernelManager()
+        kernel_manager.start_kernel() # might need **kwargs
+        kernel_manager.start_channels()
+        ipyqtwidget.gui_completion = True
+        ipyqtwidget.kernel_manager = kernel_manager
+        ipyqtwidget.set_default_style(colors='linux')
+        # font, font_changed, fontChange
+        # make "exit" and "quit" typed in ipyqtwidget close self
+        ipyqtwidget.exit_requested.connect(self.close)
         self.setCentralWidget(ipyqtwidget)
+
+        # to communicate with the ipy kernel user namespace, probably need to
+        # use kernel_manager.kernel.communicate and send a signal somehow
 
         #self.setGeometry(300, 300, 300, 200)
         self.setWindowTitle('neuropy')
+        #self.shell()
 
     @QtCore.pyqtSlot()
     def on_actionOpen_triggered(self):
@@ -44,6 +62,12 @@ class NeuropyWindow(QtGui.QMainWindow):
     def on_actionQuit_triggered(self):
         self.close() # call close() before destroy() to avoid segfault
         self.destroy()
+
+    def closeEvent(self, event):
+        km = self.ipyqtwidget.kernel_manager
+        if km and km.channels_running:
+            km.shutdown_kernel()
+            event.accept()
 
     @QtCore.pyqtSlot()
     def on_actionAboutNeuropy_triggered(self):
@@ -60,12 +84,12 @@ class NeuropyWindow(QtGui.QMainWindow):
     @QtCore.pyqtSlot()
     def on_actionAboutQt_triggered(self):
         QtGui.QMessageBox.aboutQt(self)
-    '''
+
     def shell(self):
         embed(display_banner=False, config=load_default_config()) # "self" is accessible
         # embed() seems to override the excepthook, need to reset it:
         set_excepthook()
-    '''
+
     def raise_error(self):
         raise RuntimeError
 
@@ -77,8 +101,9 @@ def set_excepthook():
 
 if __name__ == "__main__":
     # prevents "The event loop is already running" errors:
-    QtCore.pyqtRemoveInputHook()
-    set_excepthook()
+    # but, one of the two following causes ipython shutdown errors on close:
+    #QtCore.pyqtRemoveInputHook()
+    #set_excepthook()
     app = QtGui.QApplication(sys.argv)
     neuropywindow = NeuropyWindow()
     neuropywindow.show()
