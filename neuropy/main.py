@@ -17,12 +17,15 @@ from IPython.frontend.qt.console.ipython_widget import IPythonWidget
 from IPython.frontend.qt.kernelmanager import QtKernelManager
 
 from PyQt4 import QtCore, QtGui, uic
+#from PyQt4.QtGui import QFont
 #from PyQt4.QtCore import Qt
 NeuropyUi, NeuropyUiBase = uic.loadUiType('neuropy.ui')
 
 
 class NeuropyWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
+        """Note that a lot of default options can be changed by editing
+        IPython.frontend.qt.console.console_widget.py and ipython_widget.py"""        
         QtGui.QMainWindow.__init__(self)
         self.ui = NeuropyUi()
         self.ui.setupUi(self) # lay it out
@@ -35,20 +38,27 @@ class NeuropyWindow(QtGui.QMainWindow):
         kernel_manager = QtKernelManager()
         kernel_manager.start_kernel() # might need **kwargs
         kernel_manager.start_channels()
-        ipyqtwidget.gui_completion = True
         ipyqtwidget.kernel_manager = kernel_manager
+        ipyqtwidget.gui_completion = False
         ipyqtwidget.set_default_style(colors='linux')
-        # font, font_changed, fontChange
+        #ipyqtwidget.font = QFont('Lucida Console', 12) # 3rd arg can be e.g. QFont.Bold
+        #ipyqtwidget.font.setFixedPitch(True)
         # make "exit" and "quit" typed in ipyqtwidget close self
         ipyqtwidget.exit_requested.connect(self.close)
         self.setCentralWidget(ipyqtwidget)
 
+        # ip.ex() lets you execute strings in user namespace, where ip is the IPython.zmq.zmqshell.ZMQInteractiveShell
+        # ip.ev() evaluates string
+        # ip.write() writes a string to the shell
+        # ip.push() pushes a variables in a dict to user namespace
+
         # to communicate with the ipy kernel user namespace, probably need to
         # use kernel_manager.kernel.communicate and send a signal somehow
+        # this might be too low level though:
+        #self.ipyqtwidget.kernel_manager.kernel.communicate('sdfsd')
 
-        #self.setGeometry(300, 300, 300, 200)
+        self.setGeometry(0, 0, 960, 1080)
         self.setWindowTitle('neuropy')
-        #self.shell()
 
     @QtCore.pyqtSlot()
     def on_actionOpen_triggered(self):
@@ -57,6 +67,18 @@ class NeuropyWindow(QtGui.QMainWindow):
                                     directory=os.getcwd())
         path = str(path)
         print(path)
+        self.ipyqtwidget.execute("from neuropy import *\n"
+                                 "r03 = Recording('03')\n"
+                                 "r03.load()")
+
+    @QtCore.pyqtSlot()
+    def on_actionShell_triggered(self):
+        embed(display_banner=False, config=load_default_config()) # "self" is accessible
+        # embed() seems to override the excepthook, need to reset it:
+        set_excepthook()
+
+    def raise_error(self):
+        raise RuntimeError
 
     @QtCore.pyqtSlot()
     def on_actionQuit_triggered(self):
@@ -85,14 +107,6 @@ class NeuropyWindow(QtGui.QMainWindow):
     def on_actionAboutQt_triggered(self):
         QtGui.QMessageBox.aboutQt(self)
 
-    def shell(self):
-        embed(display_banner=False, config=load_default_config()) # "self" is accessible
-        # embed() seems to override the excepthook, need to reset it:
-        set_excepthook()
-
-    def raise_error(self):
-        raise RuntimeError
-
 
 def set_excepthook():
     """Drops us into IPython's debugger on any error"""
@@ -100,9 +114,9 @@ def set_excepthook():
 
 
 if __name__ == "__main__":
-    # prevents "The event loop is already running" errors:
-    # but, one of the two following causes ipython shutdown errors on close:
-    #QtCore.pyqtRemoveInputHook()
+    # prevents "The event loop is already running" errors when dropping into shell:
+    QtCore.pyqtRemoveInputHook()
+    # this causes ipython shutdown errors on close. Maybe need to restore InputHook somewhere:
     #set_excepthook()
     app = QtGui.QApplication(sys.argv)
     neuropywindow = NeuropyWindow()

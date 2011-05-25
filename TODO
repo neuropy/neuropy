@@ -1,5 +1,9 @@
 TODO:
 
+- remove all wx stuff, replace with qt stuff
+
+- allow all objects to have None as parents. this way you can load a recording all on its lonesome, without having to searching up and down the tree in a complicated error prone way for its parent. Like, what if you just have a single recording directory sitting somewhere on your hard drive? Should still be able to load it all by its lonesome as say "r32" name in the namespace
+
 - replace move file paths in read back textheaders with local movie file path as defined by core.MOVIEPATH - right now I've simply made a symbolic link in root called /mov which points to /home/mspacek/data/mov
 
 - STA is really slow for some reason

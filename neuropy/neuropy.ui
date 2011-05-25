@@ -78,6 +78,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionOpen"/>
+   <addaction name="actionShell"/>
   </widget>
   <action name="actionOpen">
    <property name="text">
@@ -130,6 +131,14 @@
    </property>
    <property name="menuRole">
     <enum>QAction::AboutQtRole</enum>
+   </property>
+  </action>
+  <action name="actionShell">
+   <property name="text">
+    <string>&amp;Shell</string>
+   </property>
+   <property name="toolTip">
+    <string>Drop into IPython shell at terminal</string>
    </property>
   </action>
  </widget>
