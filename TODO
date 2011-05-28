@@ -1,15 +1,25 @@
 TODO:
 
+- convert all line endings to Unix style
+
+- don't load all of a recording's sorts, just the default one
+
 - remove all wx stuff, replace with qt stuff
+
+- when do I ever actually make use of the _movies dictattr (or previously, the _data.movies dictattr)? Am I really preventing movies from being loaded more than once? I used to use it in the commented out core.Cat15Movie(), but the dimstimskeletal.Movie() doesn't seem to use it. Is it even worth the hassle? I guess so. Every loaded recording that used a movie would otherwise load and hold its own copy of potentially the same movie data. Looks like the fake dimstim 0.16 experiment in loadCat15exp() also doesn't make use of it. Or maybe it happens to magically during the textheader execution that I'm not seeing it right now
 
 - allow all objects to have None as parents. this way you can load a recording all on its lonesome, without having to searching up and down the tree in a complicated error prone way for its parent. Like, what if you just have a single recording directory sitting somewhere on your hard drive? Should still be able to load it all by its lonesome as say "r32" name in the namespace
 
 - replace move file paths in read back textheaders with local movie file path as defined by core.MOVIEPATH - right now I've simply made a symbolic link in root called /mov which points to /home/mspacek/data/mov
 
-- STA is really slow for some reason
+- STA is really slow for some reason, or maybe this only happens in pyshell
     - reduce din entries down to unique values - ie get rid of repeated frame values, to make searchsorted faster - for a 40ms mseq, you'd go from 8 entries per frame (5 ms each) down to just one
     - also, maybe reduce mseq black and white pix values from 0, 255 to 0, 1, so you can accumulate in a smaller sized data type (maybe pure int instead of float, for int speed)
     - also maybe keep in mind what NVS said about finding average of a large number of floats by first adding them up and then dividing at the end: you lose precision because of the limited mantissa. Hopefully I'm adding up ints anyway, so this shouldn't apply
+
+- auto drop into ipdb in the Qt widget on any error encountered in the ipython kernel during execution
+
+- the whole ContrainedNeuron thing seems pretty retarted to me after not looking at it for a while... Is it really necessary? Why are there two separate sets loaded for each rip (both Neurons *and* ConstrainedNeurons)?
 
 - change best rip from being part of foldername (which causes problems when renaming folders with svn when you wanna temporarily change which rip folder is used for analysis) to just being an empty file called "BEST" or something within that rip's folder, or maybe a text file called "DEFAULT" in the Track's folder that has the default rip folder's name in it
     - this won't work once we start replacing rip folders with .sort files...
@@ -19,8 +29,6 @@ TODO:
 - NVS: xcorr RFs, find pairs that have very correlated RFs, then check if those two cells really are different cells, according to their spike waveforms. If waveforms really are different, then compare responses to natural scenes. This way, you can test if an mseq RF is in any way useful for predicting responses to nat scenes. If responses are different to nat scenes, yet RFs are the same, then visual neuroscience is hosed!
 
 - NVS: normalize so that Rfs have the same 0 point, ie same 0 colour
-
-- stop using "import *"
 
 - changing the global default, say, ANIMAL in neuropy.Core on the fly doesn't seem to work
 
@@ -49,7 +57,6 @@ TODO:
 
 - if an analysis method needs to return more than one object, have them return in a dictattr of results
 
-- the whole ContrainedNeuron thing seems pretty retarted to me after not looking at it for a while... Is it really necessary? Why are there two separate sets loaded for each rip (both Neurons *and* ConstrainedNeurons)?
 
 Netstate stuff:
     - for the time bins, try lots of different phases, see if this changes things at all
@@ -164,3 +171,4 @@ Netstate stuff:
     - comment out all textheader lines starting with "from dimstim"
     - need to define all possible types of experiments: Movie, Grating, etc..
     - need to define StaticParams, DynamicParams, Variable, Variables, Runs, BlankSweeps
+- stop using "import *"

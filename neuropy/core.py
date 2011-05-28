@@ -7,7 +7,6 @@ import types
 import __main__
 import struct
 import re
-import StringIO
 import random
 import math
 
@@ -20,7 +19,7 @@ import scipy as sp
 import scipy.signal as sig
 #import scipy.weave as weave
 from numpy.random import rand, randn, randint
-from numpy import arange, array, array as ar, asarray, asarray as aar, log, log2, log10, sqrt, zeros, ones, diff, concatenate, concatenate as cat, mean, median, std
+from numpy import arange, array, array as ar, asarray, asarray as aar, log, log2, sqrt, zeros, ones, diff, concatenate, concatenate as cat, mean, median, std
 from numpy.ma import array as mar
 
 import matplotlib as mpl
@@ -34,17 +33,20 @@ from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, y
 import wx
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 
-
 # GLOBAL DEFAULTS
 
-DATAPATH = '/home/mspacek/data'
 ANIMALPREFIX = 'pt'
 
 ANIMAL = 'ptc17'
 TRACK = '1'
 
-SORTKEYWORDS = ['best'] # a Sort with one of these keywords (listed in decreasing priority) will be loaded as the default Sort for its Recording
-MOVIEPATH = '/home/mspacek/data/mov'
+# a sort with one of these keywords (listed in decreasing priority) will be
+# loaded as the default sort for its recording:
+SORTKEYWORDS = ['best']
+
+DATAPATH = os.path.expanduser('~/data')
+MOVIEPATH = os.path.expanduser('~/data/mov')
+
 # local mseq movie names
 MSEQ16 = 'MSEQ16' # formerly mseq16.m
 MSEQ32 = 'MSEQ32' # formerly mseq32.m
@@ -63,13 +65,16 @@ class dictattr(dict):
         super(dictattr, self).__init__(*args, **kwargs)
         for k, v in kwargs.iteritems():
             self.__setitem__(k, v) # call our own __setitem__ so we get keys as attribs even on kwarg init
+    
     def __getattr__(self, key):
         try:
             return self[key]
         except KeyError:
             raise AttributeError, '%r object has no attribute %r' % ('dictattr', key)
+    
     def __setattr__(self, key, val):
         self[key] = val
+    
     def __setitem__(self, key, val):
         super(dictattr, self).__setitem__(key, val)
         if key.__class__ == str and not key[0].isdigit(): # key isn't a number or a string starting with a number
@@ -77,196 +82,453 @@ class dictattr(dict):
             self.__dict__[key] = val # make the key show up as an attrib upon dir()
 
 
-class Data(object):
-    """Abstract data class. Data can have multiple Animals in it"""
-    def __init__(self, dataPath=DATAPATH):
-        self.level = 0 # level in the hierarchy
-        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
-        self.name = 'Data'
-        self.path = dataPath
-        self.a = dictattr() # store Animals in a dictionary with attrib access
-        self.movies = dictattr() # store Movies in a dict with attrib access, Movies don't have to have parents, but we still want to store them here to prevent loading each movie more than once
-
-    def tree(self):
-        """Print tree hierarchy"""
-        print self.treebuf.getvalue(),
-
-    def writetree(self, string):
-        """Write to self's tree buffer"""
-        self.treebuf.write(string)
-        # Data has no parent to write to
-
-    def load(self):
-
-        from animal import Animal
-
-        treestr = self.level*TAB + self.name + '/'
-        self.writetree(treestr+'\n')
-        print treestr
-        dirnames = [ dirname for dirname in os.listdir(self.path)
-                     if dirname.startswith('ANIMALPREFIX')
-                     and os.path.isdir(os.path.join(self.path, dirname)) ]
-        for dirname in dirnames:
-            a = Animal(id=dirname, parent=self) # make an instance using just the dirname
-            a.load() # load the Animal
-            self.a[a.id] = a # save it, using its id as the dict key
+_movies = dictattr()
 
 
-_data = Data() # init a default Data object to use as a container for everything that falls under the data object hierarchy
-
-'''
-class Cat15Movie(object):
-    """dimstim >= 0.16 Experiments use the dimstim Experiment (subclassed by say, Movie) object directly"""
-    def __init__(self, fname=None, name=None, parent=None):
-        """Movies don't need parents, they can just exist on their own and be used by anyone"""
-        self.level = 5 # level in the hierarchy
-        self.fname = fname
-        self.name = name
-        self.parent = parent # save parent object, might be an Experiment, might not
-        if self.name == None and self.fname != None:
-            self.path, self.fname = os.path.split(self.fname) # separate path from fname
-            self.name = os.path.splitext(self.fname)[0] # extentionless fname
-            if self.name not in _data.movies:
-                _data.movies[self.name] = self # add self to _data.movies dictattr
+class PopulationRaster(object):
+    """A population spike raster plot. nis are indices of neurons to
+    plot in the raster, in order from bottom to top.
+    jumpts are a sequence of timepoints (in us) that can then be quickly cycled
+    through in the plot using keyboard controls.
+    Defaults to absolute time origin (when acquisition began)"""
+    def __init__(self, recording=None, experiments=None, nis=None,
+                 jumpts=None, binwidth=None, relativet0=False, units='msec',
+                 publication=False):
+        self.r = recording
+        if experiments == None:
+            self.e = recording.e # dictionary
         else:
-            pass # both self.name and self.fname are None, this happens when executing Cat 15 textheaders, where you init a movie with m = Movie(), and only later assign its fname field. In this case, the .loadCat15exp() method handles adding movies init'd from textheader to the _data.movies dictattr
-
-    def load(self, asarray=True, flip=False):
-        """Load movie frames"""
-        try:
-            self.frames # movie's already been loaded, don't do anything
-            return
-        except AttributeError:
-            pass
-        try:
-            self.frames = _data.movies[self.name].frames # if a Movie init'd with the same name already has its data loaded, use it
-            return
-        except AttributeError:
-            pass
-
-        self.f = file(self.fname, 'rb') # open the movie file for reading in binary format
-        headerstring = self.f.read(5)
-        if headerstring == 'movie': # a header has been added to the start of the file
-            self.ncellswide, = struct.unpack('H', self.f.read(2)) # 'H'== unsigned short int
-            self.ncellshigh, = struct.unpack('H', self.f.read(2))
-            self.nframes, = struct.unpack('H', self.f.read(2))
-            if self.nframes == 0: # this was used in Cat 15 mseq movies to indicate 2**16 frames, shouldn't really worry about this, cuz we're using slightly modified mseq movies now that we don't have the extra frame at the end that the Cat 15 movies had (see comment in Experiment module), and therefore never have a need to indicate 2**16 frames
-                self.nframes = 2**16
-            self.offset = self.f.tell() # header is 11 bytes long
-        else: # there's no header at the start of the file, set the file pointer back to the beginning and use these hard coded values:
-            self.f.seek(0)
-            self.ncellswide = self.ncellshigh = 64
-            self.nframes = 6000
-            self.offset = self.f.tell() # header is 0 bytes long
-        self.framesize = self.ncellshigh*self.ncellswide
-
-        # read in all of the frames
-        # maybe check first to see if file is > 1GB, if so, _loadaslist() to prevent trying to allocate one huge piece of contiguous memory and raising a MemoryError, or worse, segfaulting
-        if asarray:
-            self._loadasarray(flip=flip)
+            self.e = experiments # should also be a dict
+        if binwidth == None:
+            self.binwidth = CODETRES
         else:
-            self._loadaslist(flip=flip)
-        leftover = self.f.read() # check if there are any leftover bytes in the file
-        if leftover != '':
-            pprint(leftover)
-            print self.ncellswide, self.ncellshigh, self.nframes
-            raise RuntimeError, 'There are unread bytes in movie file %r. Width, height, or nframes is incorrect in the movie file header.' % self.fname
-        self.f.close() # close the movie file
-        treestr = self.level*TAB + self.fname
-        print treestr
+            self.binwidth = binwidth
+        assert self.binwidth >= 10000
+        self.plotbinedges = False # keyboard controlled
+        if relativet0: # set time origin to start of first experiment
+            firstexp = min(self.e.keys())
+            self.t0 = self.e[firstexp].trange[0] # start time of the first experiment
+        else: # use absolute time origin
+            self.t0 = 0 # leave the time origin at when acquisition began
+        experimentmarkers = [] # a flat list of all experiment start and stop times, in sorted order
+        for e in self.e.values():
+            experimentmarkers.extend(e.trange)
+        self.experimentmarkers = asarray(experimentmarkers) - self.t0 # make 'em relative to t0
+        self.experimentmarkers.sort() # just in case exps weren't in sorted order for some reason
 
-    def _loadasarray(self, flip=False):
-        self.frames = np.fromfile(self.f, np.uint8, count=self.nframes*self.framesize)
-        self.frames.shape = (self.nframes, self.ncellshigh, self.ncellswide)
-        self.f.seek(self.offset + self.nframes*self.framesize) # seek to what should be EOF
-        if flip:
-            self.frames = self.frames[::, ::-1, ::] # flip all frames vertically for OpenGL's bottom left origin
+        self.jumpts = asarray(jumpts)
+        self.jumpts.sort() # just in case jumpts weren't in sorted order for some reason
 
-    def _loadaslist(self, flip=False):
-        self.frames = []
-        for framei in xrange(self.nframes): # one frame at a time...
-            frame = np.fromfile(self.f, np.uint8, count=self.framesize) # load the next frame
-            frame.shape = (self.ncellshigh, self.ncellswide)
-            if flip:
-                frame = frame[::-1, ::] # flip all frames vertically for OpenGL's bottom left origin
-            self.frames.append(frame)
-'''
+        units2tconv = {'usec': 1e0, 'msec': 1e3, 'sec': 1e6}
+        self.units = units
+        self.tconv = units2tconv[units]
 
-def getargstr(obj):
-    """Returns object's argument list as a string. Stolen from wx.py package?"""
-    import inspect
-    argstr = apply(inspect.formatargspec, inspect.getargspec(obj))
-    if inspect.isfunction(obj):
-        pass
-    elif inspect.ismethod(obj):
-        # stolen from wx.py.introspect.getCallTip:
-        temp = argstr.split(',')
-        if len(temp) == 1:  # No other arguments.
-            argstr = '()'
-        elif temp[0][:2] == '(*': # first param is like *args, not self
-            pass
-        else:  # Drop the first argument.
-            argstr = '(' + ','.join(temp[1:]).lstrip()
-    else:
-        argstr = '()'
-    return argstr
+        self.publication = publication
 
-def barefigure(*args, **kwargs):
-    """Creates a bare figure with no toolbar or statusbar"""
-    figure(*args, **kwargs)
-    gcfm().frame.GetStatusBar().Hide()
-    gcfm().frame.GetToolBar().Hide()
-barefigure.__doc__ += '\n' + figure.__doc__
+        self.neurons = self.r.n # still a dictattr
+        if nis != None:
+            self.nis = nis
+        else:
+            self.nis = self.r.n.keys()
+            self.nis.sort() # keep it tidy
 
-def lastcmd():
-    """Returns a string containing the last command entered at the PyShell prompt.
-    Maybe this could be extended to work with other shells too?"""
-    try:
-        # PyShell's shell.py was hacked to save the last command
-        # as an attrib in Shell.push()
-        return __main__.shell.lastcmd
-    except AttributeError:
-        return 'unknown'
+    def plot(self, left=None, width=200000):
+        """Plots the raster, units are us wrt self.t0"""
+        if left == None:
+            try:
+                left = self.experimentmarkers[0] # init left window edge to first exp marker, ie start of first experiment
+            except IndexError: # ain't no experiments, no associated markers
+                left = min([ neuron.spikes[0] for neuron in self.r.n.values() ]) # set it to the earliest spike in the population
+        try:
+            self.f
+        except AttributeError: # prepare the fig if it hasn't been done already
+            figheight = 1.25+0.2*len(self.nis)
+            self.f = figure(figsize=(14, figheight))
+            self.a = self.f.add_subplot(111)
+            self.formatter = NeuropyScalarFormatter() # better behaved tick label formatter
+            self.formatter.thousandsSep = ',' # use a thousands separator
+            if not self.publication:
+                self.a.xaxis.set_major_locator(NeuropyAutoLocator()) # better behaved tick locator
+                self.a.xaxis.set_major_formatter(self.formatter)
+                self.a.set_yticks([]) # turn off y axis
+            gcfm().frame.SetTitle(lastcmd())
+            self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
+            self.tooltip.Enable(False) # leave disabled for now
+            self.tooltip.SetDelay(0) # set popup delay in ms
+            gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
+            self.a.set_xlabel('time (%s)' % self.units)
+            if not self.publication:
+                self.yrange = (0, len(self.nis))
+            else:
+                self.a.set_ylabel('cell index') # not really cell id, it's the ii (the index into the id)
+                self.yrange = (-0.5, len(self.nis)-0.5)
+            self.a.set_ylim(self.yrange)
+            #aheight = min(0.025*len(self.nis), 1.0)
+            bottominches = 0.75
+            heightinches = 0.15+0.2*len(self.nis)
+            bottom = bottominches / figheight
+            height = heightinches / figheight
+            if not self.publication:
+                self.a.set_position([0.02, bottom, 0.96, height])
+            else:
+                self.a.set_position([0.05, bottom, 0.96, height])
+            self.f.canvas.mpl_connect('motion_notify_event', self._onmotion)
+            self.f.canvas.mpl_connect('key_press_event', self._onkeypress)
 
-def innerclass(cls):
-    '''Class decorator for making a class behave as a Java (non-static) inner
-    class.
+        self.left = left
+        self.width = width
+        # plot experiment start and endpoints
+        for etrange in self.experimentmarkers.reshape(-1, 2): # reshape the flat array into a new nx2, each row is a trange
+            estart = etrange[0]-self.t0
+            eend = etrange[1]-self.t0
+            if left <=  estart and estart <= left+width: # experiment start point is within view
+                startlines = self.a.vlines(x=estart/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp start, convert to ms
+                startlines[0].set_color((0, 1, 0)) # set to bright green
+            if left <= eend and eend <= left+width: # experiment end point is within view
+                endlines = self.a.vlines(x=eend/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp end, convert t
+                endlines[0].set_color((1, 0, 0)) # set to bright red
+        # plot the bin edges. Not taking into account self.t0 for now, assuming it's 0
+        if self.plotbinedges:
+            leftbinedge = (left // self.binwidth + 1)*self.binwidth
+            binedges = arange(leftbinedge, left+width, self.binwidth)
+            binlines = self.a.vlines(x=binedges/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], fmt='b:') # convert t
+        # plot the rasters
+        for nii, ni in enumerate(self.nis):
+            neuron = self.neurons[ni]
+            x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / self.tconv # make spike times always relative to t0, convert t
+            if not self.publication:
+                self.a.vlines(x=x, ymin=nii, ymax=nii+1, fmt='k-')
+            else:
+                self.a.vlines(x=x, ymin=nii-0.5, ymax=nii+0.5, fmt='k-')
+        self.a.set_xlim(left/self.tconv, (left+width)/self.tconv) # convert t
 
-    Each instance of the decorated class is associated with an instance of its
-    enclosing class. The outer instance is referenced implicitly when an
-    attribute lookup fails in the inner object's namespace. It can also be
-    referenced explicitly through the property '__outer__' of the inner
-    instance.
+    def _panx(self, npages=None, left=None):
+        """Pans the raster along the x axis by npages, or to position left"""
+        self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
+        if left != None: # use left
+            self.plot(left=left, width=self.width)
+        else: # use npages instead
+            self.plot(left=self.left+self.width*npages, width=self.width)
+        self.f.canvas.draw() # redraw the figure
 
-    Title: Implementing Java inner classes using descriptors
-    Submitter: George Sakkis - gsakkis at rutgers.edu
-    Last Updated: 2005/07/08
-    Version no: 1.1
-    Category: OOP
-    http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/409366
+    def _zoomx(self, factor):
+        """Zooms the raster along the x axis by factor"""
+        self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
+        centre = (self.left + self.left+self.width) / 2.0
+        width = self.width / float(factor)
+        left = centre - width / 2.0
+        self.plot(left=left, width=width)
+        self.f.canvas.draw() # redraw the figure
+
+    def _goto(self):
+        """Bring up a dialog box to jump to timepoint, mark it with a dotted line"""
+        ted = wx.TextEntryDialog(parent=None, message='Go to timepoint (ms):', caption='Goto',
+                                 defaultValue=str(intround(self.left / self.tconv)), #wx.EmptyString,
+                                 style=wx.TextEntryDialogStyle, pos=wx.DefaultPosition)
+        if ted.ShowModal() == wx.ID_OK: # if OK button has been clicked
+            response = ted.GetValue()
+            try:
+                left = float(response)
+                self.plot(left=left*self.tconv, width=self.width)
+                self.f.canvas.draw() # redraw the figure
+            except ValueError: # response wasn't a valid number
+                pass
+
+    def _cyclethousandssep(self):
+        """Cycles the tick formatter through thousands separators"""
+        if self.formatter.thousandsSep == ',':
+            self.formatter.thousandsSep = ' '
+        elif self.formatter.thousandsSep == ' ':
+            self.formatter.thousandsSep = None
+        else:
+            self.formatter.thousandsSep = ','
+        self.f.canvas.draw() # redraw the figure
+
+    def _togglebinedges(self):
+        """Toggles plotting of bin edges"""
+        self.plotbinedges = not self.plotbinedges
+        self._panx(npages=0) # replot and redraw by panning by 0
+
+    def _onmotion(self, event):
+        """Called during mouse motion over figure. Pops up neuron and
+        experiment info in a tooltip when hovering over a neuron row."""
+        if event.inaxes: # if mouse is inside the axes
+            nii = int(math.floor(event.ydata)) # use ydata to get index into sorted list of neurons
+            ni = self.nis[nii]
+            neuron = self.neurons[ni]
+            currentexp = None
+            for e in self.e.values(): # for all experiments
+                estart = (e.trange[0]-self.t0)/self.tconv
+                eend = (e.trange[1]-self.t0)/self.tconv
+                if estart < event.xdata  < eend:
+                    currentexp = e
+                    break # don't need to check any of the other experiments
+            tip = 't: %.3f ms\n' % event.xdata # print timepoint down to nearest us, in units of ms
+            tip += 'n%d: %d spikes' % (neuron.id, neuron.nspikes)
+            if currentexp == None:
+                tip += '\nno experiment'
+            else:
+                tip += '\nexperiment %s: %r' % (currentexp.id, currentexp.name)
+            self.tooltip.SetTip(tip) # update the tooltip
+            self.tooltip.Enable(True) # make sure it's enabled
+        else: # mouse is outside the axes
+            self.tooltip.Enable(False) # disable the tooltip
+
+    def _onkeypress(self, event):
+        """Called during a figure keypress"""
+        key = event.guiEvent.GetKeyCode() # wx dependent
+        #print key
+        # you can also just use the backend-neutral event.key, but that doesn't recognize as many keypresses, like pgup, pgdn, etc.
+        if not event.guiEvent.ControlDown(): # Ctrl key isn't down, wx dependent
+            if key == wx.WXK_RIGHT: # pan right
+                self._panx(+0.1)
+            elif key == wx.WXK_LEFT: # pan left
+                self._panx(-0.1)
+            elif key == wx.WXK_UP: # zoom in
+                self._zoomx(1.2)
+            elif key == wx.WXK_DOWN: # zoom out
+                self._zoomx(1/1.2)
+            elif key == wx.WXK_NEXT: # PGDN (page right)
+                self._panx(+1)
+            elif key == wx.WXK_PRIOR: # PGUP (page left)
+                self._panx(-1)
+            elif key == wx.WXK_HOME: # go to start of first Experiment
+                self._panx(left=self.experimentmarkers[0])
+            elif key == wx.WXK_END: # go to end of last Experiment
+                self._panx(left=self.experimentmarkers[-1]-self.width)
+            elif key == ord('['): # skip backwards to previous jump point
+                i = self.jumpts.searchsorted(self.left, side='left') # current position of left edge of the window in jumpts list
+                i = max(0, i-1) # decrement by 1, do bounds checking
+                self._panx(left=self.jumpts[i])
+            elif key == ord(']'): # skip forwards to next jump point
+                i = self.jumpts.searchsorted(self.left, side='right') # current position of left edge of the window in jumpts list
+                i = min(i, len(self.jumpts)-1) # bounds checking
+                self._panx(left=self.jumpts[i])
+            elif key == wx.WXK_RETURN: # go to position
+                self._goto()
+            elif key == ord(','): # cycle tick formatter through thousands separators
+                self._cyclethousandssep()
+            elif key == ord('B'): # toggle plotting of bin edges
+                self._togglebinedges()
+        else: # Ctrl key is down
+            if key == wx.WXK_LEFT: # skip backwards to previous experiment marker
+                i = self.experimentmarkers.searchsorted(self.left, side='left') # current position of left edge of the window in experimentmarkers list
+                i = max(0, i-1) # decrement by 1, do bounds checking
+                self._panx(left=self.experimentmarkers[i])
+            elif key == wx.WXK_RIGHT: # skip forwards to next experiment marker
+                i = self.experimentmarkers.searchsorted(self.left, side='right') # current position of left edge of the window in experimentmarkers list
+                i = min(i, len(self.experimentmarkers)-1) # bounds checking
+                self._panx(left=self.experimentmarkers[i])
+            elif key == wx.WXK_UP: # zoom in faster
+                self._zoomx(3.0)
+            elif key == wx.WXK_DOWN: # zoom out faster
+                self._zoomx(1/3.0)
+
+
+class Codes(object):
+    """A 2D array where each row is a neuron code, and each column
+    is a binary population word for that time bin, sorted LSB to MSB from top to bottom.
+    neurons is a list of Neurons, also from LSB to MSB. Order in neurons is preserved."""
+    def __init__(self, neurons=None, tranges=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE, shufflecodes=False):
+        self.neurons = neurons
+        self.tranges = tolist(tranges)
+        self.kind = kind
+        self.tres = tres
+        self.phase = phase
+        self.shufflecodes = shufflecodes
+        self.nis = [ neuron.id for neuron in self.neurons ]
+        self.nneurons = len(self.neurons)
+        self.nis2niisdict = dict(zip(self.nis, range(self.nneurons))) # make a dict from keys:self.nis, vals:range(self.nneurons). This converts from nis to niis (from neuron indices to indices into the binary code array self.c)
+
+    def nis2niis(self, nis=None):
+        """Converts from nis to niis (from neuron indices to indices into the binary code array self.c).
+        nis can be a sequence"""
+        try:
+            return [ self.nis2niisdict[ni] for ni in nis ]
+        except TypeError: # iteration over non-sequence, nis is a scalar
+            return self.nis2niisdict[nis]
+
+    def calc(self):
+        self.s = [] # stores the corresponding spike times for each neuron, just for reference
+        self.c = [] # stores the 2D code array
+        # append neurons in their order in self.neurons, store them LSB to MSB from top to bottom
+        for neuron in self.neurons:
+            codeo = neuron.code(tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase)
+            self.s.append(codeo.s) # each is a nested list (ie, 2D), each row will have different length
+            if self.shufflecodes:
+                c = codeo.c.copy() # make a copy (wanna leave the codeo's codetrain untouched)
+                np.random.shuffle(c) # shuffle each neuron's codetrain separately, in-place operation
+            else:
+                c = codeo.c # just a pointer
+            self.c.append(c) # flat list
+        self.t = codeo.t # stores the bin edges, just for reference. all bin times should be the same for all neurons, cuz they're all given the same trange. use the bin times of the last neuron
+        nneurons = len(self.neurons)
+        nbins = len(self.c[0]) # all entries in the list should be the same length
+        self.c = cat(self.c).reshape(nneurons, nbins)
+
+    def syncis(self):
+        """Returns synch indices, ie the indices of the bins for which all the
+        neurons in this Codes object have a 1 in them"""
+        return self.c.prod(axis=0).nonzero()[0] # take product down all rows, only synchronous events across all cells will survive
+
+    def syncts(self):
+        """Returns synch times, ie times of the left bin edges for which
+        all the neurons in this Codes object have a 1 in them"""
+        return self.t[self.syncis()]
+
+    def synctsms(self):
+        """Returns synch times in ms, to the nearest ms"""
+        return np.int32(np.round(self.syncts() / 1e3))
+
+    def copy(self):
+        """Returns a copy of the Codes object"""
+        return copy(self)
     '''
-    if hasattr(cls, '__outer__'):
-        raise TypeError('Cannot set attribute "__outer__" in inner class')
-    class InnerDescriptor(object):
-        def __get__(self, outer, outercls):
-            if outer is None:
-                raise AttributeError('An enclosing instance that contains '
-                           '%s.%s is required' % (cls.__name__, cls.__name__))
-            clsdict = cls.__dict__.copy()
-            # explicit read-only reference to the outer instance
-            clsdict['__outer__'] = property(lambda self: outer)
-            # implicit lookup in the outer instance
-            clsdict['__getattr__'] = lambda self,attr: getattr(outer,attr)
-            def __setattr__(this, attr, value):
-                # setting an attribute in the inner instance sets the
-                # respective attribute in the outer instance if and only if
-                # the attribute is already defined in the outer instance
-                if hasattr(outer, attr): setattr(outer,attr,value)
-                else: super(this.__class__,this).__setattr__(attr,value)
-            clsdict['__setattr__'] = __setattr__
-            return type(cls.__name__, cls.__bases__, clsdict)
-    return InnerDescriptor()
+    # needs some testing:
+    def append(self, others):
+        """Adds other Codes objects appended in time (horizontally) to this Codes object.
+        Useful for appending Codes objects across Recordings ? (don't really need it
+        for appending across Experiments)"""
+        others = tolist(others)
+        for other in others:
+            assert other.neurons == self.neurons
+        codesos = [self] # list of codes objects
+        codesos.extend(others)
+        self.tranges = [ trange for codeso in codesos for trange in codeso.tranges ] # this tranges potentially holds multiple tranges from each codes objects, times the number of codes objects
+        self.calc() # recalculate this code with its new set of tranges
+    '''
+    
+class CodeCorrPDF(object):
+    """A PDF of the correlations of the codes of all cell pairs (or of all cell pairs within
+    some torus of radii R=(R0, R1) in um) in this Recording. See Schneidman2006 fig 1d"""
+    def __init__(self, recording=None, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
+        self.r = recording
+        if experiments != None:
+            try:
+                assert experiments.__class__ == dictattr
+            except AssertionError: # maybe it's a seq of exp ids?
+                eids = toiter(experiments)
+                experiments = dictattr()
+                for eid in eids:
+                    experiments[eid] = self.r.e[eid]
+        self.e = experiments # save it, should be a dictattr if not None
+        if self.e != None: # specific experiments were specified
+            self.tranges = [ e.trange for e in self.e.values() ]
+        else:
+            self.tranges = [ self.r.trange ] # use the Recording's trange
+        self.kind = kind
+        self.tres = tres
+        self.phase = phase
+    '''
+    # this was used to save on calc time by seeing if a CCPDF object with the same attribs had already been calc'd, seems dumb and unsafe, commented out
+    def __eq__(self, other):
+        selfd = self.__dict__.copy()
+        otherd = other.__dict__.copy()
+        # Delete their n and c attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
+        [ d.__delitem__(key) for d in [selfd, otherd]
+          for key in ['corrs', 'n', 'c', 'crange', 'nbins', 'normed']
+          if d.has_key(key) ]
+        if self.__class__ == other.__class__ and selfd == otherd:
+            return True
+        else:
+            return False
+    '''
+    def calc(self, R=None, shuffleids=False):
+        """Works on ConstrainedNeurons, but is constrained even further if experiments
+        were passed and their tranges were used to generate self.tranges (see __init__)"""
+        if R:
+            assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
+        self.R = R
+        self.shuffleids = shuffleids
+        cnis = self.r.cn.keys() # ConstrainedNeuron indices
+        ncneurons = len(cnis)
+        # it's more efficient to precalculate the means and stds of each cell's codetrain,
+        # and then reuse them in calculating the correlation coefficients:
+        means = dict( ( cni, self.r.code(cni, tranges=self.tranges,
+                                              kind=self.kind,
+                                              tres=self.tres,
+                                              phase=self.phase).c.mean() ) for cni in cnis ) # store each code mean in a dict
+        stds  = dict( ( cni, self.r.code(cni, tranges=self.tranges,
+                                              kind=self.kind,
+                                              tres=self.tres,
+                                              phase=self.phase).c.std() ) for cni in cnis ) # store each code std in a dict
 
+        if self.shuffleids:
+            scnis = shuffle(cnis) # shuffled neuron ids, this is a control to see if it's the locality of neurons included in the analysis, or the number of neurons included that's important. It seems that both are.
+        else:
+            scnis = cnis
+
+        self.corrs = []
+        for cnii1 in range(ncneurons):
+            for cnii2 in range(cnii1+1, ncneurons):
+                cni1 = cnis[cnii1]; scni1 = scnis[cnii1]
+                cni2 = cnis[cnii2]; scni2 = scnis[cnii2]
+                if R == None or self.R[0] < dist(self.r.cn[scni1].pos, self.r.cn[scni2].pos) < self.R[1]:
+                    code1 = self.r.code(cni1, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
+                    code2 = self.r.code(cni2, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
+                    cc = ((code1 * code2).mean() - means[cni1] * means[cni2]) / (stds[cni1] * stds[cni2]) # (mean of product - product of means) / by product of stds
+                    self.corrs.append(cc)
+        self.corrs = array(self.corrs)
+        self.npairs = len(self.corrs)
+        '''
+        # simpler, but slower way:
+        self.corrs = [ self.r.codecorr(cnis[cnii1], cnis[cnii2], tranges=self.tranges, kind=self.kind, self.tres, self.phase)
+                       for cnii1 in range(0,ncneurons) for cnii2 in range(cnii1+1,ncneurons) ]
+        '''
+    def plot(self, figsize=(7.5, 6.5), crange=[-0.1, 0.5], limitstats=True, nbins=30, normed='pdf'):
+        """Plots the corrs. If limitstats, the stats displayed exclude any corr values that fall outside of crange"""
+        self.crange = crange
+        self.nbins = nbins
+        self.normed = normed
+        f = figure(figsize=figsize)
+        a = f.add_subplot(111)
+        try: # figure out the bin edges
+            bins = np.linspace(start=self.crange[0], stop=self.crange[1], num=self.nbins, endpoint=True)
+        except TypeError: # self.crange is None, let histogram() figure out the bin edges
+            bins = self.nbins
+        self.n, self.c = histogram(self.corrs, bins=bins, normed=self.normed)
+
+        if limitstats:
+            corrs = self.corrs[(self.corrs >= crange[0]) * (self.corrs <= crange[1])]
+            n, c = histogram(corrs, bins=bins, normed=self.normed)
+        else:
+            corrs = self.corrs
+            n = self.n
+            c = self.c
+        self.mean = mean(corrs)
+        self.median = median(corrs)
+        argmode = n.argmax()
+        self.mode = mean([c[argmode], c[argmode + 1]]) # find middle of tallest bin
+
+        try:
+            barwidth = (self.crange[1] - self.crange[0]) / float(self.nbins)
+        except TypeError: # self.crange is None, take width of first bin in self.c
+            barwidth = self.c[1] - self.c[0]
+        a.bar(left=c, height=n, width=barwidth, bottom=0, color='k', yerr=None, xerr=None, ecolor='k', capsize=3)
+        try:
+            a.set_xlim(self.crange)
+        except TypeError: # self.crange is None
+            pass
+        gcfm().frame.SetTitle(lastcmd())
+        #titlestr = 'neuron pair code correlation pdf'
+        #titlestr += '\n%s' % lastcmd()
+        titlestr = '%s' % lastcmd()
+        a.set_title(titlestr)
+        '''
+        if self.normed:
+            if self.normed == 'pmf':
+                a.set_ylabel('probability mass')
+            else:
+                a.set_ylabel('probability density')
+        else:
+            a.set_ylabel('count')
+        a.set_xlabel('correlation coefficient')
+        '''
+        a.text(0.99, 0.99, 'mean = %.3f\nmedian = %.3f\nmode = %.3f\nR = %r\nnpairs = %d'
+                            % (self.mean, self.median, self.mode, self.R, self.npairs), # add stuff to top right of plot
+                            transform = a.transAxes,
+                            horizontalalignment='right',
+                            verticalalignment='top')
 
 class CanvasFrame(wx.Frame):
     """A minimal wx.Frame containing a matplotlib figure"""
@@ -290,15 +552,6 @@ class CanvasFrame(wx.Frame):
         self.Fit()
     def OnPaint(self, event):
         self.canvas.draw()
-
-
-def frame(**kwargs):
-    """Returns a CanvasFrame object"""
-    frame = CanvasFrame(**kwargs)
-    frame.Show(True)
-    return frame
-frame.__doc__ += '\n' + CanvasFrame.__doc__
-frame.__doc__ += '\n\n**kwargs:\n' + getargstr(CanvasFrame.__init__)
 
 
 class ReceptiveFieldFrame(wx.Frame):
@@ -417,10 +670,310 @@ class NetstateReceptiveFieldFrame(ReceptiveFieldFrame):
         self.Layout()
 
 
+class Ising(object):
+    """Maximum entropy Ising model"""
+    def __init__(self, means, pairmeans, algorithm='CG'):
+        """means is a list of mean activity values [-1 to 1] for each neuron code.
+        pairmeans is list of products of activity values for all pairs of neuron codes.
+        'Returns a maximum-entropy (exponential-form) model on a discrete sample space'
+            -- scipy.maxent.model
+        """
+
+        from scipy import maxentropy
+
+        nbits = len(means)
+        npairs = len(pairmeans)
+        assert npairs == nCr(nbits, 2) # sanity check
+        self.intsamplespace = range(0, 2**nbits)
+        table = getbinarytable(nbits=nbits) # words are in the columns, MSB at bottom row
+        self.binsamplespace = ar([ table[::-1, wordi] for wordi in range(0, 2**nbits) ]) # all possible binary words (each is MSB to LSB), as arrays of 0s and 1s
+        self.samplespace = self.binsamplespace * 2 - 1 # convert 0s to -1s
+        # return the i'th bit (LSB to MSB) of binary word x
+        f1s = [ lambda x, i=i: x[-1-i] for i in range(0, nbits) ] # have to do i=i to statically assign value (gets around scope closure problem)
+        # return product of the i'th and j'th bit (LSB to MSB) of binary word
+        f2s = []
+        pairmeansi = 0
+        for i in range(0, nbits):
+            for j in range(i+1, nbits):
+                if pairmeans[pairmeansi] != None: # None indicates we should ignore this pair
+                    f2s.append(lambda x, i=i, j=j: x[-1-i] * x[-1-j])
+                pairmeansi += 1
+        #f2s = [ lambda x, i=i, j=j: x[-1-i] * x[-1-j] for i in range(0, nbits) for j in range(i+1, nbits) if pairmeans[i*nbits+j-1] != None ]
+        f = cat((f1s, f2s))
+        self.model = maxentropy.model(f, self.samplespace)
+        #self.model.mindual = -10000
+        #self.model.log = None # needed to make LBFGSB algorithm work
+        # Now set the desired feature expectations
+        means = asarray(means)
+        pairmeans = asarray(pairmeans) # if it has Nones, it's an object array
+        pairmeans = asarray(list(pairmeans[pairmeans != [None]])) # remove the Nones, convert to list to get rid of object array, then convert back to array to get a normal, non-object array (probably a float64 array)
+        npairs = len(pairmeans) # update npairs
+        #pairmeans /= 2.0 # add the one half in front of each coefficient, NOT TOO SURE IF THIS SHOULD GO HERE! causes convergence problems
+        K = cat((means, pairmeans))
+        self.model.verbose = False
+
+        # Fit the model
+        self.model.fit(K, algorithm=algorithm)
+
+        self.hi = self.model.params[0:nbits]
+        self.Jij = self.model.params[nbits:nbits+npairs]
+        self.p = self.model.probdist()
+        assert (len(self.hi), len(self.Jij), len(self.p)) == (nbits, npairs, 2**nbits) # sanity checks
+        #print 'means:', means
+        #print 'pairmeans:', pairmeans
+        print '%d iters,' % self.model.iters,
+        #print 'hi:', self.hi.__repr__()
+        #print 'Jij:', self.Jij.__repr__()
+
+        '''
+        # Output the distribution
+        print "\nFitted model parameters are:\n" + str(self.model.params)
+        print "\nFitted distribution is:"
+        for j in range(len(self.model.samplespace)):
+            x = ar(self.model.samplespace[j])
+            x = (x+1)/2 # convert from -1s and 1s back to 0s and 1s
+            print '\tx:%s, p(x):%s' % (x, p[j])
+        '''
+        '''
+        # Now show how well the constraints are satisfied:
+        print
+        print "Desired constraints:"
+        print "\tp['dans'] + p['en'] = 0.3"
+        print ("\tp['dans'] + p['" + a_grave + "']  = 0.5").encode('utf-8')
+        print
+        print "Actual expectations under the fitted model:"
+        print "\tp['dans'] + p['en'] =", p[0] + p[1]
+        print ("\tp['dans'] + p['" + a_grave + "']  = " + str(p[0]+p[2])).encode('utf-8')
+        # (Or substitute "x.encode('latin-1')" if you have a primitive terminal.)
+        '''
+'''
+class Cat15Movie(object):
+    """dimstim >= 0.16 Experiments use the dimstim Experiment (subclassed by say, Movie) object directly"""
+    def __init__(self, fname=None, name=None, parent=None):
+        """Movies don't need parents, they can just exist on their own and be used by anyone"""
+        self.level = 5 # level in the hierarchy
+        self.fname = fname
+        self.name = name
+        self.parent = parent # save parent object, might be an Experiment, might not
+        if self.name == None and self.fname != None:
+            self.path, self.fname = os.path.split(self.fname) # separate path from fname
+            self.name = os.path.splitext(self.fname)[0] # extentionless fname
+            if self.name not in _data.movies:
+                _data.movies[self.name] = self # add self to _data.movies dictattr
+        else:
+            pass # both self.name and self.fname are None, this happens when executing Cat 15 textheaders, where you init a movie with m = Movie(), and only later assign its fname field. In this case, the .loadCat15exp() method handles adding movies init'd from textheader to the _data.movies dictattr
+
+    def load(self, asarray=True, flip=False):
+        """Load movie frames"""
+        try:
+            self.frames # movie's already been loaded, don't do anything
+            return
+        except AttributeError:
+            pass
+        try:
+            self.frames = _data.movies[self.name].frames # if a Movie init'd with the same name already has its data loaded, use it
+            return
+        except AttributeError:
+            pass
+
+        self.f = file(self.fname, 'rb') # open the movie file for reading in binary format
+        headerstring = self.f.read(5)
+        if headerstring == 'movie': # a header has been added to the start of the file
+            self.ncellswide, = struct.unpack('H', self.f.read(2)) # 'H'== unsigned short int
+            self.ncellshigh, = struct.unpack('H', self.f.read(2))
+            self.nframes, = struct.unpack('H', self.f.read(2))
+            if self.nframes == 0: # this was used in Cat 15 mseq movies to indicate 2**16 frames, shouldn't really worry about this, cuz we're using slightly modified mseq movies now that we don't have the extra frame at the end that the Cat 15 movies had (see comment in Experiment module), and therefore never have a need to indicate 2**16 frames
+                self.nframes = 2**16
+            self.offset = self.f.tell() # header is 11 bytes long
+        else: # there's no header at the start of the file, set the file pointer back to the beginning and use these hard coded values:
+            self.f.seek(0)
+            self.ncellswide = self.ncellshigh = 64
+            self.nframes = 6000
+            self.offset = self.f.tell() # header is 0 bytes long
+        self.framesize = self.ncellshigh*self.ncellswide
+
+        # read in all of the frames
+        # maybe check first to see if file is > 1GB, if so, _loadaslist() to prevent trying to allocate one huge piece of contiguous memory and raising a MemoryError, or worse, segfaulting
+        if asarray:
+            self._loadasarray(flip=flip)
+        else:
+            self._loadaslist(flip=flip)
+        leftover = self.f.read() # check if there are any leftover bytes in the file
+        if leftover != '':
+            pprint(leftover)
+            print self.ncellswide, self.ncellshigh, self.nframes
+            raise RuntimeError, 'There are unread bytes in movie file %r. Width, height, or nframes is incorrect in the movie file header.' % self.fname
+        self.f.close() # close the movie file
+        treestr = self.level*TAB + self.fname
+        print treestr
+
+    def _loadasarray(self, flip=False):
+        self.frames = np.fromfile(self.f, np.uint8, count=self.nframes*self.framesize)
+        self.frames.shape = (self.nframes, self.ncellshigh, self.ncellswide)
+        self.f.seek(self.offset + self.nframes*self.framesize) # seek to what should be EOF
+        if flip:
+            self.frames = self.frames[::, ::-1, ::] # flip all frames vertically for OpenGL's bottom left origin
+
+    def _loadaslist(self, flip=False):
+        self.frames = []
+        for framei in xrange(self.nframes): # one frame at a time...
+            frame = np.fromfile(self.f, np.uint8, count=self.framesize) # load the next frame
+            frame.shape = (self.ncellshigh, self.ncellswide)
+            if flip:
+                frame = frame[::-1, ::] # flip all frames vertically for OpenGL's bottom left origin
+            self.frames.append(frame)
+'''
+
+class NeuropyScalarFormatter(mpl.ticker.ScalarFormatter):
+    """Overloaded from mpl.ticker.ScalarFormatter for 4 reasons:
+    1) turn off stupid offset
+    2) increase maximum possible number of sigfigs
+    3) increase +ve and -ve order of magnitude thresholds before switching to scientific notation
+    4) keep exponents in engineering notation, ie multiples of 3
+    """
+    def __init__(self, useOffset=False, useMathText=False):
+        # useOffset allows plotting small data ranges with large offsets:
+        # for example: [1+1e-9,1+2e-9,1+3e-9]
+        # useMathText will render the offset an scientific notation in mathtext
+        #super(NeuropyScalarFormatter, self).__init__(useOffset=useOffset, useMathText=useMathText) # can't use this, cuz derived from an old-style class
+        mpl.ticker.ScalarFormatter.__init__(self, useOffset=useOffset, useMathText=useMathText)
+        self.thousandsSep = '' # default to not using a thousands separator
+
+    def _set_orderOfMagnitude(self, range):
+        # if scientific notation is to be used, find the appropriate exponent
+        # if using an numerical offset, find the exponent after applying the offset
+        locs = np.absolute(self.locs)
+        if self.offset: oom = math.floor(math.log10(range))
+        else:
+            if locs[0] > locs[-1]: val = locs[0]
+            else: val = locs[-1]
+            if val == 0: oom = 0
+            else: oom = math.floor(math.log10(val))
+        if oom < -3: # decreased -ve threshold for sci notation
+            self.orderOfMagnitude = (oom // 3)*3 # stick to engineering notation, multiples of 3
+        elif oom > 6: # increased +ve threshold for sci notation
+            self.orderOfMagnitude = (oom // 3)*3 # stick to engineering notation, multiples of 3
+        else:
+            self.orderOfMagnitude = 0
+
+    def _set_format(self):
+        # set the format string to format all the ticklabels
+        locs = (array(self.locs)-self.offset) / 10**self.orderOfMagnitude+1e-15
+        sigfigs = [len(str('%1.10f'% loc).split('.')[1].rstrip('0')) for loc in locs] # '%1.3f' changed to '%1.10f' to increase maximum number of possible sigfigs
+        sigfigs.sort()
+        self.format = '%1.' + str(sigfigs[-1]) + 'f'
+        if self._usetex or self._useMathText: self.format = '$%s$'%self.format
+
+    def pprint_val(self, x):
+        xp = (x-self.offset)/10**self.orderOfMagnitude
+        if np.absolute(xp) < 1e-8: xp = 0
+        s = self.format % xp
+        if self.thousandsSep: # add thousands-separating characters
+            if s.count('.'): # it's got a decimal in there
+                s = re.sub(r'(?<=\d)(?=(\d\d\d)+\.)', self.thousandsSep, s) # use the regexp for floats
+            else: # it's an int
+                s = re.sub(r'(?<=\d)(?=(\d\d\d)+$)', self.thousandsSep, s) # use the regexp for ints
+        return s
+
+
+class NeuropyAutoLocator(mpl.ticker.MaxNLocator):
+    """A tick autolocator that generates more ticks than the standard mpl autolocator"""
+    def __init__(self):
+        #mpl.ticker.MaxNLocator.__init__(self, nbins=9, steps=[1, 2, 5, 10]) # standard autolocator
+        mpl.ticker.MaxNLocator.__init__(self) # use MaxNLocator's defaults instead
+
+
+def getargstr(obj):
+    """Returns object's argument list as a string. Stolen from wx.py package?"""
+    import inspect
+    argstr = apply(inspect.formatargspec, inspect.getargspec(obj))
+    if inspect.isfunction(obj):
+        pass
+    elif inspect.ismethod(obj):
+        # stolen from wx.py.introspect.getCallTip:
+        temp = argstr.split(',')
+        if len(temp) == 1:  # No other arguments.
+            argstr = '()'
+        elif temp[0][:2] == '(*': # first param is like *args, not self
+            pass
+        else:  # Drop the first argument.
+            argstr = '(' + ','.join(temp[1:]).lstrip()
+    else:
+        argstr = '()'
+    return argstr
+
+def frame(**kwargs):
+    """Returns a CanvasFrame object"""
+    frame = CanvasFrame(**kwargs)
+    frame.Show(True)
+    return frame
+frame.__doc__ += '\n' + CanvasFrame.__doc__
+frame.__doc__ += '\n\n**kwargs:\n' + getargstr(CanvasFrame.__init__)
+
+
+def barefigure(*args, **kwargs):
+    """Creates a bare figure with no toolbar or statusbar"""
+    figure(*args, **kwargs)
+    gcfm().frame.GetStatusBar().Hide()
+    gcfm().frame.GetToolBar().Hide()
+barefigure.__doc__ += '\n' + figure.__doc__
+
+def lastcmd():
+    """Returns a string containing the last command entered at the PyShell prompt.
+    Maybe this could be extended to work with other shells too?"""
+    try:
+        # PyShell's shell.py was hacked to save the last command
+        # as an attrib in Shell.push()
+        return __main__.shell.lastcmd
+    except AttributeError:
+        return 'unknown'
+
+def innerclass(cls):
+    '''Class decorator for making a class behave as a Java (non-static) inner
+    class.
+
+    Each instance of the decorated class is associated with an instance of its
+    enclosing class. The outer instance is referenced implicitly when an
+    attribute lookup fails in the inner object's namespace. It can also be
+    referenced explicitly through the property '__outer__' of the inner
+    instance.
+
+    Title: Implementing Java inner classes using descriptors
+    Submitter: George Sakkis - gsakkis at rutgers.edu
+    Last Updated: 2005/07/08
+    Version no: 1.1
+    Category: OOP
+    http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/409366
+    '''
+    if hasattr(cls, '__outer__'):
+        raise TypeError('Cannot set attribute "__outer__" in inner class')
+    class InnerDescriptor(object):
+        def __get__(self, outer, outercls):
+            if outer is None:
+                raise AttributeError('An enclosing instance that contains '
+                           '%s.%s is required' % (cls.__name__, cls.__name__))
+            clsdict = cls.__dict__.copy()
+            # explicit read-only reference to the outer instance
+            clsdict['__outer__'] = property(lambda self: outer)
+            # implicit lookup in the outer instance
+            clsdict['__getattr__'] = lambda self,attr: getattr(outer,attr)
+            def __setattr__(this, attr, value):
+                # setting an attribute in the inner instance sets the
+                # respective attribute in the outer instance if and only if
+                # the attribute is already defined in the outer instance
+                if hasattr(outer, attr): setattr(outer,attr,value)
+                else: super(this.__class__,this).__setattr__(attr,value)
+            clsdict['__setattr__'] = __setattr__
+            return type(cls.__name__, cls.__bases__, clsdict)
+    return InnerDescriptor()
+
 def intround(n):
-    """Round to the nearest integer, return an integer.
-    Saves on parentheses"""
-    return int(round(n))
+    """Round to the nearest integer, return an integer. Works on arrays,
+    saves on parentheses, nothing more"""
+    if iterable(n): # it's a sequence, return as an int64 array
+        return np.int64(np.round(n))
+    else: # it's a scalar, return as normal Python int
+        return int(round(n))
 
 def pad0s(val, ndigits=2):
     """Returns a string rep of val, padded with enough leading 0s
@@ -527,7 +1080,7 @@ def warn(msg, level=2, exit_val=1):
 def warn(msg):
     import warnings
     warnings.warn(msg, category=RuntimeWarning, stacklevel=2)
-'''
+
 def unique(seq):
     """Return unique items from a 1-dimensional sequence. Stolen from numpy.unique().
     Dictionary setting is quite fast"""
@@ -535,12 +1088,11 @@ def unique(seq):
     for item in seq:
         result[item] = None
     return result.keys()
-'''
+
 def unique(objlist):
     """Returns the input list minus any repeated objects it may have had. Also defined in dimstim"""
     return list(set(objlist)) # this requires Python >= 2.4
-'''
-'''
+
 def unique(objlist):
     """Does in-place removal of non-unique objects in a list of objects"""
     for (i,obj1) in enumerate(objlist):
@@ -565,7 +1117,7 @@ def toiter(x):
         return x
     else:
         return [x]
-
+'''
 def tolist(x):
     """Convert to list. If input is a dict, returns its values. If it's already a list, returns it.
     Otherwise, input is returned in a list."""
@@ -575,7 +1127,7 @@ def tolist(x):
         return x
     else:
         return [x] # stick it in a list
-
+'''
 def to2d(arr):
     """Converts a 1D array to a 2D array with just a singleton row
     If arr is already 2D, just returns it. If it's anything more than 2D, raises an error"""
@@ -585,12 +1137,9 @@ def to2d(arr):
         arr = arr.reshape(1, -1)
     return arr
 
-def splitpath(path):
-    """Unlike os.path.split(), returns all segments between path separators in a list"""
-    return path.split(os.sep)
-
 def joinpath(pathlist):
-    """Unlike os.path.join(), takes a list of path segments, returns them joined in a string with path separators"""
+    """Unlike os.path.join(), takes a list of path segments, returns them joined in a string
+    with local separators"""
     path = ''
     for segment in pathlist:
         path = os.path.join(path, segment)
@@ -1180,63 +1729,6 @@ def mean_accum2(data, indices):
     return result
 
 
-class neuropyScalarFormatter(mpl.ticker.ScalarFormatter):
-    """Overloaded from mpl.ticker.ScalarFormatter for 4 reasons:
-    1) turn off stupid offset
-    2) increase maximum possible number of sigfigs
-    3) increase +ve and -ve order of magnitude thresholds before switching to scientific notation
-    4) keep exponents in engineering notation, ie multiples of 3
-    """
-    def __init__(self, useOffset=False, useMathText=False):
-        # useOffset allows plotting small data ranges with large offsets:
-        # for example: [1+1e-9,1+2e-9,1+3e-9]
-        # useMathText will render the offset an scientific notation in mathtext
-        #super(neuropyScalarFormatter, self).__init__(useOffset=useOffset, useMathText=useMathText) # can't use this, cuz derived from an old-style class
-        mpl.ticker.ScalarFormatter.__init__(self, useOffset=useOffset, useMathText=useMathText)
-        self.thousandsSep = '' # default to not using a thousands separator
-
-    def _set_orderOfMagnitude(self, range):
-        # if scientific notation is to be used, find the appropriate exponent
-        # if using an numerical offset, find the exponent after applying the offset
-        locs = np.absolute(self.locs)
-        if self.offset: oom = math.floor(math.log10(range))
-        else:
-            if locs[0] > locs[-1]: val = locs[0]
-            else: val = locs[-1]
-            if val == 0: oom = 0
-            else: oom = math.floor(math.log10(val))
-        if oom < -3: # decreased -ve threshold for sci notation
-            self.orderOfMagnitude = (oom // 3)*3 # stick to engineering notation, multiples of 3
-        elif oom > 6: # increased +ve threshold for sci notation
-            self.orderOfMagnitude = (oom // 3)*3 # stick to engineering notation, multiples of 3
-        else:
-            self.orderOfMagnitude = 0
-
-    def _set_format(self):
-        # set the format string to format all the ticklabels
-        locs = (array(self.locs)-self.offset) / 10**self.orderOfMagnitude+1e-15
-        sigfigs = [len(str('%1.10f'% loc).split('.')[1].rstrip('0')) for loc in locs] # '%1.3f' changed to '%1.10f' to increase maximum number of possible sigfigs
-        sigfigs.sort()
-        self.format = '%1.' + str(sigfigs[-1]) + 'f'
-        if self._usetex or self._useMathText: self.format = '$%s$'%self.format
-
-    def pprint_val(self, x):
-        xp = (x-self.offset)/10**self.orderOfMagnitude
-        if np.absolute(xp) < 1e-8: xp = 0
-        s = self.format % xp
-        if self.thousandsSep: # add thousands-separating characters
-            if s.count('.'): # it's got a decimal in there
-                s = re.sub(r'(?<=\d)(?=(\d\d\d)+\.)', self.thousandsSep, s) # use the regexp for floats
-            else: # it's an int
-                s = re.sub(r'(?<=\d)(?=(\d\d\d)+$)', self.thousandsSep, s) # use the regexp for ints
-        return s
-
-class neuropyAutoLocator(mpl.ticker.MaxNLocator):
-    """A tick autolocator that generates more ticks than the standard mpl autolocator"""
-    def __init__(self):
-        #mpl.ticker.MaxNLocator.__init__(self, nbins=9, steps=[1, 2, 5, 10]) # standard autolocator
-        mpl.ticker.MaxNLocator.__init__(self) # use MaxNLocator's defaults instead
-
 def normalize(seq):
     """Normalizes a sequence, returning zeros if sum(seq) == 0"""
     a = asarray(seq)
@@ -1369,80 +1861,24 @@ def DJS(p, q):
     m = 1 / 2.0 * (p + q)
     return 1 / 2.0 * ( DKL(p, m) + DKL(q, m) )
 
+def lstrip(s, strip):
+    """What I think str.lstrip should really do"""
+    if s.startswith(strip):
+        return s[len(strip):] # strip it
+    else:
+        return s
 
-class Ising(object):
-    """Maximum entropy Ising model"""
-    def __init__(self, means, pairmeans, algorithm='CG'):
-        """means is a list of mean activity values [-1 to 1] for each neuron code.
-        pairmeans is list of products of activity values for all pairs of neuron codes.
-        'Returns a maximum-entropy (exponential-form) model on a discrete sample space'
-            -- scipy.maxent.model
-        """
+def rstrip(s, strip):
+    """What I think str.rstrip should really do"""
+    if s.endswith(strip):
+        return s[:-len(strip)] # strip it
+    else:
+        return s
 
-        from scipy import maxentropy
+def strip(s, strip):
+    """What I think str.strip should really do"""
+    return rstrip(lstrip(s, strip), strip)
 
-        nbits = len(means)
-        npairs = len(pairmeans)
-        assert npairs == nCr(nbits, 2) # sanity check
-        self.intsamplespace = range(0, 2**nbits)
-        table = getbinarytable(nbits=nbits) # words are in the columns, MSB at bottom row
-        self.binsamplespace = ar([ table[::-1, wordi] for wordi in range(0, 2**nbits) ]) # all possible binary words (each is MSB to LSB), as arrays of 0s and 1s
-        self.samplespace = self.binsamplespace * 2 - 1 # convert 0s to -1s
-        # return the i'th bit (LSB to MSB) of binary word x
-        f1s = [ lambda x, i=i: x[-1-i] for i in range(0, nbits) ] # have to do i=i to statically assign value (gets around scope closure problem)
-        # return product of the i'th and j'th bit (LSB to MSB) of binary word
-        f2s = []
-        pairmeansi = 0
-        for i in range(0, nbits):
-            for j in range(i+1, nbits):
-                if pairmeans[pairmeansi] != None: # None indicates we should ignore this pair
-                    f2s.append(lambda x, i=i, j=j: x[-1-i] * x[-1-j])
-                pairmeansi += 1
-        #f2s = [ lambda x, i=i, j=j: x[-1-i] * x[-1-j] for i in range(0, nbits) for j in range(i+1, nbits) if pairmeans[i*nbits+j-1] != None ]
-        f = cat((f1s, f2s))
-        self.model = maxentropy.model(f, self.samplespace)
-        #self.model.mindual = -10000
-        #self.model.log = None # needed to make LBFGSB algorithm work
-        # Now set the desired feature expectations
-        means = asarray(means)
-        pairmeans = asarray(pairmeans) # if it has Nones, it's an object array
-        pairmeans = asarray(list(pairmeans[pairmeans != [None]])) # remove the Nones, convert to list to get rid of object array, then convert back to array to get a normal, non-object array (probably a float64 array)
-        npairs = len(pairmeans) # update npairs
-        #pairmeans /= 2.0 # add the one half in front of each coefficient, NOT TOO SURE IF THIS SHOULD GO HERE! causes convergence problems
-        K = cat((means, pairmeans))
-        self.model.verbose = False
-
-        # Fit the model
-        self.model.fit(K, algorithm=algorithm)
-
-        self.hi = self.model.params[0:nbits]
-        self.Jij = self.model.params[nbits:nbits+npairs]
-        self.p = self.model.probdist()
-        assert (len(self.hi), len(self.Jij), len(self.p)) == (nbits, npairs, 2**nbits) # sanity checks
-        #print 'means:', means
-        #print 'pairmeans:', pairmeans
-        print '%d iters,' % self.model.iters,
-        #print 'hi:', self.hi.__repr__()
-        #print 'Jij:', self.Jij.__repr__()
-
-        '''
-        # Output the distribution
-        print "\nFitted model parameters are:\n" + str(self.model.params)
-        print "\nFitted distribution is:"
-        for j in range(len(self.model.samplespace)):
-            x = ar(self.model.samplespace[j])
-            x = (x+1)/2 # convert from -1s and 1s back to 0s and 1s
-            print '\tx:%s, p(x):%s' % (x, p[j])
-        '''
-        '''
-        # Now show how well the constraints are satisfied:
-        print
-        print "Desired constraints:"
-        print "\tp['dans'] + p['en'] = 0.3"
-        print ("\tp['dans'] + p['" + a_grave + "']  = 0.5").encode('utf-8')
-        print
-        print "Actual expectations under the fitted model:"
-        print "\tp['dans'] + p['en'] =", p[0] + p[1]
-        print ("\tp['dans'] + p['" + a_grave + "']  = " + str(p[0]+p[2])).encode('utf-8')
-        # (Or substitute "x.encode('latin-1')" if you have a primitive terminal.)
-        '''
+def lrstrip(s, lstr, rstr):
+    """Strip lstr from start of s and rstr from end of s"""
+    return rstrip(lstrip(s, lstr), rstr)

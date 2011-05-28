@@ -1,37 +1,39 @@
-"""Defines the Experiment class and all of its support classes."""
+"""Defines the Experiment class"""
 
-from core import *
-#from core import Cat15Movie # use dimstimSkeletal.Movie for both ptc15 and ptc16+
-from core import _data
+import os
+import StringIO
 
+import numpy as np
+import matplotlib as mpl
+
+from core import getargstr, TAB, warn, rstrip, dictattr, intround, toiter
+from core import _movies, MOVIEPATH, MSEQ16, MSEQ32, joinpath, lastcmd
+from core import PopulationRaster, Codes, CodeCorrPDF, ReceptiveFieldFrame
 import neuron
-from recording import PopulationRaster, Codes, CodeCorrPDF
-from dimstimskeletal import deg2pix, InternalParams, StaticParams, DynamicParams, Variable, Variables, Runs, BlankSweeps
-from dimstimskeletal import Dimension, SweepTable
+
+from dimstimskeletal import deg2pix, InternalParams, StaticParams, DynamicParams
+from dimstimskeletal import Variable, Variables, Runs, BlankSweeps, Dimension, SweepTable
 from dimstimskeletal import Movie, Grating, Bar, SparseNoise, BlankScreen
 
 
 class BaseExperiment(object):
-    """An Experiment corresponds to a single contiguous VisionEgg stimulus session.
+    """An experiment corresponds to a single contiguous stimulus session.
     It contains information about the stimulus during that session, including
     the DIN values and the text header. For data generated with dimstim >= 0.16,
     it includes the entire dimstim.Experiment object as an attribute (.e).
     A neuropy.Experiment is basically a container for a dimstim.Experiment"""
-
-    from recording import Recording
-
-    def __init__(self, id=None, name=None, parent=None):
+    def __init__(self, path, id=None, recording=None):
         self.level = 4 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
-        if parent:
-            self.r = parent # save parent Recording object
-        else:
-            self.r = Recording() # init parent Recording object
-        if name is None:
-            raise ValueError, 'Experiment name can\'t be None'
-        self.id = id # not really used by the Experiment class, just there for user's info
-        self.name = name
-        self.path = self.r.path
+        self.path = path
+        self.id = id
+        self.r = recording
+
+    def get_name(self):
+        fname = os.path.split(self.path)[-1]
+        return rstrip(fname, '.din')
+
+    name = property(get_name)
 
     def tree(self):
         """Print tree hierarchy"""
@@ -42,15 +44,13 @@ class BaseExperiment(object):
         self.treebuf.write(string)
         self.r.writetree(string)
 
-    # doesn't need an id2name or name2id method, neither can really be derived from the other in an easy way (although could use re), the id is just chronological (which is also alphabetical) order, at least for now
-
     def load(self):
-
-        f = file(os.path.join(self.path, self.name) + '.din', 'rb') # open the din file for reading in binary mode
-        self.din = np.fromfile(f, dtype=np.int64).reshape(-1, 2) # reshape to nrows x 2 columns
+        f = open(self.path, 'rb')
+        self.din = np.fromfile(f, dtype=np.int64).reshape(-1, 2) # reshape to nrows x 2 cols
         f.close()
         try:
-            f = file(os.path.join(self.path, self.name) + '.textheader', 'r') # open the textheader file for reading
+            txthdrpath = rstrip(self.path, '.din') + '.textheader'
+            f = open(txthdrpath, 'rU') # use universal newline support
             self.textheader = f.read() # read it all in
             f.close()
         except IOError:
@@ -58,52 +58,60 @@ class BaseExperiment(object):
             self.textheader = '' # set to empty
 
         treestr = self.level*TAB + self.name + '/'
-        self.writetree(treestr+'\n') # print string to tree hierarchy...
-        print treestr # ...and screen
+        # print string to tree hierarchy and screen
+        self.writetree(treestr + '\n')
+        print(treestr)
 
-        if self.textheader: # if it isn't empty
+        if self.textheader != '':
             # comment out all lines starting with "from dimstim"
             self.textheader = self.textheader.replace('from dimstim', '#from dimstim')
             names1 = locals().copy() # namespace before execing the textheader
             exec(self.textheader)
             names2 = locals().copy() # namespace after
-            newnames = [ n2 for n2 in names2 if n2 not in names1 and n2 != 'names1' ] # names that were added to the namespace, excluding the 'names1' name itself
+            # names that were added to the namespace, excluding the 'names1' name itself:
+            newnames = [ n2 for n2 in names2 if n2 not in names1 and n2 != 'names1' ]
             try:
-                self.__version__ = eval('__version__') # dimstim up to Cat 15 didn't have a version, neither did NVS display
+                # dimstim up to Cat 15 didn't have a version, neither did NVS display
+                self.__version__ = eval('__version__')
             except NameError:
                 self.__version__ = 0.0
             if self.__version__ >= 0.16: # after major refactoring of dimstim
                 for newname in newnames:
-                    self.__setattr__(newname, eval(newname)) # bind each variable in the textheader as an attrib of self
-                self.sweeptable = SweepTable(experiment=self.e) # build the sweep table, given dimstim exp
-                self.st = self.sweeptable.data # synonym, used a lot by Experiment subclasses
+                    # bind each variable in the textheader as an attrib of self
+                    self.__setattr__(newname, eval(newname))
+                self.sweeptable = SweepTable(experiment=self.e) # build the sweep table
+                self.st = self.sweeptable.data # synonym, used a lot by experiment subclasses
                 # this doesn't work for textheaders from dimstim 0.16, since xorigDeg and yorigDeg
-                # were accidentally omitted from all the experiment scripts and hence the textheaders too:
+                # were accidentally omitted from all the experiment scripts and hence the textheaders
+                # too:
                 '''
-                self.e.xorig = deg2pix(self.e.static.xorigDeg, self.I) + self.I.SCREENWIDTH / 2 # may as well
+                self.e.xorig = deg2pix(self.e.static.xorigDeg, self.I) + self.I.SCREENWIDTH / 2
                 self.e.yorig = deg2pix(self.e.static.yorigDeg, self.I) + self.I.SCREENHEIGHT / 2
                 '''
-                self.REFRESHTIME = intround(1 / float(self.I.REFRESHRATE) * 1000000) # in us, keep 'em integers
+                self.REFRESHTIME = intround(1 / float(self.I.REFRESHRATE) * 1000000) # us
                 # prevent replication of movie frame data in memory
                 if type(self.e) == Movie:
                     fname = os.path.split(self.e.static.fname)[-1] # pathless fname
-                    if fname not in _data.movies:
-                        # add Movie Experiment, indexed according to movie data file name,
+                    if fname not in _movies:
+                        # add movie experiment, indexed according to movie data file name,
                         # to prevent from ever loading its frames more than once
-                        _data.movies[fname] = e
+                        _movies[fname] = e
             else:
                 self.oldparams = dictattr()
                 for newname in newnames:
-                    self.oldparams[newname] = eval(newname) # bind each variable in the textheader to oldparams
+                    # bind each variable in the textheader to oldparams
+                    self.oldparams[newname] = eval(newname)
                 self.loadCat15exp()
         else:
-            self.REFRESHTIME = self.din[1, 0] - self.din[0, 0] # use the time difference between the first two din instead
+            # use the time difference between the first two din instead
+            self.REFRESHTIME = self.din[1, 0] - self.din[0, 0]
 
-        self.trange = (self.din[0, 0], self.din[-1, 0]+self.REFRESHTIME) # add an extra refresh time after last din, that's when screen actually turns off
+        # add an extra refresh time after last din, that's when screen actually turns off
+        self.trange = (self.din[0, 0], self.din[-1, 0] + self.REFRESHTIME)
 
     def loadCat15exp(self):
-
-        ## TODO: - fake a .e dimstim.Experiment object, to replace what used to be the .stims object for Movie experiments
+        ## TODO: - fake a .e dimstim.Experiment object, to replace what used to be the
+        ## .stims object for movie experiments
         '''           - self.movie = self.experiment.stims[0]
                 - need to convert sweeptimeMsec to sweepSec
                    - assert len(self.experiment.stims) == 1
@@ -115,7 +123,7 @@ class BaseExperiment(object):
             elif self.movie.oname == 'mseq16':
                 frameis = frameis[frameis != 16383] # remove all occurences of 16383
         '''
-        # Add .static and .dynamic params to fake dimstim Experiment
+        # Add .static and .dynamic params to fake dimstim experiment
         self.e = dictattr()
         self.e.I = dictattr() # fake InternalParams object
         self.e.static = dictattr() # fake StaticParams object
@@ -151,11 +159,15 @@ class BaseExperiment(object):
 
         # collect any Cat 15 movie attribs and add them to self.oldparams
         try:
-            assert len(unique(self.oldparams.playlist)) == 1 # can't really handle more than 1 movie, since dimstim 0.16 doesn't
-            self.movie = self.oldparams.playlist[0] # bind it, movie was the only possible stim object anyway in Cat 15
-            movieparams = self.oldparams[self.movie.oname].__dict__ # returns a dict of name:val pair attribs excluding __ and methods
+            # can't really handle more than 1 movie, since dimstim 0.16 doesn't
+            assert len(np.unique(self.oldparams.playlist)) == 1
+            # bind it, movie was the only possible stim object anyway in Cat 15
+            self.movie = self.oldparams.playlist[0]
+            # returns dict of name:val pair attribs excluding __ and methods:
+            movieparams = self.oldparams[self.movie.oname].__dict__
             self.oldparams.update(movieparams)
-        except AttributeError: # no playlist, no movies, and therefore no movie attribs to deal with
+        except AttributeError:
+            # no playlist, no movies, and therefore no movie attribs to deal with
             pass
 
         # convert Cat 15 params to dimstim 0.16
@@ -180,50 +192,73 @@ class BaseExperiment(object):
             m = None
 
         if m:
-            # make fake dimstim experiment a Cat15Movie object, bind all of the attribs of the existing fake dimstim experiment
+            # make fake dimstim experiment a Cat15Movie object, bind all of the attribs of
+            # the existing fake dimstim experiment
             old_e = self.e
             self.e = m
             for name, val in old_e.__dict__.items():
-                self.e.__setattr__(name, val) # bind each variable in the textheader as an attrib of self
-            # deal with movie filename
-            m.e = self # didn't have a chance to pass this exp as the parent in the movie init. So just set the attribute manually
-            # if fname refers to a movie whose local name is different, rename it to match the local movie name
+                # bind each variable in the textheader as an attrib of self
+                self.e.__setattr__(name, val)
+            # deal with movie filename:
+            # didn't have a chance to pass this exp as the parent in the movie init,
+            # so just set the attribute manually:
+            m.e = self
+            # if fname refers to a movie whose local name is different, rename it to match
+            # the local movie name
             _old2new = {'mseq16.m': MSEQ16, 'mseq32.m': MSEQ32}
             try:
                 m.fname = _old2new[m.fname]
             except KeyError:
                 pass # old name not in _old2new, leave it be
             self.e.static.fname = m.fname # update fake dimstim experiment's fname too
-            m.name = os.path.splitext(m.fname)[0] # extensionless fname, fname should've been defined in the textheader
-            if m.name not in _data.movies: # and it very well may not be, cuz the textheader inits movies with no args, leaving fname==None at first, which prevents it from being added to _data.movies
-                _data.movies[m.name] = m # add m to _data.movies dictattr
-            # Search self.e.moviepath string (from textheader) for 'Movies' word. Everything after that is the relative path to your base movies folder. Eg, if self.e.moviepath = 'C:\\Desktop\\Movies\\reliability\\e\\single\\', then set self.e.relpath = '\\reliability\\e\\single\\'
-            spath = splitpath(self.oldparams.moviepath)
+            # extensionless fname, fname should've been defined in the textheader
+            m.name = os.path.splitext(m.fname)[0]
+            if m.name not in _movies:
+                # and it very well may not be, cuz the textheader inits movies with no args,
+                # leaving fname==None at first, which prevents it from being added to
+                # _movies
+                _movies[m.name] = m # add m to _movies dictattr
+            # Search self.e.moviepath string (from textheader) for 'Movies' word. Everything
+            # after that is the relative path to your base movies folder. Eg, if
+            # self.e.moviepath = 'C:\\Desktop\\Movies\\reliability\\e\\single\\', then set
+            # self.e.relpath = '\\reliability\\e\\single\\'
+            spath = self.oldparams.moviepath.split('\\') # Cat15 has purely windows seperators
             matchi = spath.index('Movies')
             relpath = joinpath(spath[matchi+1 ::])
             path = os.path.join(MOVIEPATH, relpath)
             m.fname = os.path.join(path, m.fname)
             self.e.static.fname = m.fname # update
 
-            # Generate the sweeptable
-            # self.sweeptable = {[]} # dictionary of lists, ie sweeptable={'ori':[0,45,90], 'sfreq':[1,1,1]}
-            # so you index into it with self.sweeptable['var'][sweepi]
-            # vars = self.sweeptable.keys()
-            # need to check if varlist exists, if so use it (we're dealing with Cat 15), if not, use revamped dimstim.SweepTable class
+            # Generate the sweeptable:
+            # dict of lists, ie sweeptable={'ori':[0,45,90], 'sfreq':[1,1,1]}, so you index
+            # into it with self.sweeptable['var'][sweepi]
+            #self.sweeptable = {[]}
+            #vars = self.sweeptable.keys()
+            # need to check if varlist exists, if so use it (we're dealing with Cat 15),
+            # if not, use revamped dimstim.SweepTable class
             varvals = {} # init a dictionary that will contain variable values
             for var in m.varlist:
-                varvals[var] = eval('m.' + var) # generate a dictionary with var:val entries, to pass to buildSweepTable
-            m.sweepTable = self.buildCat15SweepTable(m.varlist, varvals, m.nruns, m.shuffleRuns, m.blankSweep, m.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
+                # generate dict with var:val entries, to pass to buildSweepTable
+                varvals[var] = eval('m.' + var)
+            # pass varlist by reference, dim indices end up being modified:
+            m.sweepTable = self.buildCat15SweepTable(m.varlist, varvals, m.nruns,
+                                                     m.shuffleRuns, m.blankSweep,
+                                                     m.shuffleBlankSweeps,
+                                                     makeSweepTableText=0)[0]
         else: # this is a simple stim (not object oriented movie)
             varvals = {} # init a dictionary that will contain variable values
             for var in self.oldparams.varlist:
-                varvals[var] = eval('self.oldparams.' + var) # generate a dictionary with var:val entries, to pass to buildSweepTable
-            self.sweepTable = self.buildCat15SweepTable(self.oldparams.varlist, varvals, self.oldparams.nruns,
-                                                        self.oldparams.shuffleRuns, self.oldparams.blankSweep,
-                                                        self.oldparams.shuffleBlankSweeps, makeSweepTableText=0)[0] # passing varlist by reference, dim indices end up being modified
-
+                # generate dict with var:val entries, to pass to buildSweepTable
+                varvals[var] = eval('self.oldparams.' + var)
+            # pass varlist by reference, dim indices end up being modified:
+            self.sweepTable = self.buildCat15SweepTable(self.oldparams.varlist, varvals,
+                                                        self.oldparams.nruns,
+                                                        self.oldparams.shuffleRuns,
+                                                        self.oldparams.blankSweep,
+                                                        self.oldparams.shuffleBlankSweeps,
+                                                        makeSweepTableText=0)[0]
         try:
-            self.REFRESHTIME = intround(1 / float(self.oldparams.REFRESHRATE) * 1000000) # in us, keep 'em integers
+            self.REFRESHTIME = intround(1 / float(self.oldparams.REFRESHRATE) * 1000000) # us
         except AttributeError:
             pass
 
@@ -485,9 +520,9 @@ class BaseExperiment(object):
 
 
 class ExperimentCode(BaseExperiment):
-    """Mix-in class that defines the spike code related Experiment methods"""
+    """Mix-in class that defines the spike code related experiment methods"""
     def code(self, neuron=None, **kwargs):
-        """Returns a Neuron.Code object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
+        """Returns a Neuron.Code object, constraining it to the time range of this experiment. Takes either a Neuron object or just a Neuron id"""
         try:
             return neuron.code(tranges=[self.trange], **kwargs) # see if neuron is a Neuron
         except AttributeError:
@@ -497,7 +532,7 @@ class ExperimentCode(BaseExperiment):
     code.__doc__ += '\nbinary: '+getargstr(neuron.BinaryCode.__init__)
 
     def codes(self, neurons=None, **kwargs):
-        """Returns a 2D array where each row is a neuron code constrained to the time range of this Experiment"""
+        """Returns a 2D array where each row is a neuron code constrained to the time range of this experiment"""
         if neurons == None:
             neurons = self.r.n
         codeso = self.r.codes(neurons=neurons, experiments=[self], **kwargs)
@@ -546,9 +581,9 @@ class ExperimentCode(BaseExperiment):
     '''
 
 class ExperimentRate(BaseExperiment):
-    """Mix-in class that defines the spike rate related Experiment methods"""
+    """Mix-in class that defines the spike rate related experiment methods"""
     def rate(self, neuron, **kwargs):
-        """Returns a Neuron.Rate object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
+        """Returns a Neuron.Rate object, constraining it to the time range of this experiment. Takes either a neuron object or just a neuron id"""
         try:
             return neuron.rate(trange=self.trange, **kwargs) # see if neuron is a Neuron
         except AttributeError:
@@ -557,7 +592,7 @@ class ExperimentRate(BaseExperiment):
     rate.__doc__ += neuron.Neuron._rateargs
 
     def ratepdf(self, neuron, **kwargs):
-        """Returns a Neuron.RatePDF object, constraining it to the time range of this Experiment. Takes either a Neuron object or just a Neuron id"""
+        """Returns a Neuron.RatePDF object, constraining it to the time range of this experiment. Takes either a Neuron object or just a Neuron id"""
         try:
             return neuron.ratepdf(trange=self.trange, **kwargs) # see if neuron is a Neuron
         except AttributeError:
@@ -639,7 +674,7 @@ class STCs(RevCorrs):
 
 
 class ExperimentRevCorr(BaseExperiment):
-    """Mix-in class that defines the reverse correlation related Experiment methods"""
+    """Mix-in class that defines the reverse correlation related experiment methods"""
     def sta(self, neurons=None, **kwargs):
         """Returns an STAs RevCorrs object"""
         if neurons == None: # no Neurons were passed, use all the Neurons from the default Sort for this experiment's Recording
@@ -650,7 +685,7 @@ class ExperimentRevCorr(BaseExperiment):
                 neurons.append(val)
         else:
             try: # assume neurons is a Neuron id or list of Neuron ids, get the associated Neuron objects from the default Sort for this experiment's Recording
-                neurons = [ self.r.n[ni] for ni in tolist(neurons) ]
+                neurons = [ self.r.n[ni] for ni in toiter(neurons) ]
             except KeyError: # neurons is probably a list of Neuron objects
                 pass
         staso = STAs(neurons=neurons, experiment=self, **kwargs) # init a new STAs object
@@ -661,14 +696,14 @@ class ExperimentRevCorr(BaseExperiment):
 
     def stc(self, neurons=None, **kwargs):
         """Returns an STCs RevCorrs object"""
-        if neurons == None: # no Neurons were passed, use all the Neurons from the default Sort for this experiment's Recording
+        if neurons == None: # no neurons were passed, use all the neurons from the default sort for this experiment's recording
             keyvals = self.r.n.items() # get key val pairs in a list of tuples
             keyvals.sort() # make sure they're sorted by key
             neurons = []
             for key, val in keyvals:
                 neurons.append(val)
         else:
-            try: # assume neurons is a Neuron id or list of Neuron ids, get the associated Neuron objects from the default Sort for this experiment's Recording
+            try: # assume neurons is a neuron id or list of neuron ids, get the associated neuron objects from the default sort for this experiment's recording
                 neurons = [ self.r.n[ni] for ni in tolist(neurons) ]
             except KeyError: # neurons is probably a list of Neuron objects
                 pass
@@ -680,13 +715,13 @@ class ExperimentRevCorr(BaseExperiment):
 
 
 class ExperimentPopulationRaster(PopulationRaster):
-    """A population raster limited to a single Experiment"""
+    """A population raster limited to a single experiment"""
     def __init__(self, experiment):
         super(ExperimentPopulationRaster, self).__init__(recording=experiment.r, experiments={experiment.id: experiment})
 
 
 class ExperimentRaster(BaseExperiment):
-    """Mix-in class that defines the raster related Experiment methods"""
+    """Mix-in class that defines the raster related experiment methods"""
     def raster(self, **kwargs):
         """Creates a population spike raster plot"""
         pr = ExperimentPopulationRaster(experiment=self, sortby=sortby)
@@ -702,5 +737,5 @@ class Experiment(ExperimentRaster,
                  ExperimentRate,
                  ExperimentCode,
                  BaseExperiment):
-    """Inherits all the Experiment classes into a single Experiment class"""
+    """Inherits all the experiment classes into a single one"""
     pass

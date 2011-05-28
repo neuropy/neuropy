@@ -1,7 +1,6 @@
 """Main neuropy window"""
 
 from __future__ import division
-from __init__ import __version__
 
 __authors__ = ['Martin Spacek']
 
@@ -21,6 +20,10 @@ from PyQt4 import QtCore, QtGui, uic
 #from PyQt4.QtCore import Qt
 NeuropyUi, NeuropyUiBase = uic.loadUiType('neuropy.ui')
 
+from __init__ import __version__
+from core import DATAPATH
+from recording import Recording
+
 
 class NeuropyWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
@@ -34,7 +37,10 @@ class NeuropyWindow(QtGui.QMainWindow):
         # can set paging style, like 'vsplit', 'hsplit', 'none', default is 'inside'
         ipyqtwidget = IPythonWidget(parent=self, local_kernel=True)
         self.ipyqtwidget = ipyqtwidget
+        
+        ## TODO: get config to work somehow
         ipyqtwidget.config = load_default_config() # doesn't seem to work
+        
         kernel_manager = QtKernelManager()
         kernel_manager.start_kernel() # might need **kwargs
         kernel_manager.start_channels()
@@ -59,26 +65,54 @@ class NeuropyWindow(QtGui.QMainWindow):
 
         self.setGeometry(0, 0, 960, 1080)
         self.setWindowTitle('neuropy')
+        self.path = DATAPATH
+
+        ## TODO: get neuropy imports to work properly without messing up ipython display header
+        ## need to be done after window and ipyqtwidget init are finished
+
+        #"from __future__ import division\n"
+        #"import numpy as np\n"
 
     @QtCore.pyqtSlot()
     def on_actionOpen_triggered(self):
         getExistingDirectory = QtGui.QFileDialog.getExistingDirectory
         path = getExistingDirectory(self, caption="Open recording, track, or animal",
-                                    directory=os.getcwd())
+                                    directory=self.path)
         path = str(path)
-        print(path)
-        self.ipyqtwidget.execute("from neuropy import *\n"
-                                 "r03 = Recording('03')\n"
-                                 "r03.load()")
+        if path == '':
+            return
+        self.path = os.path.normpath(os.path.join(path, os.pardir)) # update with path's parent
+        self.open_recording(path)
+
+    @QtCore.pyqtSlot()
+    def on_action_ptc15_r87_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc15/tr7c/87 - track 7c spontaneous craziness')
+        self.open_recording(path)
+
+    @QtCore.pyqtSlot()
+    def on_action_ptc15_r92_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc15/tr7c/92 - track 7c mseq32 0.4deg')
+        self.open_recording(path)
+
+    @QtCore.pyqtSlot()
+    def on_action_ptc17_r03_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc17/tr1/03-tr1-mseq32_40ms')
+        self.open_recording(path)
+
+    def open_recording(self, path):
+        rec = Recording(path) # init it just to parse its id
+        exec_lines = (
+        "from recording import Recording\n"
+        "r%d = Recording(%r)\n"
+        "r%d.load()" % (rec.id, path, rec.id)
+        )
+        self.ipyqtwidget.execute(exec_lines)
 
     @QtCore.pyqtSlot()
     def on_actionShell_triggered(self):
         embed(display_banner=False, config=load_default_config()) # "self" is accessible
         # embed() seems to override the excepthook, need to reset it:
         set_excepthook()
-
-    def raise_error(self):
-        raise RuntimeError
 
     @QtCore.pyqtSlot()
     def on_actionQuit_triggered(self):

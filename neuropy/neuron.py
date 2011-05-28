@@ -1,34 +1,42 @@
 """Defines the Neuron class and all of its support classes"""
 
-# TODO: stop doing this!
-from core import *
-#from core import Cat15Movie
+import os
+import StringIO
+import time
+
+import wx
+
+import numpy as np
+
+from core import rstrip, getargstr, iterable, intround, CODETRES, CODEPHASE, CODEKIND
+from core import MSEQ16, MSEQ32, mean_accum
 from dimstimskeletal import Movie
 
+
 class BaseNeuron(object):
-    """A Neuron object's spike data spans all the Experiments within a Recording.
-    If different Recordings have Sorts with the same name, you can assume that the
-    same spike template was used for all of those Recordings, and that therefore
-    the neuron ids are the same"""
-
-    from sort import Sort
-
-    def __init__(self, id=None, name=None, parent=Sort): # neuron names don't include the '.spk' ending, neuron filenames do
+    """A neuron's spike data spans all the experiments within a recording.
+    If different recordings have sorts with the same name, you can assume they were
+    extracted in the same spike sorting session, and that therefore the neuron ids
+    are the same"""
+    def __init__(self, path, sort=None):
         self.level = 5 # level in the hierarchy
         #self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
-        try:
-            self.sort = parent() # init parent Sort object
-        except TypeError: # parent is an instance, not a class
-            self.sort = parent # save parent Sort object
-        if id is not None:
-            name = self.id2name(self.sort.path, id) # use the id to get the name
-        elif name is not None:
-            id = self.name2id(name) # use the name to get the id
-        else:
-            raise ValueError, 'Neuron id and name can\'t both be None'
-        self.id = id
-        self.name = name
-        self.path = self.sort.path
+        self.path = path
+        self.sort = sort
+
+    def get_name(self):
+        fname = os.path.split(self.path)[-1]
+        return rstrip(fname, '.spk')
+    
+    name = property(get_name)
+
+    def get_id(self):
+        # everything from just after the last '_t' to the end of the neuron name,
+        # should be all numeric
+        id = self.name.rsplit('_t', 1)[-1]
+        return int(id)
+        
+    id = property(get_id)
     '''
     def tree(self):
         """Print tree hierarchy"""
@@ -39,44 +47,16 @@ class BaseNeuron(object):
         self.treebuf.write(string)
         self.sort.writetree(string)
     '''
-    def id2name(self, path, id):
-        #if len(str(id)) == 1: # if id is only 1 digit long
-        #    id = '0'+str(id) # add a leading zero
-        name = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(path)
-                 if os.path.isfile(os.path.join(path, fname))
-                 and
-                 (    '_t%s.spk' % id in fname
-                   or '_t0%s.spk' % id in fname
-                   or '_t00%s.spk' % id in fname )
-                 ] # have to deal with leading zero ids, go up to 3 digit ids, should really use a re to do this properly...
-        if len(name) != 1:
-            raise NameError, 'Ambiguous or non-existent Neuron id: %s' % id
-        else:
-            return name[0] # pull the string out of the list
-
-    def name2id(self, name):
-        try:
-            id = name[name.rindex('_t')+2::] # everything from just after the last '_t' to the end of the neuron name, rindex() raises ValueError if it can't be found
-        except ValueError:
-            raise ValueError, 'Badly formatted Neuron name: %s' % name
-        try:
-            id = int(id) # convert string to int if possible
-        except ValueError:
-            pass # it's alphanumeric, leave it as a string
-        return id
-
     def load(self):
         #treestr = self.level*TAB + self.name + '/'
-        #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        f = file(os.path.join(self.path, self.name) + '.spk', 'rb') # open the spike file for reading in binary mode
+        # print string to tree hierarchy and screen
+        #self.writetree(treestr+'\n')
+        #print(treestr) # print string to tree hierarchy and screen
+        f = open(self.path, 'rb')
         self.spikes = np.fromfile(f, dtype=np.int64) # read in all spike times in us
         f.close()
         self.nspikes = len(self.spikes)
-        if self.nspikes == 0: # this Neuron has no spikes, not much of a Neuron as far as this Recording is concerened
-            self.spikes = np.append(self.nspikes, None) # add None to empty spike list. Why None? Why not just leave it empty?
-        #self.results = {} # a dictionary to store results in
         self.trange = self.spikes[0], self.spikes[-1]
-        # then, maybe add something that loads the template for this neuron, as well as its modelled (or just guesstimated) location in 3D (or just 2D) coordinates in um, as well as cell type potentially
 
     def cut(self, *args):
         """Returns a view of the Neuron's spike times where tstart <= spikes <= tend
@@ -336,7 +316,7 @@ class BinaryCode(BaseCode):
             tstart = trange[0] - (trange[0] % self.tres) + self.phase/360.0*self.tres # left edge of first code bin
             t = np.int64(np.round(arange(tstart, trange[1]+self.tres, self.tres))) # t sequence demarcates left bin edges, add extra tres to end to make t end inclusive, keep 'em in us integers
             s = self.neuron.cut(trange) # spike times, cut over originally specified trange, not from start to end of newly generated code bin timepoints
-            c = zeros(len(t), dtype=np.int8) # init binary code signal
+            c = np.zeros(len(t), dtype=np.int8) # init binary code signal
             # searchsorted returns indices where s fits into t. Sometimes more than one spike will fit into the same time bin, which means searchsorted will return multiple occurences of the same index. You can set c at these indices to 1 a multiple number of times, or prolly more efficient, do an np.unique on it to only set each index to 1 once.
             c[np.unique(t.searchsorted(s)) - 1] = 1 # dec index by 1 so that you get indices that point to the most recent bin edge. For each bin that has at least 1 spike in it, set its value to 1
             self.t = np.append(self.t, t) # save 'em
@@ -779,7 +759,7 @@ class STA(RevCorr):
     def calc(self):
         super(STA, self).calc() # run the base calc() steps first
         #sys.stdout.write('n%d' % self.neuron.id) # prevents trailing space and newline
-        self.rf = zeros([self.nt, self.height, self.width], dtype=np.float64) # init a 3D matrix to store the STA at each timepoint. rf == 'receptive field'
+        self.rf = np.zeros([self.nt, self.height, self.width], dtype=np.float64) # init a 3D matrix to store the STA at each timepoint. rf == 'receptive field'
         #frames = np.float64(self.movie.frames) # converting from uint8 to float64 seems to speed up mean() method a bit
         frames = self.movie.frames
         tstart = time.clock()
@@ -787,7 +767,7 @@ class STA(RevCorr):
         for ti in self.tis:
             cont, skip = pd.Update(ti-1, newmsg='timepoint: %dms\nelapsed: %.1fs' % (self.t[ti], time.clock()-tstart))
             if not cont:
-                #self.rf = zeros([self.nt, self.height, self.width], dtype=np.float64) # set back to zeros
+                #self.rf = np.zeros([self.nt, self.height, self.width], dtype=np.float64) # set back to zeros
                 pd.Destroy()
                 self.done = False
                 return
@@ -905,7 +885,7 @@ class ConstrainedNeuron(Neuron):
     time in its (grand)parent Recording during which an Experiment is in progress"""
     def load(self):
         super(ConstrainedNeuron, self).load()
-        cspikes = array([], dtype=np.int64) # init a temporary array
+        cspikes = np.array([], dtype=np.int64) # init a temporary array
         #self.tranges = np.empty((len(self.r.e), 2), dtype=np.int64) # give it shape(numexps, 2)
         self.tranges = []
         if self.sort.r.e != {}: # if it ain't empty, ie if there are Experiments in this Sort's Recording

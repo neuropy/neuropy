@@ -41,7 +41,12 @@
      <string>&amp;File</string>
     </property>
     <addaction name="actionOpen"/>
-    <addaction name="actionRecent"/>
+    <addaction name="separator"/>
+    <addaction name="action_ptc15_r87"/>
+    <addaction name="action_ptc15_r92"/>
+    <addaction name="action_ptc17_r03"/>
+    <addaction name="separator"/>
+    <addaction name="actionShell"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
@@ -78,6 +83,11 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionOpen"/>
+   <addaction name="separator"/>
+   <addaction name="action_ptc15_r87"/>
+   <addaction name="action_ptc15_r92"/>
+   <addaction name="action_ptc17_r03"/>
+   <addaction name="separator"/>
    <addaction name="actionShell"/>
   </widget>
   <action name="actionOpen">
@@ -105,18 +115,13 @@
     <enum>QAction::QuitRole</enum>
    </property>
   </action>
-  <action name="actionRecent">
-   <property name="text">
-    <string>Recent</string>
-   </property>
-  </action>
   <action name="actionAboutNeuropy">
    <property name="icon">
     <iconset>
      <normaloff>res/chart.png</normaloff>res/chart.png</iconset>
    </property>
    <property name="text">
-    <string>About spyke...</string>
+    <string>About neuropy...</string>
    </property>
    <property name="shortcut">
     <string>F1</string>
@@ -139,6 +144,27 @@
    </property>
    <property name="toolTip">
     <string>Drop into IPython shell at terminal</string>
+   </property>
+  </action>
+  <action name="action_ptc15_r87">
+   <property name="text">
+    <string>ptc15.r87</string>
+   </property>
+  </action>
+  <action name="action_ptc15_r92">
+   <property name="text">
+    <string>ptc15.r92</string>
+   </property>
+   <property name="toolTip">
+    <string>ptc15.r92</string>
+   </property>
+  </action>
+  <action name="action_ptc17_r03">
+   <property name="text">
+    <string>ptc17.r03</string>
+   </property>
+   <property name="toolTip">
+    <string>ptc15.r92</string>
    </property>
   </action>
  </widget>
