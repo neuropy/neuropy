@@ -1,4 +1,4 @@
-"""Defines base neuropy Data class, as well as other miscellaneous functions and classes"""
+"""Miscellaneous functions and classes"""
 
 import os
 import sys
@@ -14,31 +14,21 @@ from copy import copy
 from pprint import pprint
 printraw = sys.stdout.write # useful for raw printing
 
+from PyQt4 import QtGui
+from PyQt4.QtCore import Qt
+
 import numpy as np
 import scipy as sp
 import scipy.signal as sig
-#import scipy.weave as weave
-from numpy.random import rand, randn, randint
-from numpy import arange, array, array as ar, asarray, asarray as aar, log, log2, sqrt, zeros, ones, diff, concatenate, concatenate as cat, mean, median, std
-from numpy.ma import array as mar
 
 import matplotlib as mpl
-#try:
-#    mpl.use('WXAgg')
-#except RuntimeError: # pylab's already been imported, we might be doing a refresh
-#    pass
-mpl.interactive(True)
 import pylab as pl
-from pylab import figure, plot, loglog, hist, bar, barh, xlabel, ylabel, xlim, ylim, title, gcf, gca, get_current_fig_manager as gcfm, axes, axis, hold, imshow
-import wx
-from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
+# stop using this, or at least convert all uses of gcfm from wx to qt:
+#from pylab import get_current_fig_manager as gcfm
+#import wx
+#from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 
-# GLOBAL DEFAULTS
-
-ANIMALPREFIX = 'pt'
-
-ANIMAL = 'ptc17'
-TRACK = '1'
+## GLOBAL DEFAULTS
 
 # a sort with one of these keywords (listed in decreasing priority) will be
 # loaded as the default sort for its recording:
@@ -113,10 +103,10 @@ class PopulationRaster(object):
         experimentmarkers = [] # a flat list of all experiment start and stop times, in sorted order
         for e in self.e.values():
             experimentmarkers.extend(e.trange)
-        self.experimentmarkers = asarray(experimentmarkers) - self.t0 # make 'em relative to t0
+        self.experimentmarkers = np.asarray(experimentmarkers) - self.t0 # make 'em relative to t0
         self.experimentmarkers.sort() # just in case exps weren't in sorted order for some reason
 
-        self.jumpts = asarray(jumpts)
+        self.jumpts = np.asarray(jumpts)
         self.jumpts.sort() # just in case jumpts weren't in sorted order for some reason
 
         units2tconv = {'usec': 1e0, 'msec': 1e3, 'sec': 1e6}
@@ -143,7 +133,7 @@ class PopulationRaster(object):
             self.f
         except AttributeError: # prepare the fig if it hasn't been done already
             figheight = 1.25+0.2*len(self.nis)
-            self.f = figure(figsize=(14, figheight))
+            self.f = pl.figure(figsize=(14, figheight))
             self.a = self.f.add_subplot(111)
             self.formatter = NeuropyScalarFormatter() # better behaved tick label formatter
             self.formatter.thousandsSep = ',' # use a thousands separator
@@ -190,7 +180,7 @@ class PopulationRaster(object):
         # plot the bin edges. Not taking into account self.t0 for now, assuming it's 0
         if self.plotbinedges:
             leftbinedge = (left // self.binwidth + 1)*self.binwidth
-            binedges = arange(leftbinedge, left+width, self.binwidth)
+            binedges = np.arange(leftbinedge, left+width, self.binwidth)
             binlines = self.a.vlines(x=binedges/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], fmt='b:') # convert t
         # plot the rasters
         for nii, ni in enumerate(self.nis):
@@ -364,7 +354,7 @@ class Codes(object):
         self.t = codeo.t # stores the bin edges, just for reference. all bin times should be the same for all neurons, cuz they're all given the same trange. use the bin times of the last neuron
         nneurons = len(self.neurons)
         nbins = len(self.c[0]) # all entries in the list should be the same length
-        self.c = cat(self.c).reshape(nneurons, nbins)
+        self.c = np.concatenate(self.c).reshape(nneurons, nbins)
 
     def syncis(self):
         """Returns synch indices, ie the indices of the bins for which all the
@@ -468,7 +458,7 @@ class CodeCorrPDF(object):
                     code2 = self.r.code(cni2, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
                     cc = ((code1 * code2).mean() - means[cni1] * means[cni2]) / (stds[cni1] * stds[cni2]) # (mean of product - product of means) / by product of stds
                     self.corrs.append(cc)
-        self.corrs = array(self.corrs)
+        self.corrs = np.array(self.corrs)
         self.npairs = len(self.corrs)
         '''
         # simpler, but slower way:
@@ -480,7 +470,7 @@ class CodeCorrPDF(object):
         self.crange = crange
         self.nbins = nbins
         self.normed = normed
-        f = figure(figsize=figsize)
+        f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         try: # figure out the bin edges
             bins = np.linspace(start=self.crange[0], stop=self.crange[1], num=self.nbins, endpoint=True)
@@ -495,10 +485,10 @@ class CodeCorrPDF(object):
             corrs = self.corrs
             n = self.n
             c = self.c
-        self.mean = mean(corrs)
-        self.median = median(corrs)
+        self.mean = np.mean(corrs)
+        self.median = np.median(corrs)
         argmode = n.argmax()
-        self.mode = mean([c[argmode], c[argmode + 1]]) # find middle of tallest bin
+        self.mode = np.mean([c[argmode], c[argmode + 1]]) # find middle of tallest bin
 
         try:
             barwidth = (self.crange[1] - self.crange[0]) / float(self.nbins)
@@ -509,12 +499,12 @@ class CodeCorrPDF(object):
             a.set_xlim(self.crange)
         except TypeError: # self.crange is None
             pass
-        gcfm().frame.SetTitle(lastcmd())
+        #gcfm().frame.SetTitle(lastcmd())
         #titlestr = 'neuron pair code correlation pdf'
         #titlestr += '\n%s' % lastcmd()
         titlestr = '%s' % lastcmd()
         a.set_title(titlestr)
-        '''
+        
         if self.normed:
             if self.normed == 'pmf':
                 a.set_ylabel('probability mass')
@@ -523,21 +513,22 @@ class CodeCorrPDF(object):
         else:
             a.set_ylabel('count')
         a.set_xlabel('correlation coefficient')
-        '''
+        
         a.text(0.99, 0.99, 'mean = %.3f\nmedian = %.3f\nmode = %.3f\nR = %r\nnpairs = %d'
                             % (self.mean, self.median, self.mode, self.R, self.npairs), # add stuff to top right of plot
                             transform = a.transAxes,
                             horizontalalignment='right',
                             verticalalignment='top')
 
+'''
 class CanvasFrame(wx.Frame):
     """A minimal wx.Frame containing a matplotlib figure"""
     def __init__(self, title='frame', size=(550, 350)):
         wx.Frame.__init__(self, None, -1, title=title, size=size)
         self.SetBackgroundColour(wx.NamedColor("WHITE"))
-        self.figure = mpl.figure.Figure(figsize=(5, 4), dpi=100)
+        self.figure = pl.figure.Figure(figsize=(5, 4), dpi=100)
         #self.axes = self.figure.add_subplot(111)
-        #t = arange(0.0, 3.0, 0.01)
+        #t = np.arange(0.0, 3.0, 0.01)
         #s = sin(2*pi*t)
         #self.axes.plot(t,s)
         self.canvas = FigureCanvasWxAgg(self, -1, self.figure)
@@ -552,12 +543,55 @@ class CanvasFrame(wx.Frame):
         self.Fit()
     def OnPaint(self, event):
         self.canvas.draw()
+'''
+
+class NeuropyToolWindow(QtGui.QMainWindow):
+    """Base class for all of neuropy's tool windows"""
+    def __init__(self, parent=None, flags=Qt.Tool):
+        QtGui.QMainWindow.__init__(self, parent, flags)
+        self.maximized = False
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        if key == Qt.Key_F11:
+            self.toggleMaximized()
+        else:
+            QtGui.QMainWindow.keyPressEvent(self, event) # pass it on
+
+    def mouseDoubleClickEvent(self, event):
+        """Doesn't catch window titlebar doubleclicks for some reason (window manager
+        catches them?). Have to doubleclick on a part of the window with no widgets in it"""
+        self.toggleMaximized()
+
+    def toggleMaximized(self):
+        if not self.maximized:
+            self.normalPos, self.normalSize = self.pos(), self.size()
+            dw = QtGui.QDesktopWidget()
+            rect = dw.availableGeometry(self)
+            self.setGeometry(rect)
+            self.maximized = True
+        else: # restore
+            self.resize(self.normalSize)
+            self.move(self.normalPos)
+            self.maximized = False
 
 
+class RFWindow(NeuropyToolWindow):
+    def __init__(self, parent=None, title='RFWindow', rfs=None, neurons=None,
+                 t=None, scale=2.0):
+        NeuropyToolWindow.__init__(self, parent)
+        self.title = title
+        self.rfs = rfs
+        self.neurons = neurons
+        self.t = t
+        self.scale = scale
+
+'''
 class ReceptiveFieldFrame(wx.Frame):
     """A wx.Frame for plotting a scrollable 2D grid of receptive fields, with neuron and time labels.
     rfs is a list of (nt, width, height) sized receptive fields of uint8 RGB data, one per neuron"""
-    def __init__(self, parent=None, id=-1, title='ReceptiveFieldFrame', rfs=None, neurons=None, t=None, scale=2.0):
+    def __init__(self, parent=None, id=-1, title='ReceptiveFieldFrame', rfs=None,
+                 neurons=None, t=None, scale=2.0):
         self.rfs = rfs
         self.neurons = neurons
         self.t = t
@@ -578,11 +612,11 @@ class ReceptiveFieldFrame(wx.Frame):
         #self.Bind(wx.EVT_MOUSEWHEEL, self.OnMouseWheel)
         self.__set_properties()
         self.__do_layout()
-    '''
+    """
     def OnPaint(self, event):
         #self.canvas.draw()
         event.Skip()
-    '''
+    """
     def OnMouseWheel(self, event):
         """This could be useful..."""
         pass
@@ -606,7 +640,7 @@ class ReceptiveFieldFrame(wx.Frame):
         self.panel.SetSizer(grid_sizer_1)
         grid_sizer_1.Fit(self.panel)
         #grid_sizer_1.SetSizeHints(self.panel) # prevents the panel from being resized to something smaller than the above fit size
-        '''
+        """
         # might be a more direct way to set these:
         for rowi in range(1, len(self.ns)+1):
             print 'rowi:', rowi
@@ -614,7 +648,7 @@ class ReceptiveFieldFrame(wx.Frame):
         for coli in range(1, len(self.ts)+1):
             print 'coli:', coli
             grid_sizer_1.AddGrowableCol(coli)
-        '''
+        """
         sizer_1.Add(self.panel, 1, wx.ADJUST_MINSIZE|wx.EXPAND, 0)
         self.SetAutoLayout(True)
         self.SetSizer(sizer_1)
@@ -668,7 +702,7 @@ class NetstateReceptiveFieldFrame(ReceptiveFieldFrame):
         self.SetSizer(sizer_1)
         sizer_1.Fit(self)
         self.Layout()
-
+'''
 
 class Ising(object):
     """Maximum entropy Ising model"""
@@ -686,7 +720,7 @@ class Ising(object):
         assert npairs == nCr(nbits, 2) # sanity check
         self.intsamplespace = range(0, 2**nbits)
         table = getbinarytable(nbits=nbits) # words are in the columns, MSB at bottom row
-        self.binsamplespace = ar([ table[::-1, wordi] for wordi in range(0, 2**nbits) ]) # all possible binary words (each is MSB to LSB), as arrays of 0s and 1s
+        self.binsamplespace = np.array([ table[::-1, wordi] for wordi in range(0, 2**nbits) ]) # all possible binary words (each is MSB to LSB), as arrays of 0s and 1s
         self.samplespace = self.binsamplespace * 2 - 1 # convert 0s to -1s
         # return the i'th bit (LSB to MSB) of binary word x
         f1s = [ lambda x, i=i: x[-1-i] for i in range(0, nbits) ] # have to do i=i to statically assign value (gets around scope closure problem)
@@ -699,17 +733,17 @@ class Ising(object):
                     f2s.append(lambda x, i=i, j=j: x[-1-i] * x[-1-j])
                 pairmeansi += 1
         #f2s = [ lambda x, i=i, j=j: x[-1-i] * x[-1-j] for i in range(0, nbits) for j in range(i+1, nbits) if pairmeans[i*nbits+j-1] != None ]
-        f = cat((f1s, f2s))
+        f = np.concatenate((f1s, f2s))
         self.model = maxentropy.model(f, self.samplespace)
         #self.model.mindual = -10000
         #self.model.log = None # needed to make LBFGSB algorithm work
         # Now set the desired feature expectations
-        means = asarray(means)
-        pairmeans = asarray(pairmeans) # if it has Nones, it's an object array
-        pairmeans = asarray(list(pairmeans[pairmeans != [None]])) # remove the Nones, convert to list to get rid of object array, then convert back to array to get a normal, non-object array (probably a float64 array)
+        means = np.asarray(means)
+        pairmeans = np.asarray(pairmeans) # if it has Nones, it's an object array
+        pairmeans = np.asarray(list(pairmeans[pairmeans != [None]])) # remove the Nones, convert to list to get rid of object array, then convert back to array to get a normal, non-object array (probably a float64 array)
         npairs = len(pairmeans) # update npairs
         #pairmeans /= 2.0 # add the one half in front of each coefficient, NOT TOO SURE IF THIS SHOULD GO HERE! causes convergence problems
-        K = cat((means, pairmeans))
+        K = np.concatenate((means, pairmeans))
         self.model.verbose = False
 
         # Fit the model
@@ -730,7 +764,7 @@ class Ising(object):
         print "\nFitted model parameters are:\n" + str(self.model.params)
         print "\nFitted distribution is:"
         for j in range(len(self.model.samplespace)):
-            x = ar(self.model.samplespace[j])
+            x = np.array(self.model.samplespace[j])
             x = (x+1)/2 # convert from -1s and 1s back to 0s and 1s
             print '\tx:%s, p(x):%s' % (x, p[j])
         '''
@@ -858,7 +892,7 @@ class NeuropyScalarFormatter(mpl.ticker.ScalarFormatter):
 
     def _set_format(self):
         # set the format string to format all the ticklabels
-        locs = (array(self.locs)-self.offset) / 10**self.orderOfMagnitude+1e-15
+        locs = (np.array(self.locs)-self.offset) / 10**self.orderOfMagnitude+1e-15
         sigfigs = [len(str('%1.10f'% loc).split('.')[1].rstrip('0')) for loc in locs] # '%1.3f' changed to '%1.10f' to increase maximum number of possible sigfigs
         sigfigs.sort()
         self.format = '%1.' + str(sigfigs[-1]) + 'f'
@@ -901,7 +935,7 @@ def getargstr(obj):
     else:
         argstr = '()'
     return argstr
-
+'''
 def frame(**kwargs):
     """Returns a CanvasFrame object"""
     frame = CanvasFrame(**kwargs)
@@ -910,14 +944,13 @@ def frame(**kwargs):
 frame.__doc__ += '\n' + CanvasFrame.__doc__
 frame.__doc__ += '\n\n**kwargs:\n' + getargstr(CanvasFrame.__init__)
 
-
 def barefigure(*args, **kwargs):
     """Creates a bare figure with no toolbar or statusbar"""
     figure(*args, **kwargs)
     gcfm().frame.GetStatusBar().Hide()
     gcfm().frame.GetToolBar().Hide()
 barefigure.__doc__ += '\n' + figure.__doc__
-
+'''
 def lastcmd():
     """Returns a string containing the last command entered at the PyShell prompt.
     Maybe this could be extended to work with other shells too?"""
@@ -926,6 +959,10 @@ def lastcmd():
         # as an attrib in Shell.push()
         return __main__.shell.lastcmd
     except AttributeError:
+        #return __main__._i
+        # for IPython, maybe I can somehow access the _i variable in the shell. This 
+        # always contains the last entered command. Unfortunately, __main__ returns a
+        # FakeModule when accessed from within IPython
         return 'unknown'
 
 def innerclass(cls):
@@ -1117,17 +1154,17 @@ def toiter(x):
         return x
     else:
         return [x]
-'''
+
 def tolist(x):
     """Convert to list. If input is a dict, returns its values. If it's already a list, returns it.
     Otherwise, input is returned in a list."""
-    if x.__class__ == dict:
+    if type(x) == dict:
         return list(x.values())
-    elif x.__class__ == list:
+    elif type(x) == list:
         return x
     else:
         return [x] # stick it in a list
-'''
+
 def to2d(arr):
     """Converts a 1D array to a 2D array with just a singleton row
     If arr is already 2D, just returns it. If it's anything more than 2D, raises an error"""
@@ -1156,8 +1193,8 @@ def approx(a, b, rtol=1.e-14, atol=1.e-14):
     The absolute error atol comes into play for those elements of y that are very
     small or zero; it says how small x must be also. Copied and modified from
     numpy.allclose()"""
-    x = array(a, copy=False)
-    y = array(b, copy=False)
+    x = np.array(a, copy=False)
+    y = np.array(b, copy=False)
     #print x.shape
     #print y.shape
     return np.less(np.absolute(x-y), atol + rtol * np.absolute(y))
@@ -1165,7 +1202,7 @@ def approx(a, b, rtol=1.e-14, atol=1.e-14):
 def histogram(a, bins=10, range=None, normed=False):
     """Builds a histogram, stolen from numpy.histogram(), modified to allow
     normed='pdf' or normed='pmf' (prob mass function)"""
-    a = asarray(a).ravel()
+    a = np.asarray(a).ravel()
     if not iterable(bins):
         if range is None:
             range = (a.min(), a.max())
@@ -1175,7 +1212,7 @@ def histogram(a, bins=10, range=None, normed=False):
             mx += 0.5
         bins = np.linspace(mn, mx, bins, endpoint=False)
     n = np.sort(a).searchsorted(bins)
-    n = concatenate([n, [len(a)]])
+    n = np.concatenate([n, [len(a)]])
     n = n[1:]-n[:-1]
     if normed:
         if normed == 'pdf':
@@ -1189,7 +1226,7 @@ def histogram(a, bins=10, range=None, normed=False):
 def histogramSorted(sorteda, bins=10, range=None, normed=False):
     """Builds a histogram, stolen from numpy.histogram(), modified to assume
     sorted input and to allow normed='pdf' or normed='pmf' (prob mass function)"""
-    a = asarray(sorteda).ravel()
+    a = np.asarray(sorteda).ravel()
     if not iterable(bins):
         if range is None:
             range = (a.min(), a.max())
@@ -1200,7 +1237,7 @@ def histogramSorted(sorteda, bins=10, range=None, normed=False):
         bins = np.linspace(mn, mx, bins, endpoint=False)
     #n = np.sort(a).searchsorted(bins)
     n = a.searchsorted(bins)
-    n = concatenate([n, [len(a)]]) # this adds a bin that includes overflow points
+    n = np.concatenate([n, [len(a)]]) # this adds a bin that includes overflow points
     n = n[1:]-n[:-1] # subtracts a shifted version of itself
     if normed:
         if normed == 'pdf':
@@ -1239,8 +1276,8 @@ def histogram2d(x, y, bins=10, range=None, normed=False):
     except TypeError:
         N = 1
         bins = [bins]
-    x = asarray(x)
-    y = asarray(y)
+    x = np.asarray(x)
+    y = np.asarray(y)
     if range is None:
         xmin, xmax = x.min(), x.max()
         ymin, ymax = y.min(), y.max()
@@ -1252,20 +1289,20 @@ def histogram2d(x, y, bins=10, range=None, normed=False):
             xnbin = bins[0]
             xedges = np.linspace(xmin, xmax, xnbin+1)
         else:
-            xedges = asarray(bins[0], float)
+            xedges = np.asarray(bins[0], float)
             xnbin = len(xedges)-1
         if np.isscalar(bins[1]):
             ynbin = bins[1]
             yedges = np.linspace(ymin, ymax, ynbin+1)
         else:
-            yedges = asarray(bins[1], float)
+            yedges = np.asarray(bins[1], float)
             ynbin = len(yedges)-1
     elif N == 1:
         ynbin = xnbin = bins[0]
         xedges = np.linspace(xmin, xmax, xnbin+1)
         yedges = np.linspace(ymin, ymax, ynbin+1)
     else:
-        yedges = asarray(bins, float)
+        yedges = np.asarray(bins, float)
         xedges = yedges.copy()
         ynbin = len(yedges)-1
         xnbin = len(xedges)-1
@@ -1415,7 +1452,7 @@ def sah(t, y, ts, keep=False):
 
     if keep:
         # The following ensures that the original data point is kept when ts == t, doesn't really work if the shortest ISI is less than tres in ts
-        di = diff(i).nonzero()[0] # find changes in i, nonzero() method returns a tuple, pick the result for the first dim with [0] index
+        di = np.diff(i).nonzero()[0] # find changes in i, nonzero() method returns a tuple, pick the result for the first dim with [0] index
         si = approx(t[1::], ts[di]) # check at those change indices if t ~= ts (ignoring potential floating point representational inaccuracies). If so, inc i at that point so you keep y at that point.
         #print i
         i[di[si]] += 1
@@ -1463,13 +1500,13 @@ def binslow(i, minbits=8):
 def binarray2int(bin):
     """Takes a 2D binary array (only 1s and 0s, with rows LSB to MSB from top to bottom)
     and returns the base 10 integer representations of the columns"""
-    #assert type(bin) == type(array)
+    #assert type(bin) == type(np.array)
     bin = to2d(bin) # ensure it's 2D. If it's 1D, force it into having a singleton row
     nbits = bin.shape[0] # length of the first dimension, ie the number of rows
     multiplier = []
     for i in range(nbits):
         multiplier.append(2**i)
-    multiplier = array(multiplier, ndmin=2).transpose() # convert from list and transpose to a column vector (have to make it 2D to transpose)
+    multiplier = np.array(multiplier, ndmin=2).transpose() # convert from list and transpose to a column vector (have to make it 2D to transpose)
     #print multiplier
     x = bin*multiplier
     #print x
@@ -1479,7 +1516,7 @@ def getbinarytable(nbits=8):
     """Generates a 2D binary table containing all possible words for nbits, with bits in the rows and words in the columns (LSB to MSB from top to bottom)"""
     rowlength = 2**nbits
     '''
-    x = zeros((nbits, 2**nbits)) # init an array
+    x = np.zeros((nbits, 2**nbits)) # init an array
     for bit in range(nbits):
         pattern = [0]*2**bit
         pattern.extend([1]*2**bit)
@@ -1489,10 +1526,10 @@ def getbinarytable(nbits=8):
     return x
     '''
     '''
-    x = zeros((nbits, 2**nbits), dtype=np.int8) # init an array
+    x = np.zeros((nbits, 2**nbits), dtype=np.int8) # init an array
     for bit in range(nbits): # one row at a time
-        pattern = array(0, dtype=np.int8).repeat(2**bit)
-        pattern = cat((pattern, array(1, dtype=np.int8).repeat(2**bit)))
+        pattern = np.array(0, dtype=np.int8).repeat(2**bit)
+        pattern = np.concatenate((pattern, np.array(1, dtype=np.int8).repeat(2**bit)))
         npatterns = rowlength / len(pattern) # == 2**nbits / len(pattern) == 2**nbits / 2**(bit+1) == 2**(nbits-bit-1)
         row = np.tile(pattern, [1, npatterns])
         x[bit::,::] = row
@@ -1501,18 +1538,18 @@ def getbinarytable(nbits=8):
     # this seems to be the fastest method:
     x = []
     for bit in range(nbits): # one row at a time
-        pattern = array(0, dtype=np.int8).repeat(2**bit)
-        pattern = cat((pattern, array(1, dtype=np.int8).repeat(2**bit)))
+        pattern = np.array(0, dtype=np.int8).repeat(2**bit)
+        pattern = np.concatenate((pattern, np.array(1, dtype=np.int8).repeat(2**bit)))
         npatterns = rowlength / len(pattern) # == 2**nbits / len(pattern) == 2**nbits / 2**(bit+1) == 2**(nbits-bit-1)
         row = np.tile(pattern, [1, npatterns])
         x.append(row)
-    return cat(x)
+    return np.concatenate(x)
 
 def enlarge(a, x=2, y=None):
     """Enlarges 2D image array a using simple pixel repetition in both dimensions.
     Enlarges by factor x horizontally and factor y vertically.
     If y is left as None, uses factor x for both dimensions."""
-    a = asarray(a)
+    a = np.asarray(a)
     assert a.ndim == 2
     if y == None:
         y = x
@@ -1590,7 +1627,7 @@ def combgen(objects, r=2, i=None, level=0):
     Eg, if objects=[0,1,2] and r=2, this yields [0,1], [0,2], and [1,2], one at a time.
     A recursive generator is used in order to create the necessary r number of nested for loops.
     This is cool (my first generator!), but deep recursion is slow"""
-    objects = asarray(objects)
+    objects = np.asarray(objects)
     assert r <= len(objects)
     try: # recursive case
         if i == None:
@@ -1611,11 +1648,11 @@ def combgen(objects, r=2, i=None, level=0):
 def combs(objects, r=2):
     """Returns all nCr possible combinations of items in objects, in a 1D array of arrays.
     Generates code with the right number of nested for loops, faster than combgen()"""
-    objects = asarray(objects)
+    objects = np.asarray(objects)
     dtype = objects.dtype
     n = len(objects)
     assert r <= n
-    i = asarray([0]*r)
+    i = np.asarray([0]*r)
     combs = np.empty(nCr(n, r), dtype=np.object) # stores all combinations, will be a 1D array of arrays
     combi = -1
 
@@ -1649,7 +1686,7 @@ def argcombs(objects, r=2):
     n = len(objects)
     assert n < 2**8 # this way, we can use uint8's instead of int32's to save memory
     assert r <= n
-    i = asarray([0]*r)
+    i = np.asarray([0]*r)
     argcombs = np.zeros((nCr(n, r), r), dtype=np.uint8)
     combi = -1
 
@@ -1711,7 +1748,7 @@ def sortby(objs, attrib, cmp=None, reverse=False):
 '''
 def mean_accum(data):
     """Takes mean by accumulating over 0th axis in data,
-    much faster than numpy's mean() method because it avoids making any copies of the data
+    much faster than np.mean() because it avoids making any copies of the data
     Suggested by Tim Hochberg"""
     result = np.zeros(data[0].shape, np.float64) # init output array
     for dataslice in data: # this for loop isn't such a bad thing cuz the massive add step inside the loop is the limiting factor
@@ -1728,12 +1765,11 @@ def mean_accum2(data, indices):
     result /= len(indices)
     return result
 
-
 def normalize(seq):
     """Normalizes a sequence, returning zeros if sum(seq) == 0"""
-    a = asarray(seq)
+    a = np.asarray(seq)
     if a.sum() == 0: # numpy doesn't raise ZeroDivisionErrors for some reason
-        return zeros(a.shape) # just return zeros
+        return np.zeros(a.shape) # just return zeros
     else:
         return a / float(a.sum()) # return it normalized
 
@@ -1741,7 +1777,7 @@ def ensurenormed(p, atol=1e-8):
     """Ensures p is normalized. Returns p unchanged if it's already normalized,
     otherwise, prints a warning and returns it normalized. atol is how close to 1.0
     p.sum() needs to be"""
-    p = asarray(p)
+    p = np.asarray(p)
     psum = p.sum()
     if not approx(psum, 1.0, atol=atol): # make sure the probs sum to 1
         print 'ps don''t sum to 1, they sum to %f instead, normalizing for you' % psum
@@ -1750,12 +1786,12 @@ def ensurenormed(p, atol=1e-8):
 
 def logy(x, base=10):
     """Performs log of x with specified base"""
-    return log(x) / log(base)
+    return np.log(x) / np.log(base)
 
 def log_no_sing(x, subval=0.0, base=np.e):
     """Performs log on array x, ignoring any zeros in x to avoid singularities,
     and returning subval in their place in the result"""
-    x = asarray(x)
+    x = np.asarray(x)
     singi = x==0 # find the singularities
     x[singi] = 1 # replace 'em with 1s, or anything else that's safe to take the log of
     result = logy(x, base=base) # now it's safe to take the log
@@ -1773,7 +1809,7 @@ def log2_no_sing(x, subval=0.0):
 def entropy(p):
     """Returns the entropy (in bits) of the prob distribution described by the prob values in p"""
     p = ensurenormed(p)
-    return -(p * log2(p)).sum()
+    return -(p * np.log2(p)).sum()
 
 def entropy_no_sing(p):
     """Returns the entropy (in bits) of the prob distribution described by the prob values in p
@@ -1786,7 +1822,7 @@ def MI(XY):
     I = sum_X sum_Y P(x, y) * log2( P(x, y) / (P(x) * P(y)) )
     where P(x) and P(y) are the marginal distributions taken from the joint
     Is this slow? Needs optimization? Already implemented in scipy???????????????"""
-    XY = asarray(XY)
+    XY = np.asarray(XY)
     assert XY.ndim == 2
     XY = ensurenormed(XY)
     # calculate the marginal probability distributions for X and Y from the joint
@@ -1798,7 +1834,7 @@ def MI(XY):
             if XY[xi, yi] == 0 or (x * y) == 0: # avoid singularities
                 pass # just skip it, assume info contributed is 0 (?????????????????)
             else:
-                I += XY[xi, yi] * log2( XY[xi, yi] / (x * y) )
+                I += XY[xi, yi] * np.log2( XY[xi, yi] / (x * y) )
     return I
 
 def MIbinarrays(Nbinarray=None, Mbinarray=None, verbose=False):
@@ -1813,8 +1849,8 @@ def MIbinarrays(Nbinarray=None, Mbinarray=None, verbose=False):
     M = len(Mbinarray) # gets the number of rows
     Mintcodes = binarray2int(Mbinarray)
     # build up joint pdf of all the possible N words, and the two possible N+1th values (0 and 1)
-    xedges = arange(2**N+1) # values 0 to 2**N - 1, plus 2**N which is needed as the rightmost bin edge for histogram2d (annoying)
-    yedges = arange(2**M+1)
+    xedges = np.arange(2**N+1) # values 0 to 2**N - 1, plus 2**N which is needed as the rightmost bin edge for histogram2d (annoying)
+    yedges = np.arange(2**M+1)
     bins = [xedges, yedges]
     jpdf, xedgesout, yedgesout = histogram2d(Nintcodes, Mintcodes, bins, normed='pmf') # generate joint pdf
     #print 'jpdf\n', jpdf.__repr__()
@@ -1825,7 +1861,7 @@ def MIbinarrays(Nbinarray=None, Mbinarray=None, verbose=False):
     #Npdf, Nedges = histogram(Nintcodes, bins=range(2**N), normed='pmf')
     #print 'first 100 Npdf\n', Npdf[:100].__repr__()
     # pdf of M cells
-    #Mpdf, Medges = histogram(Mintcodes, bins=arange(2**M), normed='pmf')
+    #Mpdf, Medges = histogram(Mintcodes, bins=range(2**M), normed='pmf')
     #print 'first 100 Mpdf\n', Mpdf[:100].__repr__()
     marginalMpdf = jpdf.sum(axis=0)
     #assert approx(Mpdf, marginalMpdf).all() # make sure what you get from the joint is what you get when just building up the pdf straight up on its own
@@ -1852,12 +1888,12 @@ def DKL(p, q):
     assert len(p) == len(q)
     p = ensurenormed(p)
     q = ensurenormed(q)
-    return sum([ pi * log2(pi/float(qi)) for pi, qi in zip(p, q) if pi != 0 and qi != 0 ] ) # avoid singularities
+    return sum([ pi * np.log2(pi/float(qi)) for pi, qi in zip(p, q) if pi != 0 and qi != 0 ] ) # avoid singularities
 
 def DJS(p, q):
     """Jensen-Shannon divergence, a symmetric measure of divergence between distributions p and q"""
-    p = asarray(p) # required for adding p and q
-    q = asarray(q)
+    p = np.asarray(p) # required for adding p and q
+    q = np.asarray(q)
     m = 1 / 2.0 * (p + q)
     return 1 / 2.0 * ( DKL(p, m) + DKL(q, m) )
 

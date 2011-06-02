@@ -1,10 +1,12 @@
 TODO:
 
+- remove all wx stuff, replace with qt stuff
+    - can't seem to get Qt window creation to work from within neuropy code. Need to examine and mimic exactly how the kernel manager deals with mpl qt plot calls to create a qt window in parallel thread
+    - might not be necessary in the end. Could just do everything through mpl
+
 - convert all line endings to Unix style
 
 - don't load all of a recording's sorts, just the default one
-
-- remove all wx stuff, replace with qt stuff
 
 - when do I ever actually make use of the _movies dictattr (or previously, the _data.movies dictattr)? Am I really preventing movies from being loaded more than once? I used to use it in the commented out core.Cat15Movie(), but the dimstimskeletal.Movie() doesn't seem to use it. Is it even worth the hassle? I guess so. Every loaded recording that used a movie would otherwise load and hold its own copy of potentially the same movie data. Looks like the fake dimstim 0.16 experiment in loadCat15exp() also doesn't make use of it. Or maybe it happens to magically during the textheader execution that I'm not seeing it right now
 

@@ -12,7 +12,8 @@ from IPython import embed
 from IPython.core import ultratb
 from IPython.frontend.terminal.ipapp import load_default_config
 # has to come before Qt imports:
-from IPython.frontend.qt.console.ipython_widget import IPythonWidget
+#from IPython.frontend.qt.console.ipython_widget import IPythonWidget
+from IPython.frontend.qt.console.rich_ipython_widget import RichIPythonWidget
 from IPython.frontend.qt.kernelmanager import QtKernelManager
 
 from PyQt4 import QtCore, QtGui, uic
@@ -34,15 +35,17 @@ class NeuropyWindow(QtGui.QMainWindow):
         self.ui.setupUi(self) # lay it out
 
         # might need local_kernel=True kwarg
-        # can set paging style, like 'vsplit', 'hsplit', 'none', default is 'inside'
-        ipyqtwidget = IPythonWidget(parent=self, local_kernel=True)
+        # can set paging: 'inside', 'vsplit', 'hsplit', 'none'
+        #ipyqtwidget = IPythonWidget(parent=self, local_kernel=True)
+        ipyqtwidget = RichIPythonWidget(parent=self, local_kernel=True) # necessary for inline
         self.ipyqtwidget = ipyqtwidget
         
         ## TODO: get config to work somehow
         ipyqtwidget.config = load_default_config() # doesn't seem to work
         
         kernel_manager = QtKernelManager()
-        kernel_manager.start_kernel() # might need **kwargs
+        # lots of possible kwargs here        
+        kernel_manager.start_kernel(pylab='inline') # 'qt' and 'inline' are best
         kernel_manager.start_channels()
         ipyqtwidget.kernel_manager = kernel_manager
         ipyqtwidget.gui_completion = False
@@ -110,7 +113,7 @@ class NeuropyWindow(QtGui.QMainWindow):
 
     @QtCore.pyqtSlot()
     def on_actionShell_triggered(self):
-        embed(display_banner=False, config=load_default_config()) # "self" is accessible
+        embed(display_banner=False) # "self" is accessible
         # embed() seems to override the excepthook, need to reset it:
         set_excepthook()
 

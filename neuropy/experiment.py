@@ -8,7 +8,7 @@ import matplotlib as mpl
 
 from core import getargstr, TAB, warn, rstrip, dictattr, intround, toiter
 from core import _movies, MOVIEPATH, MSEQ16, MSEQ32, joinpath, lastcmd
-from core import PopulationRaster, Codes, CodeCorrPDF, ReceptiveFieldFrame
+from core import PopulationRaster, Codes, CodeCorrPDF, RFWindow
 import neuron
 
 from dimstimskeletal import deg2pix, InternalParams, StaticParams, DynamicParams

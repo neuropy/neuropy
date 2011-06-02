@@ -11,7 +11,7 @@ from core import PopulationRaster, Codes, CodeCorrPDF, rstrip, dictattr, warn
 from core import SORTKEYWORDS, TAB, CODEKIND, CODETRES, CODEPHASE, CODEWORDLEN
 from experiment import Experiment
 from sort import Sort
-
+'''
 # Good global setting for presentation plots:
 pl.rcParams['axes.labelsize'] = 30
 pl.rcParams['xtick.labelsize'] = 25
@@ -20,7 +20,7 @@ pl.rcParams['xtick.major.size'] = 7
 pl.rcParams['ytick.major.size'] = 7
 pl.rcParams['lines.markersize'] = 10
 # use gca().set_position([0.15, 0.15, 0.8, 0.8]) or just the 'configure subplots' widget to make all the labels fit within the figure
-
+'''
 
 class BaseRecording(object):
     """A recording corresponds to a single SURF file, ie everything recorded between
@@ -340,7 +340,7 @@ class BaseNetstate(object):
         pairmeans = []
         for i in range(0, nrows):
             for j in range(i+1, nrows):
-                if R == None or R[0] < dist(self.r.n[snis[i]].pos, self.r.n[snis[j]].pos) < R[1]:
+                if R == None or R[0] < core.dist(self.r.n[snis[i]].pos, self.r.n[snis[j]].pos) < R[1]:
                     pairmeans.append((c[i]*c[j]).mean()) # take a pair of rows, find the mean of their elementwise product
                 else:
                     pairmeans.append(None) # pair are outside the torus, ignore their pairmeans
