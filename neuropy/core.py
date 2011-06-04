@@ -1,5 +1,7 @@
 """Miscellaneous functions and classes"""
 
+from __future__ import division
+
 import os
 import sys
 import time
@@ -508,7 +510,7 @@ class CodeCorrPDF(object):
         if self.normed:
             if self.normed == 'pmf':
                 a.set_ylabel('probability mass')
-            else:
+            else: # self.normed = 'pdf'
                 a.set_ylabel('probability density')
         else:
             a.set_ylabel('count')

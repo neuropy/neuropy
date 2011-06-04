@@ -1,5 +1,7 @@
 """Defines the Recording class"""
 
+from __future__ import division
+
 import os
 import StringIO
 

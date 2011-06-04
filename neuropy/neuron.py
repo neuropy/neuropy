@@ -1,5 +1,7 @@
 """Defines the Neuron class and all of its support classes"""
 
+from __future__ import division
+
 import os
 import StringIO
 import time
