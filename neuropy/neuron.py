@@ -11,7 +11,7 @@ import pylab as pl
 import matplotlib as mpl
 
 from core import rstrip, getargstr, iterable, tolist, intround, CODETRES, CODEPHASE, CODEKIND
-from core import MSEQ16, MSEQ32, mean_accum, lastcmd, RFWindow
+from core import MSEQ16, MSEQ32, mean_accum, lastcmd, RevCorrWindow
 from dimstimskeletal import Movie
 
 
@@ -60,19 +60,6 @@ class BaseNeuron(object):
         self.nspikes = len(self.spikes)
         self.trange = self.spikes[0], self.spikes[-1]
 
-    def plot(self):
-        """Just a test to try and generate independent Qt windows from neuropy running
-        in ipython-qtconsole. Doesn't work for now"""
-        ''' 
-        pl.plot(range(10))
-        '''
-        #import sys
-        from PyQt4 import QtGui, QtCore
-        #QtCore.pyqtRemoveInputHook()
-        app = QtGui.QApplication([])
-        window = RFWindow()
-        window.show()
-        
     def cut(self, *args):
         """Returns a view of the Neuron's spike times where tstart <= spikes <= tend
         *args can be: nothing (returns all spikes), None, tstart, or (tstart, tend)
@@ -706,7 +693,7 @@ class RevCorr(object):
         self.rcdini = self.experiment.din[:, 0].searchsorted(spikes) - 1 # revcorr dini. Find where the spike times fall in the din, dec so you get indices that point to the most recent din value for each spike
         #self.din = self.experiment.din[rcdini, 1] # get the din (frame indices) at the rcdini
 
-    def plot(self, interp='nearest', normed=True, title='RFWindow', scale=2.0):
+    def plot(self, interp='nearest', normed=True, title='RevCorrWindow', scale=2.0):
         """Plots the spatiotemporal RF as bitmaps in a wx.Frame"""
         rf = self.rf.copy() # create a copy to manipulate for display purposes, (nt, width, height)
         if normed: # normalize across the timepoints for this RevCorr
@@ -714,13 +701,18 @@ class RevCorr(object):
             rf = norm(rf) # normalize the rf the same way across all timepoints
         else: # don't normalize across timepoints, leave each one to autoscale
             for ti in range(self.nt):
-                norm = mpl.colors.normalize(vmin=None, vmax=None, clip=True) # create a normalization object to map luminance to the range [0,1], autoscale
+                # create a normalization object to map luminance to [0,1], autoscale
+                norm = mpl.colors.normalize(vmin=None, vmax=None, clip=True)
                 rf[ti] = norm(rf[ti]) # normalize the rf separately at each timepoint
-        cmap = mpl.cm.jet # get a colormap object
-        rf = cmap(rf)[::, ::, ::, 0:3] # convert luminance to RGB via the colormap, throw away alpha channel (not used for now in ReceptiveFieldFrame)
-        rf = rf * 255 # scale up to 8 bit values
-        rf = rf.round().astype(np.uint8) # downcast from float to uint8 for feeding to ReceptiveFieldFrame
+        rf *= 255 # scale up to 8 bit values
+        rf = rf.round().astype(np.uint8) # downcast from float to uint8
 
+        win = RevCorrWindow(title=title, rfs=[rf], nids=[self.neuron.id], 
+                            ts=self.t, scale=scale)
+        win.show()
+        return win # necessary in IPython
+
+        '''
         ## TODO: doesn't work for now:
         import sys
         from PyQt4 import QtGui, QtCore
@@ -729,6 +721,7 @@ class RevCorr(object):
         window = RFWindow(title=title, rfs=[rf], neurons=[self.neuron], t=self.t, scale=scale)
         window.show()
         return window
+        '''
         #return window, app
         #sys.exit(app.exec_())
         
@@ -785,7 +778,7 @@ class RevCorr(object):
 class STA(RevCorr):
     """Spike-triggered average revcorr object"""
     def calc(self):
-        super(STA, self).calc() # run the base calc() steps first
+        RevCorr.calc(self) # run the base calc() steps first
         #sys.stdout.write('n%d' % self.neuron.id) # prevents trailing space and newline
         self.rf = np.zeros([self.nt, self.height, self.width], dtype=np.float64) # init a 3D matrix to store the STA at each timepoint. rf == 'receptive field'
         #frames = np.float64(self.movie.frames) # converting from uint8 to float64 seems to speed up mean() method a bit
@@ -824,11 +817,12 @@ class STA(RevCorr):
         self.done = True
 
     def plot(self, interp='nearest', normed=True, scale=2.0):
-        super(STA, self).plot(interp=interp, normed=normed,
-                              title=lastcmd(),
-                              #title='r%d.n[%d].sta().plot(interp=%r, normed=%r, scale=%r)' %
-                              #(self.experiment.r.id, self.neuron.id, interp, normed, scale),
-                              scale=scale)
+        win = RevCorr.plot(self, interp=interp, normed=normed,
+                           title=lastcmd(),
+                           #title='r%d.n[%d].sta().plot(interp=%r, normed=%r, scale=%r)' %
+                           #(self.experiment.r.id, self.neuron.id, interp, normed, scale),
+                           scale=scale)
+        return win # necessary in IPython
     plot.__doc__ = RevCorr.plot.__doc__
 
 

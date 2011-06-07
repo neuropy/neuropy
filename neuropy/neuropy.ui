@@ -52,7 +52,7 @@
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
-     <string>Help</string>
+     <string>&amp;Help</string>
     </property>
     <addaction name="actionAboutNeuropy"/>
     <addaction name="actionAboutQt"/>

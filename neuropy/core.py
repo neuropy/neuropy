@@ -17,13 +17,15 @@ from pprint import pprint
 printraw = sys.stdout.write # useful for raw printing
 
 from PyQt4 import QtGui
-from PyQt4.QtCore import Qt
+from PyQt4.QtGui import QPixmap, QImage, QPalette, QColor
+from PyQt4.QtCore import Qt, QSize
 
 import numpy as np
 import scipy as sp
 import scipy.signal as sig
 
 import matplotlib as mpl
+import matplotlib.cm
 import pylab as pl
 # stop using this, or at least convert all uses of gcfm from wx to qt:
 #from pylab import get_current_fig_manager as gcfm
@@ -547,10 +549,10 @@ class CanvasFrame(wx.Frame):
         self.canvas.draw()
 '''
 
-class NeuropyToolWindow(QtGui.QMainWindow):
+class NeuropyWindow(QtGui.QMainWindow):
     """Base class for all of neuropy's tool windows"""
-    def __init__(self, parent=None, flags=Qt.Tool):
-        QtGui.QMainWindow.__init__(self, parent, flags)
+    def __init__(self, parent=None):
+        QtGui.QMainWindow.__init__(self, parent)
         self.maximized = False
 
     def keyPressEvent(self, event):
@@ -578,15 +580,57 @@ class NeuropyToolWindow(QtGui.QMainWindow):
             self.maximized = False
 
 
-class RFWindow(NeuropyToolWindow):
-    def __init__(self, parent=None, title='RFWindow', rfs=None, neurons=None,
-                 t=None, scale=2.0):
-        NeuropyToolWindow.__init__(self, parent)
+class RevCorrWindow(NeuropyWindow):
+    def __init__(self, parent=None, title='RevCorrWindow', rfs=None,
+                 nids=None, ts=None, scale=2.0):
+        NeuropyWindow.__init__(self, parent)
         self.title = title
         self.rfs = rfs
-        self.neurons = neurons
-        self.t = t
-        self.scale = scale
+        self.nids = nids
+        self.ts = ts
+        self.scale = scale # setting to a float will give uneven sized pixels
+
+        cmap = mpl.cm.jet(np.arange(256), bytes=True) # 8 bit RGBA colormap
+        #cmap[:, [0, 1, 2, 3]] = cmap[:, [3, 0, 1, 2]] # 8 bit ARGB colormap
+        # from Qt docs, sounds like I should be using ARGB format, but seems like
+        # RGBA is the format that works in PyQt4
+        colortable = cmap.view(dtype=np.uint32).ravel().tolist() # QVector<QRgb> colors 
+        layout = QtGui.QGridLayout() # can set vert and horiz spacing
+        #layout.setContentsMargins(0, 0, 0, 0) # doesn't seem to do anything
+
+        # place time labels along top
+        for ti, t in enumerate(ts):
+            label = QtGui.QLabel(str(t))
+            layout.addWidget(label, 0, ti+1)
+        # plot each row, with its nid label
+        for ni, nid in enumerate(nids):
+            label = QtGui.QLabel('n'+str(nid)) # nid label on left
+            label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            layout.addWidget(label, ni+1, 0)
+            rf = rfs[ni]
+            for ti, t in enumerate(ts):
+                #data = np.uint8(np.random.randint(0, 255, size=(height, width)))
+                data = rf[ti]
+                width, height = data.shape
+                image = QImage(data.data, width, height, QImage.Format_Indexed8)
+                image.ndarray = data # hold a ref, prevent gc
+                image.setColorTable(colortable)
+                image = image.scaled(QSize(scale*width, scale*height)) # scale it
+                pixmap = QPixmap.fromImage(image)
+                label = QtGui.QLabel()
+                label.setPixmap(pixmap)
+                layout.addWidget(label, ni+1, ti+1) # can also control alignment
+
+        mainwidget = QtGui.QWidget(self)
+        mainwidget.setLayout(layout)
+
+        scrollarea = QtGui.QScrollArea()
+        scrollarea.setWidget(mainwidget)
+
+        self.setCentralWidget(scrollarea)
+        self.setWindowTitle(title)
+        #palette = QPalette(QColor(255, 255, 255))
+        #self.setPalette(palette) # set white background, or perhaps more
 
 '''
 class ReceptiveFieldFrame(wx.Frame):

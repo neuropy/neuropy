@@ -14,8 +14,6 @@ from PyQt4.QtGui import QPixmap, QImage, QPalette, QColor
 from PyQt4.QtCore import Qt, QSize
 
 import numpy as np
-import scipy as sp
-import scipy.ndimage
 import matplotlib as mpl
 import matplotlib.cm
 
@@ -36,9 +34,11 @@ class STAWindow(QtGui.QMainWindow):
         layout = QtGui.QGridLayout() # can set vert and horiz spacing
         #layout.setContentsMargins(0, 0, 0, 0) # doesn't seem to do anything
 
-        for ti, t in enumerate(ts): # time labels along top
+        # place time labels along top
+        for ti, t in enumerate(ts):
             label = QtGui.QLabel(str(t))
             layout.addWidget(label, 0, ti+1)
+        # plot each row, with its nid label
         for ni, nid in enumerate(nids):
             label = QtGui.QLabel('n'+str(nid)) # nid label on left
             label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -61,6 +61,7 @@ class STAWindow(QtGui.QMainWindow):
         scrollarea.setWidget(mainwidget)
 
         self.setCentralWidget(scrollarea)
+        self.setWindowTitle('STA')
         #palette = QPalette(QColor(255, 255, 255))
         #self.setPalette(palette) # set white background, or perhaps more
 
