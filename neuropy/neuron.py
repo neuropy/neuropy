@@ -670,7 +670,7 @@ class RevCorr(object):
             self.movie.load(asarray=True, flip=False) # Load as 3D array instead of as a list of 2D arrays, more convenient for analysis, although will cause memory problems for really big (>1GB movies). Don't flip the movie frames vertically for OpenGL's bottom left origin, since we aren't using OpenGL for analysis
         self.nt = nt # number of revcorr timepoints
         self.tis = range(0, nt, 1) # revcorr timepoint indices
-        self.t = [ intround(ti * self.movie.dynamic.sweepSec * 1000) for ti in self.tis ] # revcorr timepoint values, stored in a list, not an array. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
+        self.ts = [ intround(ti * self.movie.dynamic.sweepSec * 1000) for ti in self.tis ] # revcorr timepoint values, stored in a list, not an array. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
         self.ndinperframe = intround(self.movie.dynamic.sweepSec * 1000000 / self.experiment.REFRESHTIME)
         #self.movie.frames = np.asarray(self.movie.frames)
         self.width = self.movie.frames.shape[-1] # (nframes, height, width)
@@ -697,36 +697,18 @@ class RevCorr(object):
         """Plots the spatiotemporal RF as bitmaps in a wx.Frame"""
         rf = self.rf.copy() # create a copy to manipulate for display purposes, (nt, width, height)
         if normed: # normalize across the timepoints for this RevCorr
-            norm = mpl.colors.normalize(vmin=rf.min(), vmax=rf.max(), clip=True) # create a single normalization object to map luminance to the range [0,1]
+            norm = mpl.colors.normalize(vmin=rf.min(), vmax=rf.max(), clip=True)
             rf = norm(rf) # normalize the rf the same way across all timepoints
         else: # don't normalize across timepoints, leave each one to autoscale
             for ti in range(self.nt):
-                # create a normalization object to map luminance to [0,1], autoscale
                 norm = mpl.colors.normalize(vmin=None, vmax=None, clip=True)
                 rf[ti] = norm(rf[ti]) # normalize the rf separately at each timepoint
         rf *= 255 # scale up to 8 bit values
         rf = rf.round().astype(np.uint8) # downcast from float to uint8
-
         win = RevCorrWindow(title=title, rfs=[rf], nids=[self.neuron.id], 
-                            ts=self.t, scale=scale)
+                            ts=self.ts, scale=scale)
         win.show()
         return win # necessary in IPython
-
-        '''
-        ## TODO: doesn't work for now:
-        import sys
-        from PyQt4 import QtGui, QtCore
-        #QtCore.pyqtRemoveInputHook()
-        app = QtGui.QApplication(sys.argv)
-        window = RFWindow(title=title, rfs=[rf], neurons=[self.neuron], t=self.t, scale=scale)
-        window.show()
-        return window
-        '''
-        #return window, app
-        #sys.exit(app.exec_())
-        
-        #frame = ReceptiveFieldFrame(title=title, rfs=[rf], neurons=[self.neuron], t=self.t, scale=scale)
-        #frame.Show()
     '''
     def oldplot(self, interp='nearest', normed=True):
         """Plots the RFs as images, returns all the image objects"""
