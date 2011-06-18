@@ -34,10 +34,6 @@ import pylab as pl
 
 ## GLOBAL DEFAULTS
 
-# a sort with one of these keywords (listed in decreasing priority) will be
-# loaded as the default sort for its recording:
-SORTKEYWORDS = ['best']
-
 DATAPATH = os.path.expanduser('~/data')
 MOVIEPATH = os.path.expanduser('~/data/mov')
 
@@ -77,6 +73,104 @@ class dictattr(dict):
 
 
 _movies = dictattr()
+
+
+class PTCSHeader(object):
+    """Polytrode clustered spikes file header"""
+    def __init__(self):
+        self.VER2FUNC = {1: self.read_ver_1}
+
+    def read(self, f):
+        """Read in format version, followed by rest according to verison
+
+        formatversion: int64 (start at version 1)
+        """
+        self.FORMATVERSION = int(np.fromfile(f, dtype=np.int64, count=1)) # formatversion
+        self.VER2FUNC[self.FORMATVERSION](f) # call the appropriate method
+        
+    def read_ver_1(self, f):
+        """Read in header of .ptcs file version 1
+        
+        ndescrbytes: uint64 (nbytes, keep as multiple of 8 for nice alignment)
+        descr: ndescrbytes of ASCII text
+            (padded with spaces if needed for 8 byte alignment)
+        nneurons: uint64 (number of neurons)
+        nspikes: uint64 (total number of spikes)
+        nsamplebytes: uint64 (number of bytes per template waveform sample)
+        samplerate: float64 (Hz)
+        """
+        self.ndescrbytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # ndescrbytes
+        self.descr = f.read(self.ndescrbytes).rstrip() # descr
+        try:
+            self.descr = eval(self.descr) # should come out as a dict
+        except: pass
+        self.nneurons = int(np.fromfile(f, dtype=np.uint64, count=1)) # nneurons
+        self.nspikes = int(np.fromfile(f, dtype=np.uint64, count=1)) # nspikes
+        self.nsamplebytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # nsamplebytes
+        self.samplerate = float(np.fromfile(f, dtype=np.float64, count=1)) # samplerate
+
+
+class PTCSNeuronRecord(object):
+    """Polytrode clustered spikes file neuron record"""
+    def __init__(self, neuron, header):
+        self.VER2FUNC = {1: self.read_ver_1} # call the appropriate method
+        self.neuron = neuron
+        self.header = header
+        self.wavedtype = {2: np.float16, 4: np.float32, 8: np.float64}[self.header.nsamplebytes]
+
+    def read(self, f):
+        self.VER2FUNC[self.header.FORMATVERSION](f) # call the appropriate method
+        
+    def read_ver_1(self, f):
+        """Read in neuron record of .ptcs file version 1
+
+        nid: int64 (signed neuron id, could be -ve, could be non-contiguous with previous)
+        ptid: int64 (polytrode/tetrode/electrode ID, for multi electrode recordings,
+                     defaults to -1)
+        ndescrbytes: uint64 (nbytes, keep as multiple of 8 for nice alignment, defaults to 0)
+        descr: ndescrbytes of ASCII text
+            (padded with spaces if needed for 8 byte alignment)
+        clusterscore: float64
+        xpos: float64 (um)
+        ypos: float64 (um)
+        zpos: float64 (um) (defaults to NaN)
+        nchans: uint64 (num chans in template waveforms)
+        chans: nchans * uint64 (IDs of channels in template waveforms)
+        maxchan: uint64 (ID of max channel in template waveforms)
+        nt: uint64 (num timepoints per template waveform channel)
+        nwavedatabytes: uint64 (nbytes, keep as multiple of 8 for nice alignment)
+        wavedata: nchans * nt * nsamplebytes
+            (float template waveform data, in uV, padded with zeros if
+             needed for 8 byte alignment)
+        nspikes: uint64 (number of spikes in this neuron)
+        spike timestamps: nspikes * uint64 (us, should be sorted)
+        """
+        n = self.neuron
+        n.id = int(np.fromfile(f, dtype=np.int64, count=1)) # nid
+        n.ptid = int(np.fromfile(f, dtype=np.int64, count=1)) # ptid
+        n.ndescrbytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # ndescrbytes
+        n.descr = f.read(n.ndescrbytes).rstrip() # descr
+        if n.descr:
+            try:
+                n.descr = eval(n.descr) # might be a dict
+            except: pass
+        n.clusterscore = float(np.fromfile(f, dtype=np.float64, count=1)) # clusterscore
+        n.xpos = float(np.fromfile(f, dtype=np.float64, count=1)) # xpos (um)
+        n.ypos = float(np.fromfile(f, dtype=np.float64, count=1)) # ypos (um)
+        n.zpos = float(np.fromfile(f, dtype=np.float64, count=1)) # zpos (um)
+        n.nchans = int(np.fromfile(f, dtype=np.uint64, count=1)) # nchans
+        n.chans = np.fromfile(f, dtype=np.uint64, count=n.nchans) # chans
+        n.maxchan = int(np.fromfile(f, dtype=np.uint64, count=1)) # maxchan
+        n.nt = int(np.fromfile(f, dtype=np.uint64, count=1)) # nt
+        n.nwaveformbytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # nwavedatabytes, padded
+        nsamples = n.nchans * n.nt
+        nbytes = nsamples * self.header.nsamplebytes
+        npadbytes = n.nwaveformbytes - nbytes
+        n.wavedata = np.fromfile(f, dtype=self.wavedtype, count=nsamples) # wavedata (uV)
+        n.wavedata.shape = n.nchans, n.nt # reshape
+        f.seek(npadbytes, 1) # skip any pad bytes
+        nspikes = int(np.fromfile(f, dtype=np.uint64, count=1)) # nspikes
+        n.spikes = np.fromfile(f, dtype=np.uint64, count=nspikes) # spike timestamps (us)
 
 
 class PopulationRaster(object):
@@ -1964,3 +2058,9 @@ def strip(s, strip):
 def lrstrip(s, lstr, rstr):
     """Strip lstr from start of s and rstr from end of s"""
     return rstrip(lstrip(s, lstr), rstr)
+
+def eof(f):
+    """Return whether file pointer is a end of file"""
+    orig = f.tell()
+    f.seek(0, 2) # seek 0 bytes from end
+    return f.tell() == orig

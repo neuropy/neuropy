@@ -11,7 +11,7 @@ import pylab as pl
 import matplotlib as mpl
 
 from core import rstrip, getargstr, iterable, tolist, intround, CODETRES, CODEPHASE, CODEKIND
-from core import MSEQ16, MSEQ32, mean_accum, lastcmd, RevCorrWindow
+from core import MSEQ16, MSEQ32, mean_accum, lastcmd, RevCorrWindow, PTCSNeuronRecord
 from dimstimskeletal import Movie
 
 
@@ -28,17 +28,19 @@ class BaseNeuron(object):
 
     def get_name(self):
         fname = os.path.split(self.path)[-1]
-        return rstrip(fname, '.spk')
+        return os.path.splitext(fname)[0]
     
     name = property(get_name)
 
-    def get_id(self):
-        # everything from just after the last '_t' to the end of the neuron name,
+    def parse_id_from_spkfname(self):
+        # everything from just after the last '_t' to the end of the name,
         # should be all numeric
-        id = self.name.rsplit('_t', 1)[-1]
-        return int(id)
+        return int(self.name.rsplit('_t', 1)[-1])
+
+    def get_nspikes(self):
+        return len(self.spikes)
         
-    id = property(get_id)
+    nspikes = property(get_nspikes)
     '''
     def tree(self):
         """Print tree hierarchy"""
@@ -49,15 +51,33 @@ class BaseNeuron(object):
         self.treebuf.write(string)
         self.sort.writetree(string)
     '''
-    def load(self):
+    '''
+    def load(self, f=None):
         #treestr = self.level*TAB + self.name + '/'
         # print string to tree hierarchy and screen
         #self.writetree(treestr+'\n')
         #print(treestr) # print string to tree hierarchy and screen
-        f = open(self.path, 'rb')
-        self.spikes = np.fromfile(f, dtype=np.int64) # read in all spike times in us
-        f.close()
-        self.nspikes = len(self.spikes)
+        ext = os.path.splitext(self.path)[1]
+        if ext == '.ptcs':
+            self.loadptcs(f)
+        elif ext == '.spk':
+            self.loadspk()
+    '''
+    def loadptcs(self, f, header):
+        neuronrecord = PTCSNeuronRecord(self, header)
+        neuronrecord.read(f)
+        self.post_load()
+
+    def loadspk(self):
+        """Read in a .spk file containing purely spike times"""
+        self.id = self.parse_id_from_spkfname()
+        with open(self.path, 'rb') as f:
+            self.spikes = np.fromfile(f, dtype=np.int64) # read in all spike times in us
+        self.post_load()
+
+    def post_load(self):
+        if self.nspikes == 0:
+            raise RuntimeError('Neuron %d in %s has no spikes' % (self.id, self.path))
         self.trange = self.spikes[0], self.spikes[-1]
 
     def cut(self, *args):
@@ -182,7 +202,6 @@ class BaseNeuron(object):
             uberneuron.sort.append(n.sort) # concatenate all sorts into a list
             offset += n.spikes[-1] # for next Recordings spikes, inc offset by the last spike in this Recording
         uberneuron.spikes.sort() # make sure spiketimes remain sorted
-        uberneuron.nspikes = len(uberneuron.spikes) # update it
         uberneuron.trange = uberneuron.spikes[0], uberneuron.spikes[-1] # update it
         uberneuron.name = uberneuron.name[0:-2] # get rid of trailing ', '
         uberneuron.path = uberneuron.path[0:-2]
@@ -883,7 +902,7 @@ class Neuron(NeuronRevCorr,
     """Inherit all the Neuron classes into a single Neuron class"""
     pass
 
-
+'''
 class ConstrainedNeuron(Neuron):
     """A Neuron with its spike times constrained to only those periods of
     time in its (grand)parent Recording during which an Experiment is in progress"""
@@ -899,7 +918,7 @@ class ConstrainedNeuron(Neuron):
             cspikes.sort() # make sure they're sorted, in case Experiments weren't in temporal order for some reason
             self.tranges.sort() # ditto
             self.spikes = cspikes # save 'em
-            self.nspikes = len(self.spikes) # update it
             if self.nspikes == 0: # this Neuron has no spikes, not much of a Neuron as far as this Recording is concerened
                 self.spikes = np.append(self.spikes, None) # add None to empty spike list
             self.trange = (self.tranges[0][0], self.tranges[-1][1]) # overwrite inherited self.trange, use start of first trange and end of last trange
+'''

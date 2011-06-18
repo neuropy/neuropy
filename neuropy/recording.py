@@ -10,7 +10,7 @@ import pylab as pl
 
 import core
 from core import PopulationRaster, Codes, CodeCorrPDF, rstrip, dictattr, warn
-from core import SORTKEYWORDS, TAB, CODEKIND, CODETRES, CODEPHASE, CODEWORDLEN
+from core import TAB, CODEKIND, CODETRES, CODEPHASE, CODEWORDLEN
 from experiment import Experiment
 from sort import Sort
 '''
@@ -38,7 +38,7 @@ class BaseRecording(object):
             # update parent track's recording dict, in case self wasn't loaded by its parent
             track.r[self.id] = self
         self.e = dictattr() # store experiments in a dictionary with attrib access
-        self.sort = dictattr() # store sorts in a dictionary with attrib access
+        self.sorts = dictattr() # store sorts in a dictionary with attrib access
 
     def get_name(self):
         return os.path.split(self.path)[-1]
@@ -84,49 +84,28 @@ class BaseRecording(object):
             self.e[experiment.id] = experiment
             self.__setattr__('e' + str(experiment.id), experiment) # add shortcut attrib
         
-        ## TODO: put code to load .sort files here?
-        ## TODO: should this be left as is to work with existing .sort folders from surfbawd?
-        
-        dirnames = [ dirname for dirname in os.listdir(self.path)
-                     if os.path.isdir(os.path.join(self.path, dirname))
-                     and dirname.endswith('.sort') ] # sort folder names
-        # test for SORTKEYWORDS in sort dirnames
-        defaultsortnames = [ dirname for dirname in dirnames for sortkeyword in SORTKEYWORDS
-                             if sortkeyword in dirname ]
-        if len(defaultsortnames) < 1:
-            warn("Couldn't find a default sort for recording %s" % self.id)
-        if len(defaultsortnames) > 1:
-            # this could just be a warning instead of an exception, but really,
-            # some folder renaming is in order
-            raise RuntimeError('More than one sort folder in recording %s has a default keyword: %s'
-                               % (self.id, defaultsortnames))
-        ## TODO: don't load all sorts, just the default one
-        for sortid, dirname in enumerate(dirnames):
-            path = os.path.join(self.path, dirname)
+        allnames = os.listdir(self.path)
+        names = []
+        for name in allnames:
+            fullname = os.path.join(self.path, name)
+            isptcsfile = os.path.isfile(fullname) and name.endswith('.ptcs')
+            issortfolder = os.path.isdir(fullname) and name.endswith('.sort')
+            if isptcsfile or issortfolder:
+                names.append(name)
+        # sort names in alphabetical order, which should correspond to chronological
+        # order assuming all names start with datetime stamp:
+        names.sort()
+        ## TODO: don't load all sorts, just the most recent one
+        for sortid, name in enumerate(names):
+            path = os.path.join(self.path, name)
             sort = Sort(path, id=sortid, recording=self)
             sort.load()
-            self.sort[sort.name] = sort # save it
+            self.sorts[sort.name] = sort # save it
             self.__setattr__('sort' + str(sort.id), sort) # add shortcut attrib
-            # make the neurons from the default sort (if it exists in the recording path)
-            # available in the recording, so you can access them via r.n[nid] instead of
-            # having to do r.sort[name].n[nid]. Make them just another pointer to the data
-            # in r.sort[sort.name].n
-            for sortkeyword in SORTKEYWORDS[::-1]: # reverse keywords, handle last first
-                if sortkeyword in sort.name:
-                    self.n = self.sort[sort.name].n # make it the default sort
-                    '''
-                    for neuron in self.n.values():
-                        self.__setattr__('n' + str(neuron.id), neuron) # add shortcut attrib
-                    # make it the default Sort for ConstrainedNeurons too:
-                    self.cn = self.sort[sort.name].cn
-                    for cneuron in self.cn.values():
-                        self.__setattr__('cn' + str(cneuron.id), cneuron) # add shortcut attrib
-                    '''
-        if len(self.sort) == 1:
-            # there's only one sort, make it the default sort, even if it doesn't
-            # have a sortkeyword in it
-            self.n = self.sort.values()[0].n # make it the default sort
-            self.cn = self.sort.values()[0].cn # make it the default sort for constrained neurons too
+        # make last sort the default one
+        self.n = self.sorts[names[-1]].n
+        #self.cn = self.sorts[sort.names[-1]].cn
+        
         if len(self.e) > 0:
             firstexp = min(list(self.e))
             lastexp = max(list(self.e))
@@ -137,9 +116,6 @@ class BaseRecording(object):
             # spike across all neurons
             tranges = np.asarray([ n.trange for n in self.n.values() ])
             self.trange = min(tranges[:, 0]), max(tranges[:, 1])
-        # then, maybe add other info about the Recording, stored in the same folder,
-        # like skull coordinates, angles, polytrode name and type...
-
 
 
 class RecordingRaster(BaseRecording):
