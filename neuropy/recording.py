@@ -103,7 +103,8 @@ class BaseRecording(object):
             self.sorts[sort.name] = sort # save it
             self.__setattr__('sort' + str(sort.id), sort) # add shortcut attrib
         # make last sort the default one
-        self.n = self.sorts[names[-1]].n
+        self.sort = self.sorts[names[-1]]
+        self.n = self.sort.n
         #self.cn = self.sorts[sort.names[-1]].cn
         
         if len(self.e) > 0:
