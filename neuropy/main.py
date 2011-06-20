@@ -1,7 +1,6 @@
 """Main neuropy window"""
 
 from __future__ import division
-from __init__ import __version__
 
 __authors__ = ['Martin Spacek']
 
@@ -13,50 +12,110 @@ from IPython import embed
 from IPython.core import ultratb
 from IPython.frontend.terminal.ipapp import load_default_config
 # has to come before Qt imports:
-from IPython.frontend.qt.console.ipython_widget import IPythonWidget
+#from IPython.frontend.qt.console.ipython_widget import IPythonWidget
+from IPython.frontend.qt.console.rich_ipython_widget import RichIPythonWidget
 from IPython.frontend.qt.kernelmanager import QtKernelManager
 
 from PyQt4 import QtCore, QtGui, uic
+#from PyQt4.QtGui import QFont
 #from PyQt4.QtCore import Qt
 NeuropyUi, NeuropyUiBase = uic.loadUiType('neuropy.ui')
+
+from __init__ import __version__
+from core import DATAPATH
+from recording import Recording
 
 
 class NeuropyWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
+        """Note that a lot of default options can be changed by editing
+        IPython.frontend.qt.console.console_widget.py and ipython_widget.py"""        
         QtGui.QMainWindow.__init__(self)
         self.ui = NeuropyUi()
         self.ui.setupUi(self) # lay it out
 
         # might need local_kernel=True kwarg
-        # can set paging style, like 'vsplit', 'hsplit', 'none', default is 'inside'
-        ipyqtwidget = IPythonWidget(parent=self, local_kernel=True)
+        # can set paging: 'inside', 'vsplit', 'hsplit', 'none'
+        #ipyqtwidget = IPythonWidget(parent=self, local_kernel=True)
+        ipyqtwidget = RichIPythonWidget(parent=self, local_kernel=True) # necessary for inline
         self.ipyqtwidget = ipyqtwidget
+        
+        ## TODO: get config to work somehow
         ipyqtwidget.config = load_default_config() # doesn't seem to work
+        
         kernel_manager = QtKernelManager()
-        kernel_manager.start_kernel() # might need **kwargs
+        # lots of possible kwargs here        
+        kernel_manager.start_kernel(pylab='qt') # 'qt' and 'inline' are best
         kernel_manager.start_channels()
-        ipyqtwidget.gui_completion = True
         ipyqtwidget.kernel_manager = kernel_manager
+        ipyqtwidget.gui_completion = False
         ipyqtwidget.set_default_style(colors='linux')
-        # font, font_changed, fontChange
+        #ipyqtwidget.font = QFont('Lucida Console', 12) # 3rd arg can be e.g. QFont.Bold
+        #ipyqtwidget.font.setFixedPitch(True)
         # make "exit" and "quit" typed in ipyqtwidget close self
         ipyqtwidget.exit_requested.connect(self.close)
         self.setCentralWidget(ipyqtwidget)
 
+        # ip.ex() lets you execute strings in user namespace, where ip is the IPython.zmq.zmqshell.ZMQInteractiveShell
+        # ip.ev() evaluates string
+        # ip.write() writes a string to the shell
+        # ip.push() pushes a variables in a dict to user namespace
+
         # to communicate with the ipy kernel user namespace, probably need to
         # use kernel_manager.kernel.communicate and send a signal somehow
+        # this might be too low level though:
+        #self.ipyqtwidget.kernel_manager.kernel.communicate('sdfsd')
 
-        #self.setGeometry(300, 300, 300, 200)
+        self.setGeometry(0, 0, 960, 1080)
         self.setWindowTitle('neuropy')
-        #self.shell()
+        self.path = DATAPATH
+
+        ## TODO: get neuropy imports to work properly without messing up ipython display header
+        ## need to be done after window and ipyqtwidget init are finished
+
+        #"from __future__ import division\n"
+        #"import numpy as np\n"
 
     @QtCore.pyqtSlot()
     def on_actionOpen_triggered(self):
         getExistingDirectory = QtGui.QFileDialog.getExistingDirectory
         path = getExistingDirectory(self, caption="Open recording, track, or animal",
-                                    directory=os.getcwd())
+                                    directory=self.path)
         path = str(path)
-        print(path)
+        if path == '':
+            return
+        self.path = os.path.normpath(os.path.join(path, os.pardir)) # update with path's parent
+        self.open_recording(path)
+
+    @QtCore.pyqtSlot()
+    def on_action_ptc15_r87_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc15/tr7c/87 - track 7c spontaneous craziness')
+        self.open_recording(path)
+
+    @QtCore.pyqtSlot()
+    def on_action_ptc15_r92_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc15/tr7c/92 - track 7c mseq32 0.4deg')
+        self.open_recording(path)
+
+    @QtCore.pyqtSlot()
+    def on_action_ptc17_r03_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc17/tr1/03-tr1-mseq32_40ms')
+        self.open_recording(path)
+
+    def open_recording(self, path):
+        rec = Recording(path) # init it just to parse its id
+        exec_lines = (
+        "from recording import Recording\n"
+        "r%d = Recording(%r)\n"
+        "r%d.load()" % (rec.id, path, rec.id)
+        )
+        self.ipyqtwidget.execute(exec_lines)
+
+    @QtCore.pyqtSlot()
+    def on_actionShell_triggered(self):
+        embed(display_banner=False) # "self" is accessible
+        # embed() seems to override the excepthook, need to reset it:
+        set_excepthook()
 
     @QtCore.pyqtSlot()
     def on_actionQuit_triggered(self):
@@ -85,14 +144,6 @@ class NeuropyWindow(QtGui.QMainWindow):
     def on_actionAboutQt_triggered(self):
         QtGui.QMessageBox.aboutQt(self)
 
-    def shell(self):
-        embed(display_banner=False, config=load_default_config()) # "self" is accessible
-        # embed() seems to override the excepthook, need to reset it:
-        set_excepthook()
-
-    def raise_error(self):
-        raise RuntimeError
-
 
 def set_excepthook():
     """Drops us into IPython's debugger on any error"""
@@ -100,9 +151,9 @@ def set_excepthook():
 
 
 if __name__ == "__main__":
-    # prevents "The event loop is already running" errors:
-    # but, one of the two following causes ipython shutdown errors on close:
-    #QtCore.pyqtRemoveInputHook()
+    # prevents "The event loop is already running" errors when dropping into shell:
+    QtCore.pyqtRemoveInputHook()
+    # this causes ipython shutdown errors on close. Maybe need to restore InputHook somewhere:
     #set_excepthook()
     app = QtGui.QApplication(sys.argv)
     neuropywindow = NeuropyWindow()

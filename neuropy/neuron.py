@@ -1,34 +1,46 @@
 """Defines the Neuron class and all of its support classes"""
 
-# TODO: stop doing this!
-from core import *
-#from core import Cat15Movie
+from __future__ import division
+
+import os
+import StringIO
+import time
+
+import numpy as np
+import pylab as pl
+import matplotlib as mpl
+
+from core import rstrip, getargstr, iterable, tolist, intround, CODETRES, CODEPHASE, CODEKIND
+from core import MSEQ16, MSEQ32, mean_accum, lastcmd, RevCorrWindow, PTCSNeuronRecord
 from dimstimskeletal import Movie
 
+
 class BaseNeuron(object):
-    """A Neuron object's spike data spans all the Experiments within a Recording.
-    If different Recordings have Sorts with the same name, you can assume that the
-    same spike template was used for all of those Recordings, and that therefore
-    the neuron ids are the same"""
-
-    from sort import Sort
-
-    def __init__(self, id=None, name=None, parent=Sort): # neuron names don't include the '.spk' ending, neuron filenames do
+    """A neuron's spike data spans all the experiments within a recording.
+    If different recordings have sorts with the same name, you can assume they were
+    extracted in the same spike sorting session, and that therefore the neuron ids
+    are the same"""
+    def __init__(self, path, sort=None):
         self.level = 5 # level in the hierarchy
         #self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
-        try:
-            self.sort = parent() # init parent Sort object
-        except TypeError: # parent is an instance, not a class
-            self.sort = parent # save parent Sort object
-        if id is not None:
-            name = self.id2name(self.sort.path, id) # use the id to get the name
-        elif name is not None:
-            id = self.name2id(name) # use the name to get the id
-        else:
-            raise ValueError, 'Neuron id and name can\'t both be None'
-        self.id = id
-        self.name = name
-        self.path = self.sort.path
+        self.path = path
+        self.sort = sort
+
+    def get_name(self):
+        fname = os.path.split(self.path)[-1]
+        return os.path.splitext(fname)[0]
+    
+    name = property(get_name)
+
+    def parse_id_from_spkfname(self):
+        # everything from just after the last '_t' to the end of the name,
+        # should be all numeric
+        return int(self.name.rsplit('_t', 1)[-1])
+
+    def get_nspikes(self):
+        return len(self.spikes)
+        
+    nspikes = property(get_nspikes)
     '''
     def tree(self):
         """Print tree hierarchy"""
@@ -39,44 +51,34 @@ class BaseNeuron(object):
         self.treebuf.write(string)
         self.sort.writetree(string)
     '''
-    def id2name(self, path, id):
-        #if len(str(id)) == 1: # if id is only 1 digit long
-        #    id = '0'+str(id) # add a leading zero
-        name = [ fname[0:fname.rfind('.spk')] for fname in os.listdir(path)
-                 if os.path.isfile(os.path.join(path, fname))
-                 and
-                 (    '_t%s.spk' % id in fname
-                   or '_t0%s.spk' % id in fname
-                   or '_t00%s.spk' % id in fname )
-                 ] # have to deal with leading zero ids, go up to 3 digit ids, should really use a re to do this properly...
-        if len(name) != 1:
-            raise NameError, 'Ambiguous or non-existent Neuron id: %s' % id
-        else:
-            return name[0] # pull the string out of the list
-
-    def name2id(self, name):
-        try:
-            id = name[name.rindex('_t')+2::] # everything from just after the last '_t' to the end of the neuron name, rindex() raises ValueError if it can't be found
-        except ValueError:
-            raise ValueError, 'Badly formatted Neuron name: %s' % name
-        try:
-            id = int(id) # convert string to int if possible
-        except ValueError:
-            pass # it's alphanumeric, leave it as a string
-        return id
-
-    def load(self):
+    '''
+    def load(self, f=None):
         #treestr = self.level*TAB + self.name + '/'
-        #self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        f = file(os.path.join(self.path, self.name) + '.spk', 'rb') # open the spike file for reading in binary mode
-        self.spikes = np.fromfile(f, dtype=np.int64) # read in all spike times in us
-        f.close()
-        self.nspikes = len(self.spikes)
-        if self.nspikes == 0: # this Neuron has no spikes, not much of a Neuron as far as this Recording is concerened
-            self.spikes = np.append(self.nspikes, None) # add None to empty spike list. Why None? Why not just leave it empty?
-        #self.results = {} # a dictionary to store results in
+        # print string to tree hierarchy and screen
+        #self.writetree(treestr+'\n')
+        #print(treestr) # print string to tree hierarchy and screen
+        ext = os.path.splitext(self.path)[1]
+        if ext == '.ptcs':
+            self.loadptcs(f)
+        elif ext == '.spk':
+            self.loadspk()
+    '''
+    def loadptcs(self, f, header):
+        neuronrecord = PTCSNeuronRecord(self, header)
+        neuronrecord.read(f)
+        self.post_load()
+
+    def loadspk(self):
+        """Read in a .spk file containing purely spike times"""
+        self.id = self.parse_id_from_spkfname()
+        with open(self.path, 'rb') as f:
+            self.spikes = np.fromfile(f, dtype=np.int64) # read in all spike times in us
+        self.post_load()
+
+    def post_load(self):
+        if self.nspikes == 0:
+            raise RuntimeError('Neuron %d in %s has no spikes' % (self.id, self.path))
         self.trange = self.spikes[0], self.spikes[-1]
-        # then, maybe add something that loads the template for this neuron, as well as its modelled (or just guesstimated) location in 3D (or just 2D) coordinates in um, as well as cell type potentially
 
     def cut(self, *args):
         """Returns a view of the Neuron's spike times where tstart <= spikes <= tend
@@ -174,7 +176,7 @@ class BaseNeuron(object):
             #assert self.sort == other.sort, 'Sorts are different' # forget this, only the user can really know if they used the same template
             assert self.sort.r.t == other.sort.r.t, 'Tracks are different'
         uberneuron = self.copy() # create a copy of self
-        uberneuron.spikes = array([], dtype=np.int64) # clear its spikes attrib
+        uberneuron.spikes = np.array([], dtype=np.int64) # clear its spikes attrib
         uberneuron.name = '' # clear it
         uberneuron.path = '' # clear it
         uberneuron.sort = [] # clear, and init a list
@@ -200,7 +202,6 @@ class BaseNeuron(object):
             uberneuron.sort.append(n.sort) # concatenate all sorts into a list
             offset += n.spikes[-1] # for next Recordings spikes, inc offset by the last spike in this Recording
         uberneuron.spikes.sort() # make sure spiketimes remain sorted
-        uberneuron.nspikes = len(uberneuron.spikes) # update it
         uberneuron.trange = uberneuron.spikes[0], uberneuron.spikes[-1] # update it
         uberneuron.name = uberneuron.name[0:-2] # get rid of trailing ', '
         uberneuron.path = uberneuron.path[0:-2]
@@ -234,7 +235,7 @@ class XCorr(object):
             trangei = self.n2.spikes.searchsorted(spike+self.trange) # find where the trange around this spike would fit in other.spikes
             dt = self.n2.spikes[trangei[0]:trangei[1]] - spike # find dt between this spike and only those other.spikes that are in trange of this spike
             dts.extend(dt)
-        self.dts = array(dts)
+        self.dts = np.array(dts)
         return self.dts
 
         # could use some weave code to speed this up
@@ -257,9 +258,9 @@ class XCorr(object):
         '''
     def plot(self, nbins=100, figsize=(6.5, 6.5), style='count'):
         """style can be 'count' or 'rate'"""
-        f = figure(figsize=figsize)
+        f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        n, t = histogram(self.dts, bins=nbins)
+        n, t = pl.histogram(self.dts, bins=nbins)
         self.n = n
         self.t = t
         barwidth = (t.max()-t.min())/float(nbins)
@@ -328,15 +329,15 @@ class BinaryCode(BaseCode):
         self.phase = phase # in degrees of tres
 
     def calc(self):
-        self.t = array([], dtype=np.int64) # set up empty arrays with correct dtypes (otherwise, when appending to them later, they'd default to float64s)
-        self.s = array([], dtype=np.int64)
-        self.c = array([], dtype=np.int8)
+        self.t = np.array([], dtype=np.int64) # set up empty arrays with correct dtypes (otherwise, when appending to them later, they'd default to float64s)
+        self.s = np.array([], dtype=np.int64)
+        self.c = np.array([], dtype=np.int8)
         for trange in self.tranges:
             # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. This way, timepoints will line up for different code objects. Finally, add phase offset relative to this
             tstart = trange[0] - (trange[0] % self.tres) + self.phase/360.0*self.tres # left edge of first code bin
-            t = np.int64(np.round(arange(tstart, trange[1]+self.tres, self.tres))) # t sequence demarcates left bin edges, add extra tres to end to make t end inclusive, keep 'em in us integers
+            t = np.int64(np.round(np.arange(tstart, trange[1]+self.tres, self.tres))) # t sequence demarcates left bin edges, add extra tres to end to make t end inclusive, keep 'em in us integers
             s = self.neuron.cut(trange) # spike times, cut over originally specified trange, not from start to end of newly generated code bin timepoints
-            c = zeros(len(t), dtype=np.int8) # init binary code signal
+            c = np.zeros(len(t), dtype=np.int8) # init binary code signal
             # searchsorted returns indices where s fits into t. Sometimes more than one spike will fit into the same time bin, which means searchsorted will return multiple occurences of the same index. You can set c at these indices to 1 a multiple number of times, or prolly more efficient, do an np.unique on it to only set each index to 1 once.
             c[np.unique(t.searchsorted(s)) - 1] = 1 # dec index by 1 so that you get indices that point to the most recent bin edge. For each bin that has at least 1 spike in it, set its value to 1
             self.t = np.append(self.t, t) # save 'em
@@ -345,7 +346,7 @@ class BinaryCode(BaseCode):
 
     def plot(self):
         super(BinaryCode, self).plot()
-        title('neuron %d - binary spike code' % self.neuron.id)
+        pl.title('neuron %d - binary spike code' % self.neuron.id)
 
 
 class NeuronCode(BaseNeuron):
@@ -389,12 +390,12 @@ class BaseRate(object):
             return False
 
     def plot(self):
-        figure()
-        plot(self.t, self.r)
+        pl.figure()
+        pl.plot(self.t, self.r)
         # diagnostic for comparing interpolated to raw nisi rate:
-        #plot(self.rawt, self.rawr, 'r+')
-        xlabel('t')
-        ylabel('spike rate')
+        #pl.plot(self.rawt, self.rawr, 'r+')
+        pl.xlabel('t')
+        pl.ylabel('spike rate')
 
 
 class BinRate(BaseRate):
@@ -408,14 +409,14 @@ class BinRate(BaseRate):
         # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. Do the same for the end of the timepoints. This way, timepoints will line up for different code objects
         tstart = self.trange[0] - (self.trange[0] % self.tres)
         tend   = self.trange[1] - (self.trange[1] % self.tres)
-        t = arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to trange[1] to make t end inclusive
+        t = np.arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to trange[1] to make t end inclusive
         s = self.neuron.cut(self.trange) # spike times
         self.r, self.t = histogramSorted(self.neuron.spikes, bins=t) # assumes spikes are in chrono order
         self.r = self.r / float(self.tres) * 1000000 # spikes/sec
 
     def plot(self):
         super(BinRate, self).plot()
-        title('neuron %d - binned spike rate' % self.neuron.id)
+        pl.title('neuron %d - binned spike rate' % self.neuron.id)
 
 
 class nISIRate(BaseRate):
@@ -443,7 +444,7 @@ class nISIRate(BaseRate):
         # make the start of our interpolated timepoints be an even multiple of self.tres. Round down to the nearest multiple. This way, the timepoints will line up, even if different Rates have different starting points, like neuron.rate() vs experiment.rate()
         tstart = t[0] - (t[0] % self.tres)
         # should we have tend = t[-1] + self.tres ?
-        self.t = arange(tstart, t[-1], self.tres) # new set of timepoints to interpolate over
+        self.t = np.arange(tstart, t[-1], self.tres) # new set of timepoints to interpolate over
         if self.interp == 'sah':
             self.r = sah(t, r, self.t, keep=False)
         elif self.interp == 'linear':
@@ -455,7 +456,8 @@ class nISIRate(BaseRate):
 
     def plot(self):
         super(nISIRate, self).plot()
-        title('neuron %d - %d-inter-spike-interval spike rate, %s interpolation' % (self.neuron.id, self.nisi, self.interp))
+        pl.title('neuron %d - %d-inter-spike-interval spike rate, %s interpolation'
+                     % (self.neuron.id, self.nisi, self.interp))
 
 
 class WnISIRate(BaseRate):
@@ -532,7 +534,7 @@ class GaussRate(BaseRate):
 
     def plot(self):
         super(GaussRate, self).plot()
-        title('Gaussian sliding window spike rate')
+        pl.title('Gaussian sliding window spike rate')
 
 
 class RectRate(BaseRate):
@@ -548,7 +550,7 @@ class RectRate(BaseRate):
 
     def plot(self):
         super(RectRate, self).plot()
-        title('rectangular sliding window spike rate')
+        pl.title('rectangular sliding window spike rate')
 
 
 class RatePDF(object):
@@ -589,7 +591,7 @@ class RatePDF(object):
         self.n, self.r = histogram(self.rate.r, bins=r, normed=self.normed)
 
     def plot(self):
-        figure()
+        pl.figure()
         if self.scale == 'log':
             barwidth = list(diff(self.r)) # each bar will have a different width, convert to list so you can append
             # need to add one more entry to barwidth to the end to get nbins of them:
@@ -599,19 +601,19 @@ class RatePDF(object):
         elif self.scale == 'linear':
             barwidth = (self.rrange[1]-self.rrange[0]) / float(self.nbins)
         else:
-            raise ValueError, 'Unknown scale: %r' % scale
+            raise ValueError('Unknown scale: %r' % scale)
         #hist(self.n, bins=self.r, normed=0, bottom=0, width=None, hold=False) # doesn't seem to work
-        bar(left=self.r, height=self.n, width=barwidth)
-        axes().set_xscale(self.scale, basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
+        pl.bar(left=self.r, height=self.n, width=barwidth)
+        pl.axes().set_xscale(self.scale, basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
         title('neuron %d - %s spike rate PDF' % (self.neuron.id, self.rate.kind))
         if self.normed:
             if self.normed == 'pmf': # it's a probability mass function
-                ylabel('probability mass')
+                pl.ylabel('probability mass')
             else: # it's a probability density function
-                ylabel('probability density')
+                pl.ylabel('probability density')
         else:
-            ylabel('count')
-        xlabel('spike rate')
+            pl.ylabel('count')
+        pl.xlabel('spike rate')
 
 
 class NeuronRate(BaseNeuron):
@@ -687,9 +689,9 @@ class RevCorr(object):
             self.movie.load(asarray=True, flip=False) # Load as 3D array instead of as a list of 2D arrays, more convenient for analysis, although will cause memory problems for really big (>1GB movies). Don't flip the movie frames vertically for OpenGL's bottom left origin, since we aren't using OpenGL for analysis
         self.nt = nt # number of revcorr timepoints
         self.tis = range(0, nt, 1) # revcorr timepoint indices
-        self.t = [ intround(ti * self.movie.dynamic.sweepSec * 1000) for ti in self.tis ] # revcorr timepoint values, stored in a list, not an array. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
+        self.ts = [ intround(ti * self.movie.dynamic.sweepSec * 1000) for ti in self.tis ] # revcorr timepoint values, stored in a list, not an array. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
         self.ndinperframe = intround(self.movie.dynamic.sweepSec * 1000000 / self.experiment.REFRESHTIME)
-        #self.movie.frames = asarray(self.movie.frames)
+        #self.movie.frames = np.asarray(self.movie.frames)
         self.width = self.movie.frames.shape[-1] # (nframes, height, width)
         self.height = self.movie.frames.shape[-2]
         self.done = False # hasn't yet successfully completed its calc() method
@@ -710,22 +712,22 @@ class RevCorr(object):
         self.rcdini = self.experiment.din[:, 0].searchsorted(spikes) - 1 # revcorr dini. Find where the spike times fall in the din, dec so you get indices that point to the most recent din value for each spike
         #self.din = self.experiment.din[rcdini, 1] # get the din (frame indices) at the rcdini
 
-    def plot(self, interp='nearest', normed=True, title='ReceptiveFieldFrame', scale=2.0):
+    def plot(self, interp='nearest', normed=True, title='RevCorrWindow', scale=2.0):
         """Plots the spatiotemporal RF as bitmaps in a wx.Frame"""
         rf = self.rf.copy() # create a copy to manipulate for display purposes, (nt, width, height)
         if normed: # normalize across the timepoints for this RevCorr
-            norm = mpl.colors.normalize(vmin=rf.min(), vmax=rf.max(), clip=True) # create a single normalization object to map luminance to the range [0,1]
+            norm = mpl.colors.normalize(vmin=rf.min(), vmax=rf.max(), clip=True)
             rf = norm(rf) # normalize the rf the same way across all timepoints
         else: # don't normalize across timepoints, leave each one to autoscale
             for ti in range(self.nt):
-                norm = mpl.colors.normalize(vmin=None, vmax=None, clip=True) # create a normalization object to map luminance to the range [0,1], autoscale
+                norm = mpl.colors.normalize(vmin=None, vmax=None, clip=True)
                 rf[ti] = norm(rf[ti]) # normalize the rf separately at each timepoint
-        cmap = mpl.cm.jet # get a colormap object
-        rf = cmap(rf)[::, ::, ::, 0:3] # convert luminance to RGB via the colormap, throw away alpha channel (not used for now in ReceptiveFieldFrame)
-        rf = rf * 255 # scale up to 8 bit values
-        rf = rf.round().astype(np.uint8) # downcast from float to uint8 for feeding to ReceptiveFieldFrame
-        frame = ReceptiveFieldFrame(title=title, rfs=[rf], neurons=[self.neuron], t=self.t, scale=scale)
-        frame.Show()
+        rf *= 255 # scale up to 8 bit values
+        rf = rf.round().astype(np.uint8) # downcast from float to uint8
+        win = RevCorrWindow(title=title, rfs=[rf], nids=[self.neuron.id], 
+                            ts=self.ts, scale=scale)
+        win.show()
+        return win # necessary in IPython
     '''
     def oldplot(self, interp='nearest', normed=True):
         """Plots the RFs as images, returns all the image objects"""
@@ -777,17 +779,17 @@ class RevCorr(object):
 class STA(RevCorr):
     """Spike-triggered average revcorr object"""
     def calc(self):
-        super(STA, self).calc() # run the base calc() steps first
+        RevCorr.calc(self) # run the base calc() steps first
         #sys.stdout.write('n%d' % self.neuron.id) # prevents trailing space and newline
-        self.rf = zeros([self.nt, self.height, self.width], dtype=np.float64) # init a 3D matrix to store the STA at each timepoint. rf == 'receptive field'
+        self.rf = np.zeros([self.nt, self.height, self.width], dtype=np.float64) # init a 3D matrix to store the STA at each timepoint. rf == 'receptive field'
         #frames = np.float64(self.movie.frames) # converting from uint8 to float64 seems to speed up mean() method a bit
         frames = self.movie.frames
         tstart = time.clock()
-        pd = wx.ProgressDialog(title='n%d STA progress' % self.neuron.id, message='', maximum=self.tis[-1], style=1) # create a progress dialog
+        #pd = wx.ProgressDialog(title='n%d STA progress' % self.neuron.id, message='', maximum=self.tis[-1], style=1) # create a progress dialog
         for ti in self.tis:
-            cont, skip = pd.Update(ti-1, newmsg='timepoint: %dms\nelapsed: %.1fs' % (self.t[ti], time.clock()-tstart))
-            if not cont:
-                #self.rf = zeros([self.nt, self.height, self.width], dtype=np.float64) # set back to zeros
+            #cont, skip = pd.Update(ti-1, newmsg='timepoint: %dms\nelapsed: %.1fs' % (self.t[ti], time.clock()-tstart))
+            if False:#not cont:
+                #self.rf = np.zeros([self.nt, self.height, self.width], dtype=np.float64) # set back to zeros
                 pd.Destroy()
                 self.done = False
                 return
@@ -812,15 +814,16 @@ class STA(RevCorr):
             # much faster way:
             self.rf[ti] = mean_accum(pickedframes)
             #self.rf[ti] = mean_accum2(frames, frameis)
-        pd.Destroy()
+        #pd.Destroy()
         self.done = True
 
     def plot(self, interp='nearest', normed=True, scale=2.0):
-        super(STA, self).plot(interp=interp, normed=normed,
-                              title=lastcmd(),
-                              #title='r%d.n[%d].sta().plot(interp=%r, normed=%r, scale=%r)' %
-                              #(self.experiment.r.id, self.neuron.id, interp, normed, scale),
-                              scale=scale)
+        win = RevCorr.plot(self, interp=interp, normed=normed,
+                           title=lastcmd(),
+                           #title='r%d.n[%d].sta().plot(interp=%r, normed=%r, scale=%r)' %
+                           #(self.experiment.r.id, self.neuron.id, interp, normed, scale),
+                           scale=scale)
+        return win # necessary in IPython
     plot.__doc__ = RevCorr.plot.__doc__
 
 
@@ -899,13 +902,13 @@ class Neuron(NeuronRevCorr,
     """Inherit all the Neuron classes into a single Neuron class"""
     pass
 
-
+'''
 class ConstrainedNeuron(Neuron):
     """A Neuron with its spike times constrained to only those periods of
     time in its (grand)parent Recording during which an Experiment is in progress"""
     def load(self):
         super(ConstrainedNeuron, self).load()
-        cspikes = array([], dtype=np.int64) # init a temporary array
+        cspikes = np.array([], dtype=np.int64) # init a temporary array
         #self.tranges = np.empty((len(self.r.e), 2), dtype=np.int64) # give it shape(numexps, 2)
         self.tranges = []
         if self.sort.r.e != {}: # if it ain't empty, ie if there are Experiments in this Sort's Recording
@@ -915,7 +918,7 @@ class ConstrainedNeuron(Neuron):
             cspikes.sort() # make sure they're sorted, in case Experiments weren't in temporal order for some reason
             self.tranges.sort() # ditto
             self.spikes = cspikes # save 'em
-            self.nspikes = len(self.spikes) # update it
             if self.nspikes == 0: # this Neuron has no spikes, not much of a Neuron as far as this Recording is concerened
                 self.spikes = np.append(self.spikes, None) # add None to empty spike list
             self.trange = (self.tranges[0][0], self.tranges[-1][1]) # overwrite inherited self.trange, use start of first trange and end of last trange
+'''

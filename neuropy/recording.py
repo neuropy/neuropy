@@ -1,10 +1,19 @@
-"""Defines the Recording class and all of its support classes"""
+"""Defines the Recording class"""
+
+from __future__ import division
+
+import os
+import StringIO
+
+import numpy as np
+import pylab as pl
 
 import core
-# TODO: stop doing this:
-from core import *
-from core import _data # ensure it's imported, in spite of leading _
-
+from core import PopulationRaster, Codes, CodeCorrPDF, rstrip, dictattr, warn
+from core import TAB, CODEKIND, CODETRES, CODEPHASE, CODEWORDLEN
+from experiment import Experiment
+from sort import Sort
+'''
 # Good global setting for presentation plots:
 pl.rcParams['axes.labelsize'] = 30
 pl.rcParams['xtick.labelsize'] = 25
@@ -13,39 +22,41 @@ pl.rcParams['xtick.major.size'] = 7
 pl.rcParams['ytick.major.size'] = 7
 pl.rcParams['lines.markersize'] = 10
 # use gca().set_position([0.15, 0.15, 0.8, 0.8]) or just the 'configure subplots' widget to make all the labels fit within the figure
-
+'''
 
 class BaseRecording(object):
-    """A Recording corresponds to a single SURF file, ie everything recorded between when
-    the user hits record and when the user hits stop and closes the SURF file, including any
-    pauses in between Experiments within that Recording. A Recording can have multiple Experiments,
-    and multiple spike extractions, called Sorts"""
-    def __init__(self, id=None, name=None, parent=None):
-
-        from track import Track
-
+    """A recording corresponds to a single SURF file, ie everything recorded between
+    when the user hits record and when the user hits stop and closes the SURF file,
+    including any pauses in between experiments within that recording. A recording
+    can have multiple experiments, and multiple spike extractions, called sorts"""
+    def __init__(self, path, track=None):
         self.level = 3 # level in the hierarchy
-        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
-        if parent == None:
+        self.treebuf = StringIO.StringIO() # string buffer to print tree hierarchy to
+        self.path = path
+        self.tr = track
+        if track != None:
+            # update parent track's recording dict, in case self wasn't loaded by its parent
+            track.r[self.id] = self
+        self.e = dictattr() # store experiments in a dictionary with attrib access
+        self.sorts = dictattr() # store sorts in a dictionary with attrib access
+
+    def get_name(self):
+        return os.path.split(self.path)[-1]
+    
+    name = property(get_name)
+
+    def get_id(self):
+        # return the first word in the name, using whitespace or - as separators
+        ids = self.name.split(' ', 1)[0], self.name.split('-', 1)[0]
+        for id in ids:
             try:
-                self.t = _data.a[ANIMAL].t[TRACK] # see if the default Track has already been init'd
-            except KeyError:
-                self.t = Track() # init the default Track...
-                _data.a[ANIMAL].t[self.t.id] = self.t  # ...and add it to the default Animal's list of Tracks
-        else:
-            self.t = parent # save parent Track object
-        if id is not None:
-            name = self.id2name(self.t.path, id) # use the id to get the name
-        elif name is not None:
-            id = self.name2id(name) # use the name to get the id
-        else:
-            raise ValueError('Recording id and name can\'t both be None')
-        self.id = id
-        self.name = name
-        self.path = os.path.join(self.t.path, self.name)
-        self.t.r[self.id] = self # add/overwrite this Recording to its parent's dict of Recordings, in case this Recording wasn't loaded by its parent
-        self.e = dictattr() # store Experiments in a dictionary with attrib access
-        self.sort = dictattr() # store Sorts in a dictionary with attrib access
+                id = int(id)
+                return id
+            except ValueError:
+                continue
+        raise ValueError("Couldn't convert recording name %r to a numeric ID" % self.name)
+        
+    id = property(get_id)
 
     def tree(self):
         """Print tree hierarchy"""
@@ -54,330 +65,59 @@ class BaseRecording(object):
     def writetree(self, string):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
-        self.t.writetree(string)
-
-    def id2name(self, path, id):
-        name = [ dirname for dirname in os.listdir(path)
-                 if os.path.isdir(os.path.join(path, dirname))
-                 and dirname.startswith(str(id)) ]
-        if len(name) != 1:
-            raise NameError('Ambiguous or non-existent Recording id: %s' % id)
-        else:
-            return name[0] # pull the string out of the list
-
-    def name2id(self, name):
-        # return the first word in the name, using whitespace or - as separators
-        ids = name.split()[0], name.split('-')[0]
-        for id in ids:
-            try:
-                self.checkid(id)
-                return id
-            except ValueError:
-                continue
-        raise ValueError("Couldn't convert Recording name %r to an ID" % name)
-
-    def checkid(self, id):
-        try:
-            int(id[0]) # first character of Recording id better be an integer
-        except ValueError:
-            raise ValueError('First character of Recording name %r should be a number' % name)
-        try:
-            id = int(id) # convert entire id to int if possible
-        except ValueError:
-            raise ValueError('Recording ID should be numeric, not alphanumeric')
+        if self.tr != None:
+            self.tr.writetree(string)
 
     def load(self):
-
-        from experiment import Experiment
-        from sort import Sort
-
         treestr = self.level*TAB + self.name + '/'
-        self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
-        experimentNames = [ fname[0:fname.rfind('.din')] for fname in os.listdir(self.path)
-                            if os.path.isfile(os.path.join(self.path, fname))
-                            and fname.endswith('.din') ] # returns din filenames without their .din extension
-        for experimentid, experimentName in enumerate(experimentNames): # experimentids will be according to alphabetical order of experimentNames
-            experiment = Experiment(id=experimentid, name=experimentName, parent=self) # pass both the id and the name
-            experiment.load() # load the Experiment
-            self.e[experiment.id] = experiment # save it
+        # print string to tree hierarchy and screen
+        self.writetree(treestr + '\n')
+        print(treestr)
+        
+        fnames = [ fname for fname in os.listdir(self.path)
+                   if os.path.isfile(os.path.join(self.path, fname))
+                   and fname.endswith('.din') ] # din filenames
+        for expid, fname in enumerate(fnames): # expids created in alpha order of din fnames
+            path = os.path.join(self.path, fname)
+            experiment = Experiment(path, id=expid, recording=self)
+            experiment.load()
+            self.e[experiment.id] = experiment
             self.__setattr__('e' + str(experiment.id), experiment) # add shortcut attrib
-        # TODO: put code to load .sort files here?
-        # TODO: should this be left as is to work with existing .sort folders from surfbawd?
-        sortNames = [ dirname[0:dirname.rfind('.sort')] for dirname in os.listdir(self.path)
-                     if os.path.isdir(os.path.join(self.path, dirname))
-                     and dirname.endswith('.sort') ] # returns sort folder names without their .sort extension
-        defaultSortNames = [ sortName for sortName in sortNames for sortkeyword in SORTKEYWORDS
-                            if sortkeyword in sortName ]
-        if len(defaultSortNames) < 1:
-            warn('Couldn\'t find a default Sort for Recording(%s)' % self.id)
-        if len(defaultSortNames) > 1: # This could just be a warning instead of an exception, but really, some folder renaming is in order
-            raise RuntimeError('More than one Sort folder in Recording(%s) has a default keyword: %s'
-                               % (self.id, defaultSortNames))
-        for sortid, sortName in enumerate(sortNames): # sortids will be according to alphabetical order of sortNames
-            sort = Sort(id=sortid, name=sortName, parent=self) # pass both the id and the name
-            sort.load() # load the Sort
-            self.sort[sort.name] = sort # save it
-            self.__setattr__('sort' + str(sort.id), sort) # add shortcut attrib, by id (name typically has too many non-alphanum chars)
-            # make the Neurons from the default Sort (if it exists in the Recording path) available in the Recording, so you can access them via r.n[nid] instead of having to do r.sort[name].n[nid]. Make them just another pointer to the data in r.sort[sortName].n
-            for sortkeyword in SORTKEYWORDS[::-1]: # reverse the keywords so last one gets processed first
-                if sortkeyword in sort.name:
-                    self.n = self.sort[sort.name].n # make it the default Sort
-                    for neuron in self.n.values():
-                        self.__setattr__('n' + str(neuron.id), neuron) # add shortcut attrib
-                    self.cn = self.sort[sort.name].cn # make it the default Sort for ConstrainedNeurons too
-                    for cneuron in self.cn.values():
-                        self.__setattr__('cn' + str(cneuron.id), cneuron) # add shortcut attrib
-        if len(self.sort) == 1: # there's only one sort, make it the default Sort, even if it doesn't have a sortkeyword in it
-            self.n = self.sort.values()[0].n # make it the default Sort
-            self.cn = self.sort.values()[0].cn # make it the default Sort for ConstrainedNeurons too
-        try:
-            firstexp = min(self.e.keys())
-            lastexp = max(self.e.keys())
-            self.trange = self.e[firstexp].trange[0], self.e[lastexp].trange[1] # start of the first experiment to end of the last one
-        except ValueError: # self.e is empty, no Experiments in this Recording, use first and last spike across all Neurons
-            tranges = [ n.trange for n in self.n.values() ]
-            self.trange = min(tranges[:][0]), max(tranges[:][1])
-        # then, maybe add other info about the Recording, stored in the same folder, like skull coordinates, angles, polytrode name and type...
-
-
-class PopulationRaster(object):
-    """A population spike raster plot. nis are indices of neurons to
-    plot in the raster, in order from bottom to top.
-    jumpts are a sequence of timepoints (in us) that can then be quickly cycled
-    through in the plot using keyboard controls.
-    Defaults to absolute time origin (when acquisition began)"""
-    def __init__(self, recording=None, experiments=None, nis=None,
-                 jumpts=None, binwidth=None, relativet0=False, units='msec',
-                 publication=False):
-        self.r = recording
-        if experiments == None:
-            self.e = recording.e # dictionary
+        
+        allnames = os.listdir(self.path)
+        names = []
+        for name in allnames:
+            fullname = os.path.join(self.path, name)
+            isptcsfile = os.path.isfile(fullname) and name.endswith('.ptcs')
+            issortfolder = os.path.isdir(fullname) and name.endswith('.sort')
+            if isptcsfile or issortfolder:
+                names.append(name)
+        # sort names in alphabetical order, which should correspond to chronological
+        # order assuming all names start with datetime stamp:
+        names.sort()
+        ## TODO: don't load all sorts, just the most recent one
+        for sortid, name in enumerate(names):
+            path = os.path.join(self.path, name)
+            sort = Sort(path, id=sortid, recording=self)
+            sort.load()
+            self.sorts[sort.name] = sort # save it
+            self.__setattr__('sort' + str(sort.id), sort) # add shortcut attrib
+        # make last sort the default one
+        self.sort = self.sorts[names[-1]]
+        self.n = self.sort.n
+        #self.cn = self.sorts[sort.names[-1]].cn
+        
+        if len(self.e) > 0:
+            firstexp = min(list(self.e))
+            lastexp = max(list(self.e))
+            # start of the first experiment to end of the last one
+            self.trange = self.e[firstexp].trange[0], self.e[lastexp].trange[1]
         else:
-            self.e = experiments # should also be a dict
-        if binwidth == None:
-            self.binwidth = CODETRES
-        else:
-            self.binwidth = binwidth
-        assert self.binwidth >= 10000
-        self.plotbinedges = False # keyboard controlled
-        if relativet0: # set time origin to start of first experiment
-            firstexp = min(self.e.keys())
-            self.t0 = self.e[firstexp].trange[0] # start time of the first experiment
-        else: # use absolute time origin
-            self.t0 = 0 # leave the time origin at when acquisition began
-        experimentmarkers = [] # a flat list of all experiment start and stop times, in sorted order
-        for e in self.e.values():
-            experimentmarkers.extend(e.trange)
-        self.experimentmarkers = asarray(experimentmarkers) - self.t0 # make 'em relative to t0
-        self.experimentmarkers.sort() # just in case exps weren't in sorted order for some reason
+            # self.e is empty, no experiments in this recording, use first and last
+            # spike across all neurons
+            tranges = np.asarray([ n.trange for n in self.n.values() ])
+            self.trange = min(tranges[:, 0]), max(tranges[:, 1])
 
-        self.jumpts = asarray(jumpts)
-        self.jumpts.sort() # just in case jumpts weren't in sorted order for some reason
-
-        units2tconv = {'usec': 1e0, 'msec': 1e3, 'sec': 1e6}
-        self.units = units
-        self.tconv = units2tconv[units]
-
-        self.publication = publication
-
-        self.neurons = self.r.n # still a dictattr
-        if nis != None:
-            self.nis = nis
-        else:
-            self.nis = self.r.n.keys()
-            self.nis.sort() # keep it tidy
-
-    def plot(self, left=None, width=200000):
-        """Plots the raster, units are us wrt self.t0"""
-        if left == None:
-            try:
-                left = self.experimentmarkers[0] # init left window edge to first exp marker, ie start of first experiment
-            except IndexError: # ain't no experiments, no associated markers
-                left = min([ neuron.spikes[0] for neuron in self.r.n.values() ]) # set it to the earliest spike in the population
-        try:
-            self.f
-        except AttributeError: # prepare the fig if it hasn't been done already
-            figheight = 1.25+0.2*len(self.nis)
-            self.f = figure(figsize=(14, figheight))
-            self.a = self.f.add_subplot(111)
-            self.formatter = neuropyScalarFormatter() # better behaved tick label formatter
-            self.formatter.thousandsSep = ',' # use a thousands separator
-            if not self.publication:
-                self.a.xaxis.set_major_locator(neuropyAutoLocator()) # better behaved tick locator
-                self.a.xaxis.set_major_formatter(self.formatter)
-                self.a.set_yticks([]) # turn off y axis
-            gcfm().frame.SetTitle(lastcmd())
-            self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
-            self.tooltip.Enable(False) # leave disabled for now
-            self.tooltip.SetDelay(0) # set popup delay in ms
-            gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
-            self.a.set_xlabel('time (%s)' % self.units)
-            if not self.publication:
-                self.yrange = (0, len(self.nis))
-            else:
-                self.a.set_ylabel('cell index') # not really cell id, it's the ii (the index into the id)
-                self.yrange = (-0.5, len(self.nis)-0.5)
-            self.a.set_ylim(self.yrange)
-            #aheight = min(0.025*len(self.nis), 1.0)
-            bottominches = 0.75
-            heightinches = 0.15+0.2*len(self.nis)
-            bottom = bottominches / figheight
-            height = heightinches / figheight
-            if not self.publication:
-                self.a.set_position([0.02, bottom, 0.96, height])
-            else:
-                self.a.set_position([0.05, bottom, 0.96, height])
-            self.f.canvas.mpl_connect('motion_notify_event', self._onmotion)
-            self.f.canvas.mpl_connect('key_press_event', self._onkeypress)
-
-        self.left = left
-        self.width = width
-        # plot experiment start and endpoints
-        for etrange in self.experimentmarkers.reshape(-1, 2): # reshape the flat array into a new nx2, each row is a trange
-            estart = etrange[0]-self.t0
-            eend = etrange[1]-self.t0
-            if left <=  estart and estart <= left+width: # experiment start point is within view
-                startlines = self.a.vlines(x=estart/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp start, convert to ms
-                startlines[0].set_color((0, 1, 0)) # set to bright green
-            if left <= eend and eend <= left+width: # experiment end point is within view
-                endlines = self.a.vlines(x=eend/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp end, convert t
-                endlines[0].set_color((1, 0, 0)) # set to bright red
-        # plot the bin edges. Not taking into account self.t0 for now, assuming it's 0
-        if self.plotbinedges:
-            leftbinedge = (left // self.binwidth + 1)*self.binwidth
-            binedges = arange(leftbinedge, left+width, self.binwidth)
-            binlines = self.a.vlines(x=binedges/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], fmt='b:') # convert t
-        # plot the rasters
-        for nii, ni in enumerate(self.nis):
-            neuron = self.neurons[ni]
-            x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / self.tconv # make spike times always relative to t0, convert t
-            if not self.publication:
-                self.a.vlines(x=x, ymin=nii, ymax=nii+1, fmt='k-')
-            else:
-                self.a.vlines(x=x, ymin=nii-0.5, ymax=nii+0.5, fmt='k-')
-        self.a.set_xlim(left/self.tconv, (left+width)/self.tconv) # convert t
-
-    def _panx(self, npages=None, left=None):
-        """Pans the raster along the x axis by npages, or to position left"""
-        self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
-        if left != None: # use left
-            self.plot(left=left, width=self.width)
-        else: # use npages instead
-            self.plot(left=self.left+self.width*npages, width=self.width)
-        self.f.canvas.draw() # redraw the figure
-
-    def _zoomx(self, factor):
-        """Zooms the raster along the x axis by factor"""
-        self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
-        centre = (self.left + self.left+self.width) / 2.0
-        width = self.width / float(factor)
-        left = centre - width / 2.0
-        self.plot(left=left, width=width)
-        self.f.canvas.draw() # redraw the figure
-
-    def _goto(self):
-        """Bring up a dialog box to jump to timepoint, mark it with a dotted line"""
-        ted = wx.TextEntryDialog(parent=None, message='Go to timepoint (ms):', caption='Goto',
-                                 defaultValue=str(intround(self.left / self.tconv)), #wx.EmptyString,
-                                 style=wx.TextEntryDialogStyle, pos=wx.DefaultPosition)
-        if ted.ShowModal() == wx.ID_OK: # if OK button has been clicked
-            response = ted.GetValue()
-            try:
-                left = float(response)
-                self.plot(left=left*self.tconv, width=self.width)
-                self.f.canvas.draw() # redraw the figure
-            except ValueError: # response wasn't a valid number
-                pass
-
-    def _cyclethousandssep(self):
-        """Cycles the tick formatter through thousands separators"""
-        if self.formatter.thousandsSep == ',':
-            self.formatter.thousandsSep = ' '
-        elif self.formatter.thousandsSep == ' ':
-            self.formatter.thousandsSep = None
-        else:
-            self.formatter.thousandsSep = ','
-        self.f.canvas.draw() # redraw the figure
-
-    def _togglebinedges(self):
-        """Toggles plotting of bin edges"""
-        self.plotbinedges = not self.plotbinedges
-        self._panx(npages=0) # replot and redraw by panning by 0
-
-    def _onmotion(self, event):
-        """Called during mouse motion over figure. Pops up neuron and
-        experiment info in a tooltip when hovering over a neuron row."""
-        if event.inaxes: # if mouse is inside the axes
-            nii = int(math.floor(event.ydata)) # use ydata to get index into sorted list of neurons
-            ni = self.nis[nii]
-            neuron = self.neurons[ni]
-            currentexp = None
-            for e in self.e.values(): # for all experiments
-                estart = (e.trange[0]-self.t0)/self.tconv
-                eend = (e.trange[1]-self.t0)/self.tconv
-                if estart < event.xdata  < eend:
-                    currentexp = e
-                    break # don't need to check any of the other experiments
-            tip = 't: %.3f ms\n' % event.xdata # print timepoint down to nearest us, in units of ms
-            tip += 'n%d: %d spikes' % (neuron.id, neuron.nspikes)
-            if currentexp == None:
-                tip += '\nno experiment'
-            else:
-                tip += '\nexperiment %s: %r' % (currentexp.id, currentexp.name)
-            self.tooltip.SetTip(tip) # update the tooltip
-            self.tooltip.Enable(True) # make sure it's enabled
-        else: # mouse is outside the axes
-            self.tooltip.Enable(False) # disable the tooltip
-
-    def _onkeypress(self, event):
-        """Called during a figure keypress"""
-        key = event.guiEvent.GetKeyCode() # wx dependent
-        #print key
-        # you can also just use the backend-neutral event.key, but that doesn't recognize as many keypresses, like pgup, pgdn, etc.
-        if not event.guiEvent.ControlDown(): # Ctrl key isn't down, wx dependent
-            if key == wx.WXK_RIGHT: # pan right
-                self._panx(+0.1)
-            elif key == wx.WXK_LEFT: # pan left
-                self._panx(-0.1)
-            elif key == wx.WXK_UP: # zoom in
-                self._zoomx(1.2)
-            elif key == wx.WXK_DOWN: # zoom out
-                self._zoomx(1/1.2)
-            elif key == wx.WXK_NEXT: # PGDN (page right)
-                self._panx(+1)
-            elif key == wx.WXK_PRIOR: # PGUP (page left)
-                self._panx(-1)
-            elif key == wx.WXK_HOME: # go to start of first Experiment
-                self._panx(left=self.experimentmarkers[0])
-            elif key == wx.WXK_END: # go to end of last Experiment
-                self._panx(left=self.experimentmarkers[-1]-self.width)
-            elif key == ord('['): # skip backwards to previous jump point
-                i = self.jumpts.searchsorted(self.left, side='left') # current position of left edge of the window in jumpts list
-                i = max(0, i-1) # decrement by 1, do bounds checking
-                self._panx(left=self.jumpts[i])
-            elif key == ord(']'): # skip forwards to next jump point
-                i = self.jumpts.searchsorted(self.left, side='right') # current position of left edge of the window in jumpts list
-                i = min(i, len(self.jumpts)-1) # bounds checking
-                self._panx(left=self.jumpts[i])
-            elif key == wx.WXK_RETURN: # go to position
-                self._goto()
-            elif key == ord(','): # cycle tick formatter through thousands separators
-                self._cyclethousandssep()
-            elif key == ord('B'): # toggle plotting of bin edges
-                self._togglebinedges()
-        else: # Ctrl key is down
-            if key == wx.WXK_LEFT: # skip backwards to previous experiment marker
-                i = self.experimentmarkers.searchsorted(self.left, side='left') # current position of left edge of the window in experimentmarkers list
-                i = max(0, i-1) # decrement by 1, do bounds checking
-                self._panx(left=self.experimentmarkers[i])
-            elif key == wx.WXK_RIGHT: # skip forwards to next experiment marker
-                i = self.experimentmarkers.searchsorted(self.left, side='right') # current position of left edge of the window in experimentmarkers list
-                i = min(i, len(self.experimentmarkers)-1) # bounds checking
-                self._panx(left=self.experimentmarkers[i])
-            elif key == wx.WXK_UP: # zoom in faster
-                self._zoomx(3.0)
-            elif key == wx.WXK_DOWN: # zoom out faster
-                self._zoomx(1/3.0)
 
 class RecordingRaster(BaseRecording):
     """Mix-in class that defines the raster related Recording methods"""
@@ -389,212 +129,6 @@ class RecordingRaster(BaseRecording):
                                                 jumpts=jumpts, binwidth=binwidth, relativet0=relativet0, units=units,
                                                 publication=publication)
     raster.__doc__ += '\n\n'+PopulationRaster.__doc__
-
-
-class Codes(object):
-    """A 2D array where each row is a neuron code, and each column
-    is a binary population word for that time bin, sorted LSB to MSB from top to bottom.
-    neurons is a list of Neurons, also from LSB to MSB. Order in neurons is preserved."""
-    def __init__(self, neurons=None, tranges=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE, shufflecodes=False):
-        self.neurons = neurons
-        self.tranges = tolist(tranges)
-        self.kind = kind
-        self.tres = tres
-        self.phase = phase
-        self.shufflecodes = shufflecodes
-        self.nis = [ neuron.id for neuron in self.neurons ]
-        self.nneurons = len(self.neurons)
-        self.nis2niisdict = dict(zip(self.nis, range(self.nneurons))) # make a dict from keys:self.nis, vals:range(self.nneurons). This converts from nis to niis (from neuron indices to indices into the binary code array self.c)
-
-    def nis2niis(self, nis=None):
-        """Converts from nis to niis (from neuron indices to indices into the binary code array self.c).
-        nis can be a sequence"""
-        try:
-            return [ self.nis2niisdict[ni] for ni in nis ]
-        except TypeError: # iteration over non-sequence, nis is a scalar
-            return self.nis2niisdict[nis]
-
-    def calc(self):
-        self.s = [] # stores the corresponding spike times for each neuron, just for reference
-        self.c = [] # stores the 2D code array
-        # append neurons in their order in self.neurons, store them LSB to MSB from top to bottom
-        for neuron in self.neurons:
-            codeo = neuron.code(tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase)
-            self.s.append(codeo.s) # each is a nested list (ie, 2D), each row will have different length
-            if self.shufflecodes:
-                c = codeo.c.copy() # make a copy (wanna leave the codeo's codetrain untouched)
-                np.random.shuffle(c) # shuffle each neuron's codetrain separately, in-place operation
-            else:
-                c = codeo.c # just a pointer
-            self.c.append(c) # flat list
-        self.t = codeo.t # stores the bin edges, just for reference. all bin times should be the same for all neurons, cuz they're all given the same trange. use the bin times of the last neuron
-        nneurons = len(self.neurons)
-        nbins = len(self.c[0]) # all entries in the list should be the same length
-        self.c = cat(self.c).reshape(nneurons, nbins)
-
-    def syncis(self):
-        """Returns synch indices, ie the indices of the bins for which all the
-        neurons in this Codes object have a 1 in them"""
-        return self.c.prod(axis=0).nonzero()[0] # take product down all rows, only synchronous events across all cells will survive
-
-    def syncts(self):
-        """Returns synch times, ie times of the left bin edges for which
-        all the neurons in this Codes object have a 1 in them"""
-        return self.t[self.syncis()]
-
-    def synctsms(self):
-        """Returns synch times in ms, to the nearest ms"""
-        return np.int32(np.round(self.syncts() / 1e3))
-
-    def copy(self):
-        """Returns a copy of the Codes object"""
-        return copy(self)
-    '''
-    # needs some testing:
-    def append(self, others):
-        """Adds other Codes objects appended in time (horizontally) to this Codes object.
-        Useful for appending Codes objects across Recordings ? (don't really need it
-        for appending across Experiments)"""
-        others = tolist(others)
-        for other in others:
-            assert other.neurons == self.neurons
-        codesos = [self] # list of codes objects
-        codesos.extend(others)
-        self.tranges = [ trange for codeso in codesos for trange in codeso.tranges ] # this tranges potentially holds multiple tranges from each codes objects, times the number of codes objects
-        self.calc() # recalculate this code with its new set of tranges
-    '''
-
-class CodeCorrPDF(object):
-    """A PDF of the correlations of the codes of all cell pairs (or of all cell pairs within
-    some torus of radii R=(R0, R1) in um) in this Recording. See Schneidman2006 fig 1d"""
-    def __init__(self, recording=None, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
-        self.r = recording
-        if experiments != None:
-            try:
-                assert experiments.__class__ == dictattr
-            except AssertionError: # maybe it's a seq of exp ids?
-                eids = toiter(experiments)
-                experiments = dictattr()
-                for eid in eids:
-                    experiments[eid] = self.r.e[eid]
-        self.e = experiments # save it, should be a dictattr if not None
-        if self.e != None: # specific experiments were specified
-            self.tranges = [ e.trange for e in self.e.values() ]
-        else:
-            self.tranges = [ self.r.trange ] # use the Recording's trange
-        self.kind = kind
-        self.tres = tres
-        self.phase = phase
-    '''
-    # this was used to save on calc time by seeing if a CCPDF object with the same attribs had already been calc'd, seems dumb and unsafe, commented out
-    def __eq__(self, other):
-        selfd = self.__dict__.copy()
-        otherd = other.__dict__.copy()
-        # Delete their n and c attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
-        [ d.__delitem__(key) for d in [selfd, otherd]
-          for key in ['corrs', 'n', 'c', 'crange', 'nbins', 'normed']
-          if d.has_key(key) ]
-        if self.__class__ == other.__class__ and selfd == otherd:
-            return True
-        else:
-            return False
-    '''
-    def calc(self, R=None, shuffleids=False):
-        """Works on ConstrainedNeurons, but is constrained even further if experiments
-        were passed and their tranges were used to generate self.tranges (see __init__)"""
-        if R:
-            assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
-        self.R = R
-        self.shuffleids = shuffleids
-        cnis = self.r.cn.keys() # ConstrainedNeuron indices
-        ncneurons = len(cnis)
-        # it's more efficient to precalculate the means and stds of each cell's codetrain,
-        # and then reuse them in calculating the correlation coefficients:
-        means = dict( ( cni, self.r.code(cni, tranges=self.tranges,
-                                              kind=self.kind,
-                                              tres=self.tres,
-                                              phase=self.phase).c.mean() ) for cni in cnis ) # store each code mean in a dict
-        stds  = dict( ( cni, self.r.code(cni, tranges=self.tranges,
-                                              kind=self.kind,
-                                              tres=self.tres,
-                                              phase=self.phase).c.std() ) for cni in cnis ) # store each code std in a dict
-
-        if self.shuffleids:
-            scnis = shuffle(cnis) # shuffled neuron ids, this is a control to see if it's the locality of neurons included in the analysis, or the number of neurons included that's important. It seems that both are.
-        else:
-            scnis = cnis
-
-        self.corrs = []
-        for cnii1 in range(ncneurons):
-            for cnii2 in range(cnii1+1, ncneurons):
-                cni1 = cnis[cnii1]; scni1 = scnis[cnii1]
-                cni2 = cnis[cnii2]; scni2 = scnis[cnii2]
-                if R == None or self.R[0] < dist(self.r.cn[scni1].pos, self.r.cn[scni2].pos) < self.R[1]:
-                    code1 = self.r.code(cni1, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
-                    code2 = self.r.code(cni2, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
-                    cc = ((code1 * code2).mean() - means[cni1] * means[cni2]) / (stds[cni1] * stds[cni2]) # (mean of product - product of means) / by product of stds
-                    self.corrs.append(cc)
-        self.corrs = array(self.corrs)
-        self.npairs = len(self.corrs)
-        '''
-        # simpler, but slower way:
-        self.corrs = [ self.r.codecorr(cnis[cnii1], cnis[cnii2], tranges=self.tranges, kind=self.kind, self.tres, self.phase)
-                       for cnii1 in range(0,ncneurons) for cnii2 in range(cnii1+1,ncneurons) ]
-        '''
-    def plot(self, figsize=(7.5, 6.5), crange=[-0.1, 0.5], limitstats=True, nbins=30, normed='pdf'):
-        """Plots the corrs. If limitstats, the stats displayed exclude any corr values that fall outside of crange"""
-        self.crange = crange
-        self.nbins = nbins
-        self.normed = normed
-        f = figure(figsize=figsize)
-        a = f.add_subplot(111)
-        try: # figure out the bin edges
-            bins = np.linspace(start=self.crange[0], stop=self.crange[1], num=self.nbins, endpoint=True)
-        except TypeError: # self.crange is None, let histogram() figure out the bin edges
-            bins = self.nbins
-        self.n, self.c = histogram(self.corrs, bins=bins, normed=self.normed)
-
-        if limitstats:
-            corrs = self.corrs[(self.corrs >= crange[0]) * (self.corrs <= crange[1])]
-            n, c = histogram(corrs, bins=bins, normed=self.normed)
-        else:
-            corrs = self.corrs
-            n = self.n
-            c = self.c
-        self.mean = mean(corrs)
-        self.median = median(corrs)
-        argmode = n.argmax()
-        self.mode = mean([c[argmode], c[argmode + 1]]) # find middle of tallest bin
-
-        try:
-            barwidth = (self.crange[1] - self.crange[0]) / float(self.nbins)
-        except TypeError: # self.crange is None, take width of first bin in self.c
-            barwidth = self.c[1] - self.c[0]
-        a.bar(left=c, height=n, width=barwidth, bottom=0, color='k', yerr=None, xerr=None, ecolor='k', capsize=3)
-        try:
-            a.set_xlim(self.crange)
-        except TypeError: # self.crange is None
-            pass
-        gcfm().frame.SetTitle(lastcmd())
-        #titlestr = 'neuron pair code correlation pdf'
-        #titlestr += '\n%s' % lastcmd()
-        titlestr = '%s' % lastcmd()
-        a.set_title(titlestr)
-        '''
-        if self.normed:
-            if self.normed == 'pmf':
-                a.set_ylabel('probability mass')
-            else:
-                a.set_ylabel('probability density')
-        else:
-            a.set_ylabel('count')
-        a.set_xlabel('correlation coefficient')
-        '''
-        a.text(0.99, 0.99, 'mean = %.3f\nmedian = %.3f\nmode = %.3f\nR = %r\nnpairs = %d'
-                            % (self.mean, self.median, self.mode, self.R, self.npairs), # add stuff to top right of plot
-                            transform = a.transAxes,
-                            horizontalalignment='right',
-                            verticalalignment='top')
 
 
 class RecordingCode(BaseRecording):
@@ -785,7 +319,7 @@ class BaseNetstate(object):
         pairmeans = []
         for i in range(0, nrows):
             for j in range(i+1, nrows):
-                if R == None or R[0] < dist(self.r.n[snis[i]].pos, self.r.n[snis[j]].pos) < R[1]:
+                if R == None or R[0] < core.dist(self.r.n[snis[i]].pos, self.r.n[snis[j]].pos) < R[1]:
                     pairmeans.append((c[i]*c[j]).mean()) # take a pair of rows, find the mean of their elementwise product
                 else:
                     pairmeans.append(None) # pair are outside the torus, ignore their pairmeans
@@ -1436,7 +970,7 @@ class NetstateNNplus1(BaseNetstate):
 
         return self
 
-    def plot(self, maxN=15, maxnsamples=10, xlim=(10**log10(0.9), 1e3), ylim=(1e-3, 1e1)):
+    def plot(self, maxN=15, maxnsamples=10, xlim=(10**np.log10(0.9), 1e3), ylim=(1e-3, 1e1)):
         """Plots the figure with error bars"""
 
         try: self.IdivS

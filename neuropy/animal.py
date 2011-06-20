@@ -1,41 +1,52 @@
 """Defines the Animal class"""
 
-# TODO: stop doing this:
-from core import *
-from core import _data # ensure it's imported, in spite of leading _
+from __future__ import division
+
+import os
+import StringIO
+
+from core import dictattr, TAB
+from track import Track
+
 
 class Animal(object):
-    """An Animal can have multiple Tracks.
-    Animals are identified by their unique id (e.g. ptc15)"""
-    def __init__(self, id=None, parent=_data):
+    """An animal can have multiple tracks.
+    Animals are identified by their globally unique name (e.g. ptc15)"""
+    def __init__(self, path):
         self.level = 1 # level in the hierarchy
-        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
-        self.d = parent # save the parent Data object
-        self.id = id
-        self.path = os.path.join(self.d.path, self.id)
-        self.d.a[self.id] = self # add/overwrite this Animal to its parent's dict of Animals, in case this Animal wasn't loaded by its parent
-        self.t = dictattr() # store Tracks in a dictionary with attrib access
+        self.treebuf = StringIO.StringIO() # string buffer to print tree hierarchy to
+        self.path = path
+        self.tr = dictattr() # store tracks in a dictionary with attrib access
+
+    def get_name(self):
+        return os.path.split(self.path)[-1]
+    
+    name = property(get_name)
+
+    def get_id(self):
+        return name
+
+    id = property(get_id)
 
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
 
     def writetree(self, string):
-        """Write to self's tree buffer and to parent's too"""
+        """Write to self's tree buffer"""
         self.treebuf.write(string)
-        self.d.writetree(string)
 
     def load(self):
-
-        from track import Track
-
         treestr = self.level*TAB + self.id + '/'
-        self.writetree(treestr+'\n'); print treestr # print string to tree hierarchy and screen
+        # print string to tree hierarchy and screen
+        self.writetree(treestr + '\n')
+        print(treestr)
         dirnames = [ dirname for dirname in os.listdir(self.path)
                      if os.path.isdir(os.path.join(self.path, dirname))
-                     and dirname.lower().startswith('tr') ] # collect all track folder names for this animal
+                     and dirname.lower().startswith('tr') ] # all track folder names for this animal
         for dirname in dirnames:
-            track = Track(id=None, name=dirname, parent=self) # make an instance using just the track name (let it figure out the track id)
-            track.load() # load the Track
-            self.t[track.id] = track # save it
-            self.__setattr__('t' + str(track.id), track) # add shortcut attrib
+            path = os.path.join(self.path, dirname)
+            track = Track(path, animal=self)
+            track.load()
+            self.tr[track.id] = track
+            self.__setattr__('tr' + str(track.id), track) # add shortcut attrib

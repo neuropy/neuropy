@@ -4,8 +4,6 @@ r"""Experimental and model neuronal and stimulus data analysis in Python
 
                                 level:
 
-                Data              0
-                  |
                 Animal            1
                   |
                 Track             2
@@ -20,9 +18,7 @@ r"""Experimental and model neuronal and stimulus data analysis in Python
 __authors__ = ["Martin Spacek"]
 __version__ = 0.2
 
-from core import *
-from core import _data # ensure it's imported, in spite of leading _, useful for user examination of default Data object
-
+from core import _movies
 from animal import Animal
 from track import Track
 from recording import Recording
