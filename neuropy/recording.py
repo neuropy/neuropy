@@ -7,6 +7,7 @@ import StringIO
 
 import numpy as np
 import pylab as pl
+from pylab import get_current_fig_manager as gcfm
 
 import core
 from core import PopulationRaster, Codes, CodeCorrPDF, rstrip, dictattr, warn
@@ -373,7 +374,7 @@ class NetstateIsingHist(BaseNetstate):
         a1 = f1.add_subplot(111)
         a1.hold(True)
         a1.bar(left=hibins, height=nhi, width=hibins[1]-hibins[0], color='g', edgecolor='g')
-        gcfm().frame.SetTitle(lastcmd())
+        gcfm().window.setWindowTitle(lastcmd())
         a1.set_title('hi histogram\n%s, nbits=%d, ngroups=%d, algorithm=%s' % (lastcmd(), self.nbits,
                                                                                self.ngroups, self.algorithm))
         a1.set_ylabel('probability density')
@@ -385,7 +386,7 @@ class NetstateIsingHist(BaseNetstate):
         a2 = f2.add_subplot(111)
         a2.hold(True)
         a2.bar(left=Jijbins, height=nJij, width=Jijbins[1]-Jijbins[0], color='m', edgecolor='m')
-        gcfm().frame.SetTitle(lastcmd())
+        gcfm().window.setWindowTitle(lastcmd())
         a2.set_title('Jij histogram\n%s, nbits=%d, ngroups=%d, algorithm=%s' % (lastcmd(), self.nbits,
                                                                                 self.ngroups, self.algorithm))
         a2.set_ylabel('probability density')
@@ -451,7 +452,7 @@ class NetstateNspikingPMF(BaseNetstate):
             a.set_xlim(xlim)
         if ylim:
             a.set_ylim(ylim)
-        gcfm().frame.SetTitle(lastcmd())
+        gcfm().window.setWindowTitle(lastcmd())
         a.set_xlabel('number of spiking cells in a bin')
         a.set_ylabel('probability')
 
@@ -578,7 +579,7 @@ class NetstateScatter(BaseNetstate):
         '''
         a.plot(pobserved/norm, pexpected/norm, 'k.')
         '''
-        gcfm().frame.SetTitle(lastcmd())
+        gcfm().window.setWindowTitle(lastcmd())
         missingcodeis = (self.pobserved == 0).nonzero()[0]
         nmissing = len(missingcodeis)
         percentmissing = nmissing / float(2**self.nbits) * 100
@@ -696,7 +697,7 @@ class NetstateI2vsIN(BaseNetstate):
         except AttributeError: self.calc()
 
         f = figure()
-        gcfm().frame.SetTitle(lastcmd())
+        gcfm().window.setWindowTitle(lastcmd())
         a = f.add_subplot(111)
         a.plot(self.INs, self.I2divIN, 'r.')
         a.set_xlim(xlim)
@@ -786,7 +787,7 @@ class NetstateDJSHist(BaseNetstate):
                                  edgecolor=color[model])
         a1.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
         a1.set_xlim(xmin=10**logrange[0], xmax=10**logrange[1])
-        gcfm().frame.SetTitle(lastcmd())
+        gcfm().window.setWindowTitle(lastcmd())
         a1.set_title('%s' % lastcmd())
         if publication:
             a1.set_xticklabels(['', '0.001', '0.01', '0.1', '']) # hack!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -810,7 +811,7 @@ class NetstateDJSHist(BaseNetstate):
             nratios = histogram(self.DJSratios, bins=x, normed=False)[0] # bin heights for the DJSratios
             a2.bar(left=x, height=nratios, width=barwidths, color='g', edgecolor='g')
             a2.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
-            gcfm().frame.SetTitle(lastcmd())
+            gcfm().window.setWindowTitle(lastcmd())
             a2.set_title('Jensen-Shannon divergence ratios histogram\n%s' % lastcmd())
             a2.set_ylabel('number of groups of %d cells' % self.nbits)
             a2.set_xlabel('DJS ratio (%s / %s)' % (self.models[1], self.models[0]))
@@ -883,7 +884,7 @@ class NetstateS1INvsN(BaseNetstate):
         except AttributeError: self.calc()
 
         f = figure()
-        gcfm().frame.SetTitle(lastcmd())
+        gcfm().window.setWindowTitle(lastcmd())
         a = f.add_subplot(111)
         a.hold(True)
         for n, S1s in zip(self.N, self.S1ss): # plot all the samples before plotting the means with errorbars
@@ -977,7 +978,7 @@ class NetstateNNplus1(BaseNetstate):
         except AttributeError: self.calc(maxN=maxN, maxnsamples=maxnsamples)
 
         f = figure()
-        gcfm().frame.SetTitle(lastcmd())
+        gcfm().window.setWindowTitle(lastcmd())
         a = f.add_subplot(111)
         a.hold(True)
         for n, row in zip(self.N, self.IdivS): # underplot the samples for each value of N
@@ -1013,7 +1014,7 @@ class NetstateNNplus1(BaseNetstate):
         # plot the distributions of IdivS
         for ni, n in enumerate(self.N):
             f = figure()
-            gcfm().frame.SetTitle('%s IdivS distrib for N=%d' % (lastcmd(), n))
+            gcfm().window.setWindowTitle('%s IdivS distrib for N=%d' % (lastcmd(), n))
 
             notmaskedis = self.IdivS[ni].mask==False # indexes the non-masked entries in IdivS, for this ni
 
@@ -1136,7 +1137,7 @@ class NetstateCheckcells(BaseNetstate):
             nis = toiter(nis)
         for ni in nis:
             f = figure()
-            gcfm().frame.SetTitle('%s for ni=%d' % (lastcmd(), ni))
+            gcfm().window.setWindowTitle('%s for ni=%d' % (lastcmd(), ni))
             a = f.add_subplot(111)
             a.hold(True)
             # plot all the samples first

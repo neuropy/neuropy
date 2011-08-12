@@ -27,8 +27,7 @@ import scipy.signal as sig
 import matplotlib as mpl
 import matplotlib.cm
 import pylab as pl
-# stop using this, or at least convert all uses of gcfm from wx to qt:
-#from pylab import get_current_fig_manager as gcfm
+from pylab import get_current_fig_manager as gcfm
 #import wx
 #from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 
@@ -270,29 +269,29 @@ class PopulationRaster(object):
             estart = etrange[0]-self.t0
             eend = etrange[1]-self.t0
             if left <=  estart and estart <= left+width: # experiment start point is within view
-                startlines = self.a.vlines(x=estart/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp start, convert to ms
-                startlines[0].set_color((0, 1, 0)) # set to bright green
+                startlines = self.a.vlines(x=estart/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], color='k', linestyle='-') # marks exp start, convert to ms
+                #startlines[0].set_color((0, 1, 0)) # set to bright green, can't do this for line coll
             if left <= eend and eend <= left+width: # experiment end point is within view
-                endlines = self.a.vlines(x=eend/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], fmt='k-') # marks exp end, convert t
-                endlines[0].set_color((1, 0, 0)) # set to bright red
+                endlines = self.a.vlines(x=eend/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], color='k', linestyle='-') # marks exp end, convert t
+                #endlines[0].set_color((1, 0, 0)) # set to bright red, can't do this for line coll
         # plot the bin edges. Not taking into account self.t0 for now, assuming it's 0
         if self.plotbinedges:
             leftbinedge = (left // self.binwidth + 1)*self.binwidth
             binedges = np.arange(leftbinedge, left+width, self.binwidth)
-            binlines = self.a.vlines(x=binedges/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], fmt='b:') # convert t
+            binlines = self.a.vlines(x=binedges/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], color='b', linestyle=':') # convert t
         # plot the rasters
         for nii, ni in enumerate(self.nis):
             neuron = self.neurons[ni]
             x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / self.tconv # make spike times always relative to t0, convert t
             if not self.publication:
-                self.a.vlines(x=x, ymin=nii, ymax=nii+1, fmt='k-')
+                self.a.vlines(x=x, ymin=nii, ymax=nii+1, color='k', linestyle='-')
             else:
-                self.a.vlines(x=x, ymin=nii-0.5, ymax=nii+0.5, fmt='k-')
+                self.a.vlines(x=x, ymin=nii-0.5, ymax=nii+0.5, color='k', linestyle='-')
         self.a.set_xlim(left/self.tconv, (left+width)/self.tconv) # convert t
 
     def _panx(self, npages=None, left=None):
         """Pans the raster along the x axis by npages, or to position left"""
-        self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
+        self.a.lines = [] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
         if left != None: # use left
             self.plot(left=left, width=self.width)
         else: # use npages instead
@@ -301,7 +300,7 @@ class PopulationRaster(object):
 
     def _zoomx(self, factor):
         """Zooms the raster along the x axis by factor"""
-        self.a.lines=[] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
+        self.a.lines = [] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
         centre = (self.left + self.left+self.width) / 2.0
         width = self.width / float(factor)
         left = centre - width / 2.0
@@ -597,7 +596,7 @@ class CodeCorrPDF(object):
             a.set_xlim(self.crange)
         except TypeError: # self.crange is None
             pass
-        #gcfm().frame.SetTitle(lastcmd())
+        gcfm().window.setWindowTitle(lastcmd())
         #titlestr = 'neuron pair code correlation pdf'
         #titlestr += '\n%s' % lastcmd()
         titlestr = '%s' % lastcmd()
