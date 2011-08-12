@@ -238,11 +238,11 @@ class PopulationRaster(object):
                 self.a.xaxis.set_major_locator(NeuropyAutoLocator()) # better behaved tick locator
                 self.a.xaxis.set_major_formatter(self.formatter)
                 self.a.set_yticks([]) # turn off y axis
-            gcfm().frame.SetTitle(lastcmd())
-            self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
-            self.tooltip.Enable(False) # leave disabled for now
-            self.tooltip.SetDelay(0) # set popup delay in ms
-            gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
+            gcfm().window.setWindowTitle(lastcmd())
+            #self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
+            #self.tooltip.Enable(False) # leave disabled for now
+            #self.tooltip.SetDelay(0) # set popup delay in ms
+            #gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
             self.a.set_xlabel('time (%s)' % self.units)
             if not self.publication:
                 self.yrange = (0, len(self.nis))
