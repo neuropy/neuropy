@@ -4,8 +4,9 @@ from __future__ import division
 
 import os
 import StringIO
+import datetime
 
-from core import dictattr, rstrip, eof, TAB, PTCSHeader
+from core import dictattr, rstrip, eof, TAB, PTCSHeader, EPOCH
 from neuron import Neuron
 
 
@@ -63,6 +64,12 @@ class Sort(object):
                 self.n[neuron.id] = neuron # save it
             assert eof(f), 'File %s has unexpected length' % self.path
 
+    def get_datetime(self):
+        """Return datetime object, calculated from header.datetime days since EPOCH"""
+        return EPOCH + datetime.timedelta(days=self.header.datetime)
+
+    datetime = property(get_datetime)
+
     def loadspk(self):
         """Load neurons from multiple .spk files"""
         fnames = [ fname for fname in os.listdir(self.path)
@@ -87,7 +94,7 @@ class Sort(object):
             #self.__setattr__('cn' + str(cneuron.id), cneuron) # add shortcut attrib
             
             try: # binding neuron (x, y) positions
-                neuron.pos = neuron2pos[neuron.id]
+                neuron.record.xpos, neuron.record.ypos = neuron2pos[neuron.id]
                 #cneuron.pos = neuron2pos[cneuron.id]
             except NameError: # there was no neuron2pos file
                 pass

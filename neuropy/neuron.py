@@ -11,7 +11,8 @@ import pylab as pl
 import matplotlib as mpl
 
 from core import rstrip, getargstr, iterable, tolist, intround, CODETRES, CODEPHASE, CODEKIND
-from core import MSEQ16, MSEQ32, mean_accum, lastcmd, RevCorrWindow, PTCSNeuronRecord
+from core import MSEQ16, MSEQ32, mean_accum, lastcmd, RevCorrWindow
+from core import PTCSNeuronRecord, SPKNeuronRecord
 from dimstimskeletal import Movie
 
 
@@ -27,20 +28,23 @@ class BaseNeuron(object):
         self.sort = sort
 
     def get_name(self):
-        fname = os.path.split(self.path)[-1]
-        return os.path.splitext(fname)[0]
-    
+        fname = os.path.split(self.path)[-1] # pathless
+        return os.path.splitext(fname)[0] # extensionless
+
     name = property(get_name)
 
-    def parse_id_from_spkfname(self):
-        # everything from just after the last '_t' to the end of the name,
-        # should be all numeric
-        return int(self.name.rsplit('_t', 1)[-1])
-
-    def get_nspikes(self):
-        return len(self.spikes)
-        
-    nspikes = property(get_nspikes)
+    id = property(lambda self: self.record.nid)
+    descr = property(lambda self: self.record.descr)
+    #clusterscore = property(lambda self: self.record.clusterscore)
+    pos = property(lambda self: (self.record.xpos, self.record.ypos))
+    nchans = property(lambda self: self.record.nchans)
+    chans = property(lambda self: self.record.chans)
+    maxchan = property(lambda self: self.record.maxchan)
+    wavedata = property(lambda self: self.record.wavedata)
+    #stddata = property(lambda self: self.record.stddata)
+    nspikes = property(lambda self: self.record.nspikes)
+    spikes = property(lambda self: self.record.spikes)
+    
     '''
     def tree(self):
         """Print tree hierarchy"""
@@ -64,15 +68,17 @@ class BaseNeuron(object):
             self.loadspk()
     '''
     def loadptcs(self, f, header):
-        neuronrecord = PTCSNeuronRecord(self, header)
-        neuronrecord.read(f)
+        """Read in the next neuron record in an open .ptcs file"""
+        nrec = PTCSNeuronRecord(header)
+        nrec.read(f)
+        self.record = nrec
         self.post_load()
 
     def loadspk(self):
         """Read in a .spk file containing purely spike times"""
-        self.id = self.parse_id_from_spkfname()
-        with open(self.path, 'rb') as f:
-            self.spikes = np.fromfile(f, dtype=np.int64) # read in all spike times in us
+        nrec = SPKNeuronRecord(self.path)
+        nrec.read()
+        self.record = nrec
         self.post_load()
 
     def post_load(self):
