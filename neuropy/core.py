@@ -195,18 +195,24 @@ class PTCSNeuronRecord(object):
         self.chans = np.fromfile(f, dtype=np.uint64, count=self.nchans) # chanids
         self.maxchan = int(np.fromfile(f, dtype=np.uint64, count=1)) # maxchanid
         self.nt = int(np.fromfile(f, dtype=np.uint64, count=1)) # nt
-        self.nwavedatabytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # nwavedatabytes, padded
-        wdfp = f.tell()
-        self.wavedata = np.fromfile(f, dtype=self.wavedtype, count=self.nchans*self.nt) # wavedata (uV)
-        self.wavedata.shape = self.nchans, self.nt # reshape
-        f.seek(wdfp + self.nwavedatabytes) # skip any pad bytes
-        self.nwavestdbytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # nwavestdbytes, padded
-        wsfp = f.tell()
-        self.wavestd = np.fromfile(f, dtype=self.wavedtype, count=self.nchans*self.nt) # wavestd (uV)
-        self.wavestd.shape = self.nchans, self.nt # reshape
-        f.seek(wsfp + self.nwavestdbytes) # skip any pad bytes
+        self.nwavedatabytes, self.wavedata = self.read_wave(f)
+        self.nwavestdbytes, self.wavestd = self.read_wave(f)
         self.nspikes = int(np.fromfile(f, dtype=np.uint64, count=1)) # nspikes
         self.spikes = np.fromfile(f, dtype=np.uint64, count=self.nspikes) # spike timestamps (us)
+
+    def read_wave(self, f):
+        """Read wavedata/wavestd bytes"""
+        print('nid: %d' % self.nid)
+        nbytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # nwavedata/nwavestd bytes, padded
+        print('nbytes: %d' % nbytes)
+        fp = f.tell()
+        count = nbytes // self.header.nsamplebytes # trunc to ignore any pad bytes
+        print('count: %d' % count)
+        X = np.fromfile(f, dtype=self.wavedtype, count=count) # wavedata/wavestd (uV)
+        if nbytes != 0:
+            X.shape = self.nchans, self.nt # reshape
+        f.seek(fp + nbytes) # skip any pad bytes
+        return nbytes, X
 
 
 class SPKNeuronRecord(object):
