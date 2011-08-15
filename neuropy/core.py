@@ -215,8 +215,31 @@ class PTCSNeuronRecord(object):
         return nbytes, X
 
 
+class SPKHeader(object):
+    """Represents a folder containing neurons in .spk files. Similar to a
+    PTCSHeader, but much more impoverished"""
+    def __init__(self, path):
+        self.path = path
+        fnames = [ fname for fname in os.listdir(self.path)
+                   if os.path.isfile(os.path.join(self.path, fname))
+                   and fname.endswith('.spk') ] # spike filenames
+        self.spkfnames = sorted(fnames)
+        self.nspikes = 0
+
+    def read(self, neuron):
+        neuron.loadspk() # load the neuron
+        self.nspikes += neuron.nspikes
+        # look for neuron2pos.py file, which contains a dict mapping neuron id to (x, y) position
+        if 'neuron2pos.py' in os.listdir(self.path):
+            oldpath = os.getcwd()
+            os.chdir(self.path)
+            from neuron2pos import neuron2pos
+            neuron.record.xpos, neuron.record.ypos = neuron2pos[neuron.id]
+            os.chdir(oldpath)
+            
+
 class SPKNeuronRecord(object):
-    """Represents the spike times in a simple .spk file as a record, similar to a
+    """Represents the spike times in a simple .spk file as a record. Similar to a
     PTCSNeuronRecord, but much more impoverished"""
     def __init__(self, fname):
         self.fname = fname
@@ -225,7 +248,7 @@ class SPKNeuronRecord(object):
         """Return everything from just after the last '_t' to the end of the
         fname, should be all numeric"""
         name = os.path.split(self.fname)[-1] # pathless
-        name = os.path.splitext(name)[0] # extenionless
+        name = os.path.splitext(name)[0] # extensionless
         return int(name.rsplit('_t', 1)[-1]) # id
 
     def read(self):

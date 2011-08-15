@@ -6,7 +6,7 @@ import os
 import StringIO
 import datetime
 
-from core import dictattr, rstrip, eof, TAB, PTCSHeader, EPOCH
+from core import dictattr, rstrip, eof, TAB, PTCSHeader, SPKHeader, EPOCH
 from neuron import Neuron
 
 
@@ -20,12 +20,15 @@ class Sort(object):
         self.id = id
         self.r = recording
         self.n = dictattr() # store Neurons in a dictionary with attrib access
-        #self.cn = dictattr() # store ConstrainedNeurons in a dictionary with attrib acces
 
-    def get_name(self):
-        return os.path.split(self.path)[-1]
-
-    name = property(get_name)
+    name = property(lambda self: os.path.split(self.path)[-1])
+    nneurons = property(lambda self: len(self.n))
+    nspikes = property(lambda self: self.header.nspikes)
+    # .ptcs specific properties:
+    # datetime object, calculated from header.datetime days since EPOCH"""
+    datetime = property(lambda self: EPOCH + datetime.timedelta(days=self.header.datetime))
+    pttype = property(lambda self: self.header.pttype)
+    chanpos = property(lambda self: self.header.chanpos)
 
     def tree(self):
         """Print tree hierarchy"""
@@ -64,37 +67,11 @@ class Sort(object):
                 self.n[neuron.id] = neuron # save it
             assert eof(f), 'File %s has unexpected length' % self.path
 
-    def get_datetime(self):
-        """Return datetime object, calculated from header.datetime days since EPOCH"""
-        return EPOCH + datetime.timedelta(days=self.header.datetime)
-
-    datetime = property(get_datetime)
-
     def loadspk(self):
         """Load neurons from multiple .spk files"""
-        fnames = [ fname for fname in os.listdir(self.path)
-                   if os.path.isfile(os.path.join(self.path, fname))
-                   and fname.endswith('.spk') ] # spike filenames
-        
-        # Look for neuron2pos.py file, which contains a dict mapping from neuron id to (x, y) position
-        if 'neuron2pos.py' in os.listdir(self.path):
-            os.chdir(self.path)
-            from neuron2pos import neuron2pos
-        
-        for fname in fnames:
-            path = os.path.join(self.path, fname)
+        self.header = SPKHeader(self.path)
+        for spkfname in self.header.spkfnames:
+            path = os.path.join(self.path, spkfname)
             neuron = Neuron(path, sort=self)
-            neuron.loadspk() # load the neuron
+            self.header.read(neuron)
             self.n[neuron.id] = neuron # save it
-            #self.__setattr__('n' + str(neuron.id), neuron) # add shortcut attrib
-            # repeat for ConstrainedNeurons
-            #cneuron = ConstrainedNeuron(path, sort=self)
-            #cneuron.load()
-            #self.cn[cneuron.id] = cneuron
-            #self.__setattr__('cn' + str(cneuron.id), cneuron) # add shortcut attrib
-            
-            try: # binding neuron (x, y) positions
-                neuron.record.xpos, neuron.record.ypos = neuron2pos[neuron.id]
-                #cneuron.pos = neuron2pos[cneuron.id]
-            except NameError: # there was no neuron2pos file
-                pass
