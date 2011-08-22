@@ -44,8 +44,7 @@ class NeuropyWindow(QtGui.QMainWindow):
         ipyqtwidget.config = load_default_config() # doesn't seem to work
         
         kernel_manager = QtKernelManager()
-        # lots of possible kwargs here        
-        kernel_manager.start_kernel(pylab='qt') # 'qt' and 'inline' are best
+        kernel_manager.start_kernel()
         kernel_manager.start_channels()
         ipyqtwidget.kernel_manager = kernel_manager
         ipyqtwidget.gui_completion = False
