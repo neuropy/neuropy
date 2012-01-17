@@ -39,9 +39,10 @@ class NeuropyWindow(QtGui.QMainWindow):
         #ipyqtwidget = IPythonWidget(parent=self, local_kernel=True)
         ipyqtwidget = RichIPythonWidget(parent=self, local_kernel=True) # necessary for inline
         self.ipyqtwidget = ipyqtwidget
-        
-        ## TODO: get config to work somehow
-        ipyqtwidget.config = load_default_config() # doesn't seem to work
+        config = load_default_config()
+        # this doesn't seem to work as intended:
+        config.InteractiveShellApp.exec_lines.append('from recording import Recording')
+        self.ipyqtwidget.config = config
         
         kernel_manager = QtKernelManager()
         kernel_manager.start_kernel()
@@ -72,8 +73,6 @@ class NeuropyWindow(QtGui.QMainWindow):
         ## TODO: get neuropy imports to work properly without messing up ipython display header
         ## need to be done after window and ipyqtwidget init are finished
 
-        #"from __future__ import division\n"
-        #"import numpy as np\n"
 
     @QtCore.pyqtSlot()
     def on_actionOpen_triggered(self):

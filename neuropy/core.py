@@ -202,12 +202,9 @@ class PTCSNeuronRecord(object):
 
     def read_wave(self, f):
         """Read wavedata/wavestd bytes"""
-        print('nid: %d' % self.nid)
         nbytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # nwavedata/nwavestd bytes, padded
-        print('nbytes: %d' % nbytes)
         fp = f.tell()
         count = nbytes // self.header.nsamplebytes # trunc to ignore any pad bytes
-        print('count: %d' % count)
         X = np.fromfile(f, dtype=self.wavedtype, count=count) # wavedata/wavestd (uV)
         if nbytes != 0:
             X.shape = self.nchans, self.nt # reshape
@@ -972,7 +969,10 @@ class Ising(object):
         self.model.verbose = False
 
         # Fit the model
-        self.model.fit(K, algorithm=algorithm)
+        try:
+            self.model.fit(K, algorithm=algorithm)
+        except:
+            import pdb; pdb.set_trace()
 
         self.hi = self.model.params[0:nbits]
         self.Jij = self.model.params[nbits:nbits+npairs]

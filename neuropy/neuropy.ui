@@ -15,7 +15,7 @@
   </property>
   <property name="windowIcon">
    <iconset>
-    <normaloff>res/chart.png</normaloff>res/chart.png</iconset>
+    <normaloff>res/RF.png</normaloff>res/RF.png</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -91,6 +91,10 @@
    <addaction name="actionShell"/>
   </widget>
   <action name="actionOpen">
+   <property name="icon">
+    <iconset>
+     <normaloff>res/document-open.svg</normaloff>res/document-open.svg</iconset>
+   </property>
    <property name="text">
     <string>&amp;Open</string>
    </property>
@@ -102,6 +106,10 @@
    </property>
   </action>
   <action name="actionQuit">
+   <property name="icon">
+    <iconset>
+     <normaloff>res/system-shutdown.svg</normaloff>res/system-shutdown.svg</iconset>
+   </property>
    <property name="text">
     <string>&amp;Quit</string>
    </property>
@@ -118,7 +126,7 @@
   <action name="actionAboutNeuropy">
    <property name="icon">
     <iconset>
-     <normaloff>res/chart.png</normaloff>res/chart.png</iconset>
+     <normaloff>res/RF.png</normaloff>res/RF.png</iconset>
    </property>
    <property name="text">
     <string>About neuropy...</string>
@@ -139,6 +147,10 @@
    </property>
   </action>
   <action name="actionShell">
+   <property name="icon">
+    <iconset>
+     <normaloff>res/utilities-terminal.svg</normaloff>res/utilities-terminal.svg</iconset>
+   </property>
    <property name="text">
     <string>&amp;Shell</string>
    </property>

@@ -4,13 +4,15 @@ from __future__ import division
 
 import os
 import StringIO
+import random
 
 import numpy as np
 import pylab as pl
 from pylab import get_current_fig_manager as gcfm
 
 import core
-from core import PopulationRaster, Codes, CodeCorrPDF, rstrip, dictattr, warn
+from core import PopulationRaster, Codes, CodeCorrPDF, rstrip, dictattr, warn, binarray2int
+from core import histogram, histogram2d
 from core import TAB, CODEKIND, CODETRES, CODEPHASE, CODEWORDLEN
 from experiment import Experiment
 from sort import Sort
@@ -221,9 +223,11 @@ class BaseNetstate(object):
     def codes(self, nis=None, shufflecodes=False):
         """Returns the appropriate Codes object, depending on the recording
         and experiments defined for this Netstate object"""
-        cneurons = [ self.r.cn[ni] for ni in nis ] # build up list of ConstrainedNeurons, according to nis
+        neurons = [ self.r.n[ni] for ni in nis ] # build up list of neurons, according to nis
         # get codes for this Recording constrained to when stimuli were on screen
-        return self.r.codes(neurons=cneurons,
+        ## TODO: codes are not currently constrained to when stimuli are on the screen,
+        ## although this shouldn't be a big deal most of the time...
+        return self.r.codes(neurons=neurons,
                             experiments=self.e,
                             kind=self.kind,
                             tres=self.tres,
@@ -267,7 +271,7 @@ class BaseNetstate(object):
             nis = random.sample(self.cs.nis, CODEWORDLEN) # randomly sample CODEWORDLEN bits of the nis
         intcodes = self.get_intcodes(nis=nis)
         nbits = len(nis)
-        p, bins = histogram(intcodes, bins=arange(2**nbits), normed='pmf')
+        p, bins = histogram(intcodes, bins=np.arange(2**nbits), normed='pmf')
         return p, bins
 
     def intcodesFPDF(self, nis=None):
@@ -276,7 +280,7 @@ class BaseNetstate(object):
         if nis == None:
             nis = random.sample(self.cs.nis, CODEWORDLEN) # randomly sample CODEWORDLEN bits of the nis
         nbits = len(nis)
-        intcodes = arange(2**nbits)
+        intcodes = np.arange(2**nbits)
         #neurons = dict( (ni, self.neurons[ni]) for ni in nis ) # this is like dict comprehension, pretty awesome!
         codeso = self.codes(nis=nis)
         spikeps = [] # list spike probabilities for all neurons
@@ -420,7 +424,7 @@ class NetstateNspikingPMF(BaseNetstate):
             # collect observances of the number of cells spiking for each pop code time bin
             self.nspiking[shufflecodes] = [ np.binary_repr(word).count('1') for word in self.words[shufflecodes] ] # convert the word at each time bin to binary, count the number of 1s in it. np.binary_repr() is a bit faster than using neuropy.core.bin()
             self.pnspiking[shufflecodes], self.bins[shufflecodes] = histogram(self.nspiking[shufflecodes],
-                                                                              bins=arange(self.nneurons+1),
+                                                                              bins=np.arange(self.nneurons+1),
                                                                               normed='pmf') # want all probs to add to 1, not their area, so use pmf
 
         assert (self.bins[False] == self.bins[True]).all() # paranoid, just checking
@@ -486,7 +490,7 @@ class NetstateScatter(BaseNetstate):
             self.nbits = min(len(self.nis), self.nbits) # make sure nbits isn't > len(nis)
 
         self.intcodes = self.get_intcodes(nis=self.nis, shufflecodes=self.shufflecodes)
-        self.pobserved, self.observedwords = histogram(self.intcodes, bins=arange(2**self.nbits), normed='pmf')
+        self.pobserved, self.observedwords = histogram(self.intcodes, bins=np.arange(2**self.nbits), normed='pmf')
         if self.model == 'indep':
             self.pexpected, self.expectedwords = self.intcodesFPDF(nis=self.nis) # expected, assuming independence
         elif self.model == 'ising':
@@ -1063,7 +1067,7 @@ class NetstateCheckcells(BaseNetstate):
 
         # build up joint pdf of the nicode and nothersactive
         xedges = np.array([0, 1, 2]) # values 0 and 1, plus 2 which is needed as the rightmost bin edge for histogram2d (annoying)
-        yedges = arange(nothers+2) # anywhere from 0 up to and including nothers, plus nothers+1 as the rightmost bin edge
+        yedges = np.arange(nothers+2) # anywhere from 0 up to and including nothers, plus nothers+1 as the rightmost bin edge
         bins = [xedges, yedges]
 
         jpdf, xedgesout, yedgesout = histogram2d(nicode, nothersactive, bins, normed=False) # generate joint pdf, nicode are in the rows, nothersactive are in the columns, leave it unnormalized, just counts
@@ -1092,7 +1096,7 @@ class NetstateCheckcells(BaseNetstate):
             while nCr(len(self.othernis), len(self.othernis)-less) < nsamples:
                 less += 1
             nothers = len(self.othernis) - 1 - less # -1 to remove ni, -less again to allow for at least nsamples combos of othernis
-        self.N = arange(nothers+1)
+        self.N = np.arange(nothers+1)
 
         try: self.jpdfss
         except AttributeError:

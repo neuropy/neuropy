@@ -5,6 +5,7 @@ from __future__ import division
 
 import struct
 from copy import copy
+import cStringIO
 
 import numpy as np
 
@@ -31,6 +32,7 @@ class StaticParams(dictattr):
 class DynamicParams(dictattr):
     pass
 
+
 class Variable(object):
     """A dynamic experiment parameter that varies over sweeps"""
     def __init__(self, vals, dim=0, shuffle=False, random=False):
@@ -43,6 +45,7 @@ class Variable(object):
         return iter(self.vals)
     def __len__(self):
         return len(self.vals)
+
 
 class Variables(dictattr):
     """A collection of Variable objects, attributed by their name.
@@ -59,11 +62,13 @@ class Variables(dictattr):
             variable.name = varname # store the Variable's name in its own .name field
         dictattr.__setattr__(self, varname, variable)
 
+
 class Runs(object):
     """Stores info about experiment runs"""
     def __init__(self, n=1, reshuffle=False):
         self.n = n # number of runs
         self.reshuffle = reshuffle # reshuffle/rerandomize on every run those variables with their shuffle/random flags set?
+
 
 class BlankSweeps(object):
     """Stores info about blank sweeps in an experiment"""
@@ -71,6 +76,7 @@ class BlankSweeps(object):
         self.T = T # period (blank sweep every T sweeps)
         self.sec = sec # duration (sec)
         self.shuffle = shuffle
+
 
 class Dimension(object):
     """An experiment dimension, all of whose Variables co-vary"""
@@ -233,6 +239,7 @@ class Experiment(object):
         self.variables = variables # Variables object
         self.runs = runs # Runs object
         self.blanksweeps = blanksweeps # BlankSweeps object
+
 
 class Bar(Experiment):
     pass
