@@ -45,6 +45,7 @@
     <addaction name="action_ptc15_r87"/>
     <addaction name="action_ptc15_r92"/>
     <addaction name="action_ptc17_r03"/>
+    <addaction name="action_ptc21_r71"/>
     <addaction name="separator"/>
     <addaction name="actionShell"/>
     <addaction name="separator"/>
@@ -87,6 +88,7 @@
    <addaction name="action_ptc15_r87"/>
    <addaction name="action_ptc15_r92"/>
    <addaction name="action_ptc17_r03"/>
+   <addaction name="action_ptc21_r71"/>
    <addaction name="separator"/>
    <addaction name="actionShell"/>
   </widget>
@@ -177,6 +179,14 @@
    </property>
    <property name="toolTip">
     <string>ptc15.r92</string>
+   </property>
+  </action>
+  <action name="action_ptc21_r71">
+   <property name="text">
+    <string>ptc21.r71</string>
+   </property>
+   <property name="toolTip">
+    <string>ptc21.r71</string>
    </property>
   </action>
  </widget>

@@ -71,7 +71,8 @@ class NeuropyWindow(QtGui.QMainWindow):
         self.path = DATAPATH
 
         ## TODO: get neuropy imports to work properly without messing up ipython display header
-        ## need to be done after window and ipyqtwidget init are finished
+        ## need to be done after window and ipyqtwidget init are finished. This may have been an
+        ## ipython bug that's been since fixed
 
 
     @QtCore.pyqtSlot()
@@ -98,6 +99,11 @@ class NeuropyWindow(QtGui.QMainWindow):
     @QtCore.pyqtSlot()
     def on_action_ptc17_r03_triggered(self):
         path = os.path.join(DATAPATH, 'ptc17/tr1/03-tr1-mseq32_40ms')
+        self.open_recording(path)
+
+    @QtCore.pyqtSlot()
+    def on_action_ptc21_r71_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc21/tr5c/71-tr5c-flashgrating_40ms')
         self.open_recording(path)
 
     def open_recording(self, path):
@@ -131,7 +137,7 @@ class NeuropyWindow(QtGui.QMainWindow):
         text = """
         <h2>neuropy %s</h2>
         <p>A tool for neuronal spike data analysis</p>
-        <p>Copyright &copy; 2006-2011 Martin Spacek<br>
+        <p>Copyright &copy; 2006-2012 Martin Spacek<br>
            University of British Columbia</p>
         <p>Python %s, Qt %s, PyQt %s<br>
         %s</p>""" % (__version__, platform.python_version(),

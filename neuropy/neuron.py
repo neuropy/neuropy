@@ -900,7 +900,90 @@ class NeuronRevCorr(BaseNeuron):
     stc.__doc__ += getargstr(STC.__init__)
 
 
-class Neuron(NeuronRevCorr,
+class Tune(object):
+    """Stimulus tuning analysis object"""
+    def __init__(self, neuron=None, experiment=None):
+        self.neuron = neuron
+        self.experiment = experiment
+        self.done = False # hasn't yet successfully completed its calc() method
+        
+    def calc(self, tdelay=None):
+        """tdelay is in us"""
+        spikes = self.neuron.spikes
+        din = self.experiment.din
+        ndin = len(din)
+        sweepis = np.unique(din[:, 1]) # all possible sweep indices
+        if tdelay == None:
+            if 'flash' in self.experiment.name: # flashgrating or flashbar
+                tdelay = 40000 # akin to a revcorr timepoint for STA
+            else:
+                tdelay = 0
+        self.tdelay = tdelay
+        # find positions of each sweep index in the din, and generate array of tranges
+        # during which that stimulus condition was on
+        self.tranges = {} # index into using sweepi
+        self.counts = {} # index into using sweepi
+        for sweepi in sweepis:
+            dinis = np.where(din[:, 1] == sweepi)[0] # screen refresh indices
+            deltaiis = np.where(np.diff(dinis) != 1)[0] # look for non-consecutive values
+            startiis = np.insert(deltaiis+1, 0, 0) # prepend with 0
+            endiis = np.append(deltaiis, len(dinis)-1)
+            rangeiis = np.vstack([startiis, endiis]).T
+            rangeis = dinis[rangeiis]
+            rangeis[:, 1] += 1 # end inclusive
+            rangeis[-1, 1] = min(rangeis[-1, 1], ndin-1) # except for very end
+            tranges = din[rangeis, 0] + tdelay
+            self.tranges[sweepi] = tranges
+            # find which spike indices the start and end of each trange would fall
+            # between. Take difference between those two spike indices to get spike
+            # count for that trange. Repeat for all tranges for this sweepi to get
+            # array of spike counts, one for each trange.
+            self.counts[sweepi] = np.diff(spikes.searchsorted(tranges), axis=1).flatten()
+        self.done = True
+        
+    def plot(self, var='ori', tdelay=None):
+        if tdelay != None and tdelay != self.tdelay:
+            self.calc(tdelay=tdelay) # trigger a re-calc
+        if not self.done:
+            self.calc(tdelay=tdelay)
+        vals = self.experiment.sweeptable.data[var].copy() # don't modify the sweeptable!
+        if var == 'ori':
+            # take orientation offset into account
+            if (vals > 180).any():
+                maxori = 360
+            else:
+                maxori = 180
+            vals += self.experiment.s.orioff # static parameter
+            vals %= maxori
+        x = np.unique(vals) # x axis
+        y = np.zeros(len(x)) # spike counts for each variable value
+        for vali, val in enumerate(x):
+            sweepis = np.where(vals == val)[0]
+            for sweepi in sweepis:
+                y[vali] += self.counts[sweepi].sum()
+        f = pl.gcf()
+        f.clear()
+        pl.plot(x, y, 'k.-')
+        pl.xlabel(var)
+        pl.ylabel('spike count')
+        pl.title('%s tuning, at tdelay = %d ms' % (var, self.tdelay // 1000))
+        f.canvas.window().setWindowTitle('n%d' % self.neuron.id)
+
+
+class NeuronTune(object):
+    """Mix-in class that defines stimulus tuning analysis method"""
+    def tune(self, experiment=None, tdelay=None):
+        """Return stimulus tuning analysis object"""
+        if experiment == None:
+            experiment = self.sort.r.e[0] # first experiment from parent recording
+        self.experiment = experiment
+        tuneo = Tune(self, experiment)
+        tuneo.calc(tdelay)
+        return tuneo
+
+
+class Neuron(NeuronTune,
+             NeuronRevCorr,
              NeuronRate,
              NeuronCode,
              NeuronXCorr,
