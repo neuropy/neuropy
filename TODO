@@ -1,13 +1,17 @@
 TODO:
 
 - add tuning curves
-    - Tune object, child of Neuron
     - add Experiment.tune() method which creates a Tune object for each child neuron and combines results into a single scrollable window, like sta? - this would be lower priority
-    - takes single dimension, or list of dimensions to tune for. For multiple dims, the first one is the x axis, and all the other ones are expressed as overplots? Could also do 3D plots so you could clearly see two dimensions at a time. Or maybe you could even do 3 dims in 3D, some sort of volume plot, using colour to denote response strength
+    - allow multiple dimension tuning plots
+        - the first one is the x axis, and all the other ones are expressed as overplots?
+        - could also do 3D plots so you could clearly see two dimensions at a time
+        - could even do 3 dims in 3D, some sort of volume plot with transparency, using colour to denote response strength
+    - maybe make tdelay arg a list and do overplots in different colours for each tdelay, a different colour for each
     - psths for specific values of chosen dimension?
     - raster plots split up according to all DIN, or according to just one dimension
     - ability to specify time range, in fraction or in seconds, of each sweep to consider when couting up spikes during that sweep. Eg, useful for driftbar where there's only a response in the middle 1-2 sec that you're interested in, but might be a fair bit of baseline outside of that
-
+    - error bars on tuning curves: how to calculate them, especially when collapsing across multiple dimensions? I guess I should calculate the mean and stdev of spikes per presentation of each sweep, and then plot the SEM as the error bar for that condition (take stdev / sqrt(n) or sqrt(n-1))
+        - instead of accumulating spike count for each din, should save spike rate for *each* din. Then, when collapsing over some dimensions, or keeping some fixed, take mean of all those spike rate values (assuming all din are of equal duration, if not, weight by inverse of each din's duration), and also take stdev to get SEM
 - codes are not currently constrained to when stimuli are on the screen, although this shouldn't be a big deal most of the time. See recording.BaseNetstate.codes()
 
 
@@ -189,3 +193,9 @@ Netstate stuff:
     - need to define all possible types of experiments: Movie, Grating, etc..
     - need to define StaticParams, DynamicParams, Variable, Variables, Runs, BlankSweeps
 - stop using "import *"
+    
+Tuning curves:
+    - Tune object, child of Neuron - done
+    - ability to fix certain parameters when building tuning curves, something like:
+        neuron.tune(var='phase0', fixed={'ori':[30, 45, 60], 'sfreqCycDeg':[0.8]})
+        - don't forget that when calculating which sweepis to use, to subtract orioffset from the specified fixed ori, if ori is one of the fixed vars

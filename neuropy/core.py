@@ -1971,6 +1971,24 @@ def sortby(objs, attrib, cmp=None, reverse=False):
     objs.sort(key=lambda obj: obj.__getattribute__(attrib), cmp=cmp, reverse=reverse) # sort in-place
     return objs
 '''
+def intersect1d(arrays, assume_unique=False):
+    """Find the intersection of any number of 1D arrays.
+    Return the sorted, unique values that are in all of the input arrays.
+    Adapted from numpy.lib.arraysetops.intersect1d"""
+    N = len(arrays)
+    if N == 0:
+        return np.asarray(arrays)
+    arrays = list(arrays) # allow assignment
+    if not assume_unique:
+        for i, arr in enumerate(arrays):
+            arrays[i] = np.unique(arr)
+    aux = np.concatenate(arrays) # one long 1D array
+    aux.sort() # sorted
+    if N == 1:
+        return aux
+    shift = N-1
+    return aux[aux[shift:] == aux[:-shift]]
+
 def mean_accum(data):
     """Takes mean by accumulating over 0th axis in data,
     much faster than np.mean() because it avoids making any copies of the data

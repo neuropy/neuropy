@@ -10,7 +10,8 @@ import numpy as np
 import pylab as pl
 import matplotlib as mpl
 
-from core import rstrip, getargstr, iterable, tolist, intround, CODETRES, CODEPHASE, CODEKIND
+import core
+from core import rstrip, getargstr, iterable, toiter, tolist, intround, CODETRES, CODEPHASE, CODEKIND
 from core import MSEQ16, MSEQ32, mean_accum, lastcmd, RevCorrWindow
 from core import PTCSNeuronRecord, SPKNeuronRecord
 from dimstimskeletal import Movie
@@ -908,7 +909,7 @@ class Tune(object):
         self.done = False # hasn't yet successfully completed its calc() method
         
     def calc(self, tdelay=None):
-        """tdelay is in us"""
+        """tdelay: time delay in us to use between stimulus and response"""
         spikes = self.neuron.spikes
         din = self.experiment.din
         ndin = len(din)
@@ -941,24 +942,55 @@ class Tune(object):
             self.counts[sweepi] = np.diff(spikes.searchsorted(tranges), axis=1).flatten()
         self.done = True
         
-    def plot(self, var='ori', tdelay=None):
+    def plot(self, var='ori', fixed=None, tdelay=None):
+        """var: string name of variable you want to plot a tuning curve for
+        fixed: dict with keys containing names of vars to keep fixed when building tuning
+        curve, and values containing each var's value(s) to fix at
+        tdelay: time delay in us to use between stimulus and response
+        
+        Ex: r71.n[1].tune().plot('phase0', fixed={'ori':138, 'sfreqCycDeg':[0.4, 0.8]})
+        """
         if tdelay != None and tdelay != self.tdelay:
             self.calc(tdelay=tdelay) # trigger a re-calc
         if not self.done:
             self.calc(tdelay=tdelay)
-        vals = self.experiment.sweeptable.data[var].copy() # don't modify the sweeptable!
-        if var == 'ori':
-            # take orientation offset into account
+        if fixed != None:
+            fixedsweepis = []
+            for fixedvar, fixedvals in fixed.items():
+                vals = self.experiment.sweeptable.data[fixedvar]
+                if fixedvar == 'ori': # correct for orientation offset by adding
+                    if (vals > 180).any():
+                        maxori = 360
+                    else:
+                        maxori = 180
+                    vals = vals.copy() # don't modify the sweeptable!
+                    vals += self.experiment.s.orioff # static parameter
+                    vals %= maxori
+                sweepis = []
+                for fixedval in toiter(fixedvals):
+                    sweepis.append(np.where(vals == fixedval)[0])
+                sweepis = np.concatenate(sweepis)
+                fixedsweepis.append(sweepis)
+            fixedsweepis = core.intersect1d(fixedsweepis) # intersect all fixedvar arrays in fixedsweepis
+            #print(fixedsweepis)
+        # get values for var at all unique sweep indices:
+        vals = self.experiment.sweeptable.data[var]
+        if var == 'ori': # correct for orientation offset by adding
             if (vals > 180).any():
                 maxori = 360
             else:
                 maxori = 180
+            vals = vals.copy() # don't modify the sweeptable!
             vals += self.experiment.s.orioff # static parameter
             vals %= maxori
         x = np.unique(vals) # x axis
-        y = np.zeros(len(x)) # spike counts for each variable value
+        y = np.zeros(len(x), dtype=int) # spike counts for each variable value
+        print # CR for proper display in IPython
         for vali, val in enumerate(x):
             sweepis = np.where(vals == val)[0]
+            if fixed != None:
+                sweepis = np.intersect1d(sweepis, fixedsweepis, assume_unique=True)
+                print sweepis
             for sweepi in sweepis:
                 y[vali] += self.counts[sweepi].sum()
         f = pl.gcf()
@@ -966,8 +998,13 @@ class Tune(object):
         pl.plot(x, y, 'k.-')
         pl.xlabel(var)
         pl.ylabel('spike count')
-        pl.title('%s tuning, at tdelay = %d ms' % (var, self.tdelay // 1000))
+        titlestr = 'n%d, ' % self.neuron.id
+        if fixed != None:
+            titlestr += 'fixed=%r, ' % fixed
+        titlestr += 'tdelay=%dms, peak=(%s, %s)' % (self.tdelay // 1000, x[y.argmax()], y.max())
+        pl.title(titlestr)
         f.canvas.window().setWindowTitle('n%d' % self.neuron.id)
+        return x, y
 
 
 class NeuronTune(object):
