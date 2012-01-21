@@ -79,7 +79,7 @@ _movies = dictattr()
 class PTCSHeader(object):
     """Polytrode clustered spikes file header"""
     def __init__(self):
-        self.VER2FUNC = {1: self.read_ver_1}
+        self.VER2FUNC = {1: self.read_ver_1, 2: self.read_ver_2} # call the appropriate method
 
     def read(self, f):
         """Read in format version, followed by rest according to verison
@@ -143,11 +143,16 @@ class PTCSHeader(object):
         self.ndatetimestrbytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # ndatetimestrbytes
         self.datetimestr = f.read(self.ndatetimestrbytes).rstrip('\0 ') # datetimestr
 
+    def read_ver_2(self, f):
+        """Same as version 1. NVS created some version 1 files incorrectly, and
+        incremented to version 2 for the correctly exported ones"""
+        return self.read_ver_1(f)
+
 
 class PTCSNeuronRecord(object):
     """Polytrode clustered spikes file neuron record"""
     def __init__(self, header):
-        self.VER2FUNC = {1: self.read_ver_1} # call the appropriate method
+        self.VER2FUNC = {1: self.read_ver_1, 2:self.read_ver_2} # call the appropriate method
         self.header = header
         self.wavedtype = {2: np.float16, 4: np.float32, 8: np.float64}[self.header.nsamplebytes]
 
@@ -210,6 +215,11 @@ class PTCSNeuronRecord(object):
             X.shape = self.nchans, self.nt # reshape
         f.seek(fp + nbytes) # skip any pad bytes
         return nbytes, X
+
+    def read_ver_2(self, f):
+        """Same as version 1. NVS created some version 1 files incorrectly, and
+        incremented to version 2 for the correctly exported ones"""
+        return self.read_ver_1(f)
 
 
 class SPKHeader(object):
