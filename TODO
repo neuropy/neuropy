@@ -12,6 +12,7 @@ TODO:
     - ability to specify time range, in fraction or in seconds, of each sweep to consider when couting up spikes during that sweep. Eg, useful for driftbar where there's only a response in the middle 1-2 sec that you're interested in, but might be a fair bit of baseline outside of that
     - error bars on tuning curves: how to calculate them, especially when collapsing across multiple dimensions? I guess I should calculate the mean and stdev of spikes per presentation of each sweep, and then plot the SEM as the error bar for that condition (take stdev / sqrt(n) or sqrt(n-1))
         - instead of accumulating spike count for each din, should save spike rate for *each* din. Then, when collapsing over some dimensions, or keeping some fixed, take mean of all those spike rate values (assuming all din are of equal duration, if not, weight by inverse of each din's duration), and also take stdev to get SEM
+        - it would be good to have at least the option of plotting spike counts instead of rates 
     - fit single and double gabors to single and double-peaked tuning curves
         - use von Mises function, width is indirectly related to some k parameter, fit it using LM
         - or, use wrapped Guassians, has nicer definition of width, fit using LM
