@@ -977,7 +977,6 @@ class Ising(object):
         'Returns a maximum-entropy (exponential-form) model on a discrete sample space'
             -- scipy.maxent.model
         """
-
         from scipy import maxentropy
 
         nbits = len(means)
@@ -985,10 +984,12 @@ class Ising(object):
         assert npairs == nCr(nbits, 2) # sanity check
         self.intsamplespace = range(0, 2**nbits)
         table = getbinarytable(nbits=nbits) # words are in the columns, MSB at bottom row
-        self.binsamplespace = np.array([ table[::-1, wordi] for wordi in range(0, 2**nbits) ]) # all possible binary words (each is MSB to LSB), as arrays of 0s and 1s
+        # all possible binary words (each is MSB to LSB), as arrays of 0s and 1s:
+        self.binsamplespace = np.array([ table[::-1, wordi] for wordi in range(0, 2**nbits) ])
         self.samplespace = self.binsamplespace * 2 - 1 # convert 0s to -1s
-        # return the i'th bit (LSB to MSB) of binary word x
-        f1s = [ lambda x, i=i: x[-1-i] for i in range(0, nbits) ] # have to do i=i to statically assign value (gets around scope closure problem)
+        # return the i'th bit (LSB to MSB) of binary word x,
+        # have to do i=i to statically assign value (gets around scope closure problem):
+        f1s = [ lambda x, i=i: x[-1-i] for i in range(0, nbits) ]
         # return product of the i'th and j'th bit (LSB to MSB) of binary word
         f2s = []
         pairmeansi = 0
@@ -997,7 +998,8 @@ class Ising(object):
                 if pairmeans[pairmeansi] != None: # None indicates we should ignore this pair
                     f2s.append(lambda x, i=i, j=j: x[-1-i] * x[-1-j])
                 pairmeansi += 1
-        #f2s = [ lambda x, i=i, j=j: x[-1-i] * x[-1-j] for i in range(0, nbits) for j in range(i+1, nbits) if pairmeans[i*nbits+j-1] != None ]
+        #f2s = [ lambda x, i=i, j=j: x[-1-i] * x[-1-j] for i in range(0, nbits)
+        #        for j in range(i+1, nbits) if pairmeans[i*nbits+j-1] != None ]
         f = np.concatenate((f1s, f2s))
         self.model = maxentropy.model(f, self.samplespace)
         #self.model.mindual = -10000
@@ -1005,22 +1007,24 @@ class Ising(object):
         # Now set the desired feature expectations
         means = np.asarray(means)
         pairmeans = np.asarray(pairmeans) # if it has Nones, it's an object array
-        pairmeans = np.asarray(list(pairmeans[pairmeans != [None]])) # remove the Nones, convert to list to get rid of object array, then convert back to array to get a normal, non-object array (probably a float64 array)
+        # remove the Nones, convert to list to get rid of object array, then convert
+        # back to array to get a normal, non-object array (probably a float64 array):
+        pairmeans = np.asarray(list(pairmeans[pairmeans != [None]]))
         npairs = len(pairmeans) # update npairs
-        #pairmeans /= 2.0 # add the one half in front of each coefficient, NOT TOO SURE IF THIS SHOULD GO HERE! causes convergence problems
+        # add the one half in front of each coefficient, not too sure if
+        # this should go here! causes convergence problems:
+        #pairmeans /= 2.0
         K = np.concatenate((means, pairmeans))
         self.model.verbose = False
 
         # Fit the model
-        try:
-            self.model.fit(K, algorithm=algorithm)
-        except:
-            import pdb; pdb.set_trace()
+        self.model.fit(K, algorithm=algorithm)
 
         self.hi = self.model.params[0:nbits]
         self.Jij = self.model.params[nbits:nbits+npairs]
         self.p = self.model.probdist()
-        assert (len(self.hi), len(self.Jij), len(self.p)) == (nbits, npairs, 2**nbits) # sanity checks
+        # sanity checks:
+        assert (len(self.hi), len(self.Jij), len(self.p)) == (nbits, npairs, 2**nbits)
         #print 'means:', means
         #print 'pairmeans:', pairmeans
         print '%d iters,' % self.model.iters,

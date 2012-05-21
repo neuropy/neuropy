@@ -189,7 +189,7 @@ class RecordingCode(BaseRecording):
         codes = Codes(neurons=neurons, tranges=tranges, kind=kind, tres=tres,
                       phase=phase, shufflecodes=shufflecodes)
         codes.calc()
-        return codeso
+        return codes
     codes.__doc__ += '\n\nCodes object:\n' + Codes.__doc__
 
     def codecorr(self, neuron1, neuron2, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
@@ -211,20 +211,26 @@ class BaseNetstate(object):
     """Base class of Network state analyses.
     Implements a lot of the analyses on network states found in the 2006 Schneidman paper
 
-    WARNING!!!!!! not sure if self.tranges, which derives from self.experiments, is being used at all yet!!!!!!!!!!!!!
-
+    WARNING!!!!!! not sure if self.tranges, which derives from self.experiments, is being
+    used at all yet!!!!!!!!!!!!!
     """
-    def __init__(self, recording, experiments=None, nis=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
+    def __init__(self, recording, experiments=None, nis=None, kind=CODEKIND,
+                 tres=CODETRES, phase=CODEPHASE):
         self.r = recording
         if experiments == None:
-            self.tranges = [self.r.trange] # or should we check to see if this Recording has a tranges field due to appending Neurons?
+            self.tranges = [self.r.trange]
+            # or should we check to see if this Recording has a tranges field due to
+            # appending Neurons?
         else:
             experiments = tolist(experiments)
             try:
-                self.tranges = [ e.trange for e in experiments ] # is experiments a list of Experiments?
+                # is experiments a list of Experiments?
+                self.tranges = [ e.trange for e in experiments ]
             except AttributeError:
-                self.tranges = [ self.r.e[ei].trange for ei in experiments ] # assume experiments is a list of experiment ids
-                experiments = [ self.r.e[ei] for ei in experiments ] # convert to a list of Experiments
+                # assume experiments is a list of experiment ids:
+                self.tranges = [ self.r.e[ei].trange for ei in experiments ]
+                # convert to a list of Experiments
+                experiments = [ self.r.e[ei] for ei in experiments ]
         self.e = experiments # save list of Experiments (could potentially be None)
         self.kind = kind
         self.tres = tres
@@ -238,7 +244,8 @@ class BaseNetstate(object):
         else:
             self.niswasNone = False
         self.cs = self.codes(nis=nis) # generate and save the Codes object for all the nis
-        # if you need to retrieve the nis, you can get them from self.cs.nis. Leave self.nis open for subclasses to use for their own purposes
+        # if you need to retrieve the nis, you can get them from self.cs.nis. Leave self.nis
+        # open for subclasses to use for their own purposes
 
     def codes(self, nis=None, shufflecodes=False):
         """Returns the appropriate Codes object, depending on the recording
@@ -266,9 +273,12 @@ class BaseNetstate(object):
         cs = self.codes(nis=nis) # make a new codes object using the nis population
         nis2niis = cs.nis2niis
         notmis = [ ni for ni in nis if ni not in mis ] # nis not in mis
-        mis_high = cs.c[nis2niis(mis)].prod(axis=0) == 1 # take product down all rows, only synchronous events across all mis cells will survive, boolean array
+        # take product down all rows, only synchronous events across all mis cells will
+        # survive, boolean array:
+        mis_high = cs.c[nis2niis(mis)].prod(axis=0) == 1
         notmis_low = cs.c[nis2niis(notmis)].sum(axis=0) == 0 # boolean array
-        i = (mis_high * notmis_low).nonzero()[0] # indices where mis are 1 and all the others are 0
+        # indices where mis are 1 and all the others are 0:
+        i = (mis_high * notmis_low).nonzero()[0]
         return cs.t[i] # return the times at those indices
 
     def get_wordtsms(self, nis=None, mis=None):
@@ -277,66 +287,87 @@ class BaseNetstate(object):
         return np.int32(np.round(self.get_wordts(nis=nis, mis=mis) / 1e3))
 
     def get_intcodes(self, nis=None, shufflecodes=False):
-        """Given neuron indices (ordered LSB to MSB top to bottom), returns an array of the integer representation
-        of the neuronal population binary code for each time bin"""
+        """Given neuron indices (ordered LSB to MSB top to bottom), returns an array of the
+        integer representation of the neuronal population binary code for each time bin"""
         assert self.kind == 'binary'
         if nis == None:
-            nis = random.sample(self.cs.nis, CODEWORDLEN) # randomly sample CODEWORDLEN bits of the nis
+            # randomly sample CODEWORDLEN bits of the nis
+            nis = random.sample(self.cs.nis, CODEWORDLEN)
         return binarray2int(self.codes(nis=nis, shufflecodes=shufflecodes).c)
 
     def intcodesPDF(self, nis=None):
         """Returns the observed pdf across all possible population binary code words,
         labelled according to their integer representation"""
         if nis == None:
-            nis = random.sample(self.cs.nis, CODEWORDLEN) # randomly sample CODEWORDLEN bits of the nis
+            # randomly sample CODEWORDLEN bits of the nis
+            nis = random.sample(self.cs.nis, CODEWORDLEN)
         intcodes = self.get_intcodes(nis=nis)
         nbits = len(nis)
         p, bins = histogram(intcodes, bins=np.arange(2**nbits), normed='pmf')
         return p, bins
 
     def intcodesFPDF(self, nis=None):
-        """the F stands for factorial. Returns the probability of getting each population binary code word, assuming
-        independence between neurons, taking into account each neuron's spike (and no spike) probability"""
+        """the F stands for factorial. Returns the probability of getting each population
+        binary code word, assuming independence between neurons, taking into account each
+        neuron's spike (and no spike) probability"""
         if nis == None:
-            nis = random.sample(self.cs.nis, CODEWORDLEN) # randomly sample CODEWORDLEN bits of the nis
+            # randomly sample CODEWORDLEN bits of the nis
+            nis = random.sample(self.cs.nis, CODEWORDLEN)
         nbits = len(nis)
         intcodes = np.arange(2**nbits)
-        #neurons = dict( (ni, self.neurons[ni]) for ni in nis ) # this is like dict comprehension, pretty awesome!
-        codeso = self.codes(nis=nis)
+        # this is like dict comprehension, pretty awesome!:
+        #neurons = dict( (ni, self.neurons[ni]) for ni in nis )
+        codes = self.codes(nis=nis)
         spikeps = [] # list spike probabilities for all neurons
-        for neuroncode in codeso.c: # for each neuron, ie each row
-            spikeps.append( neuroncode.mean() ) # calc the average p of getting a spike for this neuron, within any time bin.
-        spikeps = array(spikeps, ndmin=2) # convert to an nbits*1 array, make sure it's explicitly treated as a 2D array that can be transposed, or something
+        for neuroncode in codes.c: # for each neuron, ie each row
+            # calc the average p of getting a spike for this neuron, within any time bin
+            spikeps.append(neuroncode.mean())
+        # convert to an nbits*1 array, make sure it's explicitly treated as a 2D array that
+        # can be transposed, or something
+        spikeps = np.array(spikeps, ndmin=2)
         nospikeps = 1 - spikeps
         #print 'spikesps: ', spikeps.__repr__()
         #print 'nospikesps: ', nospikeps.__repr__()
         binarytable = getbinarytable(nbits)
-        pon = binarytable * spikeps.transpose() # 2D array of probs of having a 1 in the right place for all possible population code words
-        poff = (1 - binarytable) * nospikeps.transpose() # 2D array of probs of having a 0 in the right place for all possible population code words
+        # 2D array of probs of having a 1 in the right place for all possible population
+        # code words:
+        pon = binarytable * spikeps.transpose()
+        # 2D array of probs of having a 0 in the right place for all possible population
+        # code words:
+        poff = (1 - binarytable) * nospikeps.transpose()
         #print 'pon', pon.__repr__()
         #print 'poff', poff.__repr__()
-        x = pon + poff # add the 2D arrays, each has zero prob values where the other has non-zero prob values
+        # add the 2D arrays, each has zero p values where the other has non-zero p values:
+        x = pon + poff
         #print 'x', x.__repr__()
-        intcodeps = x.prod(axis=0) # take the product along the 0th axis (the columns) to get the prob of each population code word
+        # take the product along the 0th axis (the columns) to get the prob of each
+        # population code word
+        intcodeps = x.prod(axis=0)
         return intcodeps, intcodes
 
     def ising(self, nis=None, R=None, shuffleids=False, algorithm='CG'):
-        """Returns a maximum entropy Ising model that takes into account pairwise correlations within neuron codes. R = (R0, R1) torus. Algorithm can be 'CG', 'BFGS', 'LBFGSB', 'Powell', or 'Nelder-Mead'"""
+        """Returns a maximum entropy Ising model that takes into account pairwise
+        correlations within neuron codes. R = (R0, R1) torus. Algorithm can be 'CG', 'BFGS',
+        'LBFGSB', 'Powell', or 'Nelder-Mead'"""
         if nis == None:
             nis = self.cs.nis[0:CODEWORDLEN]
         #print 'nis:', nis.__repr__()
         if R:
             assert len(R) == 2 and R[0] < R[1] # should be R = (R0, R1) torus
-        codeso = self.codes(nis=nis)
+        codes = self.codes(nis=nis)
 
         if shuffleids:
-            snis = shuffle(nis) # shuffled neuron ids, this is a control to see if it's the locality of neurons included in the analysis, or the number of neurons included that's important. Seems like both are
+            # shuffled neuron ids, this is a control to see if it's the locality of neurons
+            # included in the analysis, or the number of neurons included that's important.
+            # Seems like both are
+            snis = shuffle(nis)
         else:
             snis = nis
 
-        #c = codeso.c
-        # convert values in codes object from [0, 1] to [-1, 1] by mutliplying by 2 and subtracting 1
-        c = codeso.c.copy() # don't modify the original
+        #c = codes.c
+        # convert values in codes object from [0, 1] to [-1, 1] by mutliplying by 2 and
+        # subtracting 1
+        c = codes.c.copy() # don't modify the original
         c = c*2 - 1 # this should be safe to do cuz c is a 2D array of signed int8 values
         #print 'c:', c.__repr__()
         means = [ row.mean() for row in c ] # iterate over rows of codes in c
@@ -344,12 +375,15 @@ class BaseNetstate(object):
         pairmeans = []
         for i in range(0, nrows):
             for j in range(i+1, nrows):
-                if R == None or R[0] < core.dist(self.r.n[snis[i]].pos, self.r.n[snis[j]].pos) < R[1]:
-                    pairmeans.append((c[i]*c[j]).mean()) # take a pair of rows, find the mean of their elementwise product
+                if R == None or (R[0] < core.dist(self.r.n[snis[i]].pos,
+                                                  self.r.n[snis[j]].pos) < R[1]):
+                    # take a pair of rows, find the mean of their elementwise product:
+                    pairmeans.append((c[i]*c[j]).mean())
                 else:
-                    pairmeans.append(None) # pair are outside the torus, ignore their pairmeans
-        isingo = core.Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
-        return isingo
+                    # pair are outside the torus, ignore their pairmeans:
+                    pairmeans.append(None)
+        ising = core.Ising(means=means, pairmeans=pairmeans, algorithm=algorithm)
+        return ising
 
 
 class NetstateIsingHist(BaseNetstate):
@@ -487,10 +521,11 @@ class NetstateNspikingPMF(BaseNetstate):
 
 class NetstateScatter(BaseNetstate):
     """Netstate scatter analysis object. See Schneidman Figures 1f and 2a"""
-    def calc(self, nbits=None, model='both', R=None, shuffleids=False, shufflecodes=False, algorithm='CG'):
-        """Calculates the expected probabilities, assuming a model in ['indep', 'ising', 'both'],
-        of all possible population codes vs their observed probabilities. R = (R0, R1) torus.
-        self's nis are treated in LSB to MSB order"""
+    def calc(self, nbits=None, model='both', R=None, shuffleids=False,
+             shufflecodes=False, algorithm='CG'):
+        """Calculates the expected probabilities, assuming a model in ['indep', 'ising',
+        'both'], of all possible population codes vs their observed probabilities. R = (R0,
+        R1) torus. self's nis are treated in LSB to MSB order"""
         self.nbits = nbits
         if self.nbits == None:
             self.nbits = CODEWORDLEN
@@ -659,7 +694,7 @@ class NetstateScatter(BaseNetstate):
                 codes = [ bin(intcode, minbits=self.nbits) for intcode in intcodes ]
                 tip =  'codes: %s' % repr(codes).replace('\'', '')
                 tip += '\nintcodes: %r' % list(intcodes)
-                activenis = [ list(asarray(self.nis)[::-1][charfind(code, '1')]) for code in codes ]
+                activenis = [ list(np.asarray(self.nis)[::-1][charfind(code, '1')]) for code in codes ]
                 tip += '\nactivenis: %r' % activenis
                 tip += '\npattern counts: %r' % [ (self.intcodes == intcode).sum() for intcode in intcodes ]
                 tip += '\npattern freqs (Hz): %s' % repr([ '%.3g' % (p / self.tres * 1e6) for p in self.pobserved[codeis] ]).replace('\'', '')
@@ -693,9 +728,9 @@ class NetstateI2vsIN(BaseNetstate):
         pd = wx.ProgressDialog(title='I2vsIN() progress', message='', maximum=self.ngroups, # create a progress dialog
                                style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
         for groupi, nis in enumerate(self.niss):
-            p1 = asarray(self.intcodesFPDF(nis=nis)[0]) # indep model
+            p1 = np.asarray(self.intcodesFPDF(nis=nis)[0]) # indep model
             p2 = self.ising(nis=nis).p # expected, assuming maxent Ising model
-            pN = asarray(self.intcodesPDF(nis=nis)[0]) # observed word probs
+            pN = np.asarray(self.intcodesPDF(nis=nis)[0]) # observed word probs
             S1 = entropy_no_sing(p1) # ignore any singularities
             S2 = entropy_no_sing(p2)
             SN = entropy_no_sing(pN)
@@ -708,8 +743,8 @@ class NetstateI2vsIN(BaseNetstate):
                 pd.Destroy()
                 return
         pd.Destroy()
-        self.I2s = asarray(I2s)
-        self.INs = asarray(INs)
+        self.I2s = np.asarray(I2s)
+        self.INs = np.asarray(INs)
         self.I2divIN = self.I2s / self.INs
 
         return self
@@ -778,7 +813,7 @@ class NetstateDJSHist(BaseNetstate):
 
         # now find the DJSratios between the two models, for each group of neurons
         if len(self.models) == 2: # do it only if there's 2 models, otherwise it's indeterminate which two to take ratio of
-            self.DJSratios = asarray(self.DJSs.values()[1]) / asarray(self.DJSs.values()[0]) # 2nd model as a ratio of the 1st
+            self.DJSratios = np.asarray(self.DJSs.values()[1]) / np.asarray(self.DJSs.values()[0]) # 2nd model as a ratio of the 1st
 
         return self
 
@@ -878,8 +913,8 @@ class NetstateS1INvsN(BaseNetstate):
                     pd.Destroy()
                     return
                 #t2 = time.clock()
-                p1 = asarray(self.intcodesFPDF(nis=nis)[0]) # indep model
-                pN = asarray(self.intcodesPDF(nis=nis)[0]) # observed word probs
+                p1 = np.asarray(self.intcodesFPDF(nis=nis)[0]) # indep model
+                pN = np.asarray(self.intcodesPDF(nis=nis)[0]) # observed word probs
                 #print 'calcing ps took: %f sec' % (time.clock()-t2)
                 S1 = entropy_no_sing(p1) # ignore any singularities
                 SN = entropy_no_sing(pN)
@@ -891,12 +926,12 @@ class NetstateS1INvsN(BaseNetstate):
             self.S1ss.append(S1s)
             self.INss.append(INs)
         pd.Destroy()
-        self.S1mean = [ asarray(S1s).mean() for S1s in self.S1ss ]
-        self.S1std = [ asarray(S1s).std() for S1s in self.S1ss ]
-        self.S1sem = asarray(self.S1std) / sqrt(asarray(self.nsamples))
-        self.INmean = [ asarray(INs).mean() for INs in self.INss ]
-        self.INstd = [ asarray(INs).std() for INs in self.INss ]
-        self.INsem = asarray(self.INstd) / sqrt(asarray(self.nsamples))
+        self.S1mean = [ np.asarray(S1s).mean() for S1s in self.S1ss ]
+        self.S1std = [ np.asarray(S1s).std() for S1s in self.S1ss ]
+        self.S1sem = np.asarray(self.S1std) / sqrt(np.asarray(self.nsamples))
+        self.INmean = [ np.asarray(INs).mean() for INs in self.INss ]
+        self.INstd = [ np.asarray(INs).std() for INs in self.INss ]
+        self.INsem = np.asarray(self.INstd) / sqrt(np.asarray(self.nsamples))
 
         return self
 
@@ -921,7 +956,7 @@ class NetstateS1INvsN(BaseNetstate):
         mS1, bS1 = sp.polyfit(log10(self.N), log10(self.S1mean), 1) # returns slope and y intercept
         mIN, bIN = sp.polyfit(log10(self.N), log10(self.INmean), 1)
         xintersect = (bIN - bS1) / (mS1 - mIN)
-        x = array([-1, 3]) # define x in log10 space, this is really [0.1, 1000]
+        x = np.array([-1, 3]) # define x in log10 space, this is really [0.1, 1000]
         self.yS1 = mS1*x + bS1 # y = mx + b
         self.yIN = mIN*x + bIN
         a.plot(10.0**x, 10.0**self.yS1, 'b-') # take their power to make up for both the x and y scales being log
@@ -991,7 +1026,7 @@ class NetstateNNplus1(BaseNetstate):
         self.IdivSstds = self.IdivS.std(axis=1) # find stdev for the same
         assert self.IdivSmeans.shape == (maxN,)
         assert self.IdivSstds.shape == (maxN,)
-        self.IdivSsems = self.IdivSstds / sqrt(asarray(nsamples)*nNplus1s)
+        self.IdivSsems = self.IdivSstds / sqrt(np.asarray(nsamples)*nNplus1s)
 
         return self
 
@@ -1010,7 +1045,7 @@ class NetstateNNplus1(BaseNetstate):
         a.errorbar(self.N, self.IdivSmeans, yerr=self.IdivSsems, fmt='b.') # now plot the means and sems
         # do some linear regression in log10 space
         m, b = sp.polyfit(log10(self.N), log10(self.IdivSmeans), 1) # returns slope and y intercept
-        x = array([log10(0.9), 3]) # define x in log10 space, this is really [0.9, 1000]
+        x = np.array([log10(0.9), 3]) # define x in log10 space, this is really [0.9, 1000]
         y = m*x + b
         xintersect = (0-b) / m # intersection point of regression line with y=1=10**0 line
         plot(10.0**x, 10.0**y, 'b-') # raise them to the power to make up for the fact that both the x and y scales will be log
@@ -1081,8 +1116,8 @@ class NetstateCheckcells(BaseNetstate):
         nicode = self.cs.c[nii] # 0s and 1s, this picks out the row in the binary code array that corresponds to ni
         othercodes = self.cs.c[otherniis]
         if shufflecodes:
-            nicode = asarray(shuffle(nicode))
-            othercodes = asarray(shuffle(othercodes))
+            nicode = np.asarray(shuffle(nicode))
+            othercodes = np.asarray(shuffle(othercodes))
         nothersactive = othercodes.sum(axis=0) # anywhere from 0 up to and including nothers
 
         # build up joint pdf of the nicode and nothersactive
@@ -1140,7 +1175,7 @@ class NetstateCheckcells(BaseNetstate):
                 for othernis in otherniss: # collect jpdfs across all random samples
                     jpdf = self._calc(ni=ni, othernis=othernis, shufflecodes=shufflecodes)
                     jpdfs.append(jpdf)
-                jpdfs = asarray(jpdfs) # this is an nsamples x 2 x (1+nothers) matrix
+                jpdfs = np.asarray(jpdfs) # this is an nsamples x 2 x (1+nothers) matrix
                 self.jpdfss[ni] = jpdfs
                 self.jpdfmeans[ni] = jpdfs.mean(axis=0) # find the mean jpdf across all nsamples jpdfs
                 self.jpdfstds[ni] = jpdfs.std(axis=0) # find the stdev across all nsamples jpdfs

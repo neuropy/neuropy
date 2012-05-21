@@ -58,7 +58,8 @@ class NeuropyWindow(QtGui.QMainWindow):
         ipyqtwidget.exit_requested.connect(self.close)
         self.setCentralWidget(ipyqtwidget)
 
-        # ip.ex() lets you execute strings in user namespace, where ip is the IPython.zmq.zmqshell.ZMQInteractiveShell
+        # ip.ex() lets you execute strings in user namespace, where ip is the
+        # IPython.zmq.zmqshell.ZMQInteractiveShell, as in ip = get_ipython()
         # ip.ev() evaluates string
         # ip.write() writes a string to the shell
         # ip.push() pushes a variables in a dict to user namespace
