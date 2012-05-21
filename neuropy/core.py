@@ -236,7 +236,8 @@ class SPKHeader(object):
     def read(self, neuron):
         neuron.loadspk() # load the neuron
         self.nspikes += neuron.nspikes
-        # look for neuron2pos.py file, which contains a dict mapping neuron id to (x, y) position
+        # look for neuron2pos.py file, which contains a dict mapping neuron id to (x, y)
+        # position
         if 'neuron2pos.py' in os.listdir(self.path):
             oldpath = os.getcwd()
             os.chdir(self.path)
@@ -509,7 +510,8 @@ class Codes(object):
     """A 2D array where each row is a neuron code, and each column
     is a binary population word for that time bin, sorted LSB to MSB from top to bottom.
     neurons is a list of Neurons, also from LSB to MSB. Order in neurons is preserved."""
-    def __init__(self, neurons=None, tranges=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE, shufflecodes=False):
+    def __init__(self, neurons=None, tranges=None, kind=CODEKIND, tres=CODETRES,
+                 phase=CODEPHASE, shufflecodes=False):
         self.neurons = neurons
         self.tranges = tolist(tranges)
         self.kind = kind
@@ -518,30 +520,39 @@ class Codes(object):
         self.shufflecodes = shufflecodes
         self.nis = [ neuron.id for neuron in self.neurons ]
         self.nneurons = len(self.neurons)
-        self.nis2niisdict = dict(zip(self.nis, range(self.nneurons))) # make a dict from keys:self.nis, vals:range(self.nneurons). This converts from nis to niis (from neuron indices to indices into the binary code array self.c)
+        # make a dict from keys:self.nis, vals:range(self.nneurons). This converts from nis
+        # to niis (from neuron indices to indices into the binary code array self.c)
+        self.nis2niisdict = dict(zip(self.nis, range(self.nneurons)))
 
     def nis2niis(self, nis=None):
-        """Converts from nis to niis (from neuron indices to indices into the binary code array self.c).
-        nis can be a sequence"""
+        """Converts from nis to niis (from neuron indices to indices into the binary code
+        array self.c). nis can be a sequence"""
         try:
             return [ self.nis2niisdict[ni] for ni in nis ]
         except TypeError: # iteration over non-sequence, nis is a scalar
             return self.nis2niisdict[nis]
 
     def calc(self):
-        self.s = [] # stores the corresponding spike times for each neuron, just for reference
+        self.s = [] # stores the corresponding spike times for each neuron, for reference
         self.c = [] # stores the 2D code array
-        # append neurons in their order in self.neurons, store them LSB to MSB from top to bottom
+        # append neurons in their order in self.neurons, store them LSB to MSB from top to
+        # bottom
         for neuron in self.neurons:
-            codeo = neuron.code(tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase)
-            self.s.append(codeo.s) # each is a nested list (ie, 2D), each row will have different length
+            codeo = neuron.code(tranges=self.tranges, kind=self.kind, tres=self.tres,
+                                phase=self.phase)
+            # build up nested list (ie, 2D) of spike times, each row will have different
+            # length:
+            self.s.append(codeo.s)
             if self.shufflecodes:
                 c = codeo.c.copy() # make a copy (wanna leave the codeo's codetrain untouched)
-                np.random.shuffle(c) # shuffle each neuron's codetrain separately, in-place operation
+                np.random.shuffle(c) # shuffle each neuron's codetrain separately, in-place
             else:
                 c = codeo.c # just a pointer
             self.c.append(c) # flat list
-        self.t = codeo.t # stores the bin edges, just for reference. all bin times should be the same for all neurons, cuz they're all given the same trange. use the bin times of the last neuron
+        # store the bin edges, for reference. All bin times should be the same for all
+        # neurons, because they're all given the same trange. use the bin times of the last
+        # neuron
+        self.t = codeo.t
         nneurons = len(self.neurons)
         nbins = len(self.c[0]) # all entries in the list should be the same length
         self.c = np.concatenate(self.c).reshape(nneurons, nbins)
@@ -549,7 +560,8 @@ class Codes(object):
     def syncis(self):
         """Returns synch indices, ie the indices of the bins for which all the
         neurons in this Codes object have a 1 in them"""
-        return self.c.prod(axis=0).nonzero()[0] # take product down all rows, only synchronous events across all cells will survive
+        # take product down all rows, only synchronous events across all cells will survive:
+        return self.c.prod(axis=0).nonzero()[0]
 
     def syncts(self):
         """Returns synch times, ie times of the left bin edges for which
@@ -574,14 +586,17 @@ class Codes(object):
             assert other.neurons == self.neurons
         codesos = [self] # list of codes objects
         codesos.extend(others)
-        self.tranges = [ trange for codeso in codesos for trange in codeso.tranges ] # this tranges potentially holds multiple tranges from each codes objects, times the number of codes objects
+        # this tranges potentially holds multiple tranges from each codes objects,
+        # times the number of codes objects
+        self.tranges = [ trange for codeso in codesos for trange in codeso.tranges ]
         self.calc() # recalculate this code with its new set of tranges
     '''
     
 class CodeCorrPDF(object):
     """A PDF of the correlations of the codes of all cell pairs (or of all cell pairs within
     some torus of radii R=(R0, R1) in um) in this Recording. See Schneidman2006 fig 1d"""
-    def __init__(self, recording=None, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
+    def __init__(self, recording=None, experiments=None, kind=CODEKIND,
+                 tres=CODETRES, phase=CODEPHASE):
         self.r = recording
         if experiments != None:
             try:
@@ -600,11 +615,13 @@ class CodeCorrPDF(object):
         self.tres = tres
         self.phase = phase
     '''
-    # this was used to save on calc time by seeing if a CCPDF object with the same attribs had already been calc'd, seems dumb and unsafe, commented out
+    # this was used to save on calc time by seeing if a CCPDF object with the same attribs
+    # had already been calc'd, seems dumb and unsafe, commented out
     def __eq__(self, other):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
-        # Delete their n and c attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
+        # Delete their n and c attribs, if they exist, to prevent comparing them below,
+        # since those attribs may not have yet been calculated
         [ d.__delitem__(key) for d in [selfd, otherd]
           for key in ['corrs', 'n', 'c', 'crange', 'nbins', 'normed']
           if d.has_key(key) ]
@@ -614,56 +631,71 @@ class CodeCorrPDF(object):
             return False
     '''
     def calc(self, R=None, shuffleids=False):
-        """Works on ConstrainedNeurons, but is constrained even further if experiments
-        were passed and their tranges were used to generate self.tranges (see __init__)"""
-        if R:
+        """Calculates self constrained to self.tranges and torus described by R"""
+        if R != None:
             assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
         self.R = R
         self.shuffleids = shuffleids
-        cnis = self.r.cn.keys() # ConstrainedNeuron indices
-        ncneurons = len(cnis)
+        nis = self.r.n.keys()
+        nneurons = len(nis)
         # it's more efficient to precalculate the means and stds of each cell's codetrain,
-        # and then reuse them in calculating the correlation coefficients:
-        means = dict( ( cni, self.r.code(cni, tranges=self.tranges,
-                                              kind=self.kind,
-                                              tres=self.tres,
-                                              phase=self.phase).c.mean() ) for cni in cnis ) # store each code mean in a dict
-        stds  = dict( ( cni, self.r.code(cni, tranges=self.tranges,
-                                              kind=self.kind,
-                                              tres=self.tres,
-                                              phase=self.phase).c.std() ) for cni in cnis ) # store each code std in a dict
-
+        # and then reuse them in calculating the correlation coefficients
+        # store each code mean in a dict:
+        means = dict( ( ni, self.r.code(ni, tranges=self.tranges,
+                                            kind=self.kind,
+                                            tres=self.tres,
+                                            phase=self.phase).c.mean() ) for ni in nis )
+        # store each code std in a dict:
+        stds  = dict( ( ni, self.r.code(ni, tranges=self.tranges,
+                                            kind=self.kind,
+                                            tres=self.tres,
+                                            phase=self.phase).c.std() ) for ni in nis ) 
         if self.shuffleids:
-            scnis = shuffle(cnis) # shuffled neuron ids, this is a control to see if it's the locality of neurons included in the analysis, or the number of neurons included that's important. It seems that both are.
+        # shuffled neuron ids, this is a control to see if it's the locality of neurons
+        # included in the analysis, or the number of neurons included that's important. It
+        # seems that both are.
+            snis = shuffle(nis)
         else:
-            scnis = cnis
-
+            snis = nis
         self.corrs = []
-        for cnii1 in range(ncneurons):
-            for cnii2 in range(cnii1+1, ncneurons):
-                cni1 = cnis[cnii1]; scni1 = scnis[cnii1]
-                cni2 = cnis[cnii2]; scni2 = scnis[cnii2]
-                if R == None or self.R[0] < dist(self.r.cn[scni1].pos, self.r.cn[scni2].pos) < self.R[1]:
-                    code1 = self.r.code(cni1, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
-                    code2 = self.r.code(cni2, tranges=self.tranges, kind=self.kind, tres=self.tres, phase=self.phase).c
-                    cc = ((code1 * code2).mean() - means[cni1] * means[cni2]) / (stds[cni1] * stds[cni2]) # (mean of product - product of means) / by product of stds
+        for nii1 in range(nneurons):
+            for nii2 in range(nii1+1, nneurons):
+                ni1 = nis[nii1]
+                sni1 = snis[nii1]
+                ni2 = nis[nii2]
+                sni2 = snis[nii2]
+                # calc the pair's code correlation if there's no torus specified, or if
+                # the pair's separation falls with bounds of specified torus:
+                if R == None or (self.R[0] < dist(self.r.n[sni1].pos, self.r.n[sni2].pos)
+                                 < self.R[1]):
+                    code1 = self.r.code(ni1, tranges=self.tranges, kind=self.kind,
+                                        tres=self.tres, phase=self.phase).c
+                    code2 = self.r.code(ni2, tranges=self.tranges, kind=self.kind,
+                                        tres=self.tres, phase=self.phase).c
+                    # (mean of product - product of means) / by product of stds
+                    cc = (((code1 * code2).mean() - means[ni1] * means[ni2])
+                          / (stds[ni1] * stds[ni2]))
                     self.corrs.append(cc)
         self.corrs = np.array(self.corrs)
         self.npairs = len(self.corrs)
         '''
         # simpler, but slower way:
-        self.corrs = [ self.r.codecorr(cnis[cnii1], cnis[cnii2], tranges=self.tranges, kind=self.kind, self.tres, self.phase)
-                       for cnii1 in range(0,ncneurons) for cnii2 in range(cnii1+1,ncneurons) ]
+        self.corrs = [ self.r.codecorr(nis[nii1], nis[nii2], tranges=self.tranges,
+                                       kind=self.kind, self.tres, self.phase)
+                       for nii1 in range(0,nneurons) for nii2 in range(nii1+1,nneurons) ]
         '''
-    def plot(self, figsize=(7.5, 6.5), crange=[-0.1, 0.5], limitstats=True, nbins=30, normed='pdf'):
-        """Plots the corrs. If limitstats, the stats displayed exclude any corr values that fall outside of crange"""
+    def plot(self, figsize=(7.5, 6.5), crange=[-0.1, 0.2], limitstats=True,
+             nbins=30, normed='pdf'):
+        """Plots the corrs. If limitstats, the stats displayed exclude any corr values that
+        fall outside of crange"""
         self.crange = crange
         self.nbins = nbins
         self.normed = normed
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         try: # figure out the bin edges
-            bins = np.linspace(start=self.crange[0], stop=self.crange[1], num=self.nbins, endpoint=True)
+            bins = np.linspace(start=self.crange[0], stop=self.crange[1], num=self.nbins,
+                               endpoint=True)
         except TypeError: # self.crange is None, let histogram() figure out the bin edges
             bins = self.nbins
         self.n, self.c = histogram(self.corrs, bins=bins, normed=self.normed)
@@ -684,7 +716,8 @@ class CodeCorrPDF(object):
             barwidth = (self.crange[1] - self.crange[0]) / float(self.nbins)
         except TypeError: # self.crange is None, take width of first bin in self.c
             barwidth = self.c[1] - self.c[0]
-        a.bar(left=c, height=n, width=barwidth, bottom=0, color='k', yerr=None, xerr=None, ecolor='k', capsize=3)
+        a.bar(left=c, height=n, width=barwidth, bottom=0, color='k',
+              yerr=None, xerr=None, ecolor='k', capsize=3)
         try:
             a.set_xlim(self.crange)
         except TypeError: # self.crange is None
@@ -704,12 +737,12 @@ class CodeCorrPDF(object):
             a.set_ylabel('count')
         a.set_xlabel('correlation coefficient')
         
+        # add stuff to top right of plot:
         a.text(0.99, 0.99, 'mean = %.3f\nmedian = %.3f\nmode = %.3f\nR = %r\nnpairs = %d'
-                            % (self.mean, self.median, self.mode, self.R, self.npairs), # add stuff to top right of plot
+                            % (self.mean, self.median, self.mode, self.R, self.npairs),
                             transform = a.transAxes,
                             horizontalalignment='right',
                             verticalalignment='top')
-
 '''
 class CanvasFrame(wx.Frame):
     """A minimal wx.Frame containing a matplotlib figure"""
@@ -1187,18 +1220,10 @@ def barefigure(*args, **kwargs):
 barefigure.__doc__ += '\n' + figure.__doc__
 '''
 def lastcmd():
-    """Returns a string containing the last command entered at the PyShell prompt.
-    Maybe this could be extended to work with other shells too?"""
-    try:
-        # PyShell's shell.py was hacked to save the last command
-        # as an attrib in Shell.push()
-        return __main__.shell.lastcmd
-    except AttributeError:
-        #return __main__._i
-        # for IPython, maybe I can somehow access the _i variable in the shell. This 
-        # always contains the last entered command. Unfortunately, __main__ returns a
-        # FakeModule when accessed from within IPython
-        return 'unknown'
+    """Returns a string containing the last command entered by the user in the
+    IPython shell"""
+    ip = get_ipython()
+    return ip._last_input_line
 
 def innerclass(cls):
     '''Class decorator for making a class behave as a Java (non-static) inner

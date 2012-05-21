@@ -24,7 +24,7 @@ class Animal(object):
     name = property(get_name)
 
     def get_id(self):
-        return name
+        return self.name
 
     id = property(get_id)
 

@@ -122,6 +122,19 @@ class BaseRecording(object):
             self.trange = min(tranges[:, 0]), max(tranges[:, 1])
 
 
+class RecordingRevCorr(BaseRecording):
+    """Mix-in class that defines reverse correlation related Recording methods"""
+    def sta(self, **kwargs):
+        assert len(self.e) == 1
+        e = self.e[0]
+        return e.sta(**kwargs)
+
+    def stc(self, **kwargs):
+        assert len(self.e) == 1
+        e = self.e[0]
+        return e.stc(**kwargs)
+
+
 class RecordingRaster(BaseRecording):
     """Mix-in class that defines the raster related Recording methods"""
     def raster(self, experiments=None, nis=None,
@@ -129,48 +142,53 @@ class RecordingRaster(BaseRecording):
                      publication=False):
         """Returns a population spike raster plot"""
         return PopulationRaster(recording=self, experiments=experiments, nis=nis,
-                                                jumpts=jumpts, binwidth=binwidth, relativet0=relativet0, units=units,
+                                                jumpts=jumpts, binwidth=binwidth,
+                                                relativet0=relativet0, units=units,
                                                 publication=publication)
     raster.__doc__ += '\n\n'+PopulationRaster.__doc__
 
 
 class RecordingCode(BaseRecording):
     """Mix-in class that defines the spike code related Recording methods"""
-    def code(self, cneuron=None, tranges=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
-        """Returns a ConstrainedNeuron.Code object, constrained to the time
-        ranges of the Experiments in this Recording, as well as by tranges. Takes either a
-        ConstrainedNeuron object or just a ConstrainedNeuron id"""
+    def code(self, neuron=None, tranges=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
+        """Returns a Neuron.Code object, constrained by tranges. Takes either a
+        Neuron or just a nid"""
         try:
-            return cneuron.code(tranges=tranges, kind=kind, tres=tres, phase=phase) # see if cneuron is a ConstrainedNeuron
-        except AttributeError:
-            return self.cn[cneuron].code(tranges=tranges, kind=kind, tres=tres, phase=phase) # cneuron is probably a ConstrainedNeuron id
+            # see if neuron is a Neuron object
+            return neuron.code(tranges=tranges, kind=kind, tres=tres, phase=phase)
+        except AttributeError: # neuron is probably a nid
+            return self.n[neuron].code(tranges=tranges, kind=kind, tres=tres, phase=phase) 
 
-    def codes(self, neurons=None, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE, shufflecodes=False):
-        """Returns a Codes object, a 2D array where each row is a neuron code constrained to the time range of this Recording,
-        or if specified, to the time ranges of Experiments in this Recording"""
+    def codes(self, neurons=None, experiments=None, kind=CODEKIND, tres=CODETRES,
+              phase=CODEPHASE, shufflecodes=False):
+        """Returns a Codes object, a 2D array where each row is a neuron code constrained to
+        the time range of this Recording, or if specified, to the time ranges of Experiments
+        in this Recording"""
         if neurons != None:
             if neurons.__class__ == list:
-                try: # assume is a list of Neuron ids?
-                    neurons = [ self.n[ni] for ni in neurons ] # build up list of Neurons, ordered according to the id list in neurons
-                except: # assume is a list of Neurons
+                try: # assume a list of nids?
+                    # build up list of Neurons, ordered according to the nids in neurons:
+                    neurons = [ self.n[ni] for ni in neurons ]
+                except: # assume a list of Neurons
                     pass
             else: # assume neurons is a dict of neurons
                 neurons = list(neurons.values()) # convert to list of Neurons
         else:
-            neurons = list(self.n.values()) # list of Neurons
+            neurons = list(self.n.values()) # list of all Neurons
         if experiments != None:
             # need to preserve order of expids as specified
             if experiments.__class__ == list:
-                try: # assume is a list of Experiment ids?
+                try: # assume a list of Experiment ids?
                     tranges = [ self.e[ei].trange for ei in experiments ]
-                except: # assume is a list of Experiments
+                except: # assume a list of Experiments
                     tranges = [ e.trange for e in experiments ]
             else: # assume experiments is a dict of Experiments
                 tranges = [ e.trange for e in experiments.values() ]
         else: # no experiments specified, use whole Recording trange
             tranges = [self.trange]
-        codeso = Codes(neurons=neurons, tranges=tranges, kind=kind, tres=tres, phase=phase, shufflecodes=shufflecodes)
-        codeso.calc()
+        codes = Codes(neurons=neurons, tranges=tranges, kind=kind, tres=tres,
+                      phase=phase, shufflecodes=shufflecodes)
+        codes.calc()
         return codeso
     codes.__doc__ += '\n\nCodes object:\n' + Codes.__doc__
 
@@ -180,11 +198,13 @@ class RecordingCode(BaseRecording):
         code2 = self.code(neuron2, kind=kind, tres=tres, phase=phase)
         return corrcoef(code1.c, code2.c)
 
-    def codecorrpdf(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE, R=None, shuffleids=False):
+    def codecorrpdf(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE,
+                    R=None, shuffleids=False):
         """Returns a CodeCorrPDF object"""
-        cco = CodeCorrPDF(recording=self, experiments=experiments, kind=kind, tres=tres, phase=phase)
-        cco.calc(R, shuffleids)
-        return cco
+        ccpdf = CodeCorrPDF(recording=self, experiments=experiments, kind=kind, tres=tres,
+                            phase=phase)
+        ccpdf.calc(R, shuffleids)
+        return ccpdf
 
 
 class BaseNetstate(object):
@@ -1336,7 +1356,8 @@ class RecordingNetstate(BaseRecording):
         return NetstateTriggeredAverage(recording=self, experiments=experiments, nis=nis, kind=kind, tres=tres, phase=phase)
 
 
-class Recording(RecordingRaster,
+class Recording(RecordingRevCorr,
+                RecordingRaster,
                 RecordingCode,
                 RecordingNetstate,
                 BaseRecording):

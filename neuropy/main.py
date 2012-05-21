@@ -23,6 +23,8 @@ NeuropyUi, NeuropyUiBase = uic.loadUiType('neuropy.ui')
 
 from __init__ import __version__
 from core import DATAPATH
+from animal import Animal
+from track import Track
 from recording import Recording
 
 
@@ -70,9 +72,9 @@ class NeuropyWindow(QtGui.QMainWindow):
         self.setWindowTitle('neuropy')
         self.path = DATAPATH
 
-        ## TODO: get neuropy imports to work properly without messing up ipython display header
-        ## need to be done after window and ipyqtwidget init are finished. This may have been an
-        ## ipython bug that's been since fixed
+        ## TODO: get neuropy imports to work properly without messing up ipython display
+        ## header. Need to be done after window and ipyqtwidget init are finished. This may
+        ## have been an ipython bug that's since been fixed
 
 
     @QtCore.pyqtSlot()
@@ -84,7 +86,24 @@ class NeuropyWindow(QtGui.QMainWindow):
         if path == '':
             return
         self.path = os.path.normpath(os.path.join(path, os.pardir)) # update with path's parent
-        self.open_recording(path)
+
+        head, tail = os.path.split(path)
+        if tail.startswith('pt'): # assume it's an animal
+            self.open_animal(path)
+        elif tail.startswith('tr'): # assume it's a track
+            self.open_track(path)
+        else: # asume it's a recording
+            self.open_recording(path)
+
+    @QtCore.pyqtSlot()
+    def on_action_ptc22_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc22')
+        self.open_animal(path)
+
+    @QtCore.pyqtSlot()
+    def on_action_ptc22_tr1_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc22/tr1')
+        self.open_track(path)
 
     @QtCore.pyqtSlot()
     def on_action_ptc15_r87_triggered(self):
@@ -105,6 +124,24 @@ class NeuropyWindow(QtGui.QMainWindow):
     def on_action_ptc21_r71_triggered(self):
         path = os.path.join(DATAPATH, 'ptc21/tr5c/71-tr5c-flashgrating_40ms')
         self.open_recording(path)
+
+    def open_animal(self, path):
+        a = Animal(path) # init it just to parse its name
+        exec_lines = (
+        "from animal import Animal\n"
+        "%s = Animal(%r)\n"
+        "%s.load()" % (a.name, path, a.name)
+        )
+        self.ipyqtwidget.execute(exec_lines)
+
+    def open_track(self, path):
+        tr = Track(path) # init it just to parse its id
+        exec_lines = (
+        "from track import Track\n"
+        "tr%d = Track(%r)\n"
+        "tr%d.load()" % (tr.id, path, tr.id)
+        )
+        self.ipyqtwidget.execute(exec_lines)
 
     def open_recording(self, path):
         rec = Recording(path) # init it just to parse its id
@@ -150,15 +187,19 @@ class NeuropyWindow(QtGui.QMainWindow):
 
 
 def set_excepthook():
-    """Drops us into IPython's debugger on any error"""
+    """Drops us into IPython's debugger on any error.
+    If you hit "C" to continue execution after the error, this can cause the following error
+    on ipython shutdown:
+    <type 'exceptions.AttributeError'>: 'NoneType' object has no attribute 'ZMQError'
+    If instead of you hit CTRL+D, you don't get the above error on shutdown.
+    Doesn't seem like a big deal. Maybe need to restore InputHook somewhere?"""
     sys.excepthook = ultratb.FormattedTB(mode='Verbose', call_pdb=1)
 
 
 if __name__ == "__main__":
     # prevents "The event loop is already running" errors when dropping into shell:
     QtCore.pyqtRemoveInputHook()
-    # this causes ipython shutdown errors on close. Maybe need to restore InputHook somewhere:
-    #set_excepthook()
+    set_excepthook()
     app = QtGui.QApplication(sys.argv)
     neuropywindow = NeuropyWindow()
     neuropywindow.show()
