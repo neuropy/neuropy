@@ -22,8 +22,6 @@ from PyQt4.QtGui import QPixmap, QImage, QPalette, QColor
 from PyQt4.QtCore import Qt, QSize
 
 import numpy as np
-import scipy as sp
-import scipy.signal as sig
 
 import matplotlib as mpl
 import matplotlib.cm
@@ -979,6 +977,10 @@ class Ising(object):
         """
         from scipy import maxentropy
 
+        # why are the abs values of these so big, shouldn't they be near 0?:
+        print 'means:\n', means
+        print 'pairmeans:\n', pairmeans
+
         nbits = len(means)
         npairs = len(pairmeans)
         assert npairs == nCr(nbits, 2) # sanity check
@@ -1018,6 +1020,26 @@ class Ising(object):
         self.model.verbose = False
 
         # Fit the model
+        """this has problems in scipy 0.9.0 and 0.10.1 but not 0.5.2. Raises error:
+        
+        "ValueError: operands could not be broadcast together with shapes (1024) (55)"
+
+        This has to do with the call in model.logpmf() in maxentropy.py of maxentutils.py's
+        innerprodtranspose(), which has this code in 0.5.2 around line 361:
+
+            elif sparse.isspmatrix(A):
+        return A.rmatvec(v).transpose()
+
+        but was changed to this code in 0.9.0 and later:
+
+        elif sparse.isspmatrix(A):
+            return (A.conj().transpose() * v).transpose()
+
+        which I guess returns an array of 1024 instead of the expected 55 (10 means plus 10
+        choose 2 == 45 pairmeans). So maybe there's something wrong with this change that
+        was made in scipy 0.9.0. Don't know about scipy 0.6.0 through 0.8.0 because I can't
+        get any of those to compile without errors.
+        """
         self.model.fit(K, algorithm=algorithm)
 
         self.hi = self.model.params[0:nbits]

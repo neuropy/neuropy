@@ -12,7 +12,7 @@ from pylab import get_current_fig_manager as gcfm
 
 import core
 from core import PopulationRaster, Codes, CodeCorrPDF, rstrip, dictattr, warn, binarray2int
-from core import histogram, histogram2d
+from core import histogram, histogram2d, lastcmd
 from core import TAB, CODEKIND, CODETRES, CODEPHASE, CODEWORDLEN
 from experiment import Experiment
 from sort import Sort
@@ -328,7 +328,7 @@ class BaseNetstate(object):
         nospikeps = 1 - spikeps
         #print 'spikesps: ', spikeps.__repr__()
         #print 'nospikesps: ', nospikeps.__repr__()
-        binarytable = getbinarytable(nbits)
+        binarytable = core.getbinarytable(nbits)
         # 2D array of probs of having a 1 in the right place for all possible population
         # code words:
         pon = binarytable * spikeps.transpose()
@@ -428,7 +428,7 @@ class NetstateIsingHist(BaseNetstate):
         nJij = histogram(self.Jijs, bins=Jijbins, normed='pdf')[0]
 
         # plot the hi histogram
-        f1 = figure()
+        f1 = pl.figure()
         a1 = f1.add_subplot(111)
         a1.hold(True)
         a1.bar(left=hibins, height=nhi, width=hibins[1]-hibins[0], color='g', edgecolor='g')
@@ -440,7 +440,7 @@ class NetstateIsingHist(BaseNetstate):
         a1.set_xlim(hirange)
 
         # plot the Jij histogram
-        f2 = figure()
+        f2 = pl.figure()
         a2 = f2.add_subplot(111)
         a2.hold(True)
         a2.bar(left=Jijbins, height=nJij, width=Jijbins[1]-Jijbins[0], color='m', edgecolor='m')
@@ -476,7 +476,7 @@ class NetstateNspikingPMF(BaseNetstate):
         for shufflecodes in (False, True):
             self.words[shufflecodes] = self.get_intcodes(nis=self.nis, shufflecodes=shufflecodes)
             # collect observances of the number of cells spiking for each pop code time bin
-            self.nspiking[shufflecodes] = [ np.binary_repr(word).count('1') for word in self.words[shufflecodes] ] # convert the word at each time bin to binary, count the number of 1s in it. np.binary_repr() is a bit faster than using neuropy.core.bin()
+            self.nspiking[shufflecodes] = [ np.binary_repr(word).count('1') for word in self.words[shufflecodes] ] # convert the word at each time bin to binary, count the number of 1s in it. np.binary_repr() is a bit faster than using core.bin()
             self.pnspiking[shufflecodes], self.bins[shufflecodes] = histogram(self.nspiking[shufflecodes],
                                                                               bins=np.arange(self.nneurons+1),
                                                                               normed='pmf') # want all probs to add to 1, not their area, so use pmf
@@ -494,7 +494,7 @@ class NetstateNspikingPMF(BaseNetstate):
         try: self.pnspiking, self.bins
         except AttributeError: self.calc(nbits=nbits)
 
-        f = figure()
+        f = pl.figure()
         a = f.add_subplot(111)
         a.hold(True)
         a.plot(self.bins, self.pnspiking[False], 'r.-')
@@ -538,28 +538,38 @@ class NetstateScatter(BaseNetstate):
         self.algorithm = algorithm
 
         if self.niswasNone: # nis weren't specified in __init__
-            self.nis = random.sample(self.cs.nis, self.nbits) # randomly sample nbits of the nis
+            # randomly sample nbits of the nis:
+            self.nis = random.sample(self.cs.nis, self.nbits)
             self.nis.sort()
         else: # nis were specified in __init__
             self.nis = self.cs.nis
             self.nbits = min(len(self.nis), self.nbits) # make sure nbits isn't > len(nis)
 
         self.intcodes = self.get_intcodes(nis=self.nis, shufflecodes=self.shufflecodes)
-        self.pobserved, self.observedwords = histogram(self.intcodes, bins=np.arange(2**self.nbits), normed='pmf')
+        self.pobserved, self.observedwords = histogram(self.intcodes,
+                                                       bins=np.arange(2**self.nbits),
+                                                       normed='pmf')
         if self.model == 'indep':
-            self.pexpected, self.expectedwords = self.intcodesFPDF(nis=self.nis) # expected, assuming independence
+            # expected, assuming independence:
+            self.pexpected, self.expectedwords = self.intcodesFPDF(nis=self.nis)
         elif self.model == 'ising':
-            ising = self.ising(nis=self.nis, R=self.R, shuffleids=self.shuffleids, algorithm=self.algorithm) # returns a maxent Ising model
+            # get a maxent Ising model:
+            ising = self.ising(nis=self.nis, R=self.R, shuffleids=self.shuffleids,
+                               algorithm=self.algorithm)
             self.pexpected = ising.p # expected, assuming maxent Ising model
             self.expectedwords = ising.intsamplespace
         elif self.model == 'both':
-            ising = self.ising(nis=self.nis, R=self.R, shuffleids=self.shuffleids, algorithm=self.algorithm) # returns a maxent Ising model
+            # get a maxent Ising model:
+            ising = self.ising(nis=self.nis, R=self.R, shuffleids=self.shuffleids,
+                               algorithm=self.algorithm)
             self.pexpected = ising.p # expected, assuming maxent Ising model
             self.expectedwords = ising.intsamplespace
-            self.pindepexpected = self.intcodesFPDF(nis=self.nis)[0] # expected, assuming independence
+            # expected, assuming independence:
+            self.pindepexpected = self.intcodesFPDF(nis=self.nis)[0]
         else:
             raise ValueError('Unknown model %r' % self.model)
-        assert (self.observedwords == self.expectedwords).all() # make sure we're comparing apples to apples
+        # make sure we're comparing apples to apples:
+        assert (self.observedwords == self.expectedwords).all()
         return self
 
     def plot(self, model='both', scale='freq',
@@ -572,26 +582,31 @@ class NetstateScatter(BaseNetstate):
         try: self.pobserved, self.pexpected
         except AttributeError: self.calc(model=model)
 
-        f = figure()
+        f = pl.figure()
         a = f.add_subplot(111)
         lo = min(xlim[0], ylim[0])
         hi = max(xlim[1], ylim[1])
         a.plot((lo, hi), (lo, hi), 'b-') # plot a y=x line
         a.hold(True)
 
-        self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
-        self.tooltip.Enable(False) # leave disabled for now
-        self.tooltip.SetDelay(0) # set popup delay in ms
-        gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
-        f.canvas.mpl_connect('motion_notify_event', self._onmotion) # connect the mpl event to the action
+        ## TODO: make tooltips work again, old wx code disabled for now:
+        # create a long tooltip with newline to get around bug where newlines aren't
+        # recognized on subsequent self.tooltip.SetTip() calls
+        #self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) 
+        #self.tooltip.Enable(False) # leave disabled for now
+        #self.tooltip.SetDelay(0) # set popup delay in ms
+        #gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
+        # connect the mpl event to the action:
+        #f.canvas.mpl_connect('motion_notify_event', self._onmotion)
 
-        # pylab.scatter(pobserved, pexpected), followed by setting the x and y axes to log scale freezes the figure and runs 100% cpu
-        # gca().set_xscale('log')
-        # gca().set_yscale('log')
+        # pylab.scatter(pobserved, pexpected), followed by setting the x and y axes to log
+        # scale freezes the figure and runs 100% cpu:
+        #gca().set_xscale('log')
+        #gca().set_yscale('log')
         # use loglog() instead
 
-        # colour each scatter point according to how many 1s are in the population code word it represents.
-        # This is done very nastily, could use a cleanup:
+        # colour each scatter point according to how many 1s are in the population code word
+        # it represents. This is done very nastily, could use a cleanup:
         if scale == 'freq':
             norm = self.tres / 1e6 # convert scale to patter freq in Hz
         elif scale == 'prob':
@@ -604,8 +619,10 @@ class NetstateScatter(BaseNetstate):
             inds = []
             for nspikes in range(0, 5):
                 inds.append([])
-                [ inds[nspikes].append(i) for i in range(0, 2**self.nbits) if bin(i).count('1') == nspikes ]
-            pobserved = self.pobserved.copy() # make local copies that are safe to modify for colour plotting and shit
+                [ inds[nspikes].append(i) for i in range(0, 2**self.nbits) if
+                  core.bin(i).count('1') == nspikes ]
+            # make local copies that are safe to modify for colour plotting and stuff
+            pobserved = self.pobserved.copy()
             pexpected = self.pexpected.copy()
             pobserved1 = pobserved[inds[1]]; pexpected1 = pexpected[inds[1]]
             pobserved2 = pobserved[inds[2]]; pexpected2 = pexpected[inds[2]]
@@ -618,12 +635,14 @@ class NetstateScatter(BaseNetstate):
 
         colorguide = ''
         if self.model == 'both': # plot the indep model too, and plot it first
-            a.loglog(self.pobserved/norm, self.pindepexpected/norm, color='blue', marker='.', linestyle='None')
-            colorguide = ' red: ising\n' + \
-                         'blue: indep\n'
+            a.loglog(self.pobserved/norm, self.pindepexpected/norm, color='blue',
+                     marker='.', linestyle='None')
+            colorguide = (' red: ising\n' +
+                          'blue: indep\n')
         # plot whichever model was specified
         if color:
-            a.loglog(pobserved/norm, pexpected/norm, '.', color='black') # plots what's left in black
+            # plot what's left in black:
+            a.loglog(pobserved/norm, pexpected/norm, '.', color='black')
             a.loglog(pobserved4/norm, pexpected4/norm, '.', color='magenta')
             a.loglog(pobserved3/norm, pexpected3/norm, '.', color='blue')
             a.loglog(pobserved2/norm, pexpected2/norm, '.', color=(0, 1, 0))
@@ -649,7 +668,8 @@ class NetstateScatter(BaseNetstate):
             maxpi = pexpectedmissing.argmax()
             maxp = pexpectedmissing[maxpi]
             maxpcode = self.expectedwords[missingcodeis[maxpi]]
-            missingcodetext += '\n nmissingcodes: %d, maxpmissingcode: (%r, pexpected=%.3g)' % (nmissing, bin(maxpcode, minbits=self.nbits), maxp)
+            missingcodetext += ('\n nmissingcodes: %d, maxpmissingcode: (%r, pexpected=%.3g)'
+                                % (nmissing, core.bin(maxpcode, minbits=self.nbits), maxp))
         titletext = lastcmd()
         if self.niswasNone:
             titletext += '\nneurons: %s' % self.nis # + missingcodetext)
@@ -665,12 +685,14 @@ class NetstateScatter(BaseNetstate):
         if yticks:
             a.set_yticks(yticks)
         if self.model =='both':
-            DJSstring = '(%.4f, %.4f)' % (DJS(self.pobserved, self.pindepexpected), DJS(self.pobserved, self.pexpected))
+            DJSstring = ('(%.4f, %.4f)' % (core.DJS(self.pobserved, self.pindepexpected),
+                         core.DJS(self.pobserved, self.pexpected)))
         else:
-            DJSstring = '%.4f' % DJS(self.pobserved, self.pexpected)
+            DJSstring = '%.4f' % core.DJS(self.pobserved, self.pexpected)
         a.text(0.99, 0.01, ('%s' +
                             '%.1f%% missing\n' +
-                            'DJS=%s') % (colorguide, percentmissing, DJSstring), # add stuff to bottom right of plot
+                            # add stuff to bottom right of plot:
+                            'DJS=%s') % (colorguide, percentmissing, DJSstring),
                             transform = a.transAxes,
                             horizontalalignment='right',
                             verticalalignment='bottom')
@@ -681,7 +703,8 @@ class NetstateScatter(BaseNetstate):
 
     def _onmotion(self, event):
         """Called during mouse motion over scatterplot figure. Pops up the corresponding
-        population code word and its int representation when hovering over a neuron scatter point"""
+        population code word and its int representation when hovering over a neuron scatter
+        point"""
         if event.xdata != None and event.ydata != None: # if mouse is inside the axes
             i  = approx(event.xdata, self.pobserved/self.norm, rtol=1e-1, atol=0).nonzero()[0] # find for what indices (if any) xdata == pobserved
             ii = approx(event.ydata, self.pexpected[i]/self.norm, rtol=1e-1, atol=0).nonzero()[0] # for those above, find for what index (if any) ydata == pexpected
@@ -691,7 +714,7 @@ class NetstateScatter(BaseNetstate):
                 #tip += '\nii: %r' % ii
                 #tip += '\ncodeis: %r' % codeis
                 intcodes = self.observedwords[codeis] # get the int rep for those indices from either self.observedwords[i] or self.expectedwords[i], doesn't matter which since they should be identical
-                codes = [ bin(intcode, minbits=self.nbits) for intcode in intcodes ]
+                codes = [ core.bin(intcode, minbits=self.nbits) for intcode in intcodes ]
                 tip =  'codes: %s' % repr(codes).replace('\'', '')
                 tip += '\nintcodes: %r' % list(intcodes)
                 activenis = [ list(np.asarray(self.nis)[::-1][charfind(code, '1')]) for code in codes ]
@@ -755,7 +778,7 @@ class NetstateI2vsIN(BaseNetstate):
         try: self.I2s, self.INs, self.I2divIN
         except AttributeError: self.calc()
 
-        f = figure()
+        f = pl.figure()
         gcfm().window.setWindowTitle(lastcmd())
         a = f.add_subplot(111)
         a.plot(self.INs, self.I2divIN, 'r.')
@@ -804,7 +827,7 @@ class NetstateDJSHist(BaseNetstate):
                                      kind=self.kind, tres=self.tres, phase=self.phase)
                 so.calc(nbits=self.nbits, model=model, R=self.R, shuffleids=self.shuffleids, shufflecodes=self.shufflecodes, algorithm=self.algorithm)
 
-                self.DJSs[model].append(DJS(so.pobserved, so.pexpected))
+                self.DJSs[model].append(core.DJS(so.pobserved, so.pexpected))
                 cont, skip = pd.Update(groupi*len(self.models)+modeli, newmsg='groupi = %d\nmodel = %s' % (groupi, model))
                 if not cont:
                     pd.Destroy()
@@ -835,7 +858,7 @@ class NetstateDJSHist(BaseNetstate):
         #barwidths.append(10**(logrange[1]+logbinwidth) - x[-1]) # should be exactly correct
 
         # plot DJSs of all models on the same axes
-        f1 = figure()
+        f1 = pl.figure()
         a1 = f1.add_subplot(111)
         #a1.hold(True)
         bars = {}
@@ -865,7 +888,7 @@ class NetstateDJSHist(BaseNetstate):
             a1.legend([ bars[model][0] for model in self.models ], ['pairwise', 'independent'], loc='upper left')
         # plot DJSratios
         if len(self.models) == 2:
-            f2 = figure()
+            f2 = pl.figure()
             a2 = f2.add_subplot(111)
             nratios = histogram(self.DJSratios, bins=x, normed=False)[0] # bin heights for the DJSratios
             a2.bar(left=x, height=nratios, width=barwidths, color='g', edgecolor='g')
@@ -942,7 +965,7 @@ class NetstateS1INvsN(BaseNetstate):
         try: self.S1ss
         except AttributeError: self.calc()
 
-        f = figure()
+        f = pl.figure()
         gcfm().window.setWindowTitle(lastcmd())
         a = f.add_subplot(111)
         a.hold(True)
@@ -1036,7 +1059,7 @@ class NetstateNNplus1(BaseNetstate):
         try: self.IdivS
         except AttributeError: self.calc(maxN=maxN, maxnsamples=maxnsamples)
 
-        f = figure()
+        f = pl.figure()
         gcfm().window.setWindowTitle(lastcmd())
         a = f.add_subplot(111)
         a.hold(True)
@@ -1072,7 +1095,7 @@ class NetstateNNplus1(BaseNetstate):
         '''
         # plot the distributions of IdivS
         for ni, n in enumerate(self.N):
-            f = figure()
+            f = pl.figure()
             gcfm().window.setWindowTitle('%s IdivS distrib for N=%d' % (lastcmd(), n))
 
             notmaskedis = self.IdivS[ni].mask==False # indexes the non-masked entries in IdivS, for this ni
@@ -1195,7 +1218,7 @@ class NetstateCheckcells(BaseNetstate):
         else:
             nis = toiter(nis)
         for ni in nis:
-            f = figure()
+            f = pl.figure()
             gcfm().window.setWindowTitle('%s for ni=%d' % (lastcmd(), ni))
             a = f.add_subplot(111)
             a.hold(True)
