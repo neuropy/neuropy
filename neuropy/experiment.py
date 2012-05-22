@@ -8,6 +8,7 @@ import StringIO
 import numpy as np
 import matplotlib as mpl
 
+import core
 from core import getargstr, TAB, warn, rstrip, dictattr, intround, toiter
 from core import _movies, MOVIEPATH, MSEQ16, MSEQ32, joinpath, lastcmd
 from core import PopulationRaster, Codes, CodeCorrPDF, RevCorrWindow
@@ -420,9 +421,9 @@ class BaseExperiment(object):
                 allshuffled *= (dimshuffles[dimi]==1)
                 allrandomized *= (dimshuffles[dimi]==2)
             if allshuffled:
-                sweeplist = shuffle(sweeplist)
+                sweeplist = core.shuffle(sweeplist)
             elif allrandomized:
-                sweeplist = randomize(sweeplist)
+                sweeplist = core.randomize(sweeplist)
             else: # shuffle/randomize each dim individually (slower)
                 for dimi in xrange(ndims):
                     if dimshuffles[dimi] in (1, 2): # if flag is set to shuffle or randomize
@@ -456,9 +457,9 @@ class BaseExperiment(object):
                                 collis[i] = j
                             #collis = [ j for j in xrange(colli,offset*ldimi,offset) ]
                             if dimshuffles[dimi] == 1: # shuffle this dim
-                                shuffcollis = shuffle(collis)
+                                shuffcollis = core.shuffle(collis)
                             elif dimshuffles[dimi] == 2: # randomize this dim
-                                shuffcollis = randomize(collis)
+                                shuffcollis = core.randomize(collis)
                             for i in xrange(len(collis)):
                                 sweeplist[sortindices[collis[i]]] = sortedsweeplist[shuffcollis[i]] # update sweeplist appropriately, this is the trickiest bit
             for i, j in enumerate(range(nsweeps*shufflei, nsweeps*(shufflei+1))):
@@ -487,7 +488,7 @@ class BaseExperiment(object):
                 if (sweepi+1) % blankSweep[0] == 0: # if 1 based sweepi is multiple of blankSweep[0]
                     stimOn[sweepi] = 0 # stimulus will be off on sweepi
             if shuffleBlankSweeps == 1:
-                stimOn = shuffle(stimOn) # shuffle the stimulus state list
+                stimOn = core.shuffle(stimOn) # shuffle the stimulus state list
             #print 'stimOn is', stimOn
             # insert blank sweeps into sweeplist, according to stimulus state list
             for sweepi in xrange(nsweeps): # for all sweeps (values) in stimulus table

@@ -61,6 +61,15 @@ class BaseRecording(object):
         
     id = property(get_id)
 
+    # shortcuts to various attribs and properties in default sort:
+    n = property(lambda self: self.sort.n)
+    qn = property(lambda self: self.sort.qn)
+    nspikes = property(lambda self: self.sort.nspikes)
+    nneurons = property(lambda self: self.sort.nneurons)
+    datetime = property(lambda self: self.sort.datetime)
+    pttype = property(lambda self: self.sort.pttype)
+    chanpos = property(lambda self: self.sort.chanpos)
+
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
@@ -108,7 +117,6 @@ class BaseRecording(object):
             self.__setattr__('sort' + str(sort.id), sort) # add shortcut attrib
         # make last sort the default one
         self.sort = self.sorts[sortfdnames[-1]]
-        self.n = self.sort.n
         
         if len(self.e) > 0:
             firstexp = min(list(self.e))
@@ -120,6 +128,13 @@ class BaseRecording(object):
             # spike across all neurons
             tranges = np.asarray([ n.trange for n in self.n.values() ])
             self.trange = min(tranges[:, 0]), max(tranges[:, 1])
+        self.dt = self.trange[1] - self.trange[0] # static, no need for a property
+        self.dtsec = self.dt / 1e6
+        self.dtmin = self.dtsec / 60
+        # now that self.dtsec is known, mean firing rates within each sort can be
+        # calculated and neurons paritioned into normal and quiet neurons:
+        for sort in self.sorts.values():
+            sort.apply_quietmeanratethresh()
 
 
 class RecordingRevCorr(BaseRecording):
@@ -608,7 +623,7 @@ class NetstateScatter(BaseNetstate):
         # colour each scatter point according to how many 1s are in the population code word
         # it represents. This is done very nastily, could use a cleanup:
         if scale == 'freq':
-            norm = self.tres / 1e6 # convert scale to patter freq in Hz
+            norm = self.tres / 1e6 # convert scale to pattern freq in Hz
         elif scale == 'prob':
             norm = 1 # leave scale as pattern probabilities
         else:
@@ -635,8 +650,7 @@ class NetstateScatter(BaseNetstate):
 
         colorguide = ''
         if self.model == 'both': # plot the indep model too, and plot it first
-            a.loglog(self.pobserved/norm, self.pindepexpected/norm, color='blue',
-                     marker='.', linestyle='None')
+            a.loglog(self.pobserved/norm, self.pindepexpected/norm, '.', color='blue')
             colorguide = (' red: ising\n' +
                           'blue: indep\n')
         # plot whichever model was specified
@@ -653,7 +667,7 @@ class NetstateScatter(BaseNetstate):
                          'magenta: 4 spike patterns\n' + \
                          '  black: other patterns  \n'
         else:
-            a.loglog(self.pobserved/norm, self.pexpected/norm, 'r.')
+            a.loglog(self.pobserved/norm, self.pexpected/norm, '.', color='red')
         '''
         a.plot(pobserved/norm, pexpected/norm, 'k.')
         '''
@@ -672,7 +686,7 @@ class NetstateScatter(BaseNetstate):
                                 % (nmissing, core.bin(maxpcode, minbits=self.nbits), maxp))
         titletext = lastcmd()
         if self.niswasNone:
-            titletext += '\nneurons: %s' % self.nis # + missingcodetext)
+            titletext += ', neurons: %s' % self.nis # + missingcodetext
         a.set_title(titletext)
         if scale == 'freq':
             labelend = 'state frequency (Hz)'

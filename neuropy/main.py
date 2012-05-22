@@ -17,7 +17,7 @@ from IPython.frontend.qt.console.rich_ipython_widget import RichIPythonWidget
 from IPython.frontend.qt.kernelmanager import QtKernelManager
 
 from PyQt4 import QtCore, QtGui, uic
-#from PyQt4.QtGui import QFont
+from PyQt4.QtGui import QFont
 #from PyQt4.QtCore import Qt
 NeuropyUi, NeuropyUiBase = uic.loadUiType('neuropy.ui')
 
@@ -39,21 +39,31 @@ class NeuropyWindow(QtGui.QMainWindow):
         # might need local_kernel=True kwarg
         # can set paging: 'inside', 'vsplit', 'hsplit', 'none'
         #ipyqtwidget = IPythonWidget(parent=self, local_kernel=True)
-        ipyqtwidget = RichIPythonWidget(parent=self, local_kernel=True) # necessary for inline
+        #ipyqtwidget = RichIPythonWidget(parent=self, config=config) # necessary for inline
+        ipyqtwidget = RichIPythonWidget(parent=self) # necessary for inline
         self.ipyqtwidget = ipyqtwidget
-        config = load_default_config()
-        # this doesn't seem to work as intended:
-        config.InteractiveShellApp.exec_lines.append('from recording import Recording')
+        #config = load_default_config()
+        #import ipdb; ipdb.set_trace()
+        from IPython.utils.path import get_ipython_dir
+        ipython_dir = get_ipython_dir()
+        profile_dir = os.path.join(ipython_dir, 'profile_default')
+        from IPython.config.loader import PyFileConfigLoader
+        cl = PyFileConfigLoader('ipython_qtconsole_config.py', profile_dir)
+        config = cl.load_config()
+        #print config
+        #import ipdb; ipdb.set_trace()
         self.ipyqtwidget.config = config
-        
+
+        #import ipdb; ipdb.set_trace()
         kernel_manager = QtKernelManager()
+        #kernel_manager.config = config
         kernel_manager.start_kernel()
         kernel_manager.start_channels()
         ipyqtwidget.kernel_manager = kernel_manager
         ipyqtwidget.gui_completion = False
         ipyqtwidget.set_default_style(colors='linux')
-        #ipyqtwidget.font = QFont('Lucida Console', 12) # 3rd arg can be e.g. QFont.Bold
-        #ipyqtwidget.font.setFixedPitch(True)
+        ipyqtwidget.font = QFont('Lucida Console', 12) # 3rd arg can be e.g. QFont.Bold
+        ipyqtwidget.font.setFixedPitch(True)
         # make "exit" and "quit" typed in ipyqtwidget close self
         ipyqtwidget.exit_requested.connect(self.close)
         self.setCentralWidget(ipyqtwidget)
@@ -73,10 +83,20 @@ class NeuropyWindow(QtGui.QMainWindow):
         self.setWindowTitle('neuropy')
         self.path = DATAPATH
 
+        # don't know why I need to call "%gui qt4" here, this seems to be required as of
+        # ipython 0.13.dev, in order to allow mpl figures to pop up without a .show().
+        # This seemed to be automatic (via the config?) in ipython 0.12.dev:
+        ipyqtwidget.execute('get_ipython().magic("gui qt4")', hidden=True)
+        ipyqtwidget.execute('get_ipython().magic("pylab")', hidden=True)
+
+        ipyqtwidget.execute('from recording import Recording', hidden=True)
+        for line in open('globals.py', 'r'):
+            ipyqtwidget.execute(line, hidden=True)
+        #ipyqtwidget.execute_file('globals.py', hidden=True) # doesn't seem to work when hidden
+
         ## TODO: get neuropy imports to work properly without messing up ipython display
         ## header. Need to be done after window and ipyqtwidget init are finished. This may
         ## have been an ipython bug that's since been fixed
-
 
     @QtCore.pyqtSlot()
     def on_actionOpen_triggered(self):
@@ -201,7 +221,24 @@ if __name__ == "__main__":
     # prevents "The event loop is already running" errors when dropping into shell:
     QtCore.pyqtRemoveInputHook()
     set_excepthook()
+    app = QtCore.QCoreApplication.instance()
+    if app is None:
+        app = QtGui.QApplication([])
+
+    neuropywindow = NeuropyWindow()
+    neuropywindow.show()
+
+    try:
+        from IPython.lib.guisupport import start_event_loop_qt4
+        start_event_loop_qt4(app)
+    except ImportError:
+        app.exec_()
+
+    '''
+    QtCore.pyqtRemoveInputHook()
+    set_excepthook()
     app = QtGui.QApplication(sys.argv)
     neuropywindow = NeuropyWindow()
     neuropywindow.show()
     sys.exit(app.exec_())
+    '''

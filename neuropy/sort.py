@@ -20,6 +20,7 @@ class Sort(object):
         self.id = id
         self.r = recording
         self.n = dictattr() # store Neurons in a dictionary with attrib access
+        self.qn = dictattr() # do the same for "quiet" Neurons
 
     name = property(lambda self: os.path.split(self.path)[-1])
     nneurons = property(lambda self: len(self.n))
@@ -75,3 +76,14 @@ class Sort(object):
             neuron = Neuron(path, sort=self)
             self.header.read(neuron)
             self.n[neuron.id] = neuron # save it
+
+    def apply_quietmeanratethresh(self):
+        """Partition neurons into normal and quiet. Has to be called after parent
+        recording determines its duration"""
+        for neuron in self.n.values():
+            # mean spike rate is static, calc once and save it to neuron:
+            neuron.meanrate = neuron.nspikes / self.r.dtsec
+            if neuron.meanrate < get_ipython().user_ns['QUIETMEANRATETHRESH']:
+                # move it to the "quiet" neuron dictattr:
+                del self.n[neuron.id]
+                self.qn[neuron.id] = neuron
