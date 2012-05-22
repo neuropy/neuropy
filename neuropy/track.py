@@ -54,9 +54,11 @@ class Track(object):
         # print string to tree hierarchy and screen
         self.writetree(treestr + '\n')
         print(treestr)
+        # collect recording names: 1st char in dirname must be a digit, that's all:
         dirnames = [ dirname for dirname in os.listdir(self.path)
                      if os.path.isdir(os.path.join(self.path, dirname))
-                     and dirname[0].isdigit() ] # collect recording names: 1st char in dirname must be a digit, that's all
+                     and dirname[0].isdigit() ]
+        dirnames.sort() # alphabetical order
         for dirname in dirnames:
             path = os.path.join(self.path, dirname)
             recording = Recording(path, track=self)

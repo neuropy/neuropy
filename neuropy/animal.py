@@ -41,9 +41,11 @@ class Animal(object):
         # print string to tree hierarchy and screen
         self.writetree(treestr + '\n')
         print(treestr)
+        # all track folder names for this animal:
         dirnames = [ dirname for dirname in os.listdir(self.path)
                      if os.path.isdir(os.path.join(self.path, dirname))
-                     and dirname.lower().startswith('tr') ] # all track folder names for this animal
+                     and dirname.lower().startswith('tr') ]
+        dirnames.sort() # alphabetical order
         for dirname in dirnames:
             path = os.path.join(self.path, dirname)
             track = Track(path, animal=self)

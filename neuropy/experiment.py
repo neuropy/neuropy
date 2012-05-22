@@ -33,7 +33,8 @@ class BaseExperiment(object):
 
     def get_name(self):
         fname = os.path.split(self.path)[-1]
-        return rstrip(fname, '.din')
+        #return rstrip(fname, '.din')
+        return fname # keep the .din extension in experiment name
 
     name = property(get_name)
 
@@ -616,7 +617,8 @@ class RevCorrs(object):
             self.trange = trange
         self.nt = nt # number of revcorr timepoints
         self.tis = range(0, nt, 1) # revcorr timepoint indices
-        self.ts = [ intround(ti * self.experiment.e.dynamic.sweepSec * 1000) for ti in self.tis ] # revcorr timepoint values, in ms
+        self.ts = [ intround(ti * self.experiment.e.dynamic.sweepSec * 1000)
+                    for ti in self.tis ] # revcorr timepoint values, in ms
 
     def plot(self, interp='nearest', normed=True, title='RevCorrWindow', scale=2.0):
         """Plots the RFs as bitmaps in a window. normed = 'global'|True|False"""
@@ -625,7 +627,8 @@ class RevCorrs(object):
             vmin = min([ sta.rf.min() for sta in self.stas ]) # global min
             vmax = max([ sta.rf.max() for sta in self.stas ]) # global max
         for ni, sta in enumerate(self.stas):
-            rf = sta.rf.copy() # create a copy to manipulate for display purposes, (nt, width, height)
+            # create a copy to manipulate for display purposes, (nt, width, height):
+            rf = sta.rf.copy()
             if normed: # either 'global' or True
                 if normed == True: # normalize across the timepoints for this Neuron
                     vmin, vmax = rf.min(), rf.max()
@@ -679,14 +682,18 @@ class ExperimentRevCorr(BaseExperiment):
     """Mix-in class that defines the reverse correlation related experiment methods"""
     def sta(self, neurons=None, **kwargs):
         """Returns an STAs RevCorrs object"""
-        if neurons == None: # no Neurons were passed, use all the Neurons from the default Sort for this experiment's Recording
+        if neurons == None:
+            # no Neurons were passed, use all the Neurons from the default Sort for this
+            # experiment's Recording
             keyvals = self.r.n.items() # get key val pairs in a list of tuples
             keyvals.sort() # make sure they're sorted by key
             neurons = []
             for key, val in keyvals:
                 neurons.append(val)
         else:
-            try: # assume neurons is a Neuron id or list of Neuron ids, get the associated Neuron objects from the default Sort for this experiment's Recording
+            try:
+                # assume neurons is a Neuron id or list of Neuron ids, get the associated
+                # Neuron objects from the default Sort for this experiment's Recording
                 neurons = [ self.r.n[ni] for ni in toiter(neurons) ]
             except KeyError: # neurons is probably a list of Neuron objects
                 pass
@@ -698,14 +705,18 @@ class ExperimentRevCorr(BaseExperiment):
 
     def stc(self, neurons=None, **kwargs):
         """Returns an STCs RevCorrs object"""
-        if neurons == None: # no neurons were passed, use all the neurons from the default sort for this experiment's recording
+        if neurons == None:
+            # no neurons were passed, use all the neurons from the default sort for this
+            # experiment's recording
             keyvals = self.r.n.items() # get key val pairs in a list of tuples
             keyvals.sort() # make sure they're sorted by key
             neurons = []
             for key, val in keyvals:
                 neurons.append(val)
         else:
-            try: # assume neurons is a neuron id or list of neuron ids, get the associated neuron objects from the default sort for this experiment's recording
+            try:
+                # assume neurons is a neuron id or list of neuron ids, get the associated
+                # neuron objects from the default sort for this experiment's recording
                 neurons = [ self.r.n[ni] for ni in tolist(neurons) ]
             except KeyError: # neurons is probably a list of Neuron objects
                 pass
@@ -719,7 +730,9 @@ class ExperimentRevCorr(BaseExperiment):
 class ExperimentPopulationRaster(PopulationRaster):
     """A population raster limited to a single experiment"""
     def __init__(self, experiment):
-        super(ExperimentPopulationRaster, self).__init__(recording=experiment.r, experiments={experiment.id: experiment})
+        super(ExperimentPopulationRaster, self).__init__(recording=experiment.r,
+                                                         experiments={experiment.id:
+                                                         experiment})
 
 
 class ExperimentRaster(BaseExperiment):

@@ -76,39 +76,39 @@ class BaseRecording(object):
         # print string to tree hierarchy and screen
         self.writetree(treestr + '\n')
         print(treestr)
-        
-        fnames = [ fname for fname in os.listdir(self.path)
-                   if os.path.isfile(os.path.join(self.path, fname))
-                   and fname.endswith('.din') ] # din filenames
-        for expid, fname in enumerate(fnames): # expids created in alpha order of din fnames
+        # load Experiments from .din files:
+        dinfnames = [ fname for fname in os.listdir(self.path)
+                      if os.path.isfile(os.path.join(self.path, fname))
+                      and fname.endswith('.din') ] # din filenames
+        dinfnames.sort() # alphabetical order
+        for expid, fname in enumerate(dinfnames): # expids follow order in dinfnames
             path = os.path.join(self.path, fname)
             experiment = Experiment(path, id=expid, recording=self)
             experiment.load()
             self.e[experiment.id] = experiment
             self.__setattr__('e' + str(experiment.id), experiment) # add shortcut attrib
-        
-        allnames = os.listdir(self.path)
-        names = []
-        for name in allnames:
-            fullname = os.path.join(self.path, name)
-            isptcsfile = os.path.isfile(fullname) and name.endswith('.ptcs')
-            issortfolder = os.path.isdir(fullname) and name.endswith('.sort')
+        # load Sorts from .ptcs files and .sort folders:
+        allfdnames = os.listdir(self.path) # all file and dir names in self.path
+        sortfdnames = []
+        for fdname in allfdnames:
+            fullname = os.path.join(self.path, fdname)
+            isptcsfile = os.path.isfile(fullname) and fdname.endswith('.ptcs')
+            issortfolder = os.path.isdir(fullname) and fdname.endswith('.sort')
             if isptcsfile or issortfolder:
-                names.append(name)
-        # sort names in alphabetical order, which should correspond to chronological
+                sortfdnames.append(fdname)
+        # sort Sort names in alphabetical order, which should correspond to chronological
         # order assuming all names start with datetime stamp:
-        names.sort()
+        sortfdnames.sort()
         ## TODO: don't load all sorts, just the most recent one
-        for sortid, name in enumerate(names):
-            path = os.path.join(self.path, name)
+        for sortid, fdname in enumerate(sortfdnames):
+            path = os.path.join(self.path, fdname)
             sort = Sort(path, id=sortid, recording=self)
             sort.load()
             self.sorts[sort.name] = sort # save it
             self.__setattr__('sort' + str(sort.id), sort) # add shortcut attrib
         # make last sort the default one
-        self.sort = self.sorts[names[-1]]
+        self.sort = self.sorts[sortfdnames[-1]]
         self.n = self.sort.n
-        #self.cn = self.sorts[sort.names[-1]].cn
         
         if len(self.e) > 0:
             firstexp = min(list(self.e))
