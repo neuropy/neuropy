@@ -1,5 +1,8 @@
 TODO:
 
+- add ability to concatenate recordings on the fly, by making tr1.r5_r6 to represent the concatenation of recordings 5 and 6, for example
+    - concatenate the spike times, but then also have to do something with the experiment objects - make a new one that concatenates the experiments of all the specified recordings? ie just make a single big merged .din equivalent?
+
 - tuning curves
     - add Experiment.tune() method which creates a Tune object for each child neuron and combines results into a single scrollable window, like sta? - this would be lower priority
     - allow multiple dimension tuning plots

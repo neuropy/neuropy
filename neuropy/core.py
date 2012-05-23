@@ -593,7 +593,7 @@ class Codes(object):
 class CodeCorrPDF(object):
     """A PDF of the correlations of the codes of all cell pairs (or of all cell pairs within
     some torus of radii R=(R0, R1) in um) in this Recording. See Schneidman2006 fig 1d"""
-    def __init__(self, recording=None, experiments=None, kind=CODEKIND,
+    def __init__(self, recording=None, experiments=None, nids=None, kind=CODEKIND,
                  tres=CODETRES, phase=CODEPHASE):
         self.r = recording
         if experiments != None:
@@ -609,6 +609,9 @@ class CodeCorrPDF(object):
             self.tranges = [ e.trange for e in self.e.values() ]
         else:
             self.tranges = [ self.r.trange ] # use the Recording's trange
+        if nids == None:
+            nids = self.r.n.keys()
+        self.nids = nids
         self.kind = kind
         self.tres = tres
         self.phase = phase
@@ -634,34 +637,34 @@ class CodeCorrPDF(object):
             assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
         self.R = R
         self.shuffleids = shuffleids
-        nis = self.r.n.keys()
-        nneurons = len(nis)
+        nids = self.nids
+        nneurons = len(nids)
         # it's more efficient to precalculate the means and stds of each cell's codetrain,
         # and then reuse them in calculating the correlation coefficients
         # store each code mean in a dict:
         means = dict( ( ni, self.r.code(ni, tranges=self.tranges,
                                             kind=self.kind,
                                             tres=self.tres,
-                                            phase=self.phase).c.mean() ) for ni in nis )
+                                            phase=self.phase).c.mean() ) for ni in nids )
         # store each code std in a dict:
         stds  = dict( ( ni, self.r.code(ni, tranges=self.tranges,
                                             kind=self.kind,
                                             tres=self.tres,
-                                            phase=self.phase).c.std() ) for ni in nis ) 
+                                            phase=self.phase).c.std() ) for ni in nids ) 
         if self.shuffleids:
         # shuffled neuron ids, this is a control to see if it's the locality of neurons
         # included in the analysis, or the number of neurons included that's important. It
         # seems that both are.
-            snis = shuffle(nis)
+            snids = shuffle(nids)
         else:
-            snis = nis
+            snids = nids
         self.corrs = []
         for nii1 in range(nneurons):
             for nii2 in range(nii1+1, nneurons):
-                ni1 = nis[nii1]
-                sni1 = snis[nii1]
-                ni2 = nis[nii2]
-                sni2 = snis[nii2]
+                ni1 = nids[nii1]
+                sni1 = snids[nii1]
+                ni2 = nids[nii2]
+                sni2 = snids[nii2]
                 # calc the pair's code correlation if there's no torus specified, or if
                 # the pair's separation falls with bounds of specified torus:
                 if R == None or (self.R[0] < dist(self.r.n[sni1].pos, self.r.n[sni2].pos)
@@ -678,7 +681,7 @@ class CodeCorrPDF(object):
         self.npairs = len(self.corrs)
         '''
         # simpler, but slower way:
-        self.corrs = [ self.r.codecorr(nis[nii1], nis[nii2], tranges=self.tranges,
+        self.corrs = [ self.r.codecorr(nids[nii1], nids[nii2], tranges=self.tranges,
                                        kind=self.kind, self.tres, self.phase)
                        for nii1 in range(0,nneurons) for nii2 in range(nii1+1,nneurons) ]
         '''
@@ -687,6 +690,7 @@ class CodeCorrPDF(object):
         """Plots the corrs. If limitstats, the stats displayed exclude any corr values that
         fall outside of crange"""
         self.crange = crange
+        nbins = max(nbins, 2*intround(np.sqrt(self.npairs)))
         self.nbins = nbins
         self.normed = normed
         f = pl.figure(figsize=figsize)
@@ -709,6 +713,7 @@ class CodeCorrPDF(object):
         self.median = np.median(corrs)
         argmode = n.argmax()
         self.mode = np.mean([c[argmode], c[argmode + 1]]) # find middle of tallest bin
+        self.stdev = np.std(corrs)
 
         try:
             barwidth = (self.crange[1] - self.crange[0]) / float(self.nbins)
@@ -736,8 +741,19 @@ class CodeCorrPDF(object):
         a.set_xlabel('correlation coefficient')
         
         # add stuff to top right of plot:
-        a.text(0.99, 0.99, 'mean = %.3f\nmedian = %.3f\nmode = %.3f\nR = %r\nnpairs = %d'
-                            % (self.mean, self.median, self.mode, self.R, self.npairs),
+        a.text(0.99, 0.99, '%s\n'
+                           'mean = %.3f\n'
+                           'median = %.3f\n'
+                           'mode = %.3f\n'
+                           'stdev = %.3f\n'
+                           'R = %r\n'
+                           'ratethresh = %.2f Hz\n'
+                           'nneurons = %d\n'
+                           'npairs = %d\n'
+                           'dt = %d min'
+                            % (self.r.name, self.mean, self.median, self.mode, self.stdev,
+                               self.R, get_ipython().user_ns['QUIETMEANRATETHRESH'],
+                               len(self.nids), self.npairs, self.r.dtmin),
                             transform = a.transAxes,
                             horizontalalignment='right',
                             verticalalignment='top')

@@ -89,6 +89,9 @@ class NeuropyWindow(QtGui.QMainWindow):
         ipyqtwidget.execute('get_ipython().magic("gui qt4")', hidden=True)
         ipyqtwidget.execute('get_ipython().magic("pylab")', hidden=True)
 
+        # def cf() to close all figures:
+        ipyqtwidget.execute("cf = lambda: pylab.close('all')", hidden=True)
+        ipyqtwidget.execute('import pylab as pl', hidden=True)
         ipyqtwidget.execute('from recording import Recording', hidden=True)
         for line in open('globals.py', 'r'):
             ipyqtwidget.execute(line, hidden=True)

@@ -5,6 +5,11 @@ from __future__ import division
 import os
 import StringIO
 
+import numpy as np
+
+import pylab as pl
+
+import core
 from core import dictattr, TAB
 from recording import Recording
 
@@ -65,3 +70,31 @@ class Track(object):
             recording.load()
             self.r[recording.id] = recording
             self.__setattr__('r' + str(recording.id), recording) # add shortcut attrib
+
+    def commonactivenids(self, rids=None):
+        """Return nids of normal (active) neurons common to all recordings specified in
+        rids. Active neurons in a recording are those with at least QUIETMEANRATETHRESH mean
+        spike rate during the recording"""
+        if rids == None:
+            rids = np.sort(self.r.keys()) # all recording ids in self
+        n = set()
+        # recording.n designates normal neurons:
+        allnids = [ np.asarray(self.r[rid].n.keys()) for rid in rids ]
+        return core.intersect1d(allnids, assume_unique=True)
+
+    def get_meanrates(self):
+        """Return mean firing rates of all neurons across all recordings.
+        Neurons are counted as many times as they have spikes in a given recording.
+        Maybe this should be weighted by the duration of each recording"""
+        meanrates = []
+        for r in self.r.values():
+            meanrates.append([n.meanrate for n in r.alln.values()])
+        return np.concatenate(meanrates)
+
+    meanrates = property(get_meanrates)
+
+    def meanratehist(self, bins=None):
+        f = pl.figure()
+        if bins == None:
+            bins = np.arange(0, 1, 0.01)
+        pl.hist(self.meanrates, bins=bins)

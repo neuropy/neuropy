@@ -64,6 +64,7 @@ class BaseRecording(object):
     # shortcuts to various attribs and properties in default sort:
     n = property(lambda self: self.sort.n)
     qn = property(lambda self: self.sort.qn)
+    alln = property(lambda self: self.sort.alln)
     nspikes = property(lambda self: self.sort.nspikes)
     nneurons = property(lambda self: self.sort.nneurons)
     datetime = property(lambda self: self.sort.datetime)
@@ -213,11 +214,11 @@ class RecordingCode(BaseRecording):
         code2 = self.code(neuron2, kind=kind, tres=tres, phase=phase)
         return corrcoef(code1.c, code2.c)
 
-    def codecorrpdf(self, experiments=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE,
-                    R=None, shuffleids=False):
+    def codecorrpdf(self, experiments=None, nids=None, kind=CODEKIND, tres=CODETRES,
+                    phase=CODEPHASE, R=None, shuffleids=False):
         """Returns a CodeCorrPDF object"""
-        ccpdf = CodeCorrPDF(recording=self, experiments=experiments, kind=kind, tres=tres,
-                            phase=phase)
+        ccpdf = CodeCorrPDF(recording=self, experiments=experiments, nids=nids, kind=kind,
+                            tres=tres, phase=phase)
         ccpdf.calc(R, shuffleids)
         return ccpdf
 

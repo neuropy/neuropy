@@ -6,6 +6,7 @@ import os
 import StringIO
 import datetime
 
+import core
 from core import dictattr, rstrip, eof, TAB, PTCSHeader, SPKHeader, EPOCH
 from neuron import Neuron
 
@@ -30,6 +31,17 @@ class Sort(object):
     datetime = property(lambda self: EPOCH + datetime.timedelta(days=self.header.datetime))
     pttype = property(lambda self: self.header.pttype)
     chanpos = property(lambda self: self.header.chanpos)
+
+    def get_alln(self):
+        """Return set of all neurons in self, both normal and quiet"""
+        # make sure nids in normal and quiet neuron sets don't overlap:
+        assert len(core.intersect1d([self.n.keys(), self.qn.keys()])) == 0
+        alln = {}
+        alln.update(self.n)
+        alln.update(self.qn)
+        return alln
+
+    alln = property(get_alln)
 
     def tree(self):
         """Print tree hierarchy"""
