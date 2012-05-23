@@ -265,12 +265,12 @@ class SPKNeuronRecord(object):
     
 
 class PopulationRaster(object):
-    """A population spike raster plot. nis are indices of neurons to
+    """A population spike raster plot. nids are indices of neurons to
     plot in the raster, in order from bottom to top.
     jumpts are a sequence of timepoints (in us) that can then be quickly cycled
     through in the plot using keyboard controls.
     Defaults to absolute time origin (when acquisition began)"""
-    def __init__(self, recording=None, experiments=None, nis=None,
+    def __init__(self, recording=None, experiments=None, nids=None,
                  jumpts=None, binwidth=None, relativet0=False, units='msec',
                  publication=False):
         self.r = recording
@@ -305,11 +305,11 @@ class PopulationRaster(object):
         self.publication = publication
 
         self.neurons = self.r.n # still a dictattr
-        if nis != None:
-            self.nis = nis
+        if nids != None:
+            self.nids = nids
         else:
-            self.nis = self.r.n.keys()
-            self.nis.sort() # keep it tidy
+            self.nids = self.r.n.keys()
+            self.nids.sort() # keep it tidy
 
     def plot(self, left=None, width=200000):
         """Plots the raster, units are us wrt self.t0"""
@@ -321,7 +321,7 @@ class PopulationRaster(object):
         try:
             self.f
         except AttributeError: # prepare the fig if it hasn't been done already
-            figheight = 1.25+0.2*len(self.nis)
+            figheight = 1.25+0.2*len(self.nids)
             self.f = pl.figure(figsize=(14, figheight))
             self.a = self.f.add_subplot(111)
             self.formatter = NeuropyScalarFormatter() # better behaved tick label formatter
@@ -337,14 +337,14 @@ class PopulationRaster(object):
             #gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
             self.a.set_xlabel('time (%s)' % self.units)
             if not self.publication:
-                self.yrange = (0, len(self.nis))
+                self.yrange = (0, len(self.nids))
             else:
                 self.a.set_ylabel('cell index') # not really cell id, it's the ii (the index into the id)
-                self.yrange = (-0.5, len(self.nis)-0.5)
+                self.yrange = (-0.5, len(self.nids)-0.5)
             self.a.set_ylim(self.yrange)
-            #aheight = min(0.025*len(self.nis), 1.0)
+            #aheight = min(0.025*len(self.nids), 1.0)
             bottominches = 0.75
-            heightinches = 0.15+0.2*len(self.nis)
+            heightinches = 0.15+0.2*len(self.nids)
             bottom = bottominches / figheight
             height = heightinches / figheight
             if not self.publication:
@@ -372,7 +372,7 @@ class PopulationRaster(object):
             binedges = np.arange(leftbinedge, left+width, self.binwidth)
             binlines = self.a.vlines(x=binedges/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], color='b', linestyle=':') # convert t
         # plot the rasters
-        for nii, ni in enumerate(self.nis):
+        for nii, ni in enumerate(self.nids):
             neuron = self.neurons[ni]
             x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / self.tconv # make spike times always relative to t0, convert t
             if not self.publication:
@@ -433,7 +433,7 @@ class PopulationRaster(object):
         experiment info in a tooltip when hovering over a neuron row."""
         if event.inaxes: # if mouse is inside the axes
             nii = int(math.floor(event.ydata)) # use ydata to get index into sorted list of neurons
-            ni = self.nis[nii]
+            ni = self.nids[nii]
             neuron = self.neurons[ni]
             currentexp = None
             for e in self.e.values(): # for all experiments
@@ -516,19 +516,19 @@ class Codes(object):
         self.tres = tres
         self.phase = phase
         self.shufflecodes = shufflecodes
-        self.nis = [ neuron.id for neuron in self.neurons ]
+        self.nids = [ neuron.id for neuron in self.neurons ]
         self.nneurons = len(self.neurons)
-        # make a dict from keys:self.nis, vals:range(self.nneurons). This converts from nis
+        # make a dict from keys:self.nids, vals:range(self.nneurons). This converts from nids
         # to niis (from neuron indices to indices into the binary code array self.c)
-        self.nis2niisdict = dict(zip(self.nis, range(self.nneurons)))
+        self.nids2niisdict = dict(zip(self.nids, range(self.nneurons)))
 
-    def nis2niis(self, nis=None):
-        """Converts from nis to niis (from neuron indices to indices into the binary code
-        array self.c). nis can be a sequence"""
+    def nids2niis(self, nids=None):
+        """Converts from nids to niis (from neuron indices to indices into the binary code
+        array self.c). nids can be a sequence"""
         try:
-            return [ self.nis2niisdict[ni] for ni in nis ]
-        except TypeError: # iteration over non-sequence, nis is a scalar
-            return self.nis2niisdict[nis]
+            return [ self.nids2niisdict[ni] for ni in nids ]
+        except TypeError: # iteration over non-sequence, nids is a scalar
+            return self.nids2niisdict[nids]
 
     def calc(self):
         self.s = [] # stores the corresponding spike times for each neuron, for reference
@@ -751,12 +751,12 @@ class CodeCorrPDF(object):
                            'nneurons = %d\n'
                            'npairs = %d\n'
                            'dt = %d min'
-                            % (self.r.name, self.mean, self.median, self.mode, self.stdev,
-                               self.R, get_ipython().user_ns['QUIETMEANRATETHRESH'],
-                               len(self.nids), self.npairs, self.r.dtmin),
-                            transform = a.transAxes,
-                            horizontalalignment='right',
-                            verticalalignment='top')
+                           % (self.r.name, self.mean, self.median, self.mode, self.stdev,
+                              self.R, get_ipython().user_ns['QUIETMEANRATETHRESH'],
+                              len(self.nids), self.npairs, intround(self.r.dtmin)),
+                           transform = a.transAxes,
+                           horizontalalignment='right',
+                           verticalalignment='top')
 '''
 class CanvasFrame(wx.Frame):
     """A minimal wx.Frame containing a matplotlib figure"""
@@ -994,8 +994,8 @@ class Ising(object):
         from scipy import maxentropy
 
         # why are the abs values of these so big, shouldn't they be near 0?:
-        print 'means:\n', means
-        print 'pairmeans:\n', pairmeans
+        #print 'means:\n', means
+        #print 'pairmeans:\n', pairmeans
 
         nbits = len(means)
         npairs = len(pairmeans)
@@ -2188,8 +2188,8 @@ def MIbinarrays(Nbinarray=None, Mbinarray=None, verbose=False):
     I = MI(jpdf)
     IdivS = I / entropy(marginalMpdf) # return mutual info as fraction of entropy in M group of cells
     if verbose:
-        print 'nis', nis
-        print 'mis', mis
+        print 'nids', nids
+        print 'mids', mids
         #print 'Mpdf', Mpdf
         #print 'entropy(Mpdf)', entropy(Mpdf)
         print 'marginal Mpdf', marginalMpdf
