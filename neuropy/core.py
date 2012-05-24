@@ -1065,7 +1065,7 @@ class Ising(object):
         assert (len(self.hi), len(self.Jij), len(self.p)) == (nbits, npairs, 2**nbits)
         #print 'means:', means
         #print 'pairmeans:', pairmeans
-        print '%d iters,' % self.model.iters,
+        #print '%d iters,' % self.model.iters
         #print 'hi:', self.hi.__repr__()
         #print 'Jij:', self.Jij.__repr__()
 

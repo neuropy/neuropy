@@ -9,6 +9,7 @@ import random
 import numpy as np
 import pylab as pl
 from pylab import get_current_fig_manager as gcfm
+import matplotlib as mpl
 
 import core
 from core import PopulationRaster, Codes, CodeCorrPDF, rstrip, dictattr, warn, binarray2int
@@ -579,7 +580,6 @@ class NetstateScatter(BaseNetstate):
             # get a maxent Ising model:
             ising = self.ising(nids=self.nids, R=self.R, shuffleids=self.shuffleids,
                                algorithm=self.algorithm)
-            print('\n')
             self.pexpected = ising.p # expected, assuming maxent Ising model
             self.expectedwords = ising.intsamplespace
             # expected, assuming independence:
@@ -843,29 +843,31 @@ class NetstateDJSHist(BaseNetstate):
         self.algorithm = algorithm
 
         self.nidss = [] # list of lists, each sublist is a group of neuron indices
-        self.DJSs = {} # hold the Jensen-Shannon divergences for different models and different groups of neurons
+        # hold the Jensen-Shannon divergences for different models and different groups of
+        # neurons:
+        self.DJSs = {}
         for model in  self.models:
-            self.DJSs[model] = [] # init a dict with the model names as keys, and empty lists as values
-        pd = wx.ProgressDialog(title='DJShist progress', message='', maximum=self.ngroups*len(self.models),
-                               style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME) # create a progress dialog
+            # init a dict with the model names as keys, and empty lists as values
+            self.DJSs[model] = []
         for groupi in range(self.ngroups): # for each group of nbits cells
-            nids = random.sample(self.cs.nids, self.nbits) # randomly sample nbits of the Netstate Codes' nids attrib
+            # randomly sample nbits of the Netstate Codes' nids attrib:
+            nids = random.sample(self.cs.nids, self.nbits)
             self.nidss.append(nids)
             for modeli, model in enumerate(self.models): # for each model, use the same nids
                 so = NetstateScatter(recording=self.r, experiments=self.e, nids=nids,
                                      kind=self.kind, tres=self.tres, phase=self.phase)
-                so.calc(nbits=self.nbits, model=model, R=self.R, shuffleids=self.shuffleids, shufflecodes=self.shufflecodes, algorithm=self.algorithm)
-
+                so.calc(nbits=self.nbits, model=model, R=self.R, shuffleids=self.shuffleids,
+                        shufflecodes=self.shufflecodes, algorithm=self.algorithm)
                 self.DJSs[model].append(core.DJS(so.pobserved, so.pexpected))
-                cont, skip = pd.Update(groupi*len(self.models)+modeli, newmsg='groupi = %d\nmodel = %s' % (groupi, model))
-                if not cont:
-                    pd.Destroy()
-                    return
-        pd.Destroy()
-
+            print '%d' % groupi,
+        print('\n')
         # now find the DJSratios between the two models, for each group of neurons
-        if len(self.models) == 2: # do it only if there's 2 models, otherwise it's indeterminate which two to take ratio of
-            self.DJSratios = np.asarray(self.DJSs.values()[1]) / np.asarray(self.DJSs.values()[0]) # 2nd model as a ratio of the 1st
+        # do it only if there's 2 models, otherwise it's indeterminate which two to take
+        # ratio of
+        if len(self.models) == 2:
+            # 2nd model as a ratio of the 1st
+            self.DJSratios = (np.asarray(self.DJSs.values()[1]) /
+                              np.asarray(self.DJSs.values()[0]))
 
         return self
 
@@ -879,8 +881,8 @@ class NetstateDJSHist(BaseNetstate):
         n = {} # stores a list of the bin heights in a separate key for each model
         for model in self.models:
             n[model] = histogram(self.DJSs[model], bins=x, normed=False)[0]
-        color = {'indep': 'b', 'ising': 'r'} # dict that maps from model name to color
-        barwidths = list(diff(x)) # each bar will have a different width, convert to list so you can append
+        color = {'indep': 'grey', 'ising': 'black'} # dict that maps from model name to color
+        barwidths = list(np.diff(x)) # each bar will have a different width, convert to list so you can append
         # need to add one more entry to barwidth to the end to get nbins of them:
         barwidths.append(0) # don't display the last one
         logbinwidth = (logrange[1]-logrange[0]) / float(nbins)
@@ -908,13 +910,22 @@ class NetstateDJSHist(BaseNetstate):
                 label.set_size(30)
             for label in a1.get_yticklabels():
                 label.set_size(30)
-            a1.legend([ bars[model][0] for model in self.models ], ['pairwise', 'independent'], loc='upper left',
+            a1.legend([ bars[model][0] for model in self.models ], ['pairwise', 'independent'], loc='upper right',
                       prop=mpl.font_manager.FontProperties(size=20) ) # grab the first bar for each model, label it with the model name
         else:
             a1.set_ylabel('number of groups of %d cells' % self.nbits)
             a1.set_xlabel('DJS (bits)')
             a1.set_ylabel('probability density (1 / log10(DJS))')
-            a1.legend([ bars[model][0] for model in self.models ], ['pairwise', 'independent'], loc='upper left')
+            a1.legend([ bars[model][0] for model in self.models ], ['pairwise', 'independent'], loc='upper right')
+
+        # add stuff to top left of plot:
+        a1.text(0.01, 0.99, '%s\n'
+                            'dt = %d min'
+                            % (self.r.name, intround(self.r.dtmin)),
+                            transform = a1.transAxes,
+                            horizontalalignment='left',
+                            verticalalignment='top')
+        '''
         # plot DJSratios
         if len(self.models) == 2:
             f2 = pl.figure()
@@ -926,9 +937,11 @@ class NetstateDJSHist(BaseNetstate):
             a2.set_title('Jensen-Shannon divergence ratios histogram\n%s' % lastcmd())
             a2.set_ylabel('number of groups of %d cells' % self.nbits)
             a2.set_xlabel('DJS ratio (%s / %s)' % (self.models[1], self.models[0]))
-
-        self.f = {1:f1, 2:f2}
-        self.a = {1:a1, 2:a2}
+        '''
+        #self.f = {1:f1, 2:f2}
+        #self.a = {1:a1, 2:a2}
+        self.f = {1:f1}
+        self.a = {1:a1}
         return self
 
 
