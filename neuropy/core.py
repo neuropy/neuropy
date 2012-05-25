@@ -27,17 +27,6 @@ import matplotlib as mpl
 import matplotlib.cm
 import pylab as pl
 from pylab import get_current_fig_manager as gcfm
-#import wx
-#from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
-
-## GLOBAL DEFAULTS
-
-DATAPATH = os.path.expanduser('~/data')
-MOVIEPATH = os.path.expanduser('~/data/mov')
-
-# local mseq movie names
-MSEQ16 = 'MSEQ16' # formerly mseq16.m
-MSEQ32 = 'MSEQ32' # formerly mseq32.m
 
 CODEKIND = 'binary'
 CODETRES = 20000 # us
@@ -69,9 +58,6 @@ class dictattr(dict):
         if key.__class__ == str and not key[0].isdigit(): # key isn't a number or a string starting with a number
             key = key.replace(' ', '_') # get rid of any spaces
             self.__dict__[key] = val # make the key show up as an attrib upon dir()
-
-
-_movies = dictattr()
 
 
 class PTCSHeader(object):
@@ -642,15 +628,15 @@ class CodeCorrPDF(object):
         # it's more efficient to precalculate the means and stds of each cell's codetrain,
         # and then reuse them in calculating the correlation coefficients
         # store each code mean in a dict:
-        means = dict( ( ni, self.r.code(ni, tranges=self.tranges,
-                                            kind=self.kind,
-                                            tres=self.tres,
-                                            phase=self.phase).c.mean() ) for ni in nids )
+        means = dict( ( nid, self.r.n[nid].code(tranges=self.tranges,
+                                                kind=self.kind,
+                                                tres=self.tres,
+                                                phase=self.phase).c.mean() ) for nid in nids )
         # store each code std in a dict:
-        stds  = dict( ( ni, self.r.code(ni, tranges=self.tranges,
-                                            kind=self.kind,
-                                            tres=self.tres,
-                                            phase=self.phase).c.std() ) for ni in nids ) 
+        stds  = dict( ( nid, self.r.n[nid].code(tranges=self.tranges,
+                                                kind=self.kind,
+                                                tres=self.tres,
+                                                phase=self.phase).c.std() ) for nid in nids ) 
         if self.shuffleids:
         # shuffled neuron ids, this is a control to see if it's the locality of neurons
         # included in the analysis, or the number of neurons included that's important. It
@@ -669,10 +655,10 @@ class CodeCorrPDF(object):
                 # the pair's separation falls with bounds of specified torus:
                 if R == None or (self.R[0] < dist(self.r.n[sni1].pos, self.r.n[sni2].pos)
                                  < self.R[1]):
-                    code1 = self.r.code(ni1, tranges=self.tranges, kind=self.kind,
-                                        tres=self.tres, phase=self.phase).c
-                    code2 = self.r.code(ni2, tranges=self.tranges, kind=self.kind,
-                                        tres=self.tres, phase=self.phase).c
+                    code1 = self.r.n[ni1].code(tranges=self.tranges, kind=self.kind,
+                                               tres=self.tres, phase=self.phase).c
+                    code2 = self.r.n[ni2].code(tranges=self.tranges, kind=self.kind,
+                                               tres=self.tres, phase=self.phase).c
                     # (mean of product - product of means) / by product of stds
                     cc = (((code1 * code2).mean() - means[ni1] * means[ni2])
                           / (stds[ni1] * stds[ni2]))

@@ -13,19 +13,28 @@ r"""Experimental and model neuronal and stimulus data analysis in Python
        Experiment      Sort       4
             |           |
       (Cat15Movie)    Neuron      5
+
+As for variable scope, this is how things work:
+
+Main Qt event loop creates a
+    NeuropyWindow which runs an
+        IPython session which imports
+            neuropy modules
+    
+So, something like get_ipython() only works from within those neuropy modules that have been
+imported during the IPython session, but not in any of NeuropyWindow's methods.
 """
 
 __authors__ = ["Martin Spacek"]
 __version__ = 0.2
-
-from core import _movies
+'''
 from animal import Animal
 from track import Track
 from recording import Recording
 from experiment import Experiment
 from sort import Sort
 from neuron import Neuron
-
+'''
 #from test import test
 
 # init and load some neuropy objects:

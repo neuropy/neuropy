@@ -12,7 +12,7 @@ import matplotlib as mpl
 
 import core
 from core import rstrip, getargstr, iterable, toiter, tolist, intround, CODETRES, CODEPHASE, CODEKIND
-from core import MSEQ16, MSEQ32, mean_accum, lastcmd, RevCorrWindow
+from core import mean_accum, lastcmd, RevCorrWindow
 from core import PTCSNeuronRecord, SPKNeuronRecord
 from dimstimskeletal import Movie
 
@@ -326,10 +326,11 @@ class BaseCode(object):
 
 
 class BinaryCode(BaseCode):
-    """Quantizes the spike train, cut according to tranges, into a binary signal with a given time resolution.
-    phase in us specifies where to start the codetrain in time, relative to the nearest multiple of tres before each trange.
-    Phase is in degrees of a single bin period. -ve phase is leading (codetrain starts earlier in time),
-    +ve is lagging (codetrain starts later in time)"""
+    """Quantizes the spike train, cut according to tranges, into a binary signal with a
+    given time resolution. phase in us specifies where to start the codetrain in time,
+    relative to the nearest multiple of tres before each trange. Phase is in degrees of a
+    single bin period. -ve phase is leading (codetrain starts earlier in time), +ve is
+    lagging (codetrain starts later in time)"""
     def __init__(self, neuron=None, tranges=None, tres=CODETRES, phase=CODEPHASE):
         super(BinaryCode, self).__init__(neuron=neuron, tranges=tranges)
         self.kind = 'binary'
@@ -337,17 +338,32 @@ class BinaryCode(BaseCode):
         self.phase = phase # in degrees of tres
 
     def calc(self):
-        self.t = np.array([], dtype=np.int64) # set up empty arrays with correct dtypes (otherwise, when appending to them later, they'd default to float64s)
+        # set up empty arrays with correct dtypes (otherwise, when appending to them later,
+        # they'd default to float64s)
+        self.t = np.array([], dtype=np.int64)
         self.s = np.array([], dtype=np.int64)
         self.c = np.array([], dtype=np.int8)
         for trange in self.tranges:
-            # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. This way, timepoints will line up for different code objects. Finally, add phase offset relative to this
-            tstart = trange[0] - (trange[0] % self.tres) + self.phase/360.0*self.tres # left edge of first code bin
-            t = np.int64(np.round(np.arange(tstart, trange[1]+self.tres, self.tres))) # t sequence demarcates left bin edges, add extra tres to end to make t end inclusive, keep 'em in us integers
-            s = self.neuron.cut(trange) # spike times, cut over originally specified trange, not from start to end of newly generated code bin timepoints
+            # make the start of the timepoints be an even multiple of self.tres. Round down
+            # to the nearest multiple. This way, timepoints will line up for different code
+            #objects. Finally, add phase offset relative to this.
+            # left edge of first code bin:
+            tstart = trange[0] - (trange[0] % self.tres) + self.phase/360.0*self.tres
+            # t sequence demarcates left bin edges, add extra tres to end to make t end
+            # inclusive, keep 'em in us integers
+            t = np.int64(np.round(np.arange(tstart, trange[1]+self.tres, self.tres)))
+            # spike times, cut over originally specified trange, not from start to end of
+            # newly generated code bin timepoints
+            s = self.neuron.cut(trange)
             c = np.zeros(len(t), dtype=np.int8) # init binary code signal
-            # searchsorted returns indices where s fits into t. Sometimes more than one spike will fit into the same time bin, which means searchsorted will return multiple occurences of the same index. You can set c at these indices to 1 a multiple number of times, or prolly more efficient, do an np.unique on it to only set each index to 1 once.
-            c[np.unique(t.searchsorted(s)) - 1] = 1 # dec index by 1 so that you get indices that point to the most recent bin edge. For each bin that has at least 1 spike in it, set its value to 1
+            # searchsorted returns indices where s fits into t. Sometimes more than one
+            # spike will fit into the same time bin, which means searchsorted will return
+            # multiple occurences of the same index. You can set c at these indices to 1 a
+            # multiple number of times, or prolly more efficient, do an np.unique on it to
+            # only set each index to 1 once.
+            # dec index by 1 so that you get indices that point to the most recent bin edge.
+            # For each bin that has at least 1 spike in it, set its value to 1:
+            c[np.unique(t.searchsorted(s)) - 1] = 1
             self.t = np.append(self.t, t) # save 'em
             self.s = np.append(self.s, s)
             self.c = np.append(self.c, c)
@@ -366,12 +382,15 @@ class NeuronCode(BaseNeuron):
         except AttributeError: # self._codes doesn't exist yet
             self._codes = [] # create a list that'll hold Code objects for this Neuron
         if kind == 'binary':
-            co = BinaryCode(neuron=self, tranges=tranges, tres=tres, phase=phase) # init a new BinaryCode object
+            # init a new BinaryCode object
+            co = BinaryCode(neuron=self, tranges=tranges, tres=tres, phase=phase)
         else:
             raise ValueError, 'Unknown kind: %r' % self.kind
         for code in self._codes:
             if co == code: # need to define special == method for class Code()
-                return code # returns the first Code object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._codes
+                # returns the first Code object whose attributes match what's desired.
+                # This saves on calc() time and avoids duplicates in self._codes:
+                return code
         co.calc() # no matching Code was found, calculate it
         self._codes.append(co) # add it to the Code object list
         return co
@@ -789,47 +808,44 @@ class STA(RevCorr):
     def calc(self):
         RevCorr.calc(self) # run the base calc() steps first
         #sys.stdout.write('n%d' % self.neuron.id) # prevents trailing space and newline
-        self.rf = np.zeros([self.nt, self.height, self.width], dtype=np.float64) # init a 3D matrix to store the STA at each timepoint. rf == 'receptive field'
-        #frames = np.float64(self.movie.frames) # converting from uint8 to float64 seems to speed up mean() method a bit
+        # init a 3D matrix to store the STA at each timepoint. rf == 'receptive field'
+        self.rf = np.zeros([self.nt, self.height, self.width], dtype=np.float64)
+        # converting from uint8 to float64 seems to speed up mean() method a bit:
+        #frames = np.float64(self.movie.frames)
         frames = self.movie.frames
         tstart = time.clock()
-        #pd = wx.ProgressDialog(title='n%d STA progress' % self.neuron.id, message='', maximum=self.tis[-1], style=1) # create a progress dialog
         for ti in self.tis:
-            #cont, skip = pd.Update(ti-1, newmsg='timepoint: %dms\nelapsed: %.1fs' % (self.t[ti], time.clock()-tstart))
-            if False:#not cont:
-                #self.rf = np.zeros([self.nt, self.height, self.width], dtype=np.float64) # set back to zeros
-                pd.Destroy()
-                self.done = False
-                return
-            rcdini = self.rcdini - ti*self.ndinperframe # this can unintentionally introduce -ve valued indices at the left boundary
-            rcdini = rcdini[rcdini >= 0] # remove any -ve valued indices. Is this the most efficient way to do this?
-            frameis = self.experiment.din[rcdini, 1] # get the din values (frame indices) at the rcdini for this timepoint
-            # in Cat 15, we erroneously duplicated the first frame of the mseq movies at the end, giving us one more frame (0 to 65535 for mseq32) than we should have had (0 to 65534 for mseq32). We're now using the correct movies, but the din for Cat 15 mseq experiments still have those erroneous frame indices (65535 and 16383 for mseq32 and mseq16 respectively), so we'll just ignore them for revcorr purposes.
-            if MSEQ32 in self.movie.static.fname:
+            # this can unintentionally introduce -ve valued indices at the left boundary:
+            rcdini = self.rcdini - ti*self.ndinperframe
+            rcdini = rcdini[rcdini >= 0] # remove any -ve valued indices
+            # get the din values (frame indices) at the rcdini for this timepoint:
+            frameis = self.experiment.din[rcdini, 1]
+            """
+            In ptc15, we erroneously duplicated the first frame of the mseq movies at the
+            end, giving us one more frame (0 to 65535 for mseq32) than we should have had (0
+            to 65534 for mseq32). We're now using the correct movies, but the din for Cat 15
+            mseq experiments still have those erroneous frame indices (65535 and 16383 for
+            mseq32 and mseq16 respectively), so we'll just ignore them for revcorr purposes.
+            """
+            if 'mseq32' in self.movie.static.fname.lower():
                 frameis = frameis[frameis != 65535] # remove all occurences of 65535
-            elif MSEQ16 in self.movie.static.fname:
+            elif 'mseq16' in self.movie.static.fname.lower():
                 frameis = frameis[frameis != 16383] # remove all occurences of 16383
             # take the mean of all the frames at this timepoint:
-            '''
             # slowest way:
-            self.rf[ti] = frames[frameis].mean(axis=0)
-            '''
-            pickedframes = frames.take(frameis.astype(np.int32), axis=0) # collect the relevant frames for this timepoint, take is much faster than direct indexing, but have to typecast indices to int32, maybe cuz this machine is 32bit?
-            '''
+            #self.rf[ti] = frames[frameis].mean(axis=0)
             # faster way:
-            self.rf[ti] = frames.mean(axis=0)
-            '''
+            #self.rf[ti] = frames.mean(axis=0)
             # much faster way:
+            # collect the relevant frames for this timepoint, take is much faster than
+            # direct indexing
+            pickedframes = frames.take(frameis, axis=0)
             self.rf[ti] = mean_accum(pickedframes)
             #self.rf[ti] = mean_accum2(frames, frameis)
-        #pd.Destroy()
         self.done = True
 
     def plot(self, interp='nearest', normed=True, scale=2.0):
-        win = RevCorr.plot(self, interp=interp, normed=normed,
-                           title=lastcmd(),
-                           #title='r%d.n[%d].sta().plot(interp=%r, normed=%r, scale=%r)' %
-                           #(self.experiment.r.id, self.neuron.id, interp, normed, scale),
+        win = RevCorr.plot(self, interp=interp, normed=normed, title=lastcmd(),
                            scale=scale)
         return win # necessary in IPython
     plot.__doc__ = RevCorr.plot.__doc__

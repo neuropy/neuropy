@@ -10,13 +10,20 @@ import matplotlib as mpl
 
 import core
 from core import getargstr, TAB, warn, rstrip, dictattr, intround, toiter
-from core import _movies, MOVIEPATH, MSEQ16, MSEQ32, joinpath, lastcmd
+from core import joinpath, lastcmd
 from core import PopulationRaster, Codes, CodeCorrPDF, RevCorrWindow
 import neuron
 
 from dimstimskeletal import deg2pix, InternalParams, StaticParams, DynamicParams
 from dimstimskeletal import Variable, Variables, Runs, BlankSweeps, Dimension, SweepTable
 from dimstimskeletal import Movie, Grating, Bar, SparseNoise, BlankScreen
+
+# local mseq movie names:
+MSEQ16 = 'MSEQ16' # formerly mseq16.m
+MSEQ32 = 'MSEQ32' # formerly mseq32.m
+MOVIEPATH = os.path.expanduser('~/data/mov')
+
+_MOVIES = dictattr()
 
 
 class BaseExperiment(object):
@@ -96,10 +103,10 @@ class BaseExperiment(object):
                 # prevent replication of movie frame data in memory
                 if type(self.e) == Movie:
                     fname = os.path.split(self.e.static.fname)[-1] # pathless fname
-                    if fname not in _movies:
+                    if fname not in _MOVIES:
                         # add movie experiment, indexed according to movie data file name,
                         # to prevent from ever loading its frames more than once
-                        _movies[fname] = e
+                        _MOVIES[fname] = e
             else:
                 self.oldparams = dictattr()
                 for newname in newnames:
@@ -217,11 +224,11 @@ class BaseExperiment(object):
             self.e.static.fname = m.fname # update fake dimstim experiment's fname too
             # extensionless fname, fname should've been defined in the textheader
             m.name = os.path.splitext(m.fname)[0]
-            if m.name not in _movies:
+            if m.name not in _MOVIES:
                 # and it very well may not be, cuz the textheader inits movies with no args,
                 # leaving fname==None at first, which prevents it from being added to
-                # _movies
-                _movies[m.name] = m # add m to _movies dictattr
+                # _MOVIES
+                _MOVIES[m.name] = m # add m to _MOVIES dictattr
             # Search self.e.moviepath string (from textheader) for 'Movies' word. Everything
             # after that is the relative path to your base movies folder. Eg, if
             # self.e.moviepath = 'C:\\Desktop\\Movies\\reliability\\e\\single\\', then set

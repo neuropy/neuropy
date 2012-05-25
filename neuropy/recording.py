@@ -167,15 +167,6 @@ class RecordingRaster(BaseRecording):
 
 class RecordingCode(BaseRecording):
     """Mix-in class that defines the spike code related Recording methods"""
-    def code(self, neuron=None, tranges=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
-        """Returns a Neuron.Code object, constrained by tranges. Takes either a
-        Neuron or just a nid"""
-        try:
-            # see if neuron is a Neuron object
-            return neuron.code(tranges=tranges, kind=kind, tres=tres, phase=phase)
-        except AttributeError: # neuron is probably a nid
-            return self.n[neuron].code(tranges=tranges, kind=kind, tres=tres, phase=phase) 
-
     def codes(self, neurons=None, experiments=None, kind=CODEKIND, tres=CODETRES,
               phase=CODEPHASE, shufflecodes=False):
         """Returns a Codes object, a 2D array where each row is a neuron code constrained to
@@ -209,10 +200,11 @@ class RecordingCode(BaseRecording):
         return codes
     codes.__doc__ += '\n\nCodes object:\n' + Codes.__doc__
 
-    def codecorr(self, neuron1, neuron2, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
+    def codecorr(self, nid1, nid2, tranges=None, kind=CODEKIND, tres=CODETRES,
+                 phase=CODEPHASE):
         """Calculates the correlation coefficient of the codes of two neurons"""
-        code1 = self.code(neuron1, kind=kind, tres=tres, phase=phase)
-        code2 = self.code(neuron2, kind=kind, tres=tres, phase=phase)
+        code1 = self.n[nid1].code(tranges=tranges, kind=kind, tres=tres, phase=phase)
+        code2 = self.n[nid2].code(tranges=tranges, kind=kind, tres=tres, phase=phase)
         return corrcoef(code1.c, code2.c)
 
     def codecorrpdf(self, experiments=None, nids=None, kind=CODEKIND, tres=CODETRES,
@@ -762,8 +754,8 @@ class NetstateScatter(BaseNetstate):
 
 
 class NetstateI2vsIN(BaseNetstate):
-    """Netstate I2/IN vs IN (fraction of pairwise correlated entropy vs all correlated entropy) analysis.
-    See Schneidman fig 2c"""
+    """Netstate I2/IN vs IN (fraction of pairwise correlated entropy vs all correlated
+    entropy) analysis. See Schneidman fig 2c"""
     def calc(self, N=10, ngroups=15):
         """Computes I2/IN vs IN, for ngroups of cells.
         This shows you what fraction of network correlation is accounted for by the maxent pairwise model.
@@ -777,8 +769,6 @@ class NetstateI2vsIN(BaseNetstate):
                           nsamples=self.ngroups) # do it ngroups times
         I2s = []
         INs = []
-        pd = wx.ProgressDialog(title='I2vsIN() progress', message='', maximum=self.ngroups, # create a progress dialog
-                               style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
         for groupi, nids in enumerate(self.nidss):
             p1 = np.asarray(self.intcodesFPDF(nids=nids)[0]) # indep model
             p2 = self.ising(nids=nids).p # expected, assuming maxent Ising model
@@ -790,11 +780,8 @@ class NetstateI2vsIN(BaseNetstate):
             I2 = S1 - S2
             I2s.append(I2 / self.tres * 1e6) # convert to bits/sec
             INs.append(IN / self.tres * 1e6)
-            cont, skip = pd.Update(groupi, newmsg='groupi = %d' % (groupi+1))
-            if not cont:
-                pd.Destroy()
-                return
-        pd.Destroy()
+            print 'groupi',
+        print('\n')
         self.I2s = np.asarray(I2s)
         self.INs = np.asarray(INs)
         self.I2divIN = self.I2s / self.INs
@@ -873,16 +860,16 @@ class NetstateDJSHist(BaseNetstate):
 
     def plot(self, ngroups=5, logrange=(-3.667, -0.333), nbins=50, publication=False):
         """Plots histogram DJSs and DJSratios in logspace"""
-
         try: self.nidss, self.DJSs
         except AttributeError: self.calc(ngroups=ngroups)
-
-        x = np.logspace(start=logrange[0], stop=logrange[1], num=nbins, endpoint=True, base=10.0)
+        x = np.logspace(start=logrange[0], stop=logrange[1], num=nbins, endpoint=True,
+                        base=10.0)
         n = {} # stores a list of the bin heights in a separate key for each model
         for model in self.models:
             n[model] = histogram(self.DJSs[model], bins=x, normed=False)[0]
-        color = {'indep': 'grey', 'ising': 'black'} # dict that maps from model name to color
-        barwidths = list(np.diff(x)) # each bar will have a different width, convert to list so you can append
+        color = {'indep': 'blue', 'ising': 'red'} # maps from model name to colour
+        # each bar will have a different width, convert to list so you can append
+        barwidths = list(np.diff(x))
         # need to add one more entry to barwidth to the end to get nbins of them:
         barwidths.append(0) # don't display the last one
         logbinwidth = (logrange[1]-logrange[0]) / float(nbins)
@@ -896,27 +883,32 @@ class NetstateDJSHist(BaseNetstate):
         heights = {}
         for model in self.models:
             heights[model] = n[model] / float(self.ngroups * logbinwidth)
-            bars[model] = a1.bar(left=x, height=heights[model], width=barwidths, color=color[model],
-                                 edgecolor=color[model])
-        a1.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
+            bars[model] = a1.bar(left=x, height=heights[model], width=barwidths,
+                                 color=color[model], edgecolor=color[model])
+        # need to set scale of x axis AFTER bars have been plotted, otherwise
+        # autoscale_view() call in bar() raises a ValueError for log scale:
+        a1.set_xscale('log', basex=10)
         a1.set_xlim(xmin=10**logrange[0], xmax=10**logrange[1])
         gcfm().window.setWindowTitle(lastcmd())
         a1.set_title('%s' % lastcmd())
         if publication:
-            a1.set_xticklabels(['', '0.001', '0.01', '0.1', '']) # hack!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            a1.set_xticklabels(['', '0.001', '0.01', '0.1', '']) ## TODO: terrible hack!
             a1.set_ylim(ymin=0, ymax=4)
             a1.set_yticks((0, 2, 4))
             for label in a1.get_xticklabels():
                 label.set_size(30)
             for label in a1.get_yticklabels():
                 label.set_size(30)
-            a1.legend([ bars[model][0] for model in self.models ], ['pairwise', 'independent'], loc='upper right',
-                      prop=mpl.font_manager.FontProperties(size=20) ) # grab the first bar for each model, label it with the model name
+            a1.legend([ bars[model][0] for model in self.models ],
+                      ['pairwise', 'independent'], loc='upper right',
+                      # grab first bar for each model, label it with model name:
+                      prop=mpl.font_manager.FontProperties(size=20) )
         else:
             a1.set_ylabel('number of groups of %d cells' % self.nbits)
             a1.set_xlabel('DJS (bits)')
             a1.set_ylabel('probability density (1 / log10(DJS))')
-            a1.legend([ bars[model][0] for model in self.models ], ['pairwise', 'independent'], loc='upper right')
+            a1.legend([ bars[model][0] for model in self.models ],
+                      ['pairwise', 'independent'], loc='upper right')
 
         # add stuff to top left of plot:
         a1.text(0.01, 0.99, '%s\n'
@@ -930,9 +922,12 @@ class NetstateDJSHist(BaseNetstate):
         if len(self.models) == 2:
             f2 = pl.figure()
             a2 = f2.add_subplot(111)
-            nratios = histogram(self.DJSratios, bins=x, normed=False)[0] # bin heights for the DJSratios
+            # bin heights for the DJSratios
+            nratios = histogram(self.DJSratios, bins=x, normed=False)[0]
             a2.bar(left=x, height=nratios, width=barwidths, color='g', edgecolor='g')
-            a2.set_xscale('log', basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
+            # need to set scale of x axis AFTER bars have been plotted, otherwise
+            # autoscale_view() call in bar() raises a ValueError for log scale
+            a2.set_xscale('log', basex=10)
             gcfm().window.setWindowTitle(lastcmd())
             a2.set_title('Jensen-Shannon divergence ratios histogram\n%s' % lastcmd())
             a2.set_ylabel('number of groups of %d cells' % self.nbits)
@@ -946,13 +941,14 @@ class NetstateDJSHist(BaseNetstate):
 
 
 class NetstateS1INvsN(BaseNetstate):
-    """Analysis of uncorrelated entropy and reduction by correlated entropy for increasing network size N"""
+    """Analysis of uncorrelated entropy and reduction by correlated entropy for increasing
+    network size N"""
     def calc(self, minN=4, maxN=15, maxnsamples=10):
         """Calculates the average independent (uncorrelated) cell entropy S1
         and average network multi-information IN (IN = S1 - SN) vs network size N.
         IN is how much the correlated entropy reduces the total entropy of the system.
-        For each network size up to maxN, averages S1 and IN over maxnsamples (or less if that many aren't possible)
-        number of groups at each value of N"""
+        For each network size up to maxN, averages S1 and IN over maxnsamples (or less if
+        that many aren't possible) number of groups at each value of N"""
         self.minN = minN
         self.maxN = maxN
         self.maxnsamples = maxnsamples
@@ -961,10 +957,9 @@ class NetstateS1INvsN(BaseNetstate):
         self.INss = []
         self.N = range(self.minN, self.maxN+1) # network sizes from minN up to maxN
         #tstart = time.clock()
-        self.nsamples = [ min(nCr(self.nneurons, r), self.maxnsamples) for r in self.N ] # nsamples as a f'n of N. For each value of N, take up to maxnsamples of all the other neurons, if that many are even possible
-
-        pd = wx.ProgressDialog(title='S1INvsN progress', message='', maximum=sum(self.nsamples), # create a progress dialog
-                               style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
+        # nsamples as a f'n of N. For each value of N, take up to maxnsamples of all the
+        # other neurons, if that many are even possible
+        self.nsamples = [ min(nCr(self.nneurons, r), self.maxnsamples) for r in self.N ]
         for ni, n in enumerate(self.N): # for all network sizes
             # get a list of lists of neuron indices
             nidss = nCrsamples(objects=self.neurons.keys(),
@@ -973,24 +968,21 @@ class NetstateS1INvsN(BaseNetstate):
             S1s = []
             INs = []
             for nidsi, nids in enumerate(nidss):
-                cont, skip = pd.Update(ni*self.maxnsamples+nidsi, newmsg='N = %d\nsamplei = %d' % (n, nidsi))
-                if not cont:
-                    pd.Destroy()
-                    return
                 #t2 = time.clock()
                 p1 = np.asarray(self.intcodesFPDF(nids=nids)[0]) # indep model
                 pN = np.asarray(self.intcodesPDF(nids=nids)[0]) # observed word probs
                 #print 'calcing ps took: %f sec' % (time.clock()-t2)
                 S1 = entropy_no_sing(p1) # ignore any singularities
                 SN = entropy_no_sing(pN)
-                assert S1 > SN or approx(S1, SN), 'S1 is %.20f, SN is %.20f' % (S1, SN) # better be, indep model assumes the least structure
+                # better be, indep model assumes the least structure:
+                assert S1 > SN or approx(S1, SN), 'S1 is %.20f, SN is %.20f' % (S1, SN)
                 IN = S1 - SN
                 #print S1, SN, IN
                 S1s.append(S1 / self.tres * 1e6) # convert to bits/sec
                 INs.append(IN / self.tres * 1e6)
             self.S1ss.append(S1s)
             self.INss.append(INs)
-        pd.Destroy()
+        print('\n')
         self.S1mean = [ np.asarray(S1s).mean() for S1s in self.S1ss ]
         self.S1std = [ np.asarray(S1s).std() for S1s in self.S1ss ]
         self.S1sem = np.asarray(self.S1std) / sqrt(np.asarray(self.nsamples))
@@ -1011,20 +1003,23 @@ class NetstateS1INvsN(BaseNetstate):
         gcfm().window.setWindowTitle(lastcmd())
         a = f.add_subplot(111)
         a.hold(True)
-        for n, S1s in zip(self.N, self.S1ss): # plot all the samples before plotting the means with errorbars
+        # plot all the samples before plotting the means with errorbars:
+        for n, S1s in zip(self.N, self.S1ss):
             a.plot([n]*len(S1s), S1s, '_', markersize=4, color='lightblue')
         for n, INs in zip(self.N, self.INss):
             a.plot([n]*len(INs), INs, '_', markersize=4, color='pink')
         S1line = a.errorbar(self.N, self.S1mean, yerr=self.S1sem, fmt='b.')[0]
         INline = a.errorbar(self.N, self.INmean, yerr=self.INsem, fmt='r.')[0]
         # do least squares polynomial fit in log10 space
-        mS1, bS1 = sp.polyfit(log10(self.N), log10(self.S1mean), 1) # returns slope and y intercept
+        # returns slope and y intercept:
+        mS1, bS1 = sp.polyfit(log10(self.N), log10(self.S1mean), 1)
         mIN, bIN = sp.polyfit(log10(self.N), log10(self.INmean), 1)
         xintersect = (bIN - bS1) / (mS1 - mIN)
         x = np.array([-1, 3]) # define x in log10 space, this is really [0.1, 1000]
         self.yS1 = mS1*x + bS1 # y = mx + b
         self.yIN = mIN*x + bIN
-        a.plot(10.0**x, 10.0**self.yS1, 'b-') # take their power to make up for both the x and y scales being log
+        # take their power to make up for both the x and y scales being log
+        a.plot(10.0**x, 10.0**self.yS1, 'b-')
         a.plot(10.0**x, 10.0**self.yIN, 'r-')
         a.set_xscale('log')
         a.set_yscale('log')
@@ -1033,8 +1028,10 @@ class NetstateS1INvsN(BaseNetstate):
         a.set_xlabel('Number of cells')
         a.set_ylabel('bits / sec')
         a.set_title('S1 & IN vs N\n%s' % lastcmd())
-        a.legend((S1line, INline), ('S1, slope=%.3f' % mS1, 'IN, slope=%.3f' % mIN), loc='lower right')
-        a.text(0.99, 0.98, 'Nc=%d' % np.round(10**xintersect), # add text box to upper right corner of axes
+        a.legend((S1line, INline), ('S1, slope=%.3f' % mS1, 'IN, slope=%.3f' % mIN),
+                 loc='lower right')
+        # add text box to upper right corner of axes
+        a.text(0.99, 0.98, 'Nc=%d' % np.round(10**xintersect),
                            transform = a.transAxes,
                            horizontalalignment = 'right',
                            verticalalignment = 'top')

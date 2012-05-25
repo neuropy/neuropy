@@ -22,10 +22,11 @@ from PyQt4.QtGui import QFont
 NeuropyUi, NeuropyUiBase = uic.loadUiType('neuropy.ui')
 
 from __init__ import __version__
-from core import DATAPATH
 from animal import Animal
 from track import Track
 from recording import Recording
+
+DATAPATH = os.path.expanduser('~/data')
 
 
 class NeuropyWindow(QtGui.QMainWindow):
