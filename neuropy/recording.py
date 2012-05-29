@@ -602,6 +602,7 @@ class NetstateScatter(BaseNetstate):
         a.plot((lo, hi), (lo, hi), 'k-') # plot a y=x line
         a.hold(True)
 
+        ## TODO: add legend instead of text colorguide
         ## TODO: make tooltips work again, old wx code disabled for now:
         # create a long tooltip with newline to get around bug where newlines aren't
         # recognized on subsequent self.tooltip.SetTip() calls
@@ -648,9 +649,9 @@ class NetstateScatter(BaseNetstate):
 
         colorguide = ''
         if self.model == 'both': # plot the indep model too, and plot it first
-            a.loglog(self.pobserved/norm, self.pindepexpected/norm, '.', color='grey')
-            colorguide = (' grey: indep\n' +
-                          'black: ising\n')
+            a.loglog(self.pobserved/norm, self.pindepexpected/norm, '.', color='blue')
+            colorguide = ('blue: indep\n' +
+                          ' red: ising\n')
         # plot whichever model was specified
         if color:
             # plot what's left in black:
@@ -665,7 +666,7 @@ class NetstateScatter(BaseNetstate):
                          'magenta: 4 spike patterns\n' + \
                          '  black: other patterns  \n'
         else:
-            a.loglog(self.pobserved/norm, self.pexpected/norm, '.', color='black')
+            a.loglog(self.pobserved/norm, self.pexpected/norm, '.', color='red')
         '''
         a.plot(pobserved/norm, pexpected/norm, 'k.')
         '''
