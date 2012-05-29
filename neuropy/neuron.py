@@ -228,9 +228,12 @@ class BaseNeuron(object):
 
 class XCorr(object):
     def __init__(self, n1=None, n2=None, trange=(-100000, 100000)):
-        """Cross-correlation object. n1 has to be a Neuron, n2 can be a Neuron or a Neuron id"""
+        """Cross-correlation object. n1 has to be a Neuron, n2 can be a Neuron or a
+        Neuron id"""
         self.n1 = n1
-        try: # assume n2 is a Neuron id from the same Sort as n1, get the associated Neuron object
+        # assume n2 is a Neuron id from the same Sort as n1, get the associated
+        # Neuron object:
+        try:
             n2 = self.n1.sort.n[n2]
         except KeyError: # n2 is probably a Neuron object
             pass
@@ -238,13 +241,17 @@ class XCorr(object):
         self.trange = trange
 
     def calc(self):
+        ## TODO: speed this up using spyke's util.xcorr() cython function
         dts = []
         for spike in self.n1.spikes:
-            trangei = self.n2.spikes.searchsorted(spike+self.trange) # find where the trange around this spike would fit in other.spikes
-            dt = self.n2.spikes[trangei[0]:trangei[1]] - spike # find dt between this spike and only those other.spikes that are in trange of this spike
+            # find where the trange around this spike would fit in other.spikes:
+            trangei = self.n2.spikes.searchsorted(spike+self.trange)
+            # find dt between this spike and only those other.spikes that are in
+            # trange of this spike:
+            dt = self.n2.spikes[trangei[0]:trangei[1]] - spike
             dts.extend(dt)
         self.dts = np.array(dts)
-        return self.dts
+        return self
 
         # could use some weave code to speed this up
         '''
@@ -276,7 +283,6 @@ class XCorr(object):
             n = n / float(barwidth)
         bar(left=t, height=n, width=barwidth)
         gcfm().frame.SetTitle(lastcmd())
-        #gcfm().frame.SetTitle('r%d.n[%d].xcorr(%d)' % (self.n1.sort.r.id, self.n1.id, self.n2.id))
         a.set_title('n%d spikes relative to n%d spikes' % (self.n2.id, self.n1.id))
         a.set_xlabel('time (msec)')
         if style == 'rate':
@@ -287,7 +293,9 @@ class XCorr(object):
         xticklabels = []
         [ xticklabels.append('%d' % xtick) for xtick in xticks ] # truncate floats into ints
         a.set_xticklabels(xticklabels)
-
+        f.tight_layout(pad=0.3) # crop figure to contents
+        self.f = f
+        return self
 
 class NeuronXCorr(BaseNeuron):
     """Mix-in class that defines the xcorr Neuron method"""
@@ -988,7 +996,8 @@ class Tune(object):
                     sweepis.append(np.where(vals == fixedval)[0])
                 sweepis = np.concatenate(sweepis)
                 fixedsweepis.append(sweepis)
-            fixedsweepis = core.intersect1d(fixedsweepis) # intersect all fixedvar arrays in fixedsweepis
+            # intersect all fixedvar arrays in fixedsweepis:
+            fixedsweepis = core.intersect1d(fixedsweepis)
             #print(fixedsweepis)
         # get values for var at all unique sweep indices:
         vals = self.experiment.sweeptable.data[var]
@@ -1010,18 +1019,29 @@ class Tune(object):
                 print sweepis
             for sweepi in sweepis:
                 y[vali] += self.counts[sweepi].sum()
-        f = pl.gcf()
-        f.clear()
-        pl.plot(x, y, 'k.-')
-        pl.xlabel(var)
-        pl.ylabel('spike count')
-        titlestr = 'n%d, ' % self.neuron.id
-        if fixed != None:
-            titlestr += 'fixed=%r, ' % fixed
-        titlestr += 'tdelay=%dms, peak=(%s, %s)' % (self.tdelay // 1000, x[y.argmax()], y.max())
-        pl.title(titlestr)
-        f.canvas.window().setWindowTitle('n%d' % self.neuron.id)
-        return x, y
+        # reuse existing figures, to reduce figure clutter:
+        #f = pl.gcf()
+        #f.clear()
+        #a = pl.gca()
+        # create a new figure:
+        f = pl.figure()
+        a = f.add_subplot(111)
+        a.plot(x, y, 'k.-')
+        a.set_xlabel(var)
+        a.set_ylabel('spike count')
+        #titlestr = 'n%d, ' % self.neuron.id
+        #if fixed != None:
+        #    titlestr += 'fixed=%r, ' % fixed
+        #titlestr += 'tdelay=%dms, peak=(%s, %s)' %
+        #            (self.tdelay // 1000, x[y.argmax()], y.max())
+        titlestr = lastcmd()
+        titlestr += ', peak=(%s, %s)' % (x[y.argmax()], y.max())
+        a.set_title(titlestr)
+        f.canvas.window().setWindowTitle(lastcmd())
+        f.tight_layout(pad=0.3) # crop figure to contents
+        self.f = f
+        self.x, self.y = x, y
+        return self
 
 
 class NeuronTune(object):

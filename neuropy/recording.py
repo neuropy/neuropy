@@ -25,7 +25,8 @@ pl.rcParams['ytick.labelsize'] = 25
 pl.rcParams['xtick.major.size'] = 7
 pl.rcParams['ytick.major.size'] = 7
 pl.rcParams['lines.markersize'] = 10
-# use gca().set_position([0.15, 0.15, 0.8, 0.8]) or just the 'configure subplots' widget to make all the labels fit within the figure
+# use gca().set_position([0.15, 0.15, 0.8, 0.8]) or just the 'configure subplots' widget to
+# make all the labels fit within the figure
 '''
 
 class BaseRecording(object):
@@ -409,25 +410,16 @@ class NetstateIsingHist(BaseNetstate):
         self.his = []
         self.Jijs = []
 
-        pd = wx.ProgressDialog(title='NetstateIsingHist progress', message='', maximum=self.ngroups, # create a progress dialog
-                               style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
         for groupi in range(self.ngroups): # for each group of nbits cells
-            nids = random.sample(self.cs.nids, nbits) # randomly sample nbits of the Netstate's nids attrib
+            nids = random.sample(self.cs.nids, nbits) # randomly sample nbits of nids
             im = self.ising(nids=nids, algorithm=algorithm) # returns a maxent Ising model
             self.ims.append(im)
             self.his.append(im.hi)
             self.Jijs.append(im.Jij)
-            cont, skip = pd.Update(groupi, newmsg='groupi = %d' % groupi)
-            if not cont:
-                pd.Destroy()
-                return
-        pd.Destroy()
-
         return self
 
     def plot(self, nbins=50, hirange=(-2.5, 2.5), Jijrange=(-1.1, 1.1)):
         """Plots hi and Jij histograms in separate figures"""
-
         try: self.his, self.Jij
         except AttributeError: self.calc()
 
@@ -443,8 +435,8 @@ class NetstateIsingHist(BaseNetstate):
         a1.hold(True)
         a1.bar(left=hibins, height=nhi, width=hibins[1]-hibins[0], color='g', edgecolor='g')
         gcfm().window.setWindowTitle(lastcmd())
-        a1.set_title('hi histogram\n%s, nbits=%d, ngroups=%d, algorithm=%s' % (lastcmd(), self.nbits,
-                                                                               self.ngroups, self.algorithm))
+        a1.set_title('hi histogram\n%s, nbits=%d, ngroups=%d, algorithm=%s'
+                     % (lastcmd(), self.nbits, self.ngroups, self.algorithm))
         a1.set_ylabel('probability density')
         a1.set_xlabel('hi')
         a1.set_xlim(hirange)
@@ -453,14 +445,17 @@ class NetstateIsingHist(BaseNetstate):
         f2 = pl.figure()
         a2 = f2.add_subplot(111)
         a2.hold(True)
-        a2.bar(left=Jijbins, height=nJij, width=Jijbins[1]-Jijbins[0], color='m', edgecolor='m')
+        a2.bar(left=Jijbins, height=nJij, width=Jijbins[1]-Jijbins[0],
+               color='m', edgecolor='m')
         gcfm().window.setWindowTitle(lastcmd())
-        a2.set_title('Jij histogram\n%s, nbits=%d, ngroups=%d, algorithm=%s' % (lastcmd(), self.nbits,
-                                                                                self.ngroups, self.algorithm))
+        a2.set_title('Jij histogram\n%s, nbits=%d, ngroups=%d, algorithm=%s'
+                     % (lastcmd(), self.nbits, self.ngroups, self.algorithm))
         a2.set_ylabel('probability density')
         a2.set_xlabel('Jij')
         a2.set_xlim(Jijrange)
 
+        f1.tight_layout(pad=0.3) # crop figure to contents
+        f2.tight_layout(pad=0.3) # crop figure to contents
         self.f = {1:f1, 2:f2}
         self.a = {1:a1, 2:a2}
         return self
@@ -484,17 +479,24 @@ class NetstateNspikingPMF(BaseNetstate):
         self.bins = {}
 
         for shufflecodes in (False, True):
-            self.words[shufflecodes] = self.get_intcodes(nids=self.nids, shufflecodes=shufflecodes)
-            # collect observances of the number of cells spiking for each pop code time bin
-            self.nspiking[shufflecodes] = [ np.binary_repr(word).count('1') for word in self.words[shufflecodes] ] # convert the word at each time bin to binary, count the number of 1s in it. np.binary_repr() is a bit faster than using core.bin()
-            self.pnspiking[shufflecodes], self.bins[shufflecodes] = histogram(self.nspiking[shufflecodes],
-                                                                              bins=np.arange(self.nneurons+1),
-                                                                              normed='pmf') # want all probs to add to 1, not their area, so use pmf
+            self.words[shufflecodes] = self.get_intcodes(nids=self.nids,
+                                                         shufflecodes=shufflecodes)
+            # collect observances of the number of cells spiking for each pop code time bin.
+            # Convert the word at each time bin to binary, count the number of 1s in it.
+            # np.binary_repr() is a bit faster than using core.bin()
+            self.nspiking[shufflecodes] = [ np.binary_repr(word).count('1')
+                                            for word in self.words[shufflecodes] ]
+            self.pnspiking[shufflecodes], self.bins[shufflecodes] = (
+                histogram(self.nspiking[shufflecodes], bins=np.arange(self.nneurons+1),
+                normed='pmf')) # want all probs to add to 1, not their area, so use pmf
 
         assert (self.bins[False] == self.bins[True]).all() # paranoid, just checking
-        self.bins = self.bins[False] # since they're identical, get rid of the dict and just keep one
-        assert approx(self.pnspiking[False].sum(), 1.0), 'total observed probs: %f' % self.pnspiking[False].sum()
-        assert approx(self.pnspiking[True].sum(), 1.0), 'total indep probs: %f' % self.pnspiking[True].sum()
+        # since they're identical, get rid of the dict and just keep one:
+        self.bins = self.bins[False]
+        assert approx(self.pnspiking[False].sum(), 1.0), ('total observed probs: %f' %
+                      self.pnspiking[False].sum())
+        assert approx(self.pnspiking[True].sum(), 1.0), ('total indep probs: %f' %
+                      self.pnspiking[True].sum())
 
         return self
 
@@ -524,6 +526,7 @@ class NetstateNspikingPMF(BaseNetstate):
         a.set_xlabel('number of spiking cells in a bin')
         a.set_ylabel('probability')
 
+        f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         self.a = a
         return self
@@ -706,7 +709,6 @@ class NetstateScatter(BaseNetstate):
                            transform = a.transAxes,
                            horizontalalignment='left',
                            verticalalignment='top')
-
         # add stuff to bottom right of plot:
         a.text(0.99, 0.01, '%s'
                            'DJS = %s\n'
@@ -717,7 +719,7 @@ class NetstateScatter(BaseNetstate):
                            transform = a.transAxes,
                            horizontalalignment='right',
                            verticalalignment='bottom')
-
+        f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         self.a = a
         return self
@@ -757,10 +759,10 @@ class NetstateI2vsIN(BaseNetstate):
     """Netstate I2/IN vs IN (fraction of pairwise correlated entropy vs all correlated
     entropy) analysis. See Schneidman fig 2c"""
     def calc(self, N=10, ngroups=15):
-        """Computes I2/IN vs IN, for ngroups of cells.
-        This shows you what fraction of network correlation is accounted for by the maxent pairwise model.
-        Plotting Icond-indep is different from S1 (see below),
-        and sounds annoying and not worth it (see methods in Schneidman 2006)"""
+        """Computes I2/IN vs IN, for ngroups of cells. This shows what fraction of
+        network correlation is accounted for by the maxent pairwise model. Plotting
+        Icond-indep is different from S1 (see below), and sounds annoying and not worth it
+        (see methods in Schneidman 2006)"""
         self.N = N
         self.ngroups = ngroups
 
@@ -803,11 +805,13 @@ class NetstateI2vsIN(BaseNetstate):
         a.set_xlabel('IN (bits / sec)')
         a.set_ylabel('I2 / IN')
         a.set_title('%s' % lastcmd())
-        a.text(0.99, 0.01, 'mean=%.3f, std=%.3f' % (self.I2divIN.mean(), self.I2divIN.std()), # add mean and std to bottom right
+        # add mean and std to bottom right:
+        a.text(0.99, 0.01, 'mean=%.3f, std=%.3f' %
+               (self.I2divIN.mean(), self.I2divIN.std()),
                transform=a.transAxes,
                horizontalalignment='right',
                verticalalignment='bottom')
-
+        f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         self.a = a
         return self
@@ -882,7 +886,7 @@ class NetstateDJSHist(BaseNetstate):
         bars = {}
         heights = {}
         for model in self.models:
-            heights[model] = n[model] / float(self.ngroups * logbinwidth)
+            heights[model] = n[model] / float(self.ngroups * logbinwidth) # density
             bars[model] = a1.bar(left=x, height=heights[model], width=barwidths,
                                  color=color[model], edgecolor=color[model])
         # need to set scale of x axis AFTER bars have been plotted, otherwise
@@ -904,8 +908,8 @@ class NetstateDJSHist(BaseNetstate):
                       # grab first bar for each model, label it with model name:
                       prop=mpl.font_manager.FontProperties(size=20) )
         else:
-            a1.set_ylabel('number of groups of %d cells' % self.nbits)
             a1.set_xlabel('DJS (bits)')
+            #a1.set_ylabel('number of groups of %d cells' % self.nbits)
             a1.set_ylabel('probability density (1 / log10(DJS))')
             a1.legend([ bars[model][0] for model in self.models ],
                       ['pairwise', 'independent'], loc='upper right')
@@ -933,6 +937,8 @@ class NetstateDJSHist(BaseNetstate):
             a2.set_ylabel('number of groups of %d cells' % self.nbits)
             a2.set_xlabel('DJS ratio (%s / %s)' % (self.models[1], self.models[0]))
         '''
+        f1.tight_layout(pad=0.3) # crop figure to contents
+        #f2.tight_layout(pad=0.3) # crop figure to contents
         #self.f = {1:f1, 2:f2}
         #self.a = {1:a1, 2:a2}
         self.f = {1:f1}
@@ -1035,6 +1041,7 @@ class NetstateS1INvsN(BaseNetstate):
                            transform = a.transAxes,
                            horizontalalignment = 'right',
                            verticalalignment = 'top')
+        f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         self.a = a
         return self
@@ -1043,48 +1050,63 @@ class NetstateS1INvsN(BaseNetstate):
 class NetstateNNplus1(BaseNetstate):
     """Analysis of amount of mutual information between N cells and the N+1th cell"""
     def calc(self, Nplus1s=None, maxN=15, maxnsamples=10):
-        """Calculates Schneidman Figure 5b. Averages over as many as
-        maxnsamples different groups of N cells for each N+1th cell in Nplus1s,
-        all done for different values of N up to maxN"""
-        if Nplus1s == None: # list of all indices of neurons that will be treated as the N+1th neuron
+        """Calculates Schneidman Figure 5b. Averages over as many as maxnsamples different
+        groups of N cells for each N+1th cell in Nplus1s, all done for different values of N
+        up to maxN"""
+        # list of all indices of neurons that will be treated as the N+1th neuron:
+        if Nplus1s == None:
             Nplus1s = self.cs.nids
         else:
             Nplus1s = toiter(Nplus1s)
         nNplus1s = len(Nplus1s)
         dims = (maxN, nNplus1s, maxnsamples)
         mask = np.zeros(dims) # this will be converted to an array of Falses
-        IdivS = np.ma.array(mask, mask=mask, fill_value=666) # masked array that holds the mutual info between N and N+1th cells, as a ratio of the N+1th cell's entropy. Index like: IdivS[ni, Nplus1i, samplei], ie group size, N+1th cell you're comparing to, and number of samples of size N taken from the possible combs
-        self.N = range(1, maxN+1) # cell group size, excluding the N+1th neuron. This will be the x axis in the plot
+        # masked array that holds the mutual info between N and N+1th cells, as a ratio of
+        # the N+1th cell's entropy. Index like: IdivS[ni, Nplus1i, samplei], ie group size,
+        # N+1th cell you're comparing to, and number of samples of size N taken from the
+        # possible combs:
+        IdivS = np.ma.array(mask, mask=mask, fill_value=666)
+        # cell group size, excluding the N+1th neuron. This will be the x axis in the plot:
+        self.N = range(1, maxN+1)
         #self.N=[15]#.reverse() # for fun and pleasure
-        nsamples = [ min(maxnsamples, nCr(nNplus1s-1, r)) for r in self.N ] # take up to maxnsamples of all the other neurons, if that many even exist (for the lower N values, the constraint may end up being the total number of possible combinations of cells), for each N+1th cell. Taken from nNplus1s-1 cuz you always have to exclude an N+1th neurons
+        # take up to maxnsamples of all the other neurons, if that many even exist (for the
+        # lower N values, the constraint may end up being the total number of possible
+        # combinations of cells), for each N+1th cell. Taken from nNplus1s-1 cuz you always
+        # have to exclude an N+1th neurons:
+        nsamples = [ min(maxnsamples, nCr(nNplus1s-1, r)) for r in self.N ]
         for ni, n in enumerate(self.N): # for all group sizes
-            IdivS.mask[ni, :, nsamples[ni]::] = True # mask out the sampleis that are out of range for this value of N, if any
+            # mask out the sampleis that are out of range for this value of N, if any:
+            IdivS.mask[ni, :, nsamples[ni]::] = True
         maximum = nNplus1s*sum(nsamples)
-        pd = wx.ProgressDialog(title='NNplus1 progress', message='', maximum=maximum, # create a progress dialog
-                               style=wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME)
 
-        # get the binary array for the whole population, then index into it appropriately in the sample loop, find the corresponding integer codes, and feed it to MIbinarray, so you don't have to unnecessarily re-generate it on every iteration
+        # get the binary array for the whole population, then index into it appropriately in
+        # the sample loop, find the corresponding integer codes, and feed it to MIbinarray,
+        # so you don't have to unnecessarily re-generate it on every iteration:
         nids = self.cs.nids
         nids2niis = self.cs.nids2niis
-        counter = 0 # counts inner loop for the progress dialog
         for ni, n in enumerate(self.N):
             for Nplus1i, Nplus1 in enumerate(Nplus1s): # for each N+1th neuron to compare to
                 mii = nids2niis(Nplus1)
                 nidscopy = copy(nids) # make a copy of neuron indices
                 nidscopy.remove(Nplus1) # keep just the indices of all the other neurons
-                samples = nCrsamples(nidscopy, n, nsamples[ni]) # returns nsamples random unique choices of n items from nidscopy
-                for samplei, sample in enumerate(samples): # collect nsamples different combinations of the N other cells
-                    niis = np.array([ nids2niis(s) for s in toiter(sample) ]) # most of the time (for n>1), sample will be a sequence of nids. Build an array of niis out of it to use as indices into the binary code array. Sometimes (for n=1) sample will be a scalar, hence the need to push it through toiter()
-                    IdivS[ni, Nplus1i, samplei] = MIbinarrays(Nbinarray=self.cs.c[niis], Mbinarray=self.cs.c[mii]).IdivS # do it
-                    cont, skip = pd.Update(counter, newmsg='N: %d; N+1th neuron: %d; samplei: %d' % (n, Nplus1, samplei))
-                    if not cont:
-                        pd.Destroy()
-                        return
-                    counter += 1
-        pd.Destroy()
-        self.IdivS = IdivS.reshape(maxN, nNplus1s*maxnsamples) # reshape such that you collapse all Nplus1s and samples into a single dimension (columns). The N are still in the rows
+                # nsamples random unique choices of n items from nidscopy:
+                samples = nCrsamples(nidscopy, n, nsamples[ni])
+                # collect nsamples different combinations of the N other cells:
+                for samplei, sample in enumerate(samples):
+                    # most of the time (for n>1), sample will be a sequence of nids. Build
+                    # an array of niis out of it to use as indices into the binary code
+                    # array. Sometimes (for n=1) sample will be a scalar, hence the need to
+                    # push it through toiter()
+                    niis = np.array([ nids2niis(s) for s in toiter(sample) ])
+                    IdivS[ni, Nplus1i, samplei] = (
+                        MIbinarrays(Nbinarray=self.cs.c[niis],
+                                    Mbinarray=self.cs.c[mii]).IdivS) # do it
+        # reshape such that you collapse all Nplus1s and samples into a single dimension
+        # (columns). The N are still in the rows:
+        self.IdivS = IdivS.reshape(maxN, nNplus1s*maxnsamples)
         #logIdivS = log10(IdivS)
-        self.IdivSmeans = self.IdivS.mean(axis=1) # average over all Nplus1s and all samples. Values that are masked are ignored
+        # average over all Nplus1s and all samples. Values that are masked are ignored:
+        self.IdivSmeans = self.IdivS.mean(axis=1)
         self.IdivSstds = self.IdivS.std(axis=1) # find stdev for the same
         assert self.IdivSmeans.shape == (maxN,)
         assert self.IdivSstds.shape == (maxN,)
@@ -1094,7 +1116,6 @@ class NetstateNNplus1(BaseNetstate):
 
     def plot(self, maxN=15, maxnsamples=10, xlim=(10**np.log10(0.9), 1e3), ylim=(1e-3, 1e1)):
         """Plots the figure with error bars"""
-
         try: self.IdivS
         except AttributeError: self.calc(maxN=maxN, maxnsamples=maxnsamples)
 
@@ -1104,13 +1125,16 @@ class NetstateNNplus1(BaseNetstate):
         a.hold(True)
         for n, row in zip(self.N, self.IdivS): # underplot the samples for each value of N
             a.plot([n]*len(row), row, '_', markersize=4, color='deepskyblue')
-        a.errorbar(self.N, self.IdivSmeans, yerr=self.IdivSsems, fmt='b.') # now plot the means and sems
-        # do some linear regression in log10 space
-        m, b = sp.polyfit(log10(self.N), log10(self.IdivSmeans), 1) # returns slope and y intercept
+        # plot the means and sems:
+        a.errorbar(self.N, self.IdivSmeans, yerr=self.IdivSsems, fmt='b.')
+        # do some linear regression in log10 space:
+        m, b = sp.polyfit(log10(self.N), log10(self.IdivSmeans), 1) # slope and y intercept
         x = np.array([log10(0.9), 3]) # define x in log10 space, this is really [0.9, 1000]
         y = m*x + b
         xintersect = (0-b) / m # intersection point of regression line with y=1=10**0 line
-        plot(10.0**x, 10.0**y, 'b-') # raise them to the power to make up for the fact that both the x and y scales will be log
+        # raise them to the power to make up for the fact that both the x and y scales
+        # will be log:
+        plot(10.0**x, 10.0**y, 'b-')
         plot(10.0**x, [1e0]*2, 'r--') # plot horizontal line at y=1
         a.set_xscale('log')
         a.set_yscale('log')
@@ -1118,16 +1142,19 @@ class NetstateNNplus1(BaseNetstate):
         a.set_ylim(ylim)
         a.set_xlabel('Number of cells')
         a.set_ylabel('mutualinfo(N, N+1th) / entropy(N+1th)')
-        a.set_title('fraction of info that N cells provide about the N+1th cell\n%s' % lastcmd())
-        a.text(0.99, 0.98, 'Nc=%d' % np.round(10**xintersect), # add text box to upper right corner of axes
+        a.set_title('fraction of info that N cells provide about the N+1th cell\n%s'
+                    % lastcmd())
+        # add text box to upper right corner of axes:
+        a.text(0.99, 0.98, 'Nc=%d' % np.round(10**xintersect),
             transform = a.transAxes,
             horizontalalignment = 'right',
             verticalalignment = 'top')
-        a.text(0.99, 0.01, 'slope=%.3f' % m, # add slope of fit line to bottom right
+        # add slope of fit line to bottom right:
+        a.text(0.99, 0.01, 'slope=%.3f' % m,
             transform = a.transAxes,
             horizontalalignment = 'right',
             verticalalignment = 'bottom')
-
+        f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         self.a = a
         return self
@@ -1137,7 +1164,8 @@ class NetstateNNplus1(BaseNetstate):
             f = pl.figure()
             gcfm().window.setWindowTitle('%s IdivS distrib for N=%d' % (lastcmd(), n))
 
-            notmaskedis = self.IdivS[ni].mask==False # indexes the non-masked entries in IdivS, for this ni
+            # indexes the non-masked entries in IdivS, for this ni:
+            notmaskedis = self.IdivS[ni].mask==False
 
             a1 = f.add_subplot(211) # axes with linear bins
             heights, bins = histogram(self.IdivS[ni, notmaskedis], bins=arange(0, 1, 0.02))
@@ -1152,7 +1180,8 @@ class NetstateNNplus1(BaseNetstate):
             stop = log10(1)
             bins = np.logspace(start=start, stop=stop, num=50, endpoint=True, base=10.0)
             heights, bins = histogram(self.IdivS[ni, notmaskedis], bins=bins)
-            barwidth = list(diff(bins)) # each bar will have a different width, convert to list so you can append
+            # each bar will have a different width, convert to list so you can append:
+            barwidth = list(diff(bins))
             # need to add one more entry to barwidth to the end to get nbins of them:
             #barwidth.append(barwidth[-1]) # not exactly correct
             logbinwidth = (log10(stop)-log10(stop)) / float(len(bins))
@@ -1275,6 +1304,7 @@ class NetstateCheckcells(BaseNetstate):
             a.set_xlabel('Number of other active cells')
             a.set_ylabel('Probability of cell ni being active')
 
+            f.tight_layout(pad=0.3) # crop figure to contents
             self.f[ni] = f
             self.a[ni] = a
         return self

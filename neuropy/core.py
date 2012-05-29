@@ -743,6 +743,9 @@ class CodeCorrPDF(object):
                            transform = a.transAxes,
                            horizontalalignment='right',
                            verticalalignment='top')
+        f.tight_layout(pad=0.3) # crop figure to contents
+        self.f = f
+        return self
 '''
 class CanvasFrame(wx.Frame):
     """A minimal wx.Frame containing a matplotlib figure"""

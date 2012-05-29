@@ -207,3 +207,5 @@ Tuning curves:
     - ability to fix certain parameters when building tuning curves, something like:
         neuron.tune(var='phase0', fixed={'ori':[30, 45, 60], 'sfreqCycDeg':[0.8]})
         - don't forget that when calculating which sweepis to use, to subtract orioffset from the specified fixed ori, if ori is one of the fixed vars
+
+- call figure.tight_layout(pad=0.3) on all generated figures to reduce whitespace around edges - better to be nice and cropped when importing into latex docs
