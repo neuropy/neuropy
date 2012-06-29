@@ -1,2 +1,4 @@
-include README TODO neuropy/neuropy.ui
-# recursive-include neuropy *.py *.ui *.pyx *.pxi *.png
+include README TODO
+recursive-include neuropy *.ui
+recursive-include neuropy/res *.png *.svg
+
