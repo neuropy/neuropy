@@ -1,5 +1,16 @@
+neuropy requires recent versions of the following to be installed:
+
+Python (2.x, 3.x hasn't been tested)
+IPython
+numpy
+scipy
+matplotlib
+PyQt4
+
 To install:
 
 >>> python setup.py install
 
-Depending on the data being analyzed (specifically, the details of the stimuli that generated it), you may also need to install dimstim.
+To run:
+
+>>> python main.py

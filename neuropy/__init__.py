@@ -26,7 +26,7 @@ imported during the IPython session, but not in any of NeuropyWindow's methods.
 """
 
 __authors__ = ["Martin Spacek"]
-__version__ = 0.2
+__version__ = '0.3'
 '''
 from animal import Animal
 from track import Track

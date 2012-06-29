@@ -1,5 +1,7 @@
 TODO:
 
+- move CODEKIND, CODETRES, CODEPHASE, and CODEWORDLEN to globals, remove them as keywords everywhere else - see QUIETMEANRATETHRESH and how it's initialized on startup from globals.py and then can be manipulated at the command line by the user, and how all references to it in the code are through get_ipython().user_ns['QUIETMEANRATETHRESH']
+
 - add ability to concatenate recordings on the fly, by making tr1.r5_r6 to represent the concatenation of recordings 5 and 6, for example
     - concatenate the spike times, but then also have to do something with the experiment objects - make a new one that concatenates the experiments of all the specified recordings? ie just make a single big merged .din equivalent?
 
@@ -22,6 +24,7 @@ TODO:
 
 - codes are not currently constrained to when stimuli are on the screen, although this shouldn't be a big deal most of the time. See recording.BaseNetstate.codes()
 
+- why bother with the digitization of spike trains? Why not leave the number of spikes in each bin instead of truncing it at 1? You'll end up with a signal that's like 0 0 0 0 0 1 0 0 0 2 0 0 1 0 1 0 3 0, ie mostly 0s anyway. And, it saves more information about each spike train, which should then allow for more accurate correlation calculations between pairs. Seems to me the only really important thing is binning, not digitization. Or am I forgetting something? Ah, it prevents from forming meaningful digital words across neurons (space). So, you could digitize for doing netstate stuff, but leave undigitized for simply calculating pairwise corrs? Not really, cuz you need to feed the pairwise corrs into the maxent model, and those would have to correspond to the word probabilities, ie the pairwise corrs would have to be calculated off the binary signals. But, at least it would be nice to show that pairwise corr distributions for binned and digitized spike trains are the same as those for purely binned spike trains.
 
 
 ----------------------------------------------

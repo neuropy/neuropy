@@ -649,7 +649,7 @@ class NetstateScatter(BaseNetstate):
 
         colorguide = ''
         if self.model == 'both': # plot the indep model too, and plot it first
-            a.loglog(self.pobserved/norm, self.pindepexpected/norm, '.', color='blue')
+            a.loglog(self.pobserved/norm, self.pindepexpected/norm, '.', color='blue', ms=10)
             colorguide = ('blue: indep\n' +
                           ' red: ising\n')
         # plot whichever model was specified
@@ -666,7 +666,7 @@ class NetstateScatter(BaseNetstate):
                          'magenta: 4 spike patterns\n' + \
                          '  black: other patterns  \n'
         else:
-            a.loglog(self.pobserved/norm, self.pexpected/norm, '.', color='red')
+            a.loglog(self.pobserved/norm, self.pexpected/norm, '.', color='red', ms=10)
         '''
         a.plot(pobserved/norm, pexpected/norm, 'k.')
         '''
