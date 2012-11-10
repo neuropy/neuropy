@@ -23,10 +23,10 @@ def rcLUT(n=256):
     #colortable = []
     #for i in range(1,n+1,1)
     #
-    #	r = v(i);
-    #	g = v(i)-127/255;
-    #	b = v(i)-1;
-    #	colortable = [colortable; exp(-(r/m)^2 / 2)  exp(-(g/m)^2 / 2) exp(-(b/m)^2 / 2) ];
+    #   r = v(i);
+    #   g = v(i)-127/255;
+    #   b = v(i)-1;
+    #   colortable = [colortable; exp(-(r/m)^2 / 2)  exp(-(g/m)^2 / 2) exp(-(b/m)^2 / 2) ];
     #
     #end;
 

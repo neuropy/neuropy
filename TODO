@@ -1,5 +1,7 @@
 TODO:
 
+- are correlations measured with 0 and 1 binary codes, or -1 and 1? This could affect correlation values. Note that the codes fed to the maxent model are -1 and 1.
+
 - move CODEKIND, CODETRES, CODEPHASE, and CODEWORDLEN to globals, remove them as keywords everywhere else - see QUIETMEANRATETHRESH and how it's initialized on startup from globals.py and then can be manipulated at the command line by the user, and how all references to it in the code are through get_ipython().user_ns['QUIETMEANRATETHRESH']
 
 - add ability to concatenate recordings on the fly, by making tr1.r5_r6 to represent the concatenation of recordings 5 and 6, for example

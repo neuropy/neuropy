@@ -1904,20 +1904,23 @@ def fact(n):
 
 def nPr(n, r):
     """n Pick r"""
-    return fact(n) / fact(n-r)
+    assert n >= r
+    return fact(n) // fact(n-r)
 
 def nCr(n, r):
     """n Choose r"""
-    return nPr(n, r) / fact(r)
+    assert n >= r
+    return nPr(n, r) // fact(r)
 
 ncr = nCr # convenience f'ns
 npr = nPr
 
 def combgen(objects, r=2, i=None, level=0):
-    """Generator that yields, without replacement, all length r possible combinations of objects from a length n sequence.
-    Eg, if objects=[0,1,2] and r=2, this yields [0,1], [0,2], and [1,2], one at a time.
-    A recursive generator is used in order to create the necessary r number of nested for loops.
-    This is cool (my first generator!), but deep recursion is slow"""
+    """Generator that yields, without replacement, all length r possible combinations of
+    objects from a length n sequence. Eg, if objects=[0,1,2] and r=2, this yields [0,1],
+    [0,2], and [1,2], one at a time. A recursive generator is used in order to create the
+    necessary r number of nested for loops. This is cool (my first generator!), but deep
+    recursion is slow"""
     objects = np.asarray(objects)
     assert r <= len(objects)
     try: # recursive case
@@ -1926,15 +1929,24 @@ def combgen(objects, r=2, i=None, level=0):
         if level == 0: # handles special case for starting index of top level for loop
             starti = 0
         else:
-            starti = i[level-1] + 1 # start this level's loop index at one greater than the previous level's current loop index
-        for i[level] in range(starti, len(objects)+1): # not too sure why this is n+1, but it works
-            for comb in combgen(objects, r=r, i=i, level=level+1): # iterate over next level's generator
-                yield comb # yield whatever the next level (level+1) yields, pass it on up to the previous level (level-1)
-    except IndexError: # base case, we're at the deepest recursion level (innermost for loop). IndexError comes from i[level] being out of range
+            # start this level's loop index at one greater than the previous level's
+            # current loop index:
+            starti = i[level-1] + 1
+        # not too sure why this is n+1, but it works:
+        for i[level] in range(starti, len(objects)+1):
+            # iterate over next level's generator:
+            for comb in combgen(objects, r=r, i=i, level=level+1):
+                # yield whatever the next level (level+1) yields, pass it on up to the
+                # previous level (level-1)
+                yield comb 
+    except IndexError:
+        # base case, we're at the deepest recursion level (innermost for loop). IndexError
+        # comes from i[level] being out of range:
         #if len(i) == 1:
         #    yield objects[i[0]] # no need to yield them in a list
         #else:
-            yield objects[i] # use the current index state for all levels to yield a combination of objects
+            # use the current index state for all levels to yield a combination of objects:
+            yield objects[i]
 
 def combs(objects, r=2):
     """Returns all nCr possible combinations of items in objects, in a 1D array of arrays.
