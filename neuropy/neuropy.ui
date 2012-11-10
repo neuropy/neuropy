@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>497</width>
-    <height>345</height>
+    <width>651</width>
+    <height>367</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -32,7 +32,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>497</width>
+     <width>651</width>
      <height>23</height>
     </rect>
    </property>
@@ -42,10 +42,16 @@
     </property>
     <addaction name="actionOpen"/>
     <addaction name="separator"/>
-    <addaction name="action_ptc15_r87"/>
-    <addaction name="action_ptc15_r92"/>
-    <addaction name="action_ptc17_r03"/>
-    <addaction name="action_ptc21_r71"/>
+    <addaction name="action_ptc15"/>
+    <addaction name="action_ptc18"/>
+    <addaction name="action_ptc17"/>
+    <addaction name="action_ptc21"/>
+    <addaction name="action_ptc20"/>
+    <addaction name="separator"/>
+    <addaction name="action_ptc15_tr7c"/>
+    <addaction name="action_ptc18_tr1"/>
+    <addaction name="action_ptc22_tr1"/>
+    <addaction name="action_ptc22_tr2"/>
     <addaction name="separator"/>
     <addaction name="actionShell"/>
     <addaction name="separator"/>
@@ -85,12 +91,17 @@
    </attribute>
    <addaction name="actionOpen"/>
    <addaction name="separator"/>
+   <addaction name="action_ptc15"/>
+   <addaction name="action_ptc17"/>
+   <addaction name="action_ptc18"/>
+   <addaction name="action_ptc20"/>
+   <addaction name="action_ptc21"/>
    <addaction name="action_ptc22"/>
+   <addaction name="separator"/>
+   <addaction name="action_ptc15_tr7c"/>
+   <addaction name="action_ptc18_tr1"/>
    <addaction name="action_ptc22_tr1"/>
-   <addaction name="action_ptc15_r87"/>
-   <addaction name="action_ptc15_r92"/>
-   <addaction name="action_ptc17_r03"/>
-   <addaction name="action_ptc21_r71"/>
+   <addaction name="action_ptc22_tr2"/>
    <addaction name="separator"/>
    <addaction name="actionShell"/>
   </widget>
@@ -162,33 +173,36 @@
     <string>Drop into IPython shell at terminal</string>
    </property>
   </action>
-  <action name="action_ptc15_r87">
+  <action name="action_ptc15_tr7c">
    <property name="text">
-    <string>ptc15.r87</string>
-   </property>
-  </action>
-  <action name="action_ptc15_r92">
-   <property name="text">
-    <string>ptc15.r92</string>
+    <string>ptc15.tr7c</string>
    </property>
    <property name="toolTip">
-    <string>ptc15.r92</string>
+    <string>ptc15.tr7c</string>
    </property>
   </action>
-  <action name="action_ptc17_r03">
+  <action name="action_ptc18_tr1">
    <property name="text">
-    <string>ptc17.r03</string>
+    <string>ptc18.tr1</string>
    </property>
    <property name="toolTip">
-    <string>ptc15.r92</string>
+    <string>ptc18.tr1</string>
    </property>
   </action>
-  <action name="action_ptc21_r71">
+  <action name="action_ptc22_tr2">
    <property name="text">
-    <string>ptc21.r71</string>
+    <string>ptc22.tr2</string>
    </property>
    <property name="toolTip">
-    <string>ptc21.r71</string>
+    <string>ptc22.tr2</string>
+   </property>
+  </action>
+  <action name="action_ptc22_tr1">
+   <property name="text">
+    <string>ptc22.tr1</string>
+   </property>
+   <property name="toolTip">
+    <string>ptc22.tr1</string>
    </property>
   </action>
   <action name="action_ptc22">
@@ -199,12 +213,44 @@
     <string>ptc22</string>
    </property>
   </action>
-  <action name="action_ptc22_tr1">
+  <action name="action_ptc15">
    <property name="text">
-    <string>ptc22.tr1</string>
+    <string>ptc15</string>
    </property>
    <property name="toolTip">
-    <string>ptc22.tr1</string>
+    <string>ptc15</string>
+   </property>
+  </action>
+  <action name="action_ptc18">
+   <property name="text">
+    <string>ptc18</string>
+   </property>
+   <property name="toolTip">
+    <string>ptc18</string>
+   </property>
+  </action>
+  <action name="action_ptc17">
+   <property name="text">
+    <string>ptc17</string>
+   </property>
+   <property name="toolTip">
+    <string>ptc17</string>
+   </property>
+  </action>
+  <action name="action_ptc21">
+   <property name="text">
+    <string>ptc21</string>
+   </property>
+   <property name="toolTip">
+    <string>ptc21</string>
+   </property>
+  </action>
+  <action name="action_ptc20">
+   <property name="text">
+    <string>ptc20</string>
+   </property>
+   <property name="toolTip">
+    <string>ptc20</string>
    </property>
   </action>
  </widget>

@@ -1447,8 +1447,8 @@ def toiter(x):
         return [x]
 
 def tolist(x):
-    """Convert to list. If input is a dict, returns its values. If it's already a list, returns it.
-    Otherwise, input is returned in a list."""
+    """Convert to list. If input is a dict, returns its values. If it's already a list,
+    returns it. Otherwise, input is returned in a list."""
     if type(x) == dict:
         return list(x.values())
     elif type(x) == list:

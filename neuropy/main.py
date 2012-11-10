@@ -121,41 +121,62 @@ class NeuropyWindow(QtGui.QMainWindow):
             self.open_recording(path)
 
     @QtCore.pyqtSlot()
+    def on_action_ptc15_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc15')
+        self.open_animal(path)
+
+    @QtCore.pyqtSlot()
+    def on_action_ptc17_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc17')
+        self.open_animal(path)
+
+    @QtCore.pyqtSlot()
+    def on_action_ptc18_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc18')
+        self.open_animal(path)
+
+    @QtCore.pyqtSlot()
+    def on_action_ptc20_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc20')
+        self.open_animal(path)
+
+    @QtCore.pyqtSlot()
+    def on_action_ptc21_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc21')
+        self.open_animal(path)
+
+    @QtCore.pyqtSlot()
     def on_action_ptc22_triggered(self):
         path = os.path.join(DATAPATH, 'ptc22')
         self.open_animal(path)
 
     @QtCore.pyqtSlot()
+    def on_action_ptc15_tr7c(self):
+        path = os.path.join(DATAPATH, 'ptc15')
+        self.open_animal(path, 'tr7c')
+
+    @QtCore.pyqtSlot()
+    def on_action_ptc18_tr1_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc18')
+        self.open_animal(path, 'tr1')
+
+    @QtCore.pyqtSlot()
     def on_action_ptc22_tr1_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc22/tr1')
-        self.open_track(path)
+        path = os.path.join(DATAPATH, 'ptc22')
+        self.open_animal(path, 'tr1')
 
     @QtCore.pyqtSlot()
-    def on_action_ptc15_r87_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc15/tr7c/87 - track 7c spontaneous craziness')
-        self.open_recording(path)
+    def on_action_ptc22_tr2_triggered(self):
+        path = os.path.join(DATAPATH, 'ptc22')
+        self.open_animal(path, 'tr2')
 
-    @QtCore.pyqtSlot()
-    def on_action_ptc15_r92_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc15/tr7c/92 - track 7c mseq32 0.4deg')
-        self.open_recording(path)
-
-    @QtCore.pyqtSlot()
-    def on_action_ptc17_r03_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc17/tr1/03-tr1-mseq32_40ms')
-        self.open_recording(path)
-
-    @QtCore.pyqtSlot()
-    def on_action_ptc21_r71_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc21/tr5c/71-tr5c-flashgrating_40ms')
-        self.open_recording(path)
-
-    def open_animal(self, path):
+    def open_animal(self, path, tracknames=None):
         a = Animal(path) # init it just to parse its name
         exec_lines = (
         "from animal import Animal\n"
-        "%s = Animal(%r)\n"
-        "%s.load()" % (a.name, path, a.name)
+        "try: %s; \n"
+        "except NameError: %s = Animal(%r)\n"
+        "%s.load(%r)" % (a.name, a.name, path, a.name, tracknames)
         )
         self.ipyqtwidget.execute(exec_lines)
 
