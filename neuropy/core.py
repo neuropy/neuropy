@@ -55,7 +55,8 @@ class dictattr(dict):
     
     def __setitem__(self, key, val):
         super(dictattr, self).__setitem__(key, val)
-        if key.__class__ == str and not key[0].isdigit(): # key isn't a number or a string starting with a number
+        # key isn't a number or a string starting with a number:
+        if key.__class__ == str and not key[0].isdigit():
             key = key.replace(' ', '_') # get rid of any spaces
             self.__dict__[key] = val # make the key show up as an attrib upon dir()
 

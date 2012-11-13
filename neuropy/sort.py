@@ -25,6 +25,8 @@ class Sort(object):
 
     name = property(lambda self: os.path.split(self.path)[-1])
     nneurons = property(lambda self: len(self.n))
+    nqneurons = property(lambda self: len(self.qn))
+    nallneurons = property(lambda self: len(self.alln))
     nspikes = property(lambda self: self.header.nspikes)
     # .ptcs specific properties:
     # datetime object, calculated from header.datetime days since EPOCH"""

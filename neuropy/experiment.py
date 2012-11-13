@@ -533,17 +533,20 @@ class BaseExperiment(object):
 class ExperimentCode(BaseExperiment):
     """Mix-in class that defines the spike code related experiment methods"""
     def code(self, neuron=None, **kwargs):
-        """Returns a Neuron.Code object, constraining it to the time range of this experiment. Takes either a Neuron object or just a Neuron id"""
+        """Returns a Neuron.Code object, constraining it to the time range of this
+        experiment. Takes either a Neuron object or just a Neuron id"""
         try:
             return neuron.code(tranges=[self.trange], **kwargs) # see if neuron is a Neuron
         except AttributeError:
-            return self.r.n[neuron].code(tranges=[self.trange], **kwargs) # neuron is probably a Neuron id
+            # neuron is probably a Neuron id:
+            return self.r.n[neuron].code(tranges=[self.trange], **kwargs)
     code.__doc__ += '\n\n**kwargs:'
     code.__doc__ += '\nNeuron.code: '+getargstr(neuron.Neuron.code)
     code.__doc__ += '\nbinary: '+getargstr(neuron.BinaryCode.__init__)
 
     def codes(self, neurons=None, **kwargs):
-        """Returns a 2D array where each row is a neuron code constrained to the time range of this experiment"""
+        """Returns a 2D array where each row is a neuron code constrained to the time range
+        of this experiment"""
         if neurons == None:
             neurons = self.r.n
         codeso = self.r.codes(neurons=neurons, experiments=[self], **kwargs)
@@ -572,7 +575,9 @@ class ExperimentCode(BaseExperiment):
         cco = self.r.codecorrpdf(experiments={self.id: self}, **kwargs) # init a new one
         for ccpdf in self._codecorrpdfs:
             if cco == ccpdf: # need to define special == method for class CodeCorrPDF()
-                return ccpdf # returns the first object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._codecorrpdfs
+                # return the first object whose attributes match what's desired. This saves
+                # on calc() time and avoids duplicates in self._codecorrpdfs
+                return ccpdf
         cco.calc() # no matching object was found, calculate it
         self._codecorrpdfs.append(cco) # add it to the object list
         return cco
@@ -594,20 +599,24 @@ class ExperimentCode(BaseExperiment):
 class ExperimentRate(BaseExperiment):
     """Mix-in class that defines the spike rate related experiment methods"""
     def rate(self, neuron, **kwargs):
-        """Returns a Neuron.Rate object, constraining it to the time range of this experiment. Takes either a neuron object or just a neuron id"""
+        """Returns a Neuron.Rate object, constraining it to the time range of this
+        experiment. Takes either a neuron object or just a neuron id"""
         try:
             return neuron.rate(trange=self.trange, **kwargs) # see if neuron is a Neuron
         except AttributeError:
-            return self.r.n[neuron].rate(trange=self.trange, **kwargs) # neuron is probably a Neuron id
+            # neuron is probably a Neuron id:
+            return self.r.n[neuron].rate(trange=self.trange, **kwargs)
     rate.__doc__ += '\n\n**kwargs:'
     rate.__doc__ += neuron.Neuron._rateargs
 
     def ratepdf(self, neuron, **kwargs):
-        """Returns a Neuron.RatePDF object, constraining it to the time range of this experiment. Takes either a Neuron object or just a Neuron id"""
+        """Returns a Neuron.RatePDF object, constraining it to the time range of this
+        experiment. Takes either a Neuron object or just a Neuron id"""
         try:
             return neuron.ratepdf(trange=self.trange, **kwargs) # see if neuron is a Neuron
         except AttributeError:
-            return self.r.n[neuron].ratepdf(trange=self.trange, **kwargs) # neuron is probably a Neuron id
+            # neuron is probably a Neuron id:
+            return self.r.n[neuron].ratepdf(trange=self.trange, **kwargs)
     ratepdf.__doc__ += '\n\n**kwargs:'
     ratepdf.__doc__ += '\nNeuron.RatePDF: '+getargstr(neuron.RatePDF.__init__)
     ratepdf.__doc__ += '\nNeuron.rate: '+getargstr(neuron.Neuron.rate)
@@ -689,7 +698,7 @@ class STCs(RevCorrs):
 class ExperimentRevCorr(BaseExperiment):
     """Mix-in class that defines the reverse correlation related experiment methods"""
     def sta(self, neurons=None, **kwargs):
-        """Returns an STAs RevCorrs object"""
+        """Return an STAs RevCorrs object"""
         if neurons == None:
             # no Neurons were passed, use all the Neurons from the default Sort for this
             # experiment's Recording

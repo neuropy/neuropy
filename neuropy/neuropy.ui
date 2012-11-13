@@ -119,6 +119,9 @@
    <property name="shortcut">
     <string>Ctrl+O</string>
    </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
+   </property>
   </action>
   <action name="actionQuit">
    <property name="icon">
@@ -137,6 +140,9 @@
    <property name="menuRole">
     <enum>QAction::QuitRole</enum>
    </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
+   </property>
   </action>
   <action name="actionAboutNeuropy">
    <property name="icon">
@@ -152,6 +158,9 @@
    <property name="menuRole">
     <enum>QAction::AboutRole</enum>
    </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
+   </property>
   </action>
   <action name="actionAboutQt">
    <property name="text">
@@ -159,6 +168,9 @@
    </property>
    <property name="menuRole">
     <enum>QAction::AboutQtRole</enum>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
    </property>
   </action>
   <action name="actionShell">
@@ -171,6 +183,9 @@
    </property>
    <property name="toolTip">
     <string>Drop into IPython shell at terminal</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
    </property>
   </action>
   <action name="action_ptc15_tr7c">
