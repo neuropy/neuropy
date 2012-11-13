@@ -69,6 +69,8 @@ class BaseRecording(object):
     alln = property(lambda self: self.sort.alln)
     nspikes = property(lambda self: self.sort.nspikes)
     nneurons = property(lambda self: self.sort.nneurons)
+    nqneurons = property(lambda self: self.sort.nqneurons)
+    nallneurons = property(lambda self: self.sort.nallneurons)
     datetime = property(lambda self: self.sort.datetime)
     pttype = property(lambda self: self.sort.pttype)
     chanpos = property(lambda self: self.sort.chanpos)
@@ -134,10 +136,11 @@ class BaseRecording(object):
         self.dt = self.trange[1] - self.trange[0] # static, no need for a property
         self.dtsec = self.dt / 1e6
         self.dtmin = self.dtsec / 60
-        # now that self.dtsec is known, mean firing rates within each sort can be
-        # calculated and neurons paritioned into normal and quiet neurons:
+        # now that self.dtsec is known, calc static mean firing rate for each neuron
+        # in each sort:
         for sort in self.sorts.values():
-            sort.apply_quietmeanratethresh()
+            for neuron in sort.alln.values():
+                neuron.meanrate = neuron.nspikes / self.dtsec
 
 
 class RecordingRevCorr(BaseRecording):

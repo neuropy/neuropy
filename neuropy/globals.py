@@ -5,5 +5,3 @@
 # track. But, if you want a reasonable looking DJS histogram withouth a lot of missing
 # netstates, you need to exclude more low firing rate cells, 0.5 works better:
 QUIETMEANRATETHRESH = 0.1
-
-# I think you need to run sort.apply_quietmeanratethresh for all sorts after modifying QUIETMEANRATETHRESH. Or, just change it before neuropy startup. Or, just reload desired data, and apply_quietmeanratethresh will be run automatically

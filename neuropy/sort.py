@@ -20,8 +20,27 @@ class Sort(object):
         self.path = path
         self.id = id
         self.r = recording
-        self.n = dictattr() # store Neurons in a dictionary with attrib access
-        self.qn = dictattr() # do the same for "quiet" Neurons
+        self.alln = {} # dict to store all Neurons
+
+    def get_n(self):
+        """Return dict of neurons that meet QUIETMEANRATETHRESH"""
+        n = {}
+        for neuron in self.alln.values():
+            if neuron.meanrate >= get_ipython().user_ns['QUIETMEANRATETHRESH']:
+                n[neuron.id] = neuron
+        return n
+
+    n = property(get_n)
+
+    def get_qn(self):
+        """Return dict of (quiet) neurons, ie those that fail to meet QUIETMEANRATETHRESH"""
+        qn = {}
+        for neuron in self.alln.values():
+            if neuron.meanrate < get_ipython().user_ns['QUIETMEANRATETHRESH']:
+                qn[neuron.id] = neuron
+        return qn
+
+    qn = property(get_qn)
 
     name = property(lambda self: os.path.split(self.path)[-1])
     nneurons = property(lambda self: len(self.n))
@@ -34,16 +53,6 @@ class Sort(object):
     pttype = property(lambda self: self.header.pttype)
     chanpos = property(lambda self: self.header.chanpos)
 
-    def get_alln(self):
-        """Return set of all neurons in self, both normal and quiet"""
-        # make sure nids in normal and quiet neuron sets don't overlap:
-        assert len(core.intersect1d([self.n.keys(), self.qn.keys()])) == 0
-        alln = {}
-        alln.update(self.n)
-        alln.update(self.qn)
-        return alln
-
-    alln = property(get_alln)
 
     def tree(self):
         """Print tree hierarchy"""
@@ -79,7 +88,7 @@ class Sort(object):
             for i in range(self.header.nneurons):
                 neuron = Neuron(self.path, sort=self)
                 neuron.loadptcs(f, self.header)
-                self.n[neuron.id] = neuron # save it
+                self.alln[neuron.id] = neuron # save it
             assert eof(f), 'File %s has unexpected length' % self.path
 
     def loadspk(self):
@@ -89,15 +98,4 @@ class Sort(object):
             path = os.path.join(self.path, spkfname)
             neuron = Neuron(path, sort=self)
             self.header.read(neuron)
-            self.n[neuron.id] = neuron # save it
-
-    def apply_quietmeanratethresh(self):
-        """Partition neurons into normal and quiet. Has to be called after parent
-        recording determines its duration"""
-        for neuron in self.n.values():
-            # mean spike rate is static, calc once and save it to neuron:
-            neuron.meanrate = neuron.nspikes / self.r.dtsec
-            if neuron.meanrate < get_ipython().user_ns['QUIETMEANRATETHRESH']:
-                # move it to the "quiet" neuron dictattr:
-                del self.n[neuron.id]
-                self.qn[neuron.id] = neuron
+            self.alln[neuron.id] = neuron # save it
