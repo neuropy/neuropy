@@ -65,7 +65,7 @@ class BaseExperiment(object):
             self.textheader = f.read() # read it all in
             f.close()
         except IOError:
-            warn('Error reading: <%s>, text header not loaded' % f.name)
+            warn('Error loading "%s": associated text header not found' % self.name)
             self.textheader = '' # set to empty
 
         treestr = self.level*TAB + self.name + '/'

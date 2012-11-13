@@ -131,7 +131,7 @@ class BaseRecording(object):
         else:
             # self.e is empty, no experiments in this recording, use first and last
             # spike across all neurons
-            tranges = np.asarray([ n.trange for n in self.n.values() ])
+            tranges = np.asarray([ n.trange for n in self.alln.values() ])
             self.trange = min(tranges[:, 0]), max(tranges[:, 1])
         self.dt = self.trange[1] - self.trange[0] # static, no need for a property
         self.dtsec = self.dt / 1e6

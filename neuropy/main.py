@@ -151,7 +151,7 @@ class NeuropyWindow(QtGui.QMainWindow):
         self.open_animal(path)
 
     @QtCore.pyqtSlot()
-    def on_action_ptc15_tr7c(self):
+    def on_action_ptc15_tr7c_triggered(self):
         path = os.path.join(DATAPATH, 'ptc15')
         self.open_animal(path, 'tr7c')
 
