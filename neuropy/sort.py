@@ -25,9 +25,9 @@ class Sort(object):
     def get_n(self):
         """Return dict of neurons that meet QUIETMEANRATETHRESH"""
         n = {}
-        ip = get_ipython()
+        QUIETMEANRATETHRESH = get_ipython().user_ns['QUIETMEANRATETHRESH']
         for neuron in self.alln.values():
-            if neuron.meanrate >= ip.user_ns['QUIETMEANRATETHRESH']:
+            if neuron.meanrate >= QUIETMEANRATETHRESH:
                 n[neuron.id] = neuron
         return n
 
@@ -36,9 +36,9 @@ class Sort(object):
     def get_qn(self):
         """Return dict of (quiet) neurons, ie those that fail to meet QUIETMEANRATETHRESH"""
         qn = {}
-        ip = get_ipython()
+        QUIETMEANRATETHRESH = get_ipython().user_ns['QUIETMEANRATETHRESH']
         for neuron in self.alln.values():
-            if neuron.meanrate < ip.user_ns['QUIETMEANRATETHRESH']:
+            if neuron.meanrate < QUIETMEANRATETHRESH:
                 qn[neuron.id] = neuron
         return qn
 
