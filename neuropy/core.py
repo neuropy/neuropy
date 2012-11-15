@@ -1322,7 +1322,8 @@ def convertalltxtdin2binarydin(path=None):
 
     for fname in listing:
         if fname.endswith('.csv'):
-            dinfnames.append(fname[:-len('.csv')]) # text din filenames without the .csv extension
+            # text din filenames without the .csv extension
+            dinfnames.append(fname[:-len('.csv')])
 
     for dinfname in dinfnames:
         fin = os.path.join(path, dinfname) + '.csv'
@@ -1370,13 +1371,18 @@ def csv2binary(fin, multiplier=1e6, skipfirstline=True):
         os.mkdir(path) # make a dir with that name
     except OSError: # dir already exists
         pass
-    tail = os.path.split(path)[-1].replace(' ', '_') # just the extensionless filename, replace spaces with underscores
+    # just the extensionless filename, replace spaces with underscores:
+    tail = os.path.split(path)[-1].replace(' ', '_')
     for ni, neuron in enumerate(data):
-        fname = os.path.join(path, tail) + '_t' + pad0s(ni, ndigits=len(str(nneurons))) + '.spk'
+        fname = (os.path.join(path, tail) + '_t' +
+                 pad0s(ni, ndigits=len(str(nneurons))) + '.spk')
         fo = file(fname, 'wb') # for writing in binary mode
         print fo.name
-        for spiketime in neuron: # write each spiketime to the file, there should be a more streamlined way to do this
-            fo.write( struct.pack('@q', spiketime) ) # write the value out as a C long long, using the system's native ('@') byte order
+        for spiketime in neuron:
+            # write each spiketime to the file, there should be a more streamlined way
+            # to do this. Write the value out as a C long long, using the system's native
+            # ('@') byte order
+            fo.write( struct.pack('@q', spiketime) )
         fo.close()
 
 def warn(msg, level=2, exit_val=1):
@@ -1401,7 +1407,8 @@ def unique(seq):
     return result.keys()
 
 def unique(objlist):
-    """Returns the input list minus any repeated objects it may have had. Also defined in dimstim"""
+    """Returns the input list minus any repeated objects it may have had.
+    Also defined in dimstim"""
     return list(set(objlist)) # this requires Python >= 2.4
 
 def unique(objlist):
@@ -1770,9 +1777,10 @@ def bin(i, minbits=8):
     return sints
 
 def binslow(i, minbits=8):
-    """Return a string with the binary representation of an integer. If necessary, will append leading zeros
-    if result is less than minbits long. Seems like np.binary_repr() is a somewhat faster alternative.
-    First 2 lines stolen from Andrew Gaul <andrew@gaul.org> off the web"""
+    """Return a string with the binary representation of an integer. If necessary, will
+    append leading zeros if result is less than minbits long. Seems like np.binary_repr() is
+    a somewhat faster alternative. First 2 lines stolen from Andrew Gaul <andrew@gaul.org>
+    off the web"""
     l = ['0000', '0001', '0010', '0011', '0100', '0101', '0110', '0111',
          '1000', '1001', '1010', '1011', '1100', '1101', '1110', '1111']
     s = ''.join(map(lambda x, l=l: l[int(x, 16)], hex(i)[2:]))
@@ -1950,7 +1958,8 @@ def combs(objects, r=2):
     n = len(objects)
     assert r <= n
     i = np.asarray([0]*r)
-    combs = np.empty(nCr(n, r), dtype=np.object) # stores all combinations, will be a 1D array of arrays
+    # stores all combinations, will be a 1D array of arrays:
+    combs = np.empty(nCr(n, r), dtype=np.object)
     combi = -1
 
     code = ''
@@ -2016,21 +2025,33 @@ def nCrsamples(objects, r, nsamples=None):
     maxnsamples = nCr(len(objects), r)
     if nsamples == None:
         nsamples = maxnsamples # return all possible combinations
-    if nsamples > maxnsamples: # make sure we're not being asked for more than the maximum possible number of unique samples
-        raise ValueError, 'requested unique nsamples (%d) is larger than len(objects) choose r (%d C %d == %d)' % (nsamples, len(objects), r, maxnsamples)
-    # I've set the criteria for generating a table to be never, cuz generating the table and then sampling it almost always takes longer (at least for maxnsamples as high as 325, say) than just picking combs at random and making sure they're unique
-    if maxnsamples < 0: # generate a table of all possible combinations, and then just pick nsamples from it without replacement
+    if nsamples > maxnsamples:
+        # make sure we're not being asked for more than the maximum possible number of
+        # unique samples
+        raise ValueError('requested unique nsamples (%d) is larger than len(objects) choose '
+                         'r (%d C %d == %d)' % (nsamples, len(objects), r, maxnsamples))
+    # I've set the criteria for generating a table to be never, because generating the table
+    # and then sampling it almost always takes longer (at least for maxnsamples as high as
+    # 325, say) than just picking combs at random and making sure they're unique
+    if maxnsamples < 0:
+        # generate a table of all possible combinations, and then just pick nsamples from
+        # it without replacement
         table = combs(objects, r)
         samples = random.sample(table, nsamples)
     elif r == 1: # we're just choosing one item from objects at a time
         samples = random.sample(objects, nsamples)
-    else: # the number of possible combs is inconveniently large to completely tabulate, pick some combinations at random and make sure each comb is unique
+    else:
+        # the number of possible combs is inconveniently large to completely tabulate,
+        # pick some combinations at random and make sure each comb is unique
         samples = []
         samplei = 0
         while samplei < nsamples:
             sample = random.sample(objects, r) # choose r objects at random
-            sample.sort() # sort for sake of comparison with other samples, important cuz this removes any differences due to permuatations (as opposed to combs)
-            if sample not in samples: # make sure they're not the same set of objects as any previous set in samples
+            # sort for sake of comparison with other samples, important because this
+            # removes any differences due to permuatations (as opposed to combs)
+            sample.sort()
+            if sample not in samples:
+                # make sure they're not the same set of objects as any previous set in samples
                 samples.append(sample) # add it to the list of samples
                 samplei += 1
     return samples
@@ -2040,7 +2061,8 @@ def nCrsamples(objects, r, nsamples=None):
 def sortby(objs, attrib, cmp=None, reverse=False):
     """Returns objects list sorted according to the specified object attribute.
     attrib should be passed as a string"""
-    objs.sort(key=lambda obj: obj.__getattribute__(attrib), cmp=cmp, reverse=reverse) # sort in-place
+    # sort in-place:
+    objs.sort(key=lambda obj: obj.__getattribute__(attrib), cmp=cmp, reverse=reverse)
     return objs
 '''
 def intersect1d(arrays, assume_unique=False):
@@ -2066,7 +2088,9 @@ def mean_accum(data):
     much faster than np.mean() because it avoids making any copies of the data
     Suggested by Tim Hochberg"""
     result = np.zeros(data[0].shape, np.float64) # init output array
-    for dataslice in data: # this for loop isn't such a bad thing cuz the massive add step inside the loop is the limiting factor
+    for dataslice in data:
+        # this for loop isn't such a bad thing cuz the massive add step inside the loop
+        # is the limiting factor
         result += dataslice
     result /= len(data)
     return result
@@ -2110,7 +2134,8 @@ def log_no_sing(x, subval=0.0, base=np.e):
     singi = x==0 # find the singularities
     x[singi] = 1 # replace 'em with 1s, or anything else that's safe to take the log of
     result = logy(x, base=base) # now it's safe to take the log
-    result[singi] = subval # substitute the result where the singularities were with the substitution value
+    # substitute the result where the singularities were with the substitution value:
+    result[singi] = subval
     return result
 
 def log10_no_sing(x, subval=0.0):
@@ -2122,7 +2147,8 @@ def log2_no_sing(x, subval=0.0):
     return log_no_sing(x, subval=subval, base=2)
 
 def entropy(p):
-    """Returns the entropy (in bits) of the prob distribution described by the prob values in p"""
+    """Returns the entropy (in bits) of the prob distribution described by the prob
+    values in p"""
     p = ensurenormed(p)
     return -(p * np.log2(p)).sum()
 
@@ -2133,10 +2159,11 @@ def entropy_no_sing(p):
     return -(p * log2_no_sing(p, subval=0.0)).sum()
 
 def MI(XY):
-    """Given the joint PDF of two variables, returns the mutual information (in bits) between the two
+    """Given the joint PDF of two variables, return the mutual information (in bits)
+    between the two.
     I = sum_X sum_Y P(x, y) * log2( P(x, y) / (P(x) * P(y)) )
     where P(x) and P(y) are the marginal distributions taken from the joint
-    Is this slow? Needs optimization? Already implemented in scipy???????????????"""
+    Is this slow? Needs optimization? Already implemented in scipy?"""
     XY = np.asarray(XY)
     assert XY.ndim == 2
     XY = ensurenormed(XY)
@@ -2163,11 +2190,15 @@ def MIbinarrays(Nbinarray=None, Mbinarray=None, verbose=False):
     Mbinarray = to2d(Mbinarray) # make it 2D if it's 1D
     M = len(Mbinarray) # gets the number of rows
     Mintcodes = binarray2int(Mbinarray)
-    # build up joint pdf of all the possible N words, and the two possible N+1th values (0 and 1)
-    xedges = np.arange(2**N+1) # values 0 to 2**N - 1, plus 2**N which is needed as the rightmost bin edge for histogram2d (annoying)
+    # build up joint pdf of all the possible N words, and the two possible N+1th values
+    # (0 and 1)
+    # values 0 to 2**N - 1, plus 2**N which is needed as the rightmost bin edge for
+    # histogram2d (annoying):
+    xedges = np.arange(2**N+1)
     yedges = np.arange(2**M+1)
     bins = [xedges, yedges]
-    jpdf, xedgesout, yedgesout = histogram2d(Nintcodes, Mintcodes, bins, normed='pmf') # generate joint pdf
+    # generate joint pdf
+    jpdf, xedgesout, yedgesout = histogram2d(Nintcodes, Mintcodes, bins, normed='pmf')
     #print 'jpdf\n', jpdf.__repr__()
     #print 'jpdf.sum()', jpdf.sum()
     assert (np.float64(xedges) == xedgesout).all() # sanity check
@@ -2179,9 +2210,12 @@ def MIbinarrays(Nbinarray=None, Mbinarray=None, verbose=False):
     #Mpdf, Medges = histogram(Mintcodes, bins=range(2**M), normed='pmf')
     #print 'first 100 Mpdf\n', Mpdf[:100].__repr__()
     marginalMpdf = jpdf.sum(axis=0)
-    #assert approx(Mpdf, marginalMpdf).all() # make sure what you get from the joint is what you get when just building up the pdf straight up on its own
+    # make sure what you get from the joint is what you get when just building up the
+    # pdf straight up on its own:
+    #assert approx(Mpdf, marginalMpdf).all()
     I = MI(jpdf)
-    IdivS = I / entropy(marginalMpdf) # return mutual info as fraction of entropy in M group of cells
+    # mutual info as fraction of entropy in M group of cells:
+    IdivS = I / entropy(marginalMpdf)
     if verbose:
         print 'nids', nids
         print 'mids', mids
@@ -2199,14 +2233,17 @@ def MIbinarrays(Nbinarray=None, Mbinarray=None, verbose=False):
     return dictattr(I=I, IdivS=IdivS)
 
 def DKL(p, q):
-    """Kullback-Leibler divergence from true probability distribution p to arbitrary distribution q"""
+    """Kullback-Leibler divergence from true probability distribution p
+    to arbitrary distribution q"""
     assert len(p) == len(q)
     p = ensurenormed(p)
     q = ensurenormed(q)
-    return sum([ pi * np.log2(pi/float(qi)) for pi, qi in zip(p, q) if pi != 0 and qi != 0 ] ) # avoid singularities
+    # avoid singularities:
+    return sum([ pi * np.log2(pi/float(qi)) for pi, qi in zip(p, q) if pi != 0 and qi != 0 ] ) 
 
 def DJS(p, q):
-    """Jensen-Shannon divergence, a symmetric measure of divergence between distributions p and q"""
+    """Jensen-Shannon divergence, a symmetric measure of divergence between
+    distributions p and q"""
     p = np.asarray(p) # required for adding p and q
     q = np.asarray(q)
     m = 1 / 2.0 * (p + q)
@@ -2239,3 +2276,9 @@ def eof(f):
     orig = f.tell()
     f.seek(0, 2) # seek 0 bytes from end
     return f.tell() == orig
+
+def td2usec(td):
+    """Convert datetime.timedelta to microseconds"""
+    sec = td.total_seconds() # float
+    usec = intround(sec * 1000000) # round to nearest us
+    return usec

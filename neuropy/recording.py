@@ -1401,7 +1401,7 @@ class NetstateTriggeredAverage(BaseNetstate):
             if not cont:
                 pd.Destroy()
                 return
-            self.frames[ti] = cat(tuple(self.frames[ti])) # need to concatenate all lists for this ti into a single array
+            self.frames[ti] = np.concatenate(tuple(self.frames[ti])) # need to concatenate all lists for this ti into a single array
             self.rf[tii] = mean_accum(self.frames[ti]) # this is much faster than frames.mean()
             #self.rf[ti] = mean_accum2(data, frameis)
         pd.Destroy()

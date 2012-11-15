@@ -10,7 +10,7 @@ import numpy as np
 import pylab as pl
 
 import core
-from core import dictattr, TAB
+from core import dictattr, TAB, td2usec
 from recording import Recording
 
 
@@ -70,18 +70,36 @@ class Track(object):
             recording.load()
             self.r[recording.id] = recording
             self.__setattr__('r' + str(recording.id), recording) # add shortcut attrib
-        self.rnames = dirnames # easy way to print out recording names
+        self.rnames = dirnames # easy way to print out all recording names
 
-    def commonactivenids(self, rids=None):
-        """Return nids of normal (active) neurons common to all recordings specified in
-        rids. Active neurons in a recording are those with at least MINRATE mean
-        spike rate during the recording"""
+        rids = np.sort(self.r.keys()) # all recording ids in self
+        if len(rids) > 0:
+            # calculate total track duration, this is slightly different from what you get
+            # from the source .srf files, because exact recording duration is not exported,
+            # only experiment din and spike times, which are used to generate rec.trange
+            r0 = self.r[rids[0]]
+            r1 = self.r[rids[-1]]
+            self.dt = td2usec(r1.datetime - r0.datetime) - r0.trange[0] + r1.trange[1]
+            self.dtsec = self.dt / 1e6
+            self.dtmin = self.dtsec / 60
+            self.dthour = self.dtmin / 60
+
+    def get_allnids(self, rids=None):
+        """Return nids of all neurons (active and quiet) common to all recordings
+        specified in rids"""
         if rids == None:
-            rids = np.sort(self.r.keys()) # all recording ids in self
-        n = set()
-        # recording.n designates normal neurons:
-        allnids = [ np.asarray(self.r[rid].n.keys()) for rid in rids ]
-        return core.intersect1d(allnids, assume_unique=True)
+            rids = self.r.keys() # all recording ids in self
+            return np.unique(np.hstack([ self.r[rid].alln.keys() for rid in rids ]))
+        else:
+            allnids = [ self.r[rid].alln.keys() for rid in rids ]
+            return core.intersect1d(allnids, assume_unique=True)
+
+    def get_nspikes(self, rids=None):
+        """Return total number of spikes in recordings specified by rids"""
+        if rids == None:
+            rids = self.r.keys() # all recording ids in self
+        nspikes = [ self.r[rid].nspikes for rid in rids ]
+        return sum(nspikes)
 
     def get_meanrates(self):
         """Return mean firing rates of all neurons across all recordings.
@@ -90,8 +108,11 @@ class Track(object):
         meanrates = []
         for r in self.r.values():
             meanrates.append([n.meanrate for n in r.alln.values()])
-        return np.concatenate(meanrates)
+        return np.hstack(meanrates)
 
+    allnids = property(get_allnids)
+    nallneurons = property(lambda self: len(self.allnids))
+    nspikes = property(get_nspikes)
     meanrates = property(get_meanrates)
 
     def meanratehist(self, bins=None):
