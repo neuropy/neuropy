@@ -11,7 +11,7 @@ import pylab as pl
 import matplotlib as mpl
 
 import core
-from core import rstrip, getargstr, iterable, toiter, tolist, intround, CODETRES, CODEPHASE, CODEKIND
+from core import rstrip, getargstr, iterable, toiter, tolist, intround
 from core import mean_accum, lastcmd, RevCorrWindow
 from core import PTCSNeuronRecord, SPKNeuronRecord
 from dimstimskeletal import Movie
@@ -153,28 +153,29 @@ class BaseNeuron(object):
 
         Appends the spike times of self and other Neurons and returns a copy of the uberneuron.
 
-        MAYBE I SHOULD MAKE THIS AN IN-PLACE operation, as self.append() would imply. In other words,
-        don't return a copy? But that would modify the original Neuron. Maybe it should be up to you
-        to make a copy of the Neuron before appending other Neurons to it. That sounds best.
+        Maybe I should make this an in-place operation, as self.append() would imply. In
+        other words, don't return a copy? But that would modify the original Neuron. Maybe
+        it should be up to you to make a copy of the Neuron before appending other Neurons
+        to it. That sounds best.
 
         All Neurons must have the same id and be of the same Track. The user needs to ensure
         that the same template was used to sort all the Neurons
 
-        If you want to recover the original spike times so as to compare with stimuli,
-        you need to cut the spikes with the appropriate trange in tranges, and then subtract
-        the appropriate offset in offsets.
+        If you want to recover the original spike times so as to compare with stimuli, you
+        need to cut the spikes with the appropriate trange in tranges, and then subtract the
+        appropriate offset in offsets.
 
-        You can't simply append neuron spike times, need to add some kind of huge ass time offset between Recordings?
-        Also need to have tranges instead of just a trange, to skip over/get around the huge ass time offset.
-        Or maybe just have a 1 us offset tween consecutive Recordings? In the end, I decided to make the spike times from the nth
-        Recording to be the sum of the last spike times of all the 0 to n-1 Recordings preceding it. This is like pretending
-        that each consecutive Recording started immediately after the preceding one ended.
+        You can't simply append neuron spike times, need to add some kind of huge time
+        offset between Recordings? Also need to have tranges instead of just a trange, to
+        skip over/get around the huge ass time offset. Or maybe just have a 1 us offset
+        tween consecutive Recordings? In the end, I decided to make the spike times from the
+        nth Recording to be the sum of the last spike times of all the 0 to n-1 Recordings
+        preceding it. This is like pretending that each consecutive Recording started
+        immediately after the preceding one ended.
 
-        HOW THE HELL DO YOU FIND THE INDEX OF A VALUE IN A NUMPY ARRAY? a==5 gives you a long boolean array,
-        how do you find the indices where that boolean is True? use .nonzero() or np.where()
-
-        AS OF OCT 11, 2006, DOESN'T LOOK LIKE THIS METHOD IS ACTUALLY BEING USED YET. IT'LL BE USEFUL ONCE I START
-        DOING ANALYSES OVER MULTIPLE RECORDINGS TO INCREASE STATS SIGNIFICANCE"""
+        As of oct 11, 2006, doesn't look like this method is actually being used yet. it'll
+        be useful once i start doing analyses over multiple recordings to increase stats
+        significance"""
 
         others = makeiter(others)
         neurons = [self]
@@ -339,11 +340,12 @@ class BinaryCode(BaseCode):
     relative to the nearest multiple of tres before each trange. Phase is in degrees of a
     single bin period. -ve phase is leading (codetrain starts earlier in time), +ve is
     lagging (codetrain starts later in time)"""
-    def __init__(self, neuron=None, tranges=None, tres=CODETRES, phase=CODEPHASE):
+    def __init__(self, neuron=None, tranges=None):
         super(BinaryCode, self).__init__(neuron=neuron, tranges=tranges)
+        uns = get_ipython().user_ns
         self.kind = 'binary'
-        self.tres = tres
-        self.phase = phase # in degrees of tres
+        self.tres = uns['CODETRES']
+        self.phase = uns['CODEPHASE']
 
     def calc(self):
         # set up empty arrays with correct dtypes (otherwise, when appending to them later,
@@ -383,17 +385,17 @@ class BinaryCode(BaseCode):
 
 class NeuronCode(BaseNeuron):
     """Mix-in class that defines the spike code related Neuron methods"""
-    def code(self, tranges=None, kind=CODEKIND, tres=CODETRES, phase=CODEPHASE):
+    def code(self, tranges=None):
         """Returns an existing Code object, or creates a new one if necessary"""
         try:
             self._codes
         except AttributeError: # self._codes doesn't exist yet
             self._codes = [] # create a list that'll hold Code objects for this Neuron
-        if kind == 'binary':
-            # init a new BinaryCode object
-            co = BinaryCode(neuron=self, tranges=tranges, tres=tres, phase=phase)
+        kind = get_ipython().user_ns['CODEKIND']
+        if kind == 'binary': # init a new BinaryCode object
+            co = BinaryCode(neuron=self, tranges=tranges)
         else:
-            raise ValueError, 'Unknown kind: %r' % self.kind
+            raise ValueError('Unknown kind: %r' % kind)
         for code in self._codes:
             if co == code: # need to define special == method for class Code()
                 # returns the first Code object whose attributes match what's desired.
@@ -441,7 +443,9 @@ class BinRate(BaseRate):
         self.tres = tres
 
     def calc(self):
-        # make the start of the timepoints be an even multiple of self.tres. Round down to the nearest multiple. Do the same for the end of the timepoints. This way, timepoints will line up for different code objects
+        # make the start of the timepoints be an even multiple of self.tres. Round down to
+        # the nearest multiple. Do the same for the end of the timepoints. This way,
+        # timepoints will line up for different code objects
         tstart = self.trange[0] - (self.trange[0] % self.tres)
         tend   = self.trange[1] - (self.trange[1] % self.tres)
         t = np.arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to trange[1] to make t end inclusive
@@ -672,7 +676,7 @@ class NeuronRate(BaseNeuron):
         elif kind == 'rect':
             ro = RectRate(neuron=self, **kwargs) # init a new RectRate object
         else:
-            raise ValueError, 'Unknown kind: %r' % self.kind
+            raise ValueError('Unknown kind: %r' % self.kind)
         for rate in self._rates:
             if ro == rate: # need to define special == method for class Rate()
                 return rate # returns the first Rate object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._rates

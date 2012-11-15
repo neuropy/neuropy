@@ -28,11 +28,6 @@ import matplotlib.cm
 import pylab as pl
 from pylab import get_current_fig_manager as gcfm
 
-CODEKIND = 'binary'
-CODETRES = 20000 # us
-CODEPHASE = 0 # deg
-CODEWORDLEN = 10 # in bits
-
 TAB = '    ' # 4 spaces
 EPOCH = datetime.datetime(1899, 12, 30, 0, 0, 0) # epoch for datetime stamps in .ptcs
 
@@ -266,7 +261,7 @@ class PopulationRaster(object):
         else:
             self.e = experiments # should also be a dict
         if binwidth == None:
-            self.binwidth = CODETRES
+            self.binwidth = get_ipython().user_ns['CODETRES']
         else:
             self.binwidth = binwidth
         assert self.binwidth >= 10000
@@ -495,13 +490,9 @@ class Codes(object):
     """A 2D array where each row is a neuron code, and each column
     is a binary population word for that time bin, sorted LSB to MSB from top to bottom.
     neurons is a list of Neurons, also from LSB to MSB. Order in neurons is preserved."""
-    def __init__(self, neurons=None, tranges=None, kind=CODEKIND, tres=CODETRES,
-                 phase=CODEPHASE, shufflecodes=False):
+    def __init__(self, neurons=None, tranges=None, shufflecodes=False):
         self.neurons = neurons
         self.tranges = tolist(tranges)
-        self.kind = kind
-        self.tres = tres
-        self.phase = phase
         self.shufflecodes = shufflecodes
         self.nids = [ neuron.id for neuron in self.neurons ]
         self.nneurons = len(self.neurons)
@@ -523,8 +514,7 @@ class Codes(object):
         # append neurons in their order in self.neurons, store them LSB to MSB from top to
         # bottom
         for neuron in self.neurons:
-            codeo = neuron.code(tranges=self.tranges, kind=self.kind, tres=self.tres,
-                                phase=self.phase)
+            codeo = neuron.code(tranges=self.tranges)
             # build up nested list (ie, 2D) of spike times, each row will have different
             # length:
             self.s.append(codeo.s)
@@ -580,8 +570,7 @@ class Codes(object):
 class CodeCorrPDF(object):
     """A PDF of the correlations of the codes of all cell pairs (or of all cell pairs within
     some torus of radii R=(R0, R1) in um) in this Recording. See Schneidman2006 fig 1d"""
-    def __init__(self, recording=None, experiments=None, nids=None, kind=CODEKIND,
-                 tres=CODETRES, phase=CODEPHASE):
+    def __init__(self, recording=None, experiments=None, nids=None):
         self.r = recording
         if experiments != None:
             try:
@@ -599,9 +588,6 @@ class CodeCorrPDF(object):
         if nids == None:
             nids = self.r.n.keys()
         self.nids = nids
-        self.kind = kind
-        self.tres = tres
-        self.phase = phase
     '''
     # this was used to save on calc time by seeing if a CCPDF object with the same attribs
     # had already been calc'd, seems dumb and unsafe, commented out
@@ -619,7 +605,7 @@ class CodeCorrPDF(object):
             return False
     '''
     def calc(self, R=None, shuffleids=False):
-        """Calculates self constrained to self.tranges and torus described by R"""
+        """Calculate self constrained to self.tranges and torus described by R"""
         if R != None:
             assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
         self.R = R
@@ -629,15 +615,11 @@ class CodeCorrPDF(object):
         # it's more efficient to precalculate the means and stds of each cell's codetrain,
         # and then reuse them in calculating the correlation coefficients
         # store each code mean in a dict:
-        means = dict( ( nid, self.r.n[nid].code(tranges=self.tranges,
-                                                kind=self.kind,
-                                                tres=self.tres,
-                                                phase=self.phase).c.mean() ) for nid in nids )
+        means = dict( ( nid, self.r.n[nid].code(tranges=self.tranges).c.mean() )
+                        for nid in nids )
         # store each code std in a dict:
-        stds  = dict( ( nid, self.r.n[nid].code(tranges=self.tranges,
-                                                kind=self.kind,
-                                                tres=self.tres,
-                                                phase=self.phase).c.std() ) for nid in nids ) 
+        stds = dict( ( nid, self.r.n[nid].code(tranges=self.tranges).c.std() )
+                       for nid in nids ) 
         if self.shuffleids:
         # shuffled neuron ids, this is a control to see if it's the locality of neurons
         # included in the analysis, or the number of neurons included that's important. It
@@ -645,7 +627,7 @@ class CodeCorrPDF(object):
             snids = shuffle(nids)
         else:
             snids = nids
-        self.corrs = []
+        corrs = []
         for nii1 in range(nneurons):
             for nii2 in range(nii1+1, nneurons):
                 ni1 = nids[nii1]
@@ -656,25 +638,22 @@ class CodeCorrPDF(object):
                 # the pair's separation falls with bounds of specified torus:
                 if R == None or (self.R[0] < dist(self.r.n[sni1].pos, self.r.n[sni2].pos)
                                  < self.R[1]):
-                    code1 = self.r.n[ni1].code(tranges=self.tranges, kind=self.kind,
-                                               tres=self.tres, phase=self.phase).c
-                    code2 = self.r.n[ni2].code(tranges=self.tranges, kind=self.kind,
-                                               tres=self.tres, phase=self.phase).c
+                    code1 = self.r.n[ni1].code(tranges=self.tranges).c
+                    code2 = self.r.n[ni2].code(tranges=self.tranges).c
                     # (mean of product - product of means) / by product of stds
                     cc = (((code1 * code2).mean() - means[ni1] * means[ni2])
                           / (stds[ni1] * stds[ni2]))
-                    self.corrs.append(cc)
-        self.corrs = np.array(self.corrs)
-        self.npairs = len(self.corrs)
+                    corrs.append(cc)
+        self.corrs = np.array(corrs)
+        self.npairs = len(corrs)
         '''
         # simpler, but slower way:
-        self.corrs = [ self.r.codecorr(nids[nii1], nids[nii2], tranges=self.tranges,
-                                       kind=self.kind, self.tres, self.phase)
+        self.corrs = [ self.r.codecorr(nids[nii1], nids[nii2], tranges=self.tranges)
                        for nii1 in range(0,nneurons) for nii2 in range(nii1+1,nneurons) ]
         '''
     def plot(self, figsize=(7.5, 6.5), crange=[-0.1, 0.2], limitstats=True,
              nbins=30, normed='pdf'):
-        """Plots the corrs. If limitstats, the stats displayed exclude any corr values that
+        """Plot the corrs. If limitstats, the stats displayed exclude any corr values that
         fall outside of crange"""
         self.crange = crange
         nbins = max(nbins, 2*intround(np.sqrt(self.npairs)))
@@ -728,18 +707,21 @@ class CodeCorrPDF(object):
         a.set_xlabel('correlation coefficient')
         
         # add stuff to top right of plot:
+        uns = get_ipython().user_ns
         a.text(0.99, 0.99, '%s\n'
                            'mean = %.3f\n'
                            'median = %.3f\n'
                            'mode = %.3f\n'
                            'stdev = %.3f\n'
-                           'R = %r\n'
-                           'ratethresh = %.2f Hz\n'
+                           'tres = %d ms\n'
+                           'phase = %d deg\n'
+                           'R = %r um\n'
+                           'minrate = %.2f Hz\n'
                            'nneurons = %d\n'
                            'npairs = %d\n'
                            'dt = %d min'
                            % (self.r.name, self.mean, self.median, self.mode, self.stdev,
-                              self.R, get_ipython().user_ns['QUIETMEANRATETHRESH'],
+                              uns['CODETRES']//1000, uns['CODEPHASE'], self.R, uns['MINRATE'],
                               len(self.nids), self.npairs, intround(self.r.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='right',
@@ -1733,19 +1715,30 @@ def histogram2dold(x, y, bins, normed=False):
     return histmat, xedges, yedges
 '''
 def sah(t, y, ts, keep=False):
-    """Resample using sample and hold. Returns resampled values at ts given the original points (t,y)
-    such that the resampled values are just the most recent value in y (think of a staircase with non-uniform steps).
-    Assumes that t is sorted. t and ts arrays should be of the same data type. Contributed by Robert Kern."""
-    i = np.searchsorted(t, ts) - 1 # find where ts falls in t, dec so you get indices that point to the most recent value in y
-    i = np.where(i < 0, 0, i) # handle the cases where ts is smaller than the first point.
+    """Resample using sample and hold. Returns resampled values at ts given the original
+    points (t,y) such that the resampled values are just the most recent value in y (think
+    of a staircase with non-uniform steps). Assumes that t is sorted. t and ts arrays should
+    be of the same data type. Contributed by Robert Kern."""
+    # find where ts falls in t, dec so you get indices that point to the most
+    # recent value in y:
+    i = np.searchsorted(t, ts) - 1
+    # handle the cases where ts is smaller than the first point.
     '''this has an issue of not keeping the original data point where ts == t'''
+    i = np.where(i < 0, 0, i)
 
-    ###NOTE: can probably get around having to do this by using searchsorted's new 'side' keyword
+    ### NOTE: can probably get around having to do this by using searchsorted's
+    ### 'side' keyword
 
     if keep:
-        # The following ensures that the original data point is kept when ts == t, doesn't really work if the shortest ISI is less than tres in ts
-        di = np.diff(i).nonzero()[0] # find changes in i, nonzero() method returns a tuple, pick the result for the first dim with [0] index
-        si = approx(t[1::], ts[di]) # check at those change indices if t ~= ts (ignoring potential floating point representational inaccuracies). If so, inc i at that point so you keep y at that point.
+        # The following ensures that the original data point is kept when ts == t,
+        # doesn't really work if the shortest ISI is less than tres in ts.
+        # find changes in i, nonzero() method returns a tuple, pick the result for the
+        # first dim with [0] index
+        di = np.diff(i).nonzero()[0]
+        # check at those change indices if t ~= ts (ignoring potential floating point
+        # representational inaccuracies). If so, inc i at that point so you keep y at that
+        # point.
+        si = approx(t[1::], ts[di])
         #print i
         i[di[si]] += 1
         #print i

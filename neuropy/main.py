@@ -94,9 +94,10 @@ class NeuropyWindow(QtGui.QMainWindow):
         ipyqtwidget.execute("cf = lambda: pylab.close('all')", hidden=True)
         ipyqtwidget.execute('import pylab as pl', hidden=True)
         ipyqtwidget.execute('from recording import Recording', hidden=True)
-        for line in open('globals.py', 'r'):
-            ipyqtwidget.execute(line, hidden=True)
-        #ipyqtwidget.execute_file('globals.py', hidden=True) # doesn't seem to work when hidden
+        ipyqtwidget.execute_file('globals.py', hidden=True)
+        # used this instead when for some reason :execute_file wasn't working
+        #for line in open('globals.py', 'r'):
+        #    ipyqtwidget.execute(line, hidden=True)
 
         ## TODO: get neuropy imports to work properly without messing up ipython display
         ## header. Need to be done after window and ipyqtwidget init are finished. This may

@@ -2,7 +2,9 @@ TODO:
 
 - are correlations measured with 0 and 1 binary codes, or -1 and 1? This could affect correlation values. Note that the codes fed to the maxent model are -1 and 1.
 
-- move CODEKIND, CODETRES, CODEPHASE, and CODEWORDLEN to globals, remove them as keywords everywhere else - see QUIETMEANRATETHRESH and how it's initialized on startup from globals.py and then can be manipulated at the command line by the user, and how all references to it in the code are through get_ipython().user_ns['QUIETMEANRATETHRESH']
+- maybe I should measure skew in addition to mean, median, mode of corrcodepdf distribs
+
+- use custom IPython log file sepcific to neuropy, so that commmands from user's other IPython instances don't show up in neuropy, and vice versa
 
 - add ability to concatenate recordings on the fly, by making tr1.r5_r6 to represent the concatenation of recordings 5 and 6, for example
     - concatenate the spike times, but then also have to do something with the experiment objects - make a new one that concatenates the experiments of all the specified recordings? ie just make a single big merged .din equivalent?
@@ -213,4 +215,6 @@ Tuning curves:
         neuron.tune(var='phase0', fixed={'ori':[30, 45, 60], 'sfreqCycDeg':[0.8]})
         - don't forget that when calculating which sweepis to use, to subtract orioffset from the specified fixed ori, if ori is one of the fixed vars
 
-- call figure.tight_layout(pad=0.3) on all generated figures to reduce whitespace around edges - better to be nice and cropped when importing into latex docs
+- call figure.tight_layout(pad=0.3) on all generated figures to reduce whitespace around edges, better to be nice and cropped when importing into latex docs
+- move CODEKIND, CODETRES, CODEPHASE, and CODEWORDLEN to globals, remove them as keywords everywhere else
+

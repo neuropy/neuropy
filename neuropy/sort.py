@@ -23,22 +23,22 @@ class Sort(object):
         self.alln = {} # dict to store all Neurons
 
     def get_n(self):
-        """Return dict of neurons that meet QUIETMEANRATETHRESH"""
+        """Return dict of neurons that meet MINRATE"""
         n = {}
-        QUIETMEANRATETHRESH = get_ipython().user_ns['QUIETMEANRATETHRESH']
+        MINRATE = get_ipython().user_ns['MINRATE']
         for neuron in self.alln.values():
-            if neuron.meanrate >= QUIETMEANRATETHRESH:
+            if neuron.meanrate >= MINRATE:
                 n[neuron.id] = neuron
         return n
 
     n = property(get_n)
 
     def get_qn(self):
-        """Return dict of (quiet) neurons, ie those that fail to meet QUIETMEANRATETHRESH"""
+        """Return dict of (quiet) neurons, ie those that fail to meet MINRATE"""
         qn = {}
-        QUIETMEANRATETHRESH = get_ipython().user_ns['QUIETMEANRATETHRESH']
+        MINRATE = get_ipython().user_ns['MINRATE']
         for neuron in self.alln.values():
-            if neuron.meanrate < QUIETMEANRATETHRESH:
+            if neuron.meanrate < MINRATE:
                 qn[neuron.id] = neuron
         return qn
 

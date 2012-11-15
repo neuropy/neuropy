@@ -70,10 +70,11 @@ class Track(object):
             recording.load()
             self.r[recording.id] = recording
             self.__setattr__('r' + str(recording.id), recording) # add shortcut attrib
+        self.rnames = dirnames # easy way to print out recording names
 
     def commonactivenids(self, rids=None):
         """Return nids of normal (active) neurons common to all recordings specified in
-        rids. Active neurons in a recording are those with at least QUIETMEANRATETHRESH mean
+        rids. Active neurons in a recording are those with at least MINRATE mean
         spike rate during the recording"""
         if rids == None:
             rids = np.sort(self.r.keys()) # all recording ids in self
