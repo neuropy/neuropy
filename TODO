@@ -6,6 +6,8 @@ TODO:
 
 - are correlations measured with 0 and 1 binary codes, or -1 and 1? This could affect correlation values. Note that the codes fed to the maxent model are -1 and 1.
 
+- plot distributions of and scatter plots of delayed correlations, ie the correlations fed to the dynamic Ising model (Roudi analysis). Working with these would double the number of pairs compared to simultaneous spike correlations, because for these, order matters. A->B != B->A
+
 - it would be nice to show that pairwise corr distributions for binned and digitized spike trains are the same as those for purely binned spike trains (see thought process below)
 
 - maybe I should measure skew in addition to mean, median, mode of corrcodepdf distribs

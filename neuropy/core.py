@@ -2271,6 +2271,12 @@ def lrstrip(s, lstr, rstr):
     """Strip lstr from start of s and rstr from end of s"""
     return rstrip(lstrip(s, lstr), rstr)
 
+def pathdecomp(path):
+    """Decompose (fully split) all components of path into a list of strings
+    If the first string is empty, that means the second string was relative to
+    filesystem root"""
+    return path.split(os.path.sep)
+
 def eof(f):
     """Return whether file pointer is a end of file"""
     orig = f.tell()

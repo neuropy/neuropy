@@ -725,11 +725,19 @@ class RevCorr(object):
         try:
             self.movie.frames # check if movie frames have been loaded from file
         except AttributeError:
-            self.movie.load(asarray=True, flip=False) # Load as 3D array instead of as a list of 2D arrays, more convenient for analysis, although will cause memory problems for really big (>1GB movies). Don't flip the movie frames vertically for OpenGL's bottom left origin, since we aren't using OpenGL for analysis
+            # Load as 3D array instead of as a list of 2D arrays, more convenient for
+            # analysis, although will cause memory problems for really big (>1GB movies).
+            # Don't flip the movie frames vertically for OpenGL's bottom left origin, since
+            # we aren't using OpenGL for analysis:
+            self.movie.load(asarray=True, flip=False)
         self.nt = nt # number of revcorr timepoints
         self.tis = range(0, nt, 1) # revcorr timepoint indices
-        self.ts = [ intround(ti * self.movie.dynamic.sweepSec * 1000) for ti in self.tis ] # revcorr timepoint values, stored in a list, not an array. Bad behaviour happens during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns an array of booleans, not just a simple boolean
-        self.ndinperframe = intround(self.movie.dynamic.sweepSec * 1000000 / self.experiment.REFRESHTIME)
+        # revcorr timepoint values, stored in a list, not an array. Bad behaviour happens
+        # during __eq__ below if attribs are numpy arrays cuz comparing numpy arrays returns
+        # an array of booleans, not just a simple boolean:
+        self.ts = [ intround(ti * self.movie.dynamic.sweepSec * 1000) for ti in self.tis ]
+        self.ndinperframe = intround(self.movie.dynamic.sweepSec * 1000000 /
+                                     self.experiment.REFRESHTIME)
         #self.movie.frames = np.asarray(self.movie.frames)
         self.width = self.movie.frames.shape[-1] # (nframes, height, width)
         self.height = self.movie.frames.shape[-2]
@@ -738,8 +746,10 @@ class RevCorr(object):
     def __eq__(self, other):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
-        # Delete their rcdini and rf attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
-        [ d.__delitem__(key) for d in [selfd, otherd] for key in ['rcdini', 'rf', 'done'] if d.has_key(key) ]
+        # delete their rcdini and rf attribs, if they exist, to prevent comparing them below,
+        # since those attribs may not have yet been calculated:
+        [ d.__delitem__(key) for d in [selfd, otherd]
+            for key in ['rcdini', 'rf', 'done'] if d.has_key(key) ]
         if type(self) == type(other) and selfd == otherd:
             return True
         else:
@@ -748,12 +758,15 @@ class RevCorr(object):
     def calc(self):
         """General calc step that has to be performed for all kinds of reverse correlations"""
         spikes = self.neuron.cut(self.trange)
-        self.rcdini = self.experiment.din[:, 0].searchsorted(spikes) - 1 # revcorr dini. Find where the spike times fall in the din, dec so you get indices that point to the most recent din value for each spike
+        # revcorr dini. Find where the spike times fall in the din, dec so you get indices
+        # that point to the most recent din value for each spike:
+        self.rcdini = self.experiment.din[:, 0].searchsorted(spikes) - 1
         #self.din = self.experiment.din[rcdini, 1] # get the din (frame indices) at the rcdini
 
     def plot(self, interp='nearest', normed=True, title='RevCorrWindow', scale=2.0):
         """Plots the spatiotemporal RF as bitmaps in a wx.Frame"""
-        rf = self.rf.copy() # create a copy to manipulate for display purposes, (nt, width, height)
+        # create a copy to manipulate for display purposes, (nt, width, height):
+        rf = self.rf.copy()
         if normed: # normalize across the timepoints for this RevCorr
             norm = mpl.colors.normalize(vmin=rf.min(), vmax=rf.max(), clip=True)
             rf = norm(rf) # normalize the rf the same way across all timepoints

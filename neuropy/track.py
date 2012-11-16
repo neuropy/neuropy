@@ -79,10 +79,11 @@ class Track(object):
             # only experiment din and spike times, which are used to generate rec.trange
             r0 = self.r[rids[0]]
             r1 = self.r[rids[-1]]
-            self.dt = td2usec(r1.datetime - r0.datetime) - r0.trange[0] + r1.trange[1]
-            self.dtsec = self.dt / 1e6
-            self.dtmin = self.dtsec / 60
-            self.dthour = self.dtmin / 60
+            if hasattr(r0, 'datetime') and hasattr(r1, 'datetime'):
+                self.dt = td2usec(r1.datetime - r0.datetime) - r0.trange[0] + r1.trange[1]
+                self.dtsec = self.dt / 1e6
+                self.dtmin = self.dtsec / 60
+                self.dthour = self.dtmin / 60
 
     def get_nids(self, rids=None):
         """Return nids of normal (active) neurons common to all recordings specified in

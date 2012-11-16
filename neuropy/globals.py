@@ -3,6 +3,9 @@ Access programatically using:
 
 get_ipython().user_ns
 """
+import os
+
+MOVIEPATH = os.path.expanduser('~/data/mov')
 
 """Mean spike rate that delineates normal vs "quiet" neurons. 0.1 Hz seems reasonable if you
 plot mean spike rate distributions for all the neurons in a given track. But, if you want a

@@ -21,7 +21,6 @@ from dimstimskeletal import Movie, Grating, Bar, SparseNoise, BlankScreen
 # local mseq movie names:
 MSEQ16 = 'MSEQ16' # formerly mseq16.m
 MSEQ32 = 'MSEQ32' # formerly mseq32.m
-MOVIEPATH = os.path.expanduser('~/data/mov')
 
 _MOVIES = dictattr()
 
@@ -65,7 +64,7 @@ class BaseExperiment(object):
             self.textheader = f.read() # read it all in
             f.close()
         except IOError:
-            warn('Error loading "%s": associated text header not found' % self.name)
+            warn("couldn't load text header associated with '%s'" % self.name)
             self.textheader = '' # set to empty
 
         treestr = self.level*TAB + self.name + '/'
@@ -236,6 +235,7 @@ class BaseExperiment(object):
             spath = self.oldparams.moviepath.split('\\') # Cat15 has purely windows seperators
             matchi = spath.index('Movies')
             relpath = joinpath(spath[matchi+1 ::])
+            MOVIEPATH = get_ipython().user_ns['MOVIEPATH']
             path = os.path.join(MOVIEPATH, relpath)
             m.fname = os.path.join(path, m.fname)
             self.e.static.fname = m.fname # update
