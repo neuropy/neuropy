@@ -84,6 +84,17 @@ class Track(object):
             self.dtmin = self.dtsec / 60
             self.dthour = self.dtmin / 60
 
+    def get_nids(self, rids=None):
+        """Return nids of normal (active) neurons common to all recordings specified in
+        rids. Active neurons in a recording are those with at least MINRATE mean
+        spike rate during the recording"""
+        if rids == None:
+            rids = self.r.keys() # all recording ids in self
+            return np.unique(np.hstack([ self.r[rid].n.keys() for rid in rids ]))
+        else:
+            nids = [ self.r[rid].n.keys() for rid in rids ]
+            return core.intersect1d(nids, assume_unique=True)
+
     def get_allnids(self, rids=None):
         """Return nids of all neurons (active and quiet) common to all recordings
         specified in rids"""

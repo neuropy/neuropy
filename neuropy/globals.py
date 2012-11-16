@@ -8,7 +8,7 @@ get_ipython().user_ns
 plot mean spike rate distributions for all the neurons in a given track. But, if you want a
 reasonable looking DJS histogram withouth a lot of missing netstates, you need to exclude
 more low firing rate cells, 0.5 works better"""
-MINRATE = 0.1 # Hz
+MINRATE = 0.05 # Hz
 
 """NeuronCode (Ising matrix) and network state parameters"""
 CODEKIND = 'binary'

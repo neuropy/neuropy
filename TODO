@@ -1,6 +1,12 @@
 TODO:
 
+- add ability to split recordings in half on the fly, or at least pass custom tranges down to analyses called on a recording
+
+- create codecorrscatter to scatter pairwise correlations against each other, as possibly a more informative way of showing how correlated the correlations are, ie if they generally remain constant between the two periods of recording, if they've all generally gotten bigger or smaller, or if they've become completely scrambled
+
 - are correlations measured with 0 and 1 binary codes, or -1 and 1? This could affect correlation values. Note that the codes fed to the maxent model are -1 and 1.
+
+- it would be nice to show that pairwise corr distributions for binned and digitized spike trains are the same as those for purely binned spike trains (see thought process below)
 
 - maybe I should measure skew in addition to mean, median, mode of corrcodepdf distribs
 
