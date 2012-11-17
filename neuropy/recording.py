@@ -644,8 +644,7 @@ class NetstateScatter(BaseNetstate):
         colorguide = ''
         if self.model == 'both': # plot the indep model too, and plot it first
             a.loglog(self.pobserved/norm, self.pindepexpected/norm, '.', color='blue', ms=10)
-            colorguide = ('blue: indep\n' +
-                          ' red: ising\n')
+            colorguide = ('blue, red = indep, ising\n')
         # plot whichever model was specified
         if color:
             # plot what's left in black:
@@ -705,12 +704,16 @@ class NetstateScatter(BaseNetstate):
                            horizontalalignment='left',
                            verticalalignment='top')
         # add stuff to bottom right of plot:
+        uns = get_ipython().user_ns
         a.text(0.99, 0.01, '%s'
                            'DJS = %s\n'
                            '%.1f%% missing\n'
+                           'tres = %d ms\n'
+                           'phase = %d deg\n'
+                           'R = %r um\n'
                            'minrate = %.2f Hz'
-                           % (colorguide, DJSstring, percentmissing,
-                              get_ipython().user_ns['MINRATE']),
+                           % (colorguide, DJSstring, percentmissing, uns['CODETRES']//1000,
+                              uns['CODEPHASE'], self.R, uns['MINRATE'],),
                            transform = a.transAxes,
                            horizontalalignment='right',
                            verticalalignment='bottom')

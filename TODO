@@ -1,8 +1,32 @@
 TODO:
 
-- add ability to split recordings in half on the fly, or at least pass custom tranges down to analyses called on a recording
+- add mean, median and mode pairs (for indep and pairwise models) to NetstateDJSHist, as I have for CodeCorrPDFs. And/or, show differences between them for the two models. Problem is the legend is in the top right, so I have to position the text appropriately below it. Should really add other stuff like tres, phase, R, and minrate.
+    - maybe do ngroups = 1000 for more confidence
 
-- create codecorrscatter to scatter pairwise correlations against each other, as possibly a more informative way of showing how correlated the correlations are, ie if they generally remain constant between the two periods of recording, if they've all generally gotten bigger or smaller, or if they've become completely scrambled
+- add ability to save (pickle) any object to file, using file save dialog, accessed via menu and toolbar. Will the scope work? Don't think the Qt window can access the ipython stuff, can it? Maybe I can. Or, just make a pickle command that you pass the object name, and then brings up a Save As dialog box.
+    - then also need ability to restore the pickle, and assign it to a name in the workspace
+    - looks like at least some objects (like NetstateDJSHist) have a lot of unpicklable things in them, would need to create __getstate__ methods...
+    - wow! apparently MPL 1.2 has figure pickling support! That would be almost as good...
+
+- add a NetstateDJSScatter. As for many other analyses, instead of plotting distributions, do a scatter plot of the points that make up a NetstateDJSHist, with indep value of DJS of a group of neurons on x axis and pairwise model value of DJS on y axis. Again, this shows you how the DJS of each group of neurons is changing, and by how much, between the two models.
+
+- NetstateDJSHist plots aren't the same size as NetstateScatter plots for some reason... make sure all plots come out the same size, including CodeCorrPDFs
+
+- check if there's a way to programmatically make all figure PDFs have a transparent background
+    - I thought I looked into this a while ago. Was it really such a desirable thing?
+
+- add option to pass set of neuron groups to NetstateDJSHist, so you can directly compare the result for two different recordings. To do this, all groups would have to be a subset of the intersection of active neurons in both recordings
+
+- add ability to split recordings in half on the fly, or at least pass custom tranges down to analyses called on a recording
+    - ah! Recording.codecorr already has a tranges arg! But does it work properly?
+    - Recording.codecorrpdf could use a tranges arg as well
+    - or, instead of splitting, could randomly select half the time bins for one axis, and use the rest for the other axis. This would give a different (better?) estimate of the amount of noise in the analysis within a recording, compared to splitting in half
+
+- confirm that measuring correlations from Ising matrix gives similar results to measuring peaks in cross correlograms. Possible this may have not been done by anyone before.
+
+- add a CodeCorrScatter to scatter pairwise correlations against each other, as possibly a more informative way of showing how correlated the correlations are, ie if they generally remain constant between the two periods of recording, if they've all generally gotten bigger or smaller, or if they've become completely scrambled
+
+- figure out why the edges of bars in histograms show up in PDFs saved from MPL, but not in the, say QtAgg MPL backend. Some kind of minor bug in MPL's PDF backend?
 
 - are correlations measured with 0 and 1 binary codes, or -1 and 1? This could affect correlation values. Note that the codes fed to the maxent model are -1 and 1.
 
@@ -38,6 +62,8 @@ TODO:
 
 - why bother with the digitization of spike trains? Why not leave the number of spikes in each bin instead of truncing it at 1? You'll end up with a signal that's like 0 0 0 0 0 1 0 0 0 2 0 0 1 0 1 0 3 0, ie mostly 0s anyway. And, it saves more information about each spike train, which should then allow for more accurate correlation calculations between pairs. Seems to me the only really important thing is binning, not digitization. Or am I forgetting something? Ah, it prevents from forming meaningful digital words across neurons (space). So, you could digitize for doing netstate stuff, but leave undigitized for simply calculating pairwise corrs? Not really, cuz you need to feed the pairwise corrs into the maxent model, and those would have to correspond to the word probabilities, ie the pairwise corrs would have to be calculated off the binary signals. But, at least it would be nice to show that pairwise corr distributions for binned and digitized spike trains are the same as those for purely binned spike trains.
 
+- consider switching over from the deprecated scipy.maxentropy to the maxent library:
+    http://homepages.inf.ed.ac.uk/lzhang10/maxent_toolkit.html
 
 ----------------------------------------------
 OLD:
