@@ -203,8 +203,8 @@ class NeuropyWindow(QtGui.QMainWindow):
 
     @QtCore.pyqtSlot()
     def on_actionQuit_triggered(self):
-        self.close() # call close() before destroy() to avoid segfault
-        self.destroy()
+        self.close()
+        #self.destroy() # no longer seems necessary, may cause segfaults?
 
     def closeEvent(self, event):
         km = self.ipyqtwidget.kernel_manager

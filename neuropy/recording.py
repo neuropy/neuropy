@@ -51,15 +51,8 @@ class BaseRecording(object):
     name = property(get_name)
 
     def get_id(self):
-        # return the first word in the name, using whitespace or - as separators
-        ids = self.name.split(' ', 1)[0], self.name.split('-', 1)[0]
-        for id in ids:
-            try:
-                id = int(id)
-                return id
-            except ValueError:
-                continue
-        raise ValueError("Couldn't convert recording name %r to a numeric ID" % self.name)
+        # return the first word in the name, using - or whitespace as separators
+        return self.name.split('-')[0].split(' ')[0]
         
     id = property(get_id)
 

@@ -36,10 +36,12 @@ class Track(object):
         id = self.name.lower().replace('tr', '', 1)
         if not id:
             raise NameError('Badly formatted track name: %s' % self.name)
+        '''
         try:
             id = int(id) # convert string to int if possible
         except ValueError:
             pass # it's alphanumeric, as in '7c', leave it as a string
+        '''
         return id
         
     id = property(get_id)
