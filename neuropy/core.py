@@ -638,20 +638,19 @@ class CodeCorrPDF(object):
         self.corrs = [ self.r.codecorr(nids[nii1], nids[nii2], tranges=self.tranges)
                        for nii1 in range(0,nneurons) for nii2 in range(nii1+1,nneurons) ]
         '''
-    def plot(self, figsize=(7.5, 6.5), crange=[-0.1, 0.2], limitstats=True,
+    def plot(self, figsize=(7.5, 6.5), crange=[-0.05, 0.25], limitstats=True,
              nbins=30, normed='pdf'):
         """Plot the corrs. If limitstats, the stats displayed exclude any corr values that
         fall outside of crange"""
-        self.crange = crange
         nbins = max(nbins, 2*intround(np.sqrt(self.npairs)))
         self.nbins = nbins
         self.normed = normed
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         try: # figure out the bin edges
-            bins = np.linspace(start=self.crange[0], stop=self.crange[1], num=self.nbins,
+            bins = np.linspace(start=crange[0], stop=crange[1], num=self.nbins,
                                endpoint=True)
-        except TypeError: # self.crange is None, let histogram() figure out the bin edges
+        except TypeError: # crange is None, let histogram() figure out the bin edges
             bins = self.nbins
         self.n, self.c = histogram(self.corrs, bins=bins, normed=self.normed)
 
@@ -669,14 +668,14 @@ class CodeCorrPDF(object):
         self.stdev = np.std(corrs)
 
         try:
-            barwidth = (self.crange[1] - self.crange[0]) / float(self.nbins)
-        except TypeError: # self.crange is None, take width of first bin in self.c
+            barwidth = (crange[1] - crange[0]) / float(self.nbins)
+        except TypeError: # crange is None, take width of first bin in self.c
             barwidth = self.c[1] - self.c[0]
         a.bar(left=c, height=n, width=barwidth, bottom=0, color='k',
               yerr=None, xerr=None, ecolor='k', capsize=3)
         try:
-            a.set_xlim(self.crange)
-        except TypeError: # self.crange is None
+            a.set_xlim(crange)
+        except TypeError: # crange is None
             pass
         gcfm().window.setWindowTitle(lastcmd())
         #titlestr = 'neuron pair code correlation pdf'
@@ -732,25 +731,68 @@ class CodeCorrScatter(object):
         if recording0 != recording1:
             self.tranges0 = [recording0.trange]
             self.tranges1 = [recording1.trange]
+            self.xlabel = 'correlation coefficient (%s)' % recording0.name
+            self.ylabel = 'correlation coefficient (%s)' % recording1.name
         else: # same recording, split its trange in half
             start, end = recording0.trange
             half = start + (end - start) / 2
             self.tranges0 = [(start, half)]
             self.tranges1 = [(half, end)]
+            self.xlabel = 'correlation coefficient (%s, 1st half)' % recording0.name
+            self.ylabel = 'correlation coefficient (%s, 2nd half)' % recording0.name
         if nids == None: # get nids in common to both recordings
             nids = recording0.tr.get_nids([recording0.id, recording1.id])
         self.nids = nids
 
     def calc(self, R=None, shuffleids=False):
         """Calculate self constrained to tranges0 and tranges1, and torus described by R"""
+        if R != None:
+            assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
+        self.R = R
+        self.shuffleids = shuffleids
         self.ccpdf0 = CodeCorrPDF(recording=self.r0, tranges=self.tranges0, nids=self.nids)
         self.ccpdf1 = CodeCorrPDF(recording=self.r1, tranges=self.tranges1, nids=self.nids)
         self.ccpdf0.calc(R=R, shuffleids=shuffleids)
         self.ccpdf1.calc(R=R, shuffleids=shuffleids)
 
-    def plot(self, figsize=(7.5, 6.5), crange=[-0.1, 0.2]):
-        pass
+    def get_npairs(self):
+        return self.ccpdf0.npairs
 
+    npairs = property(get_npairs)
+
+    def plot(self, figsize=(7.5, 6.5), crange=[-0.05, 0.25]):
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        a.plot(crange, crange, 'k-') # plot a y=x line
+        a.hold(True)
+        a.scatter(self.ccpdf0.corrs, self.ccpdf1.corrs, s=10, marker='.', c='black')
+        a.set_xlim(crange)
+        a.set_ylim(crange)
+        a.set_xlabel(self.xlabel)
+        a.set_ylabel(self.ylabel)
+        gcfm().window.setWindowTitle(lastcmd())
+        titlestr = '%s' % lastcmd()
+        a.set_title(titlestr)
+        # add stuff to top left of plot:
+        uns = get_ipython().user_ns
+        a.text(0.01, 0.99, 'tres = %d ms\n'
+                           'phase = %d deg\n'
+                           'R = %r um\n'
+                           'minrate = %.2f Hz\n'
+                           'nneurons = %d\n'
+                           'npairs = %d\n'
+                           'dt0 = %d min\n'
+                           'dt1 = %d min'                           
+                           % (uns['CODETRES']//1000, uns['CODEPHASE'], self.R, uns['MINRATE'],
+                              len(self.nids), self.npairs,
+                              intround(self.r0.dtmin), intround(self.r1.dtmin)),
+                           transform = a.transAxes,
+                           horizontalalignment='left',
+                           verticalalignment='top')
+        f.tight_layout(pad=0.3) # crop figure to contents
+        self.f = f
+        return self
+        
 
 class NeuropyWindow(QtGui.QMainWindow):
     """Base class for all of neuropy's tool windows"""
