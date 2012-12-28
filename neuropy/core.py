@@ -519,7 +519,7 @@ class Codes(object):
             # length:
             self.s.append(codeo.s)
             if self.shufflecodes:
-                c = codeo.c.copy() # make a copy (wanna leave the codeo's codetrain untouched)
+                c = codeo.c.copy() # make a copy (leave the codeo's codetrain untouched)
                 np.random.shuffle(c) # shuffle each neuron's codetrain separately, in-place
             else:
                 c = codeo.c # just a pointer
@@ -1280,7 +1280,7 @@ def lastcmd():
     return ip._last_input_line
 
 def innerclass(cls):
-    '''Class decorator for making a class behave as a Java (non-static) inner
+    """Class decorator for making a class behave as a Java (non-static) inner
     class.
 
     Each instance of the decorated class is associated with an instance of its
@@ -1295,7 +1295,7 @@ def innerclass(cls):
     Version no: 1.1
     Category: OOP
     http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/409366
-    '''
+    """
     if hasattr(cls, '__outer__'):
         raise TypeError('Cannot set attribute "__outer__" in inner class')
     class InnerDescriptor(object):
@@ -1329,9 +1329,7 @@ def intround(n):
 def pad0s(val, ndigits=2):
     """Returns a string rep of val, padded with enough leading 0s
     to give you a string rep with ndigits in it"""
-    if val.__class__ != int:
-        raise ValueError, '%r isn\'t an int' % val
-    val = str(val)
+    val = str(int(val))
     nzerostoadd = ndigits - len(val)
     val = '0'*nzerostoadd + val
     return val

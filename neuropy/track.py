@@ -10,7 +10,7 @@ import numpy as np
 import pylab as pl
 
 import core
-from core import dictattr, TAB, td2usec
+from core import dictattr, TAB, td2usec, pad0s
 from recording import Recording
 
 
@@ -95,6 +95,8 @@ class Track(object):
             rids = self.r.keys() # all recording ids in self
             return np.unique(np.hstack([ self.r[rid].n.keys() for rid in rids ]))
         else:
+            # allow int rids:
+            rids = [ pad0s(rid, ndigits=2) for rid in rids ]
             nids = [ self.r[rid].n.keys() for rid in rids ]
             return core.intersect1d(nids, assume_unique=True)
 

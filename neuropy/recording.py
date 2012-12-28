@@ -13,7 +13,7 @@ import matplotlib as mpl
 
 import core
 from core import (PopulationRaster, Codes, CodeCorrPDF, CodeCorrScatter, rstrip, dictattr,
-                  warn, binarray2int)
+                  warn, binarray2int, pad0s)
 from core import histogram, histogram2d, lastcmd, intround
 from core import TAB
 from experiment import Experiment
@@ -213,6 +213,8 @@ class RecordingCode(BaseRecording):
         
     def codecorrscatter(self, rid=None, nids=None, R=None, shuffleids=False):
         """Return a CodeCorrScatter object"""
+        if type(rid) != str: # allow int rid
+            rid = pad0s(rid, ndigits=2)
         recording1 = self.tr.r[rid]
         ccs = CodeCorrScatter(recording0=self, recording1=recording1, nids=nids)
         ccs.calc(R, shuffleids)
