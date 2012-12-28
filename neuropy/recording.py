@@ -12,7 +12,8 @@ from pylab import get_current_fig_manager as gcfm
 import matplotlib as mpl
 
 import core
-from core import PopulationRaster, Codes, CodeCorrPDF, rstrip, dictattr, warn, binarray2int
+from core import (PopulationRaster, Codes, CodeCorrPDF, CodeCorrScatter, rstrip, dictattr,
+                  warn, binarray2int)
 from core import histogram, histogram2d, lastcmd, intround
 from core import TAB
 from experiment import Experiment
@@ -154,7 +155,7 @@ class RecordingRaster(BaseRecording):
     def raster(self, experiments=None, nids=None,
                      jumpts=None, binwidth=None, relativet0=False, units='msec',
                      publication=False):
-        """Returns a population spike raster plot"""
+        """Return a population spike raster plot"""
         return PopulationRaster(recording=self, experiments=experiments, nids=nids,
                                                 jumpts=jumpts, binwidth=binwidth,
                                                 relativet0=relativet0, units=units,
@@ -165,7 +166,7 @@ class RecordingRaster(BaseRecording):
 class RecordingCode(BaseRecording):
     """Mix-in class that defines the spike code related Recording methods"""
     def codes(self, neurons=None, experiments=None, shufflecodes=False):
-        """Returns a Codes object, a 2D array where each row is a neuron code constrained to
+        """Return a Codes object, a 2D array where each row is a neuron code constrained to
         the time range of this Recording, or if specified, to the time ranges of Experiments
         in this Recording"""
         if neurons != None:
@@ -196,16 +197,28 @@ class RecordingCode(BaseRecording):
     codes.__doc__ += '\n\nCodes object:\n' + Codes.__doc__
 
     def codecorr(self, nid1, nid2, tranges=None):
-        """Calculates the correlation coefficient of the codes of two neurons"""
+        """Calculate the correlation coefficient of the codes of two neurons"""
         code1 = self.n[nid1].code(tranges=tranges)
         code2 = self.n[nid2].code(tranges=tranges)
         return corrcoef(code1.c, code2.c)
 
-    def codecorrpdf(self, experiments=None, nids=None, R=None, shuffleids=False):
-        """Returns a CodeCorrPDF object"""
-        ccpdf = CodeCorrPDF(recording=self, experiments=experiments, nids=nids)
+    def codecorrpdf(self, tranges=None, experiments=None, nids=None, R=None, shuffleids=False):
+        """Return a CodeCorrPDF object"""
+        ccpdf = CodeCorrPDF(recording=self, tranges=tranges, experiments=experiments,
+                            nids=nids)
         ccpdf.calc(R, shuffleids)
         return ccpdf
+
+    ccpdf = codecorrpdf # synonymize
+        
+    def codecorrscatter(self, rid=None, nids=None, R=None, shuffleids=False):
+        """Return a CodeCorrScatter object"""
+        recording1 = self.tr.r[rid]
+        ccs = CodeCorrScatter(recording0=self, recording1=recording1, nids=nids)
+        ccs.calc(R, shuffleids)
+        return ccs
+
+    ccs = codecorrscatter # synonymize
 
 
 class BaseNetstate(object):

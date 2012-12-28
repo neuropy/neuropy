@@ -570,9 +570,11 @@ class Codes(object):
 class CodeCorrPDF(object):
     """A PDF of the correlations of the codes of all cell pairs (or of all cell pairs within
     some torus of radii R=(R0, R1) in um) in this Recording. See Schneidman2006 fig 1d"""
-    def __init__(self, recording=None, experiments=None, nids=None):
+    def __init__(self, recording=None, tranges=None, experiments=None, nids=None):
         self.r = recording
-        if experiments != None:
+        if tranges != None:
+            self.tranges = tranges
+        elif experiments != None:
             try:
                 assert experiments.__class__ == dictattr
             except AssertionError: # maybe it's a seq of exp ids?
@@ -580,30 +582,15 @@ class CodeCorrPDF(object):
                 experiments = dictattr()
                 for eid in eids:
                     experiments[eid] = self.r.e[eid]
-        self.e = experiments # save it, should be a dictattr if not None
-        if self.e != None: # specific experiments were specified
-            self.tranges = [ e.trange for e in self.e.values() ]
+            self.e = experiments # save it, should be a dictattr if not None
+            if self.e != None: # specific experiments were specified
+                self.tranges = [ e.trange for e in self.e.values() ]
         else:
             self.tranges = [ self.r.trange ] # use the Recording's trange
         if nids == None:
             nids = self.r.n.keys()
         self.nids = nids
-    '''
-    # this was used to save on calc time by seeing if a CCPDF object with the same attribs
-    # had already been calc'd, seems dumb and unsafe, commented out
-    def __eq__(self, other):
-        selfd = self.__dict__.copy()
-        otherd = other.__dict__.copy()
-        # Delete their n and c attribs, if they exist, to prevent comparing them below,
-        # since those attribs may not have yet been calculated
-        [ d.__delitem__(key) for d in [selfd, otherd]
-          for key in ['corrs', 'n', 'c', 'crange', 'nbins', 'normed']
-          if d.has_key(key) ]
-        if self.__class__ == other.__class__ and selfd == otherd:
-            return True
-        else:
-            return False
-    '''
+
     def calc(self, R=None, shuffleids=False):
         """Calculate self constrained to self.tranges and torus described by R"""
         if R != None:
@@ -635,7 +622,7 @@ class CodeCorrPDF(object):
                 ni2 = nids[nii2]
                 sni2 = snids[nii2]
                 # calc the pair's code correlation if there's no torus specified, or if
-                # the pair's separation falls with bounds of specified torus:
+                # the pair's separation falls within bounds of specified torus:
                 if R == None or (self.R[0] < dist(self.r.n[sni1].pos, self.r.n[sni2].pos)
                                  < self.R[1]):
                     code1 = self.r.n[ni1].code(tranges=self.tranges).c
@@ -647,7 +634,7 @@ class CodeCorrPDF(object):
         self.corrs = np.array(corrs)
         self.npairs = len(corrs)
         '''
-        # simpler, but slower way:
+        # simpler, but slower way without precalculation of means and stds:
         self.corrs = [ self.r.codecorr(nids[nii1], nids[nii2], tranges=self.tranges)
                        for nii1 in range(0,nneurons) for nii2 in range(nii1+1,nneurons) ]
         '''
@@ -729,30 +716,41 @@ class CodeCorrPDF(object):
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
-'''
-class CanvasFrame(wx.Frame):
-    """A minimal wx.Frame containing a matplotlib figure"""
-    def __init__(self, title='frame', size=(550, 350)):
-        wx.Frame.__init__(self, None, -1, title=title, size=size)
-        self.SetBackgroundColour(wx.NamedColor("WHITE"))
-        self.figure = pl.figure.Figure(figsize=(5, 4), dpi=100)
-        #self.axes = self.figure.add_subplot(111)
-        #t = np.arange(0.0, 3.0, 0.01)
-        #s = sin(2*pi*t)
-        #self.axes.plot(t,s)
-        self.canvas = FigureCanvasWxAgg(self, -1, self.figure)
-        self.sizer = wx.BoxSizer(wx.VERTICAL)
-        self.sizer.Add(self.canvas, 1, wx.TOP | wx.LEFT | wx.EXPAND)
 
-        # Capture the paint message, slows frame down a little, can be commented out
-        #wx.EVT_PAINT(self, self.OnPaint)
-        self.Bind(wx.EVT_PAINT, self.OnPaint)
+class CodeCorrScatter(object):
+    """Scatter plot of the correlations of the codes of all cell pairs (or of all cell pairs
+    within some torus of radii R=(R0, R1) in um) in this recording vs that of another
+    recording. If the two recordings are the same, split it in half and scatter plot first
+    half against the other"""
+    ## TODO: add interleave flag which generates a sufficiently interleaved, equally sized,
+    ## non-overlapping set of tranges to scatter plot against each other, to eliminate
+    ## temporal bias inherent in a simple split in time
+    def __init__(self, recording0, recording1, nids=None):
+        self.r0 = recording0
+        self.r1 = recording1
+        assert recording0.tr == recording1.tr # make sure they're from the same track
+        if recording0 != recording1:
+            self.tranges0 = [recording0.trange]
+            self.tranges1 = [recording1.trange]
+        else: # same recording, split its trange in half
+            start, end = recording0.trange
+            half = start + (end - start) / 2
+            self.tranges0 = [(start, half)]
+            self.tranges1 = [(half, end)]
+        if nids == None: # get nids in common to both recordings
+            nids = recording0.tr.get_nids([recording0.id, recording1.id])
+        self.nids = nids
 
-        self.SetSizer(self.sizer)
-        self.Fit()
-    def OnPaint(self, event):
-        self.canvas.draw()
-'''
+    def calc(self, R=None, shuffleids=False):
+        """Calculate self constrained to tranges0 and tranges1, and torus described by R"""
+        self.ccpdf0 = CodeCorrPDF(recording=self.r0, tranges=self.tranges0, nids=self.nids)
+        self.ccpdf1 = CodeCorrPDF(recording=self.r1, tranges=self.tranges1, nids=self.nids)
+        self.ccpdf0.calc(R=R, shuffleids=shuffleids)
+        self.ccpdf1.calc(R=R, shuffleids=shuffleids)
+
+    def plot(self, figsize=(7.5, 6.5), crange=[-0.1, 0.2]):
+        pass
+
 
 class NeuropyWindow(QtGui.QMainWindow):
     """Base class for all of neuropy's tool windows"""

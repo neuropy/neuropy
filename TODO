@@ -8,6 +8,8 @@ TODO:
     - looks like at least some objects (like NetstateDJSHist) have a lot of unpicklable things in them, would need to create __getstate__ methods...
     - wow! apparently MPL 1.2 has figure pickling support! That would be almost as good...
 
+- add a different type of ns_scatter, which plots measured rates of occurence of all netstates during one stimulus vs that of the other. Also, have ability to split a stimulus up either in half in time or randomly, and plot netstate occurence rates of one half vs the other
+
 - add a NetstateDJSScatter. As for many other analyses, instead of plotting distributions, do a scatter plot of the points that make up a NetstateDJSHist, with indep value of DJS of a group of neurons on x axis and pairwise model value of DJS on y axis. Again, this shows you how the DJS of each group of neurons is changing, and by how much, between the two models.
 
 - NetstateDJSHist plots aren't the same size as NetstateScatter plots for some reason... make sure all plots come out the same size, including CodeCorrPDFs
@@ -20,7 +22,8 @@ TODO:
 - add ability to split recordings in half on the fly, or at least pass custom tranges down to analyses called on a recording
     - ah! Recording.codecorr already has a tranges arg! But does it work properly?
     - Recording.codecorrpdf could use a tranges arg as well
-    - or, instead of splitting, could randomly select half the time bins for one axis, and use the rest for the other axis. This would give a different (better?) estimate of the amount of noise in the analysis within a recording, compared to splitting in half
+    - or, instead of splitting, could interleave half the time bins for one axis, and use the rest for the other axis. This would give a different (better?) estimate of the amount of noise in the analysis within a recording, compared to splitting temporally in half
+        - use a kwarg interleave
 
 - confirm that measuring correlations from Ising matrix gives similar results to measuring peaks in cross correlograms. Possible this may have not been done by anyone before.
 
