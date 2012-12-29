@@ -638,7 +638,7 @@ class CodeCorrPDF(object):
         self.corrs = [ self.r.codecorr(nids[nii1], nids[nii2], tranges=self.tranges)
                        for nii1 in range(0,nneurons) for nii2 in range(nii1+1,nneurons) ]
         '''
-    def plot(self, figsize=(7.5, 6.5), crange=[-0.05, 0.25], limitstats=True,
+    def plot(self, crange=[-0.05, 0.25], figsize=(7.5, 6.5), limitstats=True,
              nbins=30, normed='pdf'):
         """Plot the corrs. If limitstats, the stats displayed exclude any corr values that
         fall outside of crange"""
@@ -760,14 +760,23 @@ class CodeCorrScatter(object):
 
     npairs = property(get_npairs)
 
-    def plot(self, figsize=(7.5, 6.5), crange=[-0.05, 0.25]):
+    def plot(self, crange=[-0.05, 0.25], figsize=(7.5, 6.5)):
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.plot(crange, crange, 'k-') # plot a y=x line
+        corrs0, corrs1 = self.ccpdf0.corrs, self.ccpdf1.corrs
+        xlim = crange
+        ylim = crange
+        if crange == None:
+            # fit to nearest 0.05 encompassing all corr values:
+            xlim = min(corrs0), max(corrs0)
+            ylim = min(corrs1), max(corrs1)
+            xlim = [ roundto(val, 0.05) for val in xlim ]
+            ylim = [ roundto(val, 0.05) for val in ylim ]
+        a.plot(xlim, ylim, 'k-') # plot a y=x line
         a.hold(True)
-        a.scatter(self.ccpdf0.corrs, self.ccpdf1.corrs, s=10, marker='.', c='black')
-        a.set_xlim(crange)
-        a.set_ylim(crange)
+        a.scatter(corrs0, corrs1, s=10, marker='.', c='black')
+        a.set_xlim(xlim)
+        a.set_ylim(ylim)
         a.set_xlabel(self.xlabel)
         a.set_ylabel(self.ylabel)
         gcfm().window.setWindowTitle(lastcmd())
@@ -1325,6 +1334,13 @@ def intround(n):
         return np.int64(np.round(n))
     else: # it's a scalar, return as normal Python int
         return int(round(n))
+
+def roundto(val, nearest):
+    """Round val to nearest nearest, always rounding away from 0"""
+    if val >= 0:
+        return np.ceil(val / nearest) * nearest
+    else:
+        return np.floor(val / nearest) * nearest
 
 def pad0s(val, ndigits=2):
     """Returns a string rep of val, padded with enough leading 0s
