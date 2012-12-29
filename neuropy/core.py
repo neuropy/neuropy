@@ -733,13 +733,18 @@ class CodeCorrScatter(object):
             self.tranges1 = [recording1.trange]
             self.xlabel = 'correlation coefficient (%s)' % recording0.name
             self.ylabel = 'correlation coefficient (%s)' % recording1.name
+            self.dtmin0 = recording0.dtmin
+            self.dtmin1 = recording1.dtmin
         else: # same recording, split its trange in half
             start, end = recording0.trange
-            half = start + (end - start) / 2
+            dt = (end - start) / 2
+            dtmin = dt / 1e6 / 60
+            half = start + dt
             self.tranges0 = [(start, half)]
             self.tranges1 = [(half, end)]
             self.xlabel = 'correlation coefficient (%s, 1st half)' % recording0.name
             self.ylabel = 'correlation coefficient (%s, 2nd half)' % recording0.name
+            self.dtmin0, self.dtmin1 = dtmin, dtmin
         if nids == None: # get nids in common to both recordings
             nids = recording0.tr.get_nids([recording0.id, recording1.id])
         self.nids = nids
@@ -764,19 +769,21 @@ class CodeCorrScatter(object):
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         corrs0, corrs1 = self.ccpdf0.corrs, self.ccpdf1.corrs
-        xlim = crange
-        ylim = crange
+        lim = crange
         if crange == None:
-            # fit to nearest 0.05 encompassing all corr values:
+            # fit to nearest 0.05 encompassing all corr values on both axes:
             xlim = min(corrs0), max(corrs0)
             ylim = min(corrs1), max(corrs1)
             xlim = [ roundto(val, 0.05) for val in xlim ]
             ylim = [ roundto(val, 0.05) for val in ylim ]
-        a.plot(xlim, ylim, 'k-') # plot a y=x line
+            minlim = min(xlim[0], ylim[0])
+            maxlim = max(xlim[1], ylim[1])
+            lim = minlim, maxlim
+        a.plot(lim, lim, 'k-') # plot a y=x line
         a.hold(True)
         a.scatter(corrs0, corrs1, s=10, marker='.', c='black')
-        a.set_xlim(xlim)
-        a.set_ylim(ylim)
+        a.set_xlim(lim)
+        a.set_ylim(lim)
         a.set_xlabel(self.xlabel)
         a.set_ylabel(self.ylabel)
         gcfm().window.setWindowTitle(lastcmd())
@@ -794,7 +801,7 @@ class CodeCorrScatter(object):
                            'dt1 = %d min'                           
                            % (uns['CODETRES']//1000, uns['CODEPHASE'], self.R, uns['MINRATE'],
                               len(self.nids), self.npairs,
-                              intround(self.r0.dtmin), intround(self.r1.dtmin)),
+                              intround(self.dtmin0), intround(self.dtmin1)),
                            transform = a.transAxes,
                            horizontalalignment='left',
                            verticalalignment='top')
