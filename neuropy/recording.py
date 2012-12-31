@@ -12,8 +12,8 @@ from pylab import get_current_fig_manager as gcfm
 import matplotlib as mpl
 
 import core
-from core import (PopulationRaster, Codes, CodeCorrPDF, CodeCorrScatter, rstrip, dictattr,
-                  warn, binarray2int, pad0s)
+from core import (PopulationRaster, Codes, CodeCorrPDF, CodeCorrSort, CodeCorrScatter,
+                  rstrip, dictattr, warn, binarray2int, pad0s)
 from core import histogram, histogram2d, lastcmd, intround
 from core import TAB
 from experiment import Experiment
@@ -211,6 +211,16 @@ class RecordingCode(BaseRecording):
 
     ccpdf = codecorrpdf # synonymize
         
+    def codecorrsort(self, tranges=None, experiments=None, nids=None, R=None,
+                     shuffleids=False):
+        ccpdf = CodeCorrPDF(recording=self, tranges=tranges, experiments=experiments,
+                            nids=nids)
+        ccpdf.calc(R, shuffleids)
+        ccsort = CodeCorrSort(ccpdf)
+        return ccsort
+
+    ccsort = codecorrsort # synonymize
+
     def codecorrscatter(self, rid=None, nids=None, R=None, shuffleids=False):
         """Return a CodeCorrScatter object"""
         if type(rid) != str: # allow int rid
@@ -220,7 +230,7 @@ class RecordingCode(BaseRecording):
         ccs.calc(R, shuffleids)
         return ccs
 
-    ccs = codecorrscatter # synonymize
+    ccscatr = codecorrscatter # synonymize
 
 
 class BaseNetstate(object):

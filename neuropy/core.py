@@ -716,6 +716,49 @@ class CodeCorrPDF(object):
         self.f = f
         return self
 
+class CodeCorrSort(object):
+    def __init__(self, ccpdf):
+        self.ccpdf = ccpdf # assume ccpdf.calc has already been run
+        
+    def plot(self, figsize=(7.5, 6.5)):
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        corrs = self.ccpdf.corrs
+        sortis = corrs.argsort()[::-1] # indices to get corrs in decreasing order
+        a.plot(np.arange(len(corrs)), corrs[sortis], 'k.', markersize=10)
+        a.set_xlabel("pair index")
+        a.set_ylabel("correlation coefficient")
+        gcfm().window.setWindowTitle(lastcmd())
+        titlestr = '%s' % lastcmd()
+        a.set_title(titlestr)
+        self.mean = np.mean(corrs)
+        self.median = np.median(corrs)
+        self.stdev = np.std(corrs)
+        # add stuff to top right of plot:
+        uns = get_ipython().user_ns
+        a.text(0.99, 0.99, '%s\n'
+                           'mean = %.3f\n'
+                           'median = %.3f\n'
+                           'stdev = %.3f\n'
+                           'tres = %d ms\n'
+                           'phase = %d deg\n'
+                           'R = %r um\n'
+                           'minrate = %.2f Hz\n'
+                           'nneurons = %d\n'
+                           'npairs = %d\n'
+                           'dt = %d min'
+                           % (self.ccpdf.r.name, self.mean, self.median, self.stdev,
+                              uns['CODETRES']//1000, uns['CODEPHASE'], self.ccpdf.R,
+                              uns['MINRATE'], len(self.ccpdf.nids), self.ccpdf.npairs,
+                              intround(self.ccpdf.r.dtmin)),
+                           transform = a.transAxes,
+                           horizontalalignment='right',
+                           verticalalignment='top')
+        f.tight_layout(pad=0.3) # crop figure to contents
+        self.f = f
+        return self
+        
+
 class CodeCorrScatter(object):
     """Scatter plot of the correlations of the codes of all cell pairs (or of all cell pairs
     within some torus of radii R=(R0, R1) in um) in this recording vs that of another
