@@ -614,29 +614,32 @@ class CodeCorrPDF(object):
             snids = shuffle(nids)
         else:
             snids = nids
+        pairis = []
         corrs = []
-        for nii1 in range(nneurons):
-            for nii2 in range(nii1+1, nneurons):
+        for nii0 in range(nneurons):
+            for nii1 in range(nii0+1, nneurons):
+                ni0 = nids[nii0]
+                sni0 = snids[nii0]
                 ni1 = nids[nii1]
                 sni1 = snids[nii1]
-                ni2 = nids[nii2]
-                sni2 = snids[nii2]
                 # calc the pair's code correlation if there's no torus specified, or if
                 # the pair's separation falls within bounds of specified torus:
-                if R == None or (self.R[0] < dist(self.r.n[sni1].pos, self.r.n[sni2].pos)
+                if R == None or (self.R[0] < dist(self.r.n[sni0].pos, self.r.n[sni1].pos)
                                  < self.R[1]):
-                    code1 = self.r.n[ni1].code(tranges=self.tranges).c
-                    code2 = self.r.n[ni2].code(tranges=self.tranges).c
+                    c0 = self.r.n[ni0].code(tranges=self.tranges).c
+                    c1 = self.r.n[ni1].code(tranges=self.tranges).c
                     # (mean of product - product of means) / by product of stds
-                    cc = (((code1 * code2).mean() - means[ni1] * means[ni2])
-                          / (stds[ni1] * stds[ni2]))
+                    cc = (((c0 * c1).mean() - means[ni0] * means[ni1])
+                          / (stds[ni0] * stds[ni1]))
+                    pairis.append([nii0, nii1])
                     corrs.append(cc)
+        self.pairis = np.array(pairis) # indices into nids
         self.corrs = np.array(corrs)
         self.npairs = len(corrs)
         '''
         # simpler, but slower way without precalculation of means and stds:
-        self.corrs = [ self.r.codecorr(nids[nii1], nids[nii2], tranges=self.tranges)
-                       for nii1 in range(0,nneurons) for nii2 in range(nii1+1,nneurons) ]
+        self.corrs = [ self.r.codecorr(nids[nii0], nids[nii1], tranges=self.tranges)
+                       for nii0 in range(0,nneurons) for nii1 in range(nii0+1,nneurons) ]
         '''
     def plot(self, crange=[-0.05, 0.25], figsize=(7.5, 6.5), limitstats=True,
              nbins=30, normed='pdf'):
@@ -716,16 +719,49 @@ class CodeCorrPDF(object):
         self.f = f
         return self
 
+## TODO: rename ccpdf to cc, ccpdf.plot() to cc.pdf(), ccsort to cc.sort()
+## TODO: cc.sep(): corrs strength as a f'n of pair seperation
+
 class CodeCorrSort(object):
     def __init__(self, ccpdf):
-        self.ccpdf = ccpdf # assume ccpdf.calc has already been run
+        self.ccpdf = ccpdf # assume ccpdf.calc() has already been run
         
-    def plot(self, figsize=(7.5, 6.5)):
+    def plot(self, ythresh=600, figsize=(7.5, 6.5)):
+        """ythresh (um) is a simple threshold that sepearates superficial layer cells
+        from deep layer cells"""
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         corrs = self.ccpdf.corrs
         sortis = corrs.argsort()[::-1] # indices to get corrs in decreasing order
-        a.plot(np.arange(len(corrs)), corrs[sortis], 'k.', markersize=10)
+        corrs = corrs[sortis] # corrs in decreasing order
+        pairis = self.ccpdf.pairis[sortis] # pairis in decreasing corrs order
+        npairs = len(pairis)
+        """Use:
+        >> ys = []
+        >> for n in ptc22.tr1.r03.n.values():
+        ..     ys.append(n.pos[1])
+        >> hist(ys)
+        to get an idea of how cells in a recording are distributed vertically.
+        """
+        nids = self.ccpdf.nids
+        n = self.ccpdf.r.n
+        # y positions of all nids:
+        ys = np.array([ self.ccpdf.r.n[nid].pos[1] for nid in nids ])
+        deepis = ys >= ythresh # True values are deep, False are superficial
+        c = np.empty((npairs, 3), dtype=float) # color RGB array
+        c.fill([0.5, 0.5, 0.5]) # init to grey, pairs that straddle remain grey
+        for i, pairi in enumerate(pairis):
+            if deepis[pairi[0]] == deepis[pairi[1]]:
+                # pairs are on the same side of ythresh
+                if deepis[pairi[0]]: # pair are both deep
+                    c[i] = [0.0, 1.0, 0.0] # green
+                else: # pair are both superficial
+                    c[i] = [1.0, 0.0, 0.0] # red
+            
+        a.scatter(np.arange(len(corrs)), corrs, marker='.', c=c, edgecolors='none', s=40)
+        a.set_xlim(left=-10)
+        # plot horizontal dashed line at y=0:
+        a.plot(a.get_xlim(), (0, 0), c=(0.5, 0.5, 0.5), linestyle='--', marker=None)
         a.set_xlabel("pair index")
         a.set_ylabel("correlation coefficient")
         gcfm().window.setWindowTitle(lastcmd())
