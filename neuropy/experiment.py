@@ -11,7 +11,7 @@ import matplotlib as mpl
 import core
 from core import getargstr, TAB, warn, rstrip, dictattr, intround, toiter
 from core import joinpath, lastcmd
-from core import PopulationRaster, Codes, CodeCorrPDF, RevCorrWindow
+from core import PopulationRaster, Codes, RevCorrWindow
 import neuron
 
 from dimstimskeletal import deg2pix, InternalParams, StaticParams, DynamicParams
@@ -565,26 +565,6 @@ class ExperimentCode(BaseExperiment):
     codecorr.__doc__ += '\n\n**kwargs:'
     codecorr.__doc__ += '\nNeuron.code: '+getargstr(neuron.Neuron.code)
     codecorr.__doc__ += '\nbinary: '+getargstr(neuron.BinaryCode.__init__)
-
-    def codecorrpdf(self, **kwargs):
-        """Returns an existing CodeCorrPDF object, or creates a new one if necessary"""
-        try:
-            self._codecorrpdfs
-        except AttributeError: # doesn't exist yet
-            self._codecorrpdfs = [] # create a list that'll hold CodeCorrPDF objects
-        cco = self.r.codecorrpdf(experiments={self.id: self}, **kwargs) # init a new one
-        for ccpdf in self._codecorrpdfs:
-            if cco == ccpdf: # need to define special == method for class CodeCorrPDF()
-                # return the first object whose attributes match what's desired. This saves
-                # on calc() time and avoids duplicates in self._codecorrpdfs
-                return ccpdf
-        cco.calc() # no matching object was found, calculate it
-        self._codecorrpdfs.append(cco) # add it to the object list
-        return cco
-    codecorrpdf.__doc__ += '\n\n**kwargs:'
-    codecorrpdf.__doc__ += '\nCodeCorrPDF: '+getargstr(CodeCorrPDF.__init__)
-    codecorrpdf.__doc__ += '\nNeuron.code: '+getargstr(neuron.Neuron.code)
-    codecorrpdf.__doc__ += '\nbinary: '+getargstr(neuron.BinaryCode.__init__)
     '''
     def netstate(self):
         """Returns a Netstate object"""

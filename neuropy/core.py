@@ -567,10 +567,12 @@ class Codes(object):
         self.calc() # recalculate this code with its new set of tranges
     '''
     
-class CodeCorrPDF(object):
-    """A PDF of the correlations of the codes of all cell pairs (or of all cell pairs within
-    some torus of radii R=(R0, R1) in um) in this Recording. See Schneidman2006 fig 1d"""
-    def __init__(self, recording=None, tranges=None, experiments=None, nids=None):
+class CodeCorr(object):
+    """Calculate and plot the correlations of the codes of all cell pairs (or of all
+    cell pairs within some torus of radii R=(R0, R1) in um) in this Recording. See
+    Schneidman2006 fig 1d"""
+    def __init__(self, recording=None, tranges=None, experiments=None, nids=None,
+                 R=None, shufflenids=False):
         self.r = recording
         if tranges != None:
             self.tranges = tranges
@@ -587,16 +589,16 @@ class CodeCorrPDF(object):
                 self.tranges = [ e.trange for e in self.e.values() ]
         else:
             self.tranges = [ self.r.trange ] # use the Recording's trange
-        if nids == None:
-            nids = self.r.n.keys()
         self.nids = nids
-
-    def calc(self, R=None, shuffleids=False):
-        """Calculate self constrained to self.tranges and torus described by R"""
         if R != None:
             assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
         self.R = R
-        self.shuffleids = shuffleids
+        self.shufflenids = shufflenids
+
+    def calc(self):
+        """Calculate self constrained to self.tranges and torus described by self.R"""
+        if self.nids == None:
+            self.nids = self.r.n.keys()
         nids = self.nids
         nneurons = len(nids)
         # it's more efficient to precalculate the means and stds of each cell's codetrain,
@@ -607,7 +609,7 @@ class CodeCorrPDF(object):
         # store each code std in a dict:
         stds = dict( ( nid, self.r.n[nid].code(tranges=self.tranges).c.std() )
                        for nid in nids ) 
-        if self.shuffleids:
+        if self.shufflenids:
         # shuffled neuron ids, this is a control to see if it's the locality of neurons
         # included in the analysis, or the number of neurons included that's important. It
         # seems that both are.
@@ -624,8 +626,9 @@ class CodeCorrPDF(object):
                 sni1 = snids[nii1]
                 # calc the pair's code correlation if there's no torus specified, or if
                 # the pair's separation falls within bounds of specified torus:
-                if R == None or (self.R[0] < dist(self.r.n[sni0].pos, self.r.n[sni1].pos)
-                                 < self.R[1]):
+                if self.R == None or (self.R[0]
+                                      < dist(self.r.n[sni0].pos, self.r.n[sni1].pos)
+                                      < self.R[1]):
                     c0 = self.r.n[ni0].code(tranges=self.tranges).c
                     c1 = self.r.n[ni1].code(tranges=self.tranges).c
                     # (mean of product - product of means) / by product of stds
@@ -641,10 +644,11 @@ class CodeCorrPDF(object):
         self.corrs = [ self.r.codecorr(nids[nii0], nids[nii1], tranges=self.tranges)
                        for nii0 in range(0,nneurons) for nii1 in range(nii0+1,nneurons) ]
         '''
-    def plot(self, crange=[-0.05, 0.25], figsize=(7.5, 6.5), limitstats=True,
-             nbins=30, normed='pdf'):
-        """Plot the corrs. If limitstats, the stats displayed exclude any corr values that
-        fall outside of crange"""
+    def pdf(self, crange=[-0.05, 0.25], figsize=(7.5, 6.5), limitstats=True,
+            nbins=30, normed='pdf'):
+        """Plot PDF of corrs. If limitstats, the stats displayed exclude any corr values
+        that fall outside of crange"""
+        self.calc()
         nbins = max(nbins, 2*intround(np.sqrt(self.npairs)))
         self.nbins = nbins
         self.normed = normed
@@ -719,23 +723,16 @@ class CodeCorrPDF(object):
         self.f = f
         return self
 
-## TODO: rename ccpdf to cc, ccpdf.plot() to cc.pdf(), ccsort to cc.sort()
-## TODO: cc.sep(): corrs strength as a f'n of pair seperation
-
-class CodeCorrSort(object):
-    def __init__(self, ccpdf):
-        self.ccpdf = ccpdf # assume ccpdf.calc() has already been run
-        
-    def plot(self, ythresh=600, figsize=(7.5, 6.5)):
-        """ythresh (um) is a simple threshold that sepearates superficial layer cells
-        from deep layer cells"""
+    def sort(self, ythresh=600, figsize=(7.5, 6.5)):
+        """Plot pair corrs in decreasing order. ythresh (um) is a simple threshold that
+        seperates superficial layer cells from deep layer cells"""
+        self.calc()
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        corrs = self.ccpdf.corrs
+        corrs = self.corrs
         sortis = corrs.argsort()[::-1] # indices to get corrs in decreasing order
         corrs = corrs[sortis] # corrs in decreasing order
-        pairis = self.ccpdf.pairis[sortis] # pairis in decreasing corrs order
-        npairs = len(pairis)
+        pairis = self.pairis[sortis] # pairis in decreasing corrs order
         """Use:
         >> ys = []
         >> for n in ptc22.tr1.r03.n.values():
@@ -743,12 +740,12 @@ class CodeCorrSort(object):
         >> hist(ys)
         to get an idea of how cells in a recording are distributed vertically.
         """
-        nids = self.ccpdf.nids
-        n = self.ccpdf.r.n
+        nids = self.nids
+        n = self.r.n
         # y positions of all nids:
-        ys = np.array([ self.ccpdf.r.n[nid].pos[1] for nid in nids ])
+        ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
         deepis = ys >= ythresh # True values are deep, False are superficial
-        c = np.empty((npairs, 3), dtype=float) # color RGB array
+        c = np.empty((self.npairs, 3), dtype=float) # color RGB array
         c.fill([0.5, 0.5, 0.5]) # init to grey, pairs that straddle remain grey
         for i, pairi in enumerate(pairis):
             if deepis[pairi[0]] == deepis[pairi[1]]:
@@ -783,71 +780,67 @@ class CodeCorrSort(object):
                            'nneurons = %d\n'
                            'npairs = %d\n'
                            'dt = %d min'
-                           % (self.ccpdf.r.name, self.mean, self.median, self.stdev,
-                              uns['CODETRES']//1000, uns['CODEPHASE'], self.ccpdf.R,
-                              uns['MINRATE'], len(self.ccpdf.nids), self.ccpdf.npairs,
-                              intround(self.ccpdf.r.dtmin)),
+                           % (self.r.name, self.mean, self.median, self.stdev,
+                              uns['CODETRES']//1000, uns['CODEPHASE'], self.R,
+                              uns['MINRATE'], len(self.nids), self.npairs,
+                              intround(self.r.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='right',
                            verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
-        
 
-class CodeCorrScatter(object):
-    """Scatter plot of the correlations of the codes of all cell pairs (or of all cell pairs
-    within some torus of radii R=(R0, R1) in um) in this recording vs that of another
-    recording. If the two recordings are the same, split it in half and scatter plot first
-    half against the other"""
-    ## TODO: add interleave flag which generates a sufficiently interleaved, equally sized,
-    ## non-overlapping set of tranges to scatter plot against each other, to eliminate
-    ## temporal bias inherent in a simple split in time
-    def __init__(self, recording0, recording1, nids=None):
-        self.r0 = recording0
-        self.r1 = recording1
-        assert recording0.tr == recording1.tr # make sure they're from the same track
-        if recording0 != recording1:
-            self.tranges0 = [recording0.trange]
-            self.tranges1 = [recording1.trange]
-            self.xlabel = 'correlation coefficient (%s)' % recording0.name
-            self.ylabel = 'correlation coefficient (%s)' % recording1.name
-            self.dtmin0 = recording0.dtmin
-            self.dtmin1 = recording1.dtmin
+    def scat(self, otherrid, nids=None, crange=[-0.05, 0.25], figsize=(7.5, 6.5)):
+        """Scatter plot corrs of all cell pairs (or of all cell pairs
+        within some torus of radii R=(R0, R1) in um) in this recording vs that of another
+        recording. If the two recordings are the same, split it in half and scatter plot
+        first half against the second half"""
+        ## TODO: add interleave flag which generates a sufficiently interleaved, equally sized,
+        ## non-overlapping set of tranges to scatter plot against each other, to eliminate
+        ## temporal bias inherent in a simple split in time
+        r0 = self.r
+        if type(otherrid) != str: # allow int rid
+            otherrid = pad0s(otherrid, ndigits=2)
+        otherr = r0.tr.r[otherrid]
+        r1 = otherr
+        # make sure they're from the same track, though the above guarantees it
+        assert r0.tr == r1.tr
+        if r0 != r1:
+            tranges0 = [r0.trange]
+            tranges1 = [r1.trange]
+            xlabel = 'correlation coefficient (%s)' % r0.name
+            ylabel = 'correlation coefficient (%s)' % r1.name
+            dtmin0 = r0.dtmin
+            dtmin1 = r1.dtmin
         else: # same recording, split its trange in half
-            start, end = recording0.trange
+            start, end = r0.trange
             dt = (end - start) / 2
             dtmin = dt / 1e6 / 60
             half = start + dt
-            self.tranges0 = [(start, half)]
-            self.tranges1 = [(half, end)]
-            self.xlabel = 'correlation coefficient (%s, 1st half)' % recording0.name
-            self.ylabel = 'correlation coefficient (%s, 2nd half)' % recording0.name
-            self.dtmin0, self.dtmin1 = dtmin, dtmin
+            tranges0 = [(start, half)]
+            tranges1 = [(half, end)]
+            xlabel = 'correlation coefficient (%s, 1st half)' % r0.name
+            ylabel = 'correlation coefficient (%s, 2nd half)' % r0.name
+            dtmin0, dtmin1 = dtmin
         if nids == None: # get nids in common to both recordings
-            nids = recording0.tr.get_nids([recording0.id, recording1.id])
-        self.nids = nids
+            self.nids = r0.tr.get_nids([r0.id, r1.id])
+        else: # use intersection of nids and the self.nids specified in __init__
+            if self.nids == None:
+                self.nids = self.r.n.keys()
+            self.nids = np.intersect1d([self.nids, nids])
 
-    def calc(self, R=None, shuffleids=False):
-        """Calculate self constrained to tranges0 and tranges1, and torus described by R"""
-        if R != None:
-            assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
-        self.R = R
-        self.shuffleids = shuffleids
-        self.ccpdf0 = CodeCorrPDF(recording=self.r0, tranges=self.tranges0, nids=self.nids)
-        self.ccpdf1 = CodeCorrPDF(recording=self.r1, tranges=self.tranges1, nids=self.nids)
-        self.ccpdf0.calc(R=R, shuffleids=shuffleids)
-        self.ccpdf1.calc(R=R, shuffleids=shuffleids)
+        # calculate corrs for both, constrained to tranges0 and tranges1
+        # respectively, and to the torus described by R:
+        self.calc()
+        cc1 = CodeCorr(recording=r1, tranges=tranges1, nids=self.nids,
+                       R=self.R, shufflenids=self.shufflenids)
+        cc1.calc()
 
-    def get_npairs(self):
-        return self.ccpdf0.npairs
-
-    npairs = property(get_npairs)
-
-    def plot(self, crange=[-0.05, 0.25], figsize=(7.5, 6.5)):
+        # create the scatter plot:
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        corrs0, corrs1 = self.ccpdf0.corrs, self.ccpdf1.corrs
+        corrs0, corrs1 = self.corrs, cc1.corrs
         lim = crange
         if crange == None:
             # fit to nearest 0.05 encompassing all corr values on both axes:
@@ -860,11 +853,11 @@ class CodeCorrScatter(object):
             lim = minlim, maxlim
         a.plot(lim, lim, 'k-') # plot a y=x line
         a.hold(True)
-        a.scatter(corrs0, corrs1, s=10, marker='.', c='black')
+        a.scatter(corrs0, corrs1, s=40, marker='.', c='black')
         a.set_xlim(lim)
         a.set_ylim(lim)
-        a.set_xlabel(self.xlabel)
-        a.set_ylabel(self.ylabel)
+        a.set_xlabel(xlabel)
+        a.set_ylabel(ylabel)
         gcfm().window.setWindowTitle(lastcmd())
         titlestr = '%s' % lastcmd()
         a.set_title(titlestr)
@@ -880,14 +873,16 @@ class CodeCorrScatter(object):
                            'dt1 = %d min'                           
                            % (uns['CODETRES']//1000, uns['CODEPHASE'], self.R, uns['MINRATE'],
                               len(self.nids), self.npairs,
-                              intround(self.dtmin0), intround(self.dtmin1)),
+                              intround(dtmin0), intround(dtmin1)),
                            transform = a.transAxes,
                            horizontalalignment='left',
                            verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
-        
+
+## TODO: cc.sep(): corrs strength as a f'n of pair seperation
+
 
 class NeuropyWindow(QtGui.QMainWindow):
     """Base class for all of neuropy's tool windows"""
