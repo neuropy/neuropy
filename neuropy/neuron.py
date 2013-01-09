@@ -84,7 +84,7 @@ class BaseNeuron(object):
 
     def post_load(self):
         if self.nspikes == 0:
-            raise RuntimeError('Neuron %d in %s has no spikes' % (self.id, self.path))
+            raise RuntimeError('neuron %d in %s has no spikes' % (self.id, self.path))
         ## TODO: maybe this should be inherited from parent sort or recording??:
         self.trange = self.spikes[0], self.spikes[-1]
 
@@ -132,12 +132,12 @@ class BaseNeuron(object):
                 tstart = args[0][0]
                 tend = args[0][1]
             else:
-                raise ValueError, 'sequence is too long'
+                raise ValueError('sequence is too long')
         elif len(args) == 2: # passed tstart and tend as separate args
             tstart = args[0]
             tend = args[1]
         else:
-            raise ValueError, 'too many arguments'
+            raise ValueError('too many arguments')
         if tstart in [None, 0]: # shorthand for "from first spike" - would be problematic if a spike existed at t=0
             tstart = self.spikes[0]
         if tend in [None, -1]: # shorthand for "to last spike" - would be problematic if a spike existed at t=-1
@@ -491,7 +491,7 @@ class nISIRate(BaseRate):
             self.r = f(self.t) # interpolate over the new timepoints
             # or maybe try sig.resample() instead
         else:
-            raise ValueError, 'unknown interpolation method: %s' % self.interp
+            raise ValueError('unknown interpolation method: %s' % self.interp)
 
     def plot(self):
         super(nISIRate, self).plot()
@@ -626,7 +626,7 @@ class RatePDF(object):
         elif self.scale == 'linear':
             r = np.linspace(start=self.rrange[0], stop=self.rrange[1], num=self.nbins, endpoint=True)
         else:
-            raise ValueError, 'Unknown scale: %r' % scale
+            raise ValueError('unknown scale: %r' % scale)
         self.n, self.r = histogram(self.rate.r, bins=r, normed=self.normed)
 
     def plot(self):
@@ -640,7 +640,7 @@ class RatePDF(object):
         elif self.scale == 'linear':
             barwidth = (self.rrange[1]-self.rrange[0]) / float(self.nbins)
         else:
-            raise ValueError('Unknown scale: %r' % scale)
+            raise ValueError('unknown scale: %r' % scale)
         #hist(self.n, bins=self.r, normed=0, bottom=0, width=None, hold=False) # doesn't seem to work
         pl.bar(left=self.r, height=self.n, width=barwidth)
         pl.axes().set_xscale(self.scale, basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
@@ -676,7 +676,7 @@ class NeuronRate(BaseNeuron):
         elif kind == 'rect':
             ro = RectRate(neuron=self, **kwargs) # init a new RectRate object
         else:
-            raise ValueError('Unknown kind: %r' % self.kind)
+            raise ValueError('unknown kind: %r' % self.kind)
         for rate in self._rates:
             if ro == rate: # need to define special == method for class Rate()
                 return rate # returns the first Rate object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._rates

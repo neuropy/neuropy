@@ -47,13 +47,75 @@ class dictattr(dict):
     
     def __setattr__(self, key, val):
         self[key] = val
-    
+
+    def __getitem__(self, key):
+        """On KeyError, see if converting the key from an int to a 1 or 2 digit str
+        works instead"""        
+        try:
+            return super(dictattr, self).__getitem__(key)
+        except KeyError, e: # try converting key to str of up to 2 digits in length
+            for ndigits in [1, 2]:
+                try:
+                    #print('key: %r' % key)
+                    #print('ndigits: %d' % ndigits)
+                    key = pad0s(key, ndigits=ndigits)
+                    #print('padded key: %r' % key)
+                except ValueError:
+                    raise e
+                try:
+                    return super(dictattr, self).__getitem__(key)
+                except KeyError:
+                    pass
+            raise e
+                
     def __setitem__(self, key, val):
         super(dictattr, self).__setitem__(key, val)
         # key isn't a number or a string starting with a number:
         if key.__class__ == str and not key[0].isdigit():
             key = key.replace(' ', '_') # get rid of any spaces
             self.__dict__[key] = val # make the key show up as an attrib upon dir()
+
+
+RED = '#ff0000'
+ORANGE = '#ff7f00'
+YELLOW = '#ffff00'
+GREEN = '#00ff00'
+CYAN = '#00ffff'
+LIGHTBLUE = '#007fff'
+BLUE = '#0000ff'
+VIOLET = '#7f00ff'
+MAGENTA = '#ff00ff'
+GREY = '#7f7f7f'
+WHITE = '#ffffff'
+BROWN = '#Af5050'
+DARKGREY = '#303030'
+LIGHTBLACK = '#202020'
+BLACK = '#000000'
+
+# for plotting on white:
+PLOTCOLOURS = [RED, ORANGE, YELLOW, GREEN, CYAN, LIGHTBLUE, VIOLET, MAGENTA, BROWN,
+               GREY, BLACK]
+
+class ColourDict(dict):
+    """Just an easy way to cycle through colours given some index,
+    like say a chan id or a neuron id. Better than using a generator,
+    cuz you don't need to keep calling .next(). This is like a dict
+    of infinite length. Copied from spyke.plot"""
+    def __init__(self, colours=None, nocolour=None):
+        self.colours = colours
+        self.nocolour = nocolour
+
+    def __getitem__(self, key):
+        if key < 0: # invalid index into self.colours
+            return self.nocolour
+        i = key % len(self.colours)
+        return self.colours[i]
+
+    def __setitem__(self, key, val):
+        raise RuntimeError('ColourDict is unsettable')
+
+
+PLOTCOLOURDICT = ColourDict(colours=PLOTCOLOURS)
 
 
 class PTCSHeader(object):
@@ -599,6 +661,7 @@ class CodeCorr(object):
         """Calculate self constrained to self.tranges and torus described by self.R"""
         if self.nids == None:
             self.nids = self.r.n.keys()
+            self.nids.sort()
         nids = self.nids
         nneurons = len(nids)
         # it's more efficient to precalculate the means and stds of each cell's codetrain,
@@ -652,15 +715,18 @@ class CodeCorr(object):
         nbins = max(nbins, 2*intround(np.sqrt(self.npairs)))
         self.nbins = nbins
         self.normed = normed
-        f = pl.figure(figsize=figsize)
-        a = f.add_subplot(111)
-        try: # figure out the bin edges
+
+        # figure out the bin edges:
+        if crange != None:
             bins = np.linspace(start=crange[0], stop=crange[1], num=self.nbins,
                                endpoint=True)
-        except TypeError: # crange is None, let histogram() figure out the bin edges
+        else: # let histogram() figure out the bin edges
             bins = self.nbins
         self.n, self.c = histogram(self.corrs, bins=bins, normed=self.normed)
+        binwidth = self.c[1] - self.c[0] # take width of first bin in self.c
 
+        # self.n and self.c are the full values, potentially constrained n and c values
+        # are what are reported and plotted:
         if limitstats:
             corrs = self.corrs[(self.corrs >= crange[0]) * (self.corrs <= crange[1])]
             n, c = histogram(corrs, bins=bins, normed=self.normed)
@@ -671,22 +737,15 @@ class CodeCorr(object):
         self.mean = np.mean(corrs)
         self.median = np.median(corrs)
         argmode = n.argmax()
-        self.mode = np.mean([c[argmode], c[argmode + 1]]) # find middle of tallest bin
+        self.mode = c[argmode] + binwidth / 2 # middle of tallest bin
         self.stdev = np.std(corrs)
 
-        try:
-            barwidth = (crange[1] - crange[0]) / float(self.nbins)
-        except TypeError: # crange is None, take width of first bin in self.c
-            barwidth = self.c[1] - self.c[0]
-        a.bar(left=c, height=n, width=barwidth, bottom=0, color='k',
-              yerr=None, xerr=None, ecolor='k', capsize=3)
-        try:
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        a.bar(left=c, height=n, width=binwidth, bottom=0, color='k', ec='k')
+        if crange != None:
             a.set_xlim(crange)
-        except TypeError: # crange is None
-            pass
         gcfm().window.setWindowTitle(lastcmd())
-        #titlestr = 'neuron pair code correlation pdf'
-        #titlestr += '\n%s' % lastcmd()
         titlestr = '%s' % lastcmd()
         a.set_title(titlestr)
         
@@ -725,7 +784,7 @@ class CodeCorr(object):
 
     def sort(self, ythresh=600, figsize=(7.5, 6.5)):
         """Plot pair corrs in decreasing order. ythresh (um) is a simple threshold that
-        seperates superficial layer cells from deep layer cells"""
+        seperates superficial layer pairs from deep layer pairs"""
         self.calc()
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -733,27 +792,22 @@ class CodeCorr(object):
         sortis = corrs.argsort()[::-1] # indices to get corrs in decreasing order
         corrs = corrs[sortis] # corrs in decreasing order
         pairis = self.pairis[sortis] # pairis in decreasing corrs order
-        """Use:
-        >> ys = []
-        >> for n in ptc22.tr1.r03.n.values():
-        ..     ys.append(n.pos[1])
-        >> hist(ys)
-        to get an idea of how cells in a recording are distributed vertically.
-        """
+
+        # color pairs according to whether they're superficial, deep, or neither:
         nids = self.nids
         n = self.r.n
         # y positions of all nids:
         ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
         deepis = ys >= ythresh # True values are deep, False are superficial
         c = np.empty((self.npairs, 3), dtype=float) # color RGB array
-        c.fill([0.5, 0.5, 0.5]) # init to grey, pairs that straddle remain grey
+        c.fill(hex2rgb(GREY)) # init to grey, pairs that straddle remain grey
         for i, pairi in enumerate(pairis):
             if deepis[pairi[0]] == deepis[pairi[1]]:
                 # pairs are on the same side of ythresh
                 if deepis[pairi[0]]: # pair are both deep
-                    c[i] = [0.0, 1.0, 0.0] # green
+                    c[i] = hex2rgb(GREEN)
                 else: # pair are both superficial
-                    c[i] = [1.0, 0.0, 0.0] # red
+                    c[i] = hex2rgb(RED)
             
         a.scatter(np.arange(len(corrs)), corrs, marker='.', c=c, edgecolors='none', s=40)
         a.set_xlim(left=-10)
@@ -791,17 +845,17 @@ class CodeCorr(object):
         self.f = f
         return self
 
-    def scat(self, otherrid, nids=None, crange=[-0.05, 0.25], figsize=(7.5, 6.5)):
+    def scat(self, otherrid, nids=None, ythresh=600,
+             crange=[-0.05, 0.25], figsize=(7.5, 6.5)):
         """Scatter plot corrs of all cell pairs (or of all cell pairs
         within some torus of radii R=(R0, R1) in um) in this recording vs that of another
         recording. If the two recordings are the same, split it in half and scatter plot
-        first half against the second half"""
+        first half against the second half. ythresh (um) is a simple threshold that
+        seperates superficial layer pairs from deep layer pairs"""
         ## TODO: add interleave flag which generates a sufficiently interleaved, equally sized,
         ## non-overlapping set of tranges to scatter plot against each other, to eliminate
         ## temporal bias inherent in a simple split in time
         r0 = self.r
-        if type(otherrid) != str: # allow int rid
-            otherrid = pad0s(otherrid, ndigits=2)
         otherr = r0.tr.r[otherrid]
         r1 = otherr
         # make sure they're from the same track, though the above guarantees it
@@ -837,6 +891,24 @@ class CodeCorr(object):
                        R=self.R, shufflenids=self.shufflenids)
         cc1.calc()
 
+        ## TODO: finish this:
+        '''
+        # color pairs according to whether they're superficial, deep, or neither:
+        nids = self.nids
+        n = self.r.n
+        # y positions of all nids:
+        ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
+        deepis = ys >= ythresh # True values are deep, False are superficial
+        c = np.empty((self.npairs, 3), dtype=float) # color RGB array
+        c.fill([0.5, 0.5, 0.5]) # init to grey, pairs that straddle remain grey
+        for i, pairi in enumerate(pairis):
+            if deepis[pairi[0]] == deepis[pairi[1]]:
+                # pairs are on the same side of ythresh
+                if deepis[pairi[0]]: # pair are both deep
+                    c[i] = [0.0, 1.0, 0.0] # green
+                else: # pair are both superficial
+                    c[i] = [1.0, 0.0, 0.0] # red
+        '''
         # create the scatter plot:
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -1427,7 +1499,7 @@ def pad0s(val, ndigits=2):
     """Returns a string rep of val, padded with enough leading 0s
     to give you a string rep with ndigits in it"""
     val = str(int(val))
-    nzerostoadd = ndigits - len(val)
+    nzerostoadd = ndigits - len(val) # -ve values add no zeros to val
     val = '0'*nzerostoadd + val
     return val
 
@@ -1772,7 +1844,7 @@ def histogram2d(x, y, bins=10, range=None, normed=False):
         elif normed == 'pmf':
             histmat = histmat / float(histmat.sum())
         else:
-            raise ValueError, 'unknown normed value %s' % normed
+            raise ValueError('unknown normed value %s' % normed)
     return histmat, xedges, yedges
 '''
 def histogram2dold(x, y, bins, normed=False):
@@ -2423,3 +2495,10 @@ def td2usec(td):
     sec = td.total_seconds() # float
     usec = intround(sec * 1000000) # round to nearest us
     return usec
+
+def hex2rgb(s):
+    """Convert RGB hex string s into an RGB float array"""
+    s = s[len(s)-6:len(s)] # get last 6 characters
+    r, g, b = s[0:2], s[2:4], s[4:6]
+    r, g, b = int(r, base=16), int(g, base=16), int(b, base=16)
+    return np.float64([r, g, b]) / 255

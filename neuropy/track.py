@@ -10,7 +10,7 @@ import numpy as np
 import pylab as pl
 
 import core
-from core import dictattr, TAB, td2usec, pad0s
+from core import dictattr, TAB, td2usec
 from recording import Recording
 
 
@@ -89,14 +89,12 @@ class Track(object):
 
     def get_nids(self, rids=None):
         """Return nids of normal (active) neurons common to all recordings specified in
-        rids. Active neurons in a recording are those with at least MINRATE mean
-        spike rate during the recording"""
-        if rids == None:
-            rids = self.r.keys() # all recording ids in self
+        rids. Otherwise, return all nids in all recordings. Active neurons in a recording
+        are those with at least MINRATE mean spike rate during the recording"""
+        if rids == None: # return all nids in all recordings
+            rids = self.r.keys()
             return np.unique(np.hstack([ self.r[rid].n.keys() for rid in rids ]))
-        else:
-            # allow int rids:
-            rids = [ pad0s(rid, ndigits=2) for rid in rids ]
+        else: # return intersection of nids of specified recordings
             nids = [ self.r[rid].n.keys() for rid in rids ]
             return core.intersect1d(nids, assume_unique=True)
 
@@ -136,3 +134,23 @@ class Track(object):
         if bins == None:
             bins = np.arange(0, 1, 0.01)
         pl.hist(self.meanrates, bins=bins)
+
+    def pospdf(self, rids=None, dim='y', nbins=10, a=None, figsize=(7.5, 6.5)):
+        """Plot PDF of cell positions ('x' or 'y') along the polytrode
+        for each recording to get an idea of how cells are distributed in space,
+        and how that changes from one recording to the next"""
+        if a == None:
+            f = pl.figure(figsize=figsize)
+            a = f.add_subplot(111)
+        else: # add to existing axes
+            a.hold(True)
+            f = pl.gcf()
+
+        if rids == None:
+            rids = self.r.keys()
+            rids.sort()
+        for rid in rids:
+            r = self.r[rid]
+            r.pospdf(dim=dim, nbins=nbins, a=a, stats=False, figsize=figsize)
+
+        return a

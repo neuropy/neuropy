@@ -295,33 +295,40 @@ class BaseExperiment(object):
 
         # Do some error checking
         if type(nruns) != int or nruns < 0:
-            raise ValueError, 'nruns must be a non-negative integer'
+            raise ValueError('nruns must be a non-negative integer')
         if type(shuffleRuns) != int or shuffleRuns not in (0, 1):
-            raise ValueError, 'shuffleRuns must be 0 or 1'
-        if type(blankSweep) != tuple or type(blankSweep[0]) != int or blankSweep[0] == 1 or blankSweep[0] < 0:
-            raise ValueError, 'blankSweep must be a tuple, and blankSweep[0] must be a non-negative integer and cannot equal 1'
+            raise ValueError('shuffleRuns must be 0 or 1')
+        if (type(blankSweep) != tuple or type(blankSweep[0]) != int or
+            blankSweep[0] == 1 or blankSweep[0] < 0):
+            raise ValueError('blankSweep must be a tuple, and blankSweep[0] must be a '
+                             'non-negative integer and cannot equal 1')
         if type(shuffleBlankSweeps) != int or shuffleBlankSweeps not in (0, 1):
-            raise ValueError, 'shuffleBlankSweeps must be 0 or 1'
+            raise ValueError('shuffleBlankSweeps must be 0 or 1')
         # check that shuffle flag is valid for each variable
         for var in varlist:
             if type(varlist[var]['shuffle']) != int or varlist[var]['shuffle'] not in (0, 1, 2):
-                raise ValueError, 'Variable %s has a shuffle value outside of (0, 1, 2)' % var
+                raise ValueError('Variable %s has a shuffle value outside of (0, 1, 2)' % var)
 
         for (key, val) in varvals.items():
             if val == None:
-                raise ValueError, 'Variable %s was passed with value None. Can\'t generate a sweeptable with None values' % key
+                raise ValueError("Variable %s was passed with value None. Can't generate a "
+                                 "sweeptable with None values" % key)
             if type(val) != list:
                 val = [val] # turn any single value non-list vals into single value list vals
-            exec(key + '=' + str(val)) # locally allocate the vals for all vars in varlist - bad!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            ## TODO: bad!!!:
+            exec(key + '=' + str(val)) # locally allocate the vals for all vars in varlist - 
         nvars = len(varlist)
 
-        # Print out values for vars in varlist, as well as the shuffle and dim fields for each var
+        # Print out values for vars in varlist, as well as the shuffle and dim fields
+        # for each var
         #print 'varlist with vals:'
         #for var in varlist:
         #    print var + ' =', eval(var), ',', varlist[var]
         #print
 
-        # First find total number of distinct dimensions in varlist. The dimension numbers entered in the 'dim' field in varlist don't have to be consecutive. Eg, they could be: 0,5,5,5,2,666,-74,...
+        # First find total number of distinct dimensions in varlist. The dimension numbers
+        # entered in the 'dim' field in varlist don't have to be consecutive. Eg, they could
+        # be: 0,5,5,5,2,666,-74,...
         dimindexlist = []
         for key in varlist:
             dim = varlist[key]['dim']
@@ -330,7 +337,9 @@ class BaseExperiment(object):
         ndims = len(dimindexlist)
         dimindexlist.sort()
 
-        # Now, renumber all the dimensions 0,1,2,3... according to their numerical order. Also, copy info stored in the varlist dictionary into simpler lists that can then be easily used to generate the sweeptable
+        # Now, renumber all the dimensions 0,1,2,3... according to their numerical order.
+        # Also, copy info stored in the varlist dictionary into simpler lists that can then
+        # be easily used to generate the sweeptable
         dimlist = [] # Every n'th entry in dimlist is a dictionary that corresponds to dimension n. Keys in each dictionary include 'vars' (list of variable names that belong to the dim), 'shuffle' (shuffle flag), and 'dim' (n)
         dimlengths = [] # stores the length of each dimension (the # of conds of each of its vars, all vars in a dim should have the same # of conds)
         dimshuffles = [] # stores the shuffle flag for each dimensionas
@@ -350,15 +359,18 @@ class BaseExperiment(object):
                         varlengths.append(1) # store length of single numbers (non-lists) as 1
                     varshuffles.append(vardict['shuffle']) # store the shuffle flag for this var in this dim
                     dimvars[dim].append(var) # store the variable names that are in this dimension
-            # check if each var in this dim has the same length as the first var, and if they don't all have the same length, raise error
+            # check if each var in this dim has the same length as the first var, and if
+            # they don't all have the same length, raise error
             for varlength in varlengths:
                 if varlength != varlengths[0]:
-                    raise ValueError, 'Dimension %d contains variables with an unequal number of conditions' % dimi
+                    raise ValueError('Dimension %d contains variables with an unequal number '
+                                     'of conditions' % dimi)
             dimlengths.append(varlength) # store the length of this dimension
             # check if each var in this dim has the same shuffle flag as the first var
             for varshuffle in varshuffles:
                 if varshuffle != varshuffles[0]:
-                    raise ValueError, 'Dimension %d contains variables with different shuffle flags' % dimi
+                    raise ValueError('Dimension %d contains variables with different '
+                                     'shuffle flags' % dimi)
             dimshuffles.append(varshuffle) # store the shuffle flag for this dimension
 
             dimlist.append({}) # add a dictionary for this dim in dimlist
@@ -454,7 +466,9 @@ class BaseExperiment(object):
 
                         ldimi = dimlengths[dimi] # length of dimi, including pre-shuffle repeats
                         if nsweeps % ldimi != 0:
-                            raise ValueError, 'Somehow, nsweeps isn\'t an integer multiple of length (including pre-shuffle repeats) of dim %d' % dimi
+                            raise ValueError("Somehow, nsweeps isn't an integer multiple of "
+                                             "length (including pre-shuffle repeats) of dim "
+                                             "%d" % dimi)
                         ncollections = nsweeps // ldimi # can safely divide now
 
                         for colli in xrange(ncollections):

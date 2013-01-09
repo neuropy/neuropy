@@ -683,7 +683,7 @@ def chan2pos(polytrode=None, chanid=None):
         SiteLoc[52] = (25, 1250)
         SiteLoc[53] = (25, 1050)
     else:
-        raise ValueError, 'Unknown polytrode type', polytrode
+        raise ValueError('Unknown polytrode type %r' % polytrode)
     try:
         return SiteLoc[chanid] # return the (x, y) tuple
     except TypeError: # no chanid was specified, return the whole SiteLoc dict
