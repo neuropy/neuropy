@@ -90,6 +90,7 @@ class NeuropyWindow(QtGui.QMainWindow):
         ipyqtwidget.execute('get_ipython().magic("gui qt4")', hidden=True)
         ipyqtwidget.execute('get_ipython().magic("pylab")', hidden=True)
 
+        ipyqtwidget.execute("from __future__ import division", hidden=True)
         # def cf() to close all figures:
         ipyqtwidget.execute("cf = lambda: pylab.close('all')", hidden=True)
         ipyqtwidget.execute('import pylab as pl', hidden=True)

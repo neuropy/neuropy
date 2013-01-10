@@ -136,6 +136,36 @@ class BaseRecording(object):
             for neuron in sort.alln.values():
                 neuron.meanrate = neuron.nspikes / self.dtsec
 
+    def get_nids(self, tranges):
+        """Find cells active in all tranges"""
+        # start with all neurons, even those with average rates below MINRATE over the
+        # span of self. Remove them one by one if their average rates fall below MINRATE
+        # in any trange in tranges
+        #print('rid: %s' % self.id)
+        tranges = np.asarray(tranges)
+        assert tranges.ndim == 2 # 2D
+        assert tranges.shape[1] == 2 # two columns
+        uns = get_ipython().user_ns
+        alln = self.alln
+        nids = alln.keys()
+        for trange in tranges:
+            #print('trange: %r' % (trange,))
+            dt = (trange[1] - trange[0]) / 1e6 # trange duration in sec
+            assert dt >= 0
+            nidi = 0
+            while nidi < len(nids):
+                #print('nids: %r' % nids)
+                nid = nids[nidi]
+                lo, hi = alln[nid].spikes.searchsorted(trange)
+                nspikes = hi - lo # nspikes for nid in this trange
+                meanrate = nspikes / dt # Hz
+                if meanrate < uns['MINRATE']:
+                    nids.remove(nid)
+                    # new nid has slid into view, don't inc nidi
+                else: # keep nid (for now), inc nidi
+                    nidi += 1
+        return np.sort(nids) # may as well sort them
+
     def pospdf(self, dim='y', nbins=10, a=None, stats=False, figsize=(7.5, 6.5)):
         """Plot PDF of cell positions ('x' or 'y') along the polytrode
         to get an idea of how cells are distributed in space"""

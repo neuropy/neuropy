@@ -22,6 +22,9 @@ from PyQt4.QtGui import QPixmap, QImage, QPalette, QColor
 from PyQt4.QtCore import Qt, QSize
 
 import numpy as np
+# make overflow, underflow, div by zero, and invalid all raise errors
+# this really should be the default in numpy...
+np.seterr(all='raise')
 
 import matplotlib as mpl
 import matplotlib.cm
@@ -695,8 +698,11 @@ class CodeCorr(object):
                     c0 = self.r.n[ni0].code(tranges=self.tranges).c
                     c1 = self.r.n[ni1].code(tranges=self.tranges).c
                     # (mean of product - product of means) / by product of stds
-                    cc = (((c0 * c1).mean() - means[ni0] * means[ni1])
-                          / (stds[ni0] * stds[ni1]))
+                    denom = stds[ni0] * stds[ni1]
+                    if denom == 0.0: # prevent div by 0
+                        print('skipped pair (%d, %d) in r%s' % (nii0, nii1, self.r.id))
+                        continue # skip to next pair
+                    cc = ((c0 * c1).mean() - means[ni0] * means[ni1]) / denom
                     pairis.append([nii0, nii1])
                     corrs.append(cc)
         self.pairis = np.array(pairis) # indices into nids
@@ -794,10 +800,8 @@ class CodeCorr(object):
         pairis = self.pairis[sortis] # pairis in decreasing corrs order
 
         # color pairs according to whether they're superficial, deep, or neither:
-        nids = self.nids
-        n = self.r.n
         # y positions of all nids:
-        ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
+        ys = np.array([ self.r.n[nid].pos[1] for nid in self.nids ])
         deepis = ys >= ythresh # True values are deep, False are superficial
         c = np.empty((self.npairs, 3), dtype=float) # color RGB array
         c.fill(hex2rgb(GREY)) # init to grey, pairs that straddle remain grey
@@ -809,7 +813,7 @@ class CodeCorr(object):
                 else: # pair are both superficial
                     c[i] = hex2rgb(RED)
             
-        a.scatter(np.arange(len(corrs)), corrs, marker='.', c=c, edgecolors='none', s=40)
+        a.scatter(np.arange(self.npairs), corrs, marker='.', c=c, edgecolor='none', s=40)
         a.set_xlim(left=-10)
         # plot horizontal dashed line at y=0:
         a.plot(a.get_xlim(), (0, 0), c=(0.5, 0.5, 0.5), linestyle='--', marker=None)
@@ -856,63 +860,63 @@ class CodeCorr(object):
         ## non-overlapping set of tranges to scatter plot against each other, to eliminate
         ## temporal bias inherent in a simple split in time
         r0 = self.r
-        otherr = r0.tr.r[otherrid]
+        tr = r0.tr
+        otherr = tr.r[otherrid]
         r1 = otherr
-        # make sure they're from the same track, though the above guarantees it
+        # make sure they're from the same track, though the above should guarantee it
         assert r0.tr == r1.tr
         if r0 != r1:
-            tranges0 = [r0.trange]
+            tranges0 = [r0.trange] # use the usual trange for both
             tranges1 = [r1.trange]
             xlabel = 'correlation coefficient (%s)' % r0.name
             ylabel = 'correlation coefficient (%s)' % r1.name
-            dtmin0 = r0.dtmin
-            dtmin1 = r1.dtmin
         else: # same recording, split its trange in half
             start, end = r0.trange
-            dt = (end - start) / 2
-            dtmin = dt / 1e6 / 60
-            half = start + dt
-            tranges0 = [(start, half)]
-            tranges1 = [(half, end)]
+            mid = intround(start + r0.dt / 2)
+            tranges0 = [(start, mid)]
+            tranges1 = [(mid, end)]
             xlabel = 'correlation coefficient (%s, 1st half)' % r0.name
             ylabel = 'correlation coefficient (%s, 2nd half)' % r0.name
-            dtmin0, dtmin1 = dtmin
-        if nids == None: # get nids in common to both recordings
-            self.nids = r0.tr.get_nids([r0.id, r1.id])
-        else: # use intersection of nids and the self.nids specified in __init__
-            if self.nids == None:
-                self.nids = self.r.n.keys()
-            self.nids = np.intersect1d([self.nids, nids])
+        if nids == None:
+            if r0 != r1: # find nids active in both recordings
+                nids = tr.get_nids([r0.id, r1.id])
+            else: # same recording, find nids active during both tranges
+                nids0 = r0.get_nids(tranges0)
+                nids1 = r1.get_nids(tranges1)
+                nids = np.intersect1d(nids0, nids1)
 
-        # calculate corrs for both, constrained to tranges0 and tranges1
-        # respectively, and to the torus described by R:
-        self.calc()
-        cc1 = CodeCorr(recording=r1, tranges=tranges1, nids=self.nids,
+        # given the same nids, calculate corrs for both, constrained to tranges0
+        # and tranges1 respectively, and to the torus described by R:
+        cc0 = CodeCorr(recording=r0, tranges=tranges0, nids=nids,
                        R=self.R, shufflenids=self.shufflenids)
+        cc1 = CodeCorr(recording=r1, tranges=tranges1, nids=nids,
+                       R=self.R, shufflenids=self.shufflenids)
+        cc0.calc()
         cc1.calc()
-
-        ## TODO: finish this:
-        '''
+        # just to be sure:
+        if not (cc0.npairs == cc1.npairs and (cc0.pairis == cc1.pairis).all()):
+            import pdb; pdb.set_trace()
+            raise RuntimeError("cc0 and cc1 pairs don't match")
+        pairis = cc0.pairis
+        
         # color pairs according to whether they're superficial, deep, or neither:
-        nids = self.nids
-        n = self.r.n
         # y positions of all nids:
         ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
         deepis = ys >= ythresh # True values are deep, False are superficial
-        c = np.empty((self.npairs, 3), dtype=float) # color RGB array
-        c.fill([0.5, 0.5, 0.5]) # init to grey, pairs that straddle remain grey
+        c = np.empty((cc0.npairs, 3), dtype=float) # color RGB array
+        c.fill(hex2rgb(GREY)) # init to grey, pairs that straddle remain grey
         for i, pairi in enumerate(pairis):
             if deepis[pairi[0]] == deepis[pairi[1]]:
                 # pairs are on the same side of ythresh
                 if deepis[pairi[0]]: # pair are both deep
-                    c[i] = [0.0, 1.0, 0.0] # green
+                    c[i] = hex2rgb(GREEN)
                 else: # pair are both superficial
-                    c[i] = [1.0, 0.0, 0.0] # red
-        '''
+                    c[i] = hex2rgb(RED)
+        
         # create the scatter plot:
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        corrs0, corrs1 = self.corrs, cc1.corrs
+        corrs0, corrs1 = cc0.corrs, cc1.corrs
         lim = crange
         if crange == None:
             # fit to nearest 0.05 encompassing all corr values on both axes:
@@ -925,7 +929,7 @@ class CodeCorr(object):
             lim = minlim, maxlim
         a.plot(lim, lim, 'k-') # plot a y=x line
         a.hold(True)
-        a.scatter(corrs0, corrs1, s=40, marker='.', c='black')
+        a.scatter(corrs0, corrs1, marker='.', c=c, edgecolor='none', s=40)
         a.set_xlim(lim)
         a.set_ylim(lim)
         a.set_xlabel(xlabel)
@@ -941,11 +945,11 @@ class CodeCorr(object):
                            'minrate = %.2f Hz\n'
                            'nneurons = %d\n'
                            'npairs = %d\n'
-                           'dt0 = %d min\n'
-                           'dt1 = %d min'                           
+                           'r%s.dt = %d min\n'
+                           'r%s.dt = %d min'                           
                            % (uns['CODETRES']//1000, uns['CODEPHASE'], self.R, uns['MINRATE'],
-                              len(self.nids), self.npairs,
-                              intround(dtmin0), intround(dtmin1)),
+                              len(nids), cc0.npairs,
+                              r0.id, intround(r0.dtmin), r1.id, intround(r1.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='left',
                            verticalalignment='top')

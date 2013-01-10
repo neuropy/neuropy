@@ -87,6 +87,15 @@ class Track(object):
                 self.dtmin = self.dtsec / 60
                 self.dthour = self.dtmin / 60
 
+        # pttype better be the same for all member recordings:
+        pttype = self.r[rids[0]].pttype # init to pttype of first recording
+        for rid in rids:
+            r = self.r[rid]
+            if pttype != r.pttype:
+                raise ValueError("inconsistent polytrode types %r and %r in track %s"
+                                 % (pttype, r.pttype, self.id))
+        self.pttype = pttype
+
     def get_nids(self, rids=None):
         """Return nids of normal (active) neurons common to all recordings specified in
         rids. Otherwise, return all nids in all recordings. Active neurons in a recording
