@@ -788,6 +788,29 @@ class CodeCorr(object):
         self.f = f
         return self
 
+    def laminarity(self, nids, pairis, ythresh):
+        """Color pairs according to whether they're superficial, straddle, or deep"""
+        # y positions of all nids:
+        ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
+        supis = ys < ythresh # True values are superficial, False are deep
+        npairs = len(pairis)
+        c = np.empty((npairs, 3), dtype=float) # color RGB array
+        REDRGB = hex2rgb(RED)
+        GREENRGB = hex2rgb(GREEN)
+        BLUERGB = hex2rgb(BLUE)
+        c[:] = GREENRGB # init to GREEN, pairs that straddle remain GREEN
+        for i, pairi in enumerate(pairis):
+            if supis[pairi[0]] == supis[pairi[1]]:
+                # pairs are on the same side of ythresh
+                if supis[pairi[0]]: # pair are both superficial
+                    c[i] = REDRGB
+                else: # pair are both deep
+                    c[i] = BLUERGB
+        supfrac = (c == REDRGB).all(axis=1).sum() / npairs
+        stradfrac = (c == GREENRGB).all(axis=1).sum() / npairs
+        deepfrac = (c == BLUERGB).all(axis=1).sum() / npairs
+        return c, (supfrac, stradfrac, deepfrac)
+
     def sort(self, ythresh=600, figsize=(7.5, 6.5)):
         """Plot pair corrs in decreasing order. ythresh (um) is a simple threshold that
         seperates superficial layer pairs from deep layer pairs"""
@@ -799,24 +822,14 @@ class CodeCorr(object):
         corrs = corrs[sortis] # corrs in decreasing order
         pairis = self.pairis[sortis] # pairis in decreasing corrs order
 
-        # color pairs according to whether they're superficial, deep, or neither:
-        # y positions of all nids:
-        ys = np.array([ self.r.n[nid].pos[1] for nid in self.nids ])
-        deepis = ys >= ythresh # True values are deep, False are superficial
-        c = np.empty((self.npairs, 3), dtype=float) # color RGB array
-        c.fill(hex2rgb(GREY)) # init to grey, pairs that straddle remain grey
-        for i, pairi in enumerate(pairis):
-            if deepis[pairi[0]] == deepis[pairi[1]]:
-                # pairs are on the same side of ythresh
-                if deepis[pairi[0]]: # pair are both deep
-                    c[i] = hex2rgb(GREEN)
-                else: # pair are both superficial
-                    c[i] = hex2rgb(RED)
+        # color pairs according to whether they're superficial, straddle, or deep
+        c, (supfrac, stradfrac, deepfrac) = self.laminarity(self.nids, pairis, ythresh)
             
+        # plot horizontal line at y=0:
         a.scatter(np.arange(self.npairs), corrs, marker='.', c=c, edgecolor='none', s=40)
         a.set_xlim(left=-10)
-        # plot horizontal dashed line at y=0:
-        a.plot(a.get_xlim(), (0, 0), c=(0.5, 0.5, 0.5), linestyle='--', marker=None)
+        a.set_ylim(bottom=-0.05)
+        a.plot(a.get_xlim(), (0, 0), c=(0.5, 0.5, 0.5), linestyle='--', marker=None, zorder=-1)
         a.set_xlabel("pair index")
         a.set_ylabel("correlation coefficient")
         gcfm().window.setWindowTitle(lastcmd())
@@ -837,14 +850,24 @@ class CodeCorr(object):
                            'minrate = %.2f Hz\n'
                            'nneurons = %d\n'
                            'npairs = %d\n'
+                           'ythresh = %d\n'
                            'dt = %d min'
                            % (self.r.name, self.mean, self.median, self.stdev,
                               uns['CODETRES']//1000, uns['CODEPHASE'], self.R,
-                              uns['MINRATE'], len(self.nids), self.npairs,
+                              uns['MINRATE'], len(self.nids), self.npairs, ythresh,
                               intround(self.r.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='right',
                            verticalalignment='top')
+        # make proxy artists for legend:
+        r = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=RED)
+        g = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=GREEN)
+        b = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=BLUE)
+        # add legend to bottom left:
+        a.legend([r, g, b],
+                 ['superficial: %.2f' % supfrac, 'straddle: %.2f' % stradfrac,
+                  'deep: %.2f' % deepfrac], numpoints=1, loc=(0.0, 0.0), handlelength=1,
+                  labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
@@ -899,19 +922,8 @@ class CodeCorr(object):
             raise RuntimeError("cc0 and cc1 pairs don't match")
         pairis = cc0.pairis
         
-        # color pairs according to whether they're superficial, deep, or neither:
-        # y positions of all nids:
-        ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
-        deepis = ys >= ythresh # True values are deep, False are superficial
-        c = np.empty((cc0.npairs, 3), dtype=float) # color RGB array
-        c.fill(hex2rgb(GREY)) # init to grey, pairs that straddle remain grey
-        for i, pairi in enumerate(pairis):
-            if deepis[pairi[0]] == deepis[pairi[1]]:
-                # pairs are on the same side of ythresh
-                if deepis[pairi[0]]: # pair are both deep
-                    c[i] = hex2rgb(GREEN)
-                else: # pair are both superficial
-                    c[i] = hex2rgb(RED)
+        # color pairs according to whether they're superficial, straddle, or deep
+        c, (supfrac, stradfrac, deepfrac) = self.laminarity(nids, pairis, ythresh)
         
         # create the scatter plot:
         f = pl.figure(figsize=figsize)
@@ -927,8 +939,8 @@ class CodeCorr(object):
             minlim = min(xlim[0], ylim[0])
             maxlim = max(xlim[1], ylim[1])
             lim = minlim, maxlim
-        a.plot(lim, lim, 'k-') # plot a y=x line
-        a.hold(True)
+
+        a.plot(lim, lim, c=(0.5, 0.5, 0.5), linestyle='--', marker=None) # plot a y=x line
         a.scatter(corrs0, corrs1, marker='.', c=c, edgecolor='none', s=40)
         a.set_xlim(lim)
         a.set_ylim(lim)
@@ -945,10 +957,11 @@ class CodeCorr(object):
                            'minrate = %.2f Hz\n'
                            'nneurons = %d\n'
                            'npairs = %d\n'
+                           'sup, strad, deep = %.2f, %.2f, %.2f\n'
                            'r%s.dt = %d min\n'
                            'r%s.dt = %d min'                           
                            % (uns['CODETRES']//1000, uns['CODEPHASE'], self.R, uns['MINRATE'],
-                              len(nids), cc0.npairs,
+                              len(nids), cc0.npairs, supfrac, stradfrac, deepfrac,
                               r0.id, intround(r0.dtmin), r1.id, intround(r1.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='left',
