@@ -806,10 +806,10 @@ class CodeCorr(object):
                     c[i] = REDRGB
                 else: # pair are both deep
                     c[i] = BLUERGB
-        sup = intround((c == REDRGB).all(axis=1).sum() / npairs * 100)
-        strad = intround((c == GREENRGB).all(axis=1).sum() / npairs * 100)
-        deep = intround((c == BLUERGB).all(axis=1).sum() / npairs * 100)
-        return c, sup, strad, deep
+        supis, = np.where((c == REDRGB).all(axis=1))
+        stradis, = np.where((c == GREENRGB).all(axis=1))
+        deepis, = np.where((c == BLUERGB).all(axis=1))
+        return c, supis, stradis, deepis
 
     def sort(self, ythresh=600, figsize=(7.5, 6.5)):
         """Plot pair corrs in decreasing order. ythresh (um) is a simple threshold that
@@ -821,15 +821,20 @@ class CodeCorr(object):
         sortis = corrs.argsort()[::-1] # indices to get corrs in decreasing order
         corrs = corrs[sortis] # corrs in decreasing order
         pairis = self.pairis[sortis] # pairis in decreasing corrs order
+        npairs = len(pairis)
 
         # color pairs according to whether they're superficial, straddle, or deep
-        c, sup, strad, deep = self.laminarity(self.nids, pairis, ythresh)
-            
-        # plot horizontal line at y=0:
-        a.scatter(np.arange(self.npairs), corrs, marker='o', c=c, edgecolor='none', s=10)
+        c, supis, stradis, deepis = self.laminarity(self.nids, pairis, ythresh)
+        sup = intround(len(supis) / npairs * 100)
+        strad = intround(len(stradis) / npairs * 100)
+        deep = intround(len(deepis) / npairs * 100)
+
+        a.scatter(np.arange(self.npairs), corrs, marker='o', c=c, edgecolor='none',
+                  s=10, zorder=100)
         a.set_xlim(left=-10)
         a.set_ylim(bottom=-0.05)
-        a.plot(a.get_xlim(), (0, 0), c=(0.5, 0.5, 0.5), linestyle='--', marker=None, zorder=-1)
+        # underplot horizontal line at y=0:
+        a.plot(a.get_xlim(), (0, 0), c=(0.5, 0.5, 0.5), ls='--', marker=None)
         a.set_xlabel("pair index")
         a.set_ylabel("correlation coefficient")
         gcfm().window.setWindowTitle(lastcmd())
@@ -921,14 +926,21 @@ class CodeCorr(object):
             import pdb; pdb.set_trace()
             raise RuntimeError("cc0 and cc1 pairs don't match")
         pairis = cc0.pairis
+        npairs = len(pairis)
+        corrs0, corrs1 = cc0.corrs, cc1.corrs
         
         # color pairs according to whether they're superficial, straddle, or deep
-        c, sup, strad, deep = self.laminarity(nids, pairis, ythresh)
+        c, supis, stradis, deepis = self.laminarity(nids, pairis, ythresh)
+        sup = intround(len(supis) / npairs * 100)
+        strad = intround(len(stradis) / npairs * 100)
+        deep = intround(len(deepis) / npairs * 100)
+        supcorrs0, supcorrs1 = corrs0[supis], corrs1[supis]
+        stradcorrs0, stradcorrs1 = corrs0[stradis], corrs1[stradis]
+        deepcorrs0, deepcorrs1 = corrs0[deepis], corrs1[deepis]
         
         # create the scatter plot:
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        corrs0, corrs1 = cc0.corrs, cc1.corrs
         lim = crange
         if crange == None:
             # fit to nearest 0.05 encompassing all corr values on both axes:
@@ -940,8 +952,14 @@ class CodeCorr(object):
             maxlim = max(xlim[1], ylim[1])
             lim = minlim, maxlim
 
-        a.plot(lim, lim, c=(0.5, 0.5, 0.5), linestyle='--', marker=None) # plot a y=x line
-        a.scatter(corrs0, corrs1, marker='o', c=c, edgecolor='none', s=10)
+        a.plot(lim, lim, c=(0.5, 0.5, 0.5), ls='--', marker=None) # y=x line
+        a.errorbar(supcorrs0.mean(), supcorrs1.mean(),
+                   xerr=supcorrs0.std(), yerr=supcorrs1.std(), color=RED)
+        a.errorbar(stradcorrs0.mean(), stradcorrs1.mean(),
+                   xerr=stradcorrs0.std(), yerr=stradcorrs1.std(), color=GREEN)
+        a.errorbar(deepcorrs0.mean(), deepcorrs1.mean(),
+                   xerr=deepcorrs0.std(), yerr=deepcorrs1.std(), color=BLUE)
+        a.scatter(corrs0, corrs1, marker='o', c=c, edgecolor='none', s=10, zorder=100)
         a.set_xlim(lim)
         a.set_ylim(lim)
         a.set_xlabel(xlabel)
@@ -973,14 +991,88 @@ class CodeCorr(object):
         # add legend to top right:
         a.legend([r, g, b],
                  ['superficial: %d%%' % sup, 'straddle: %d%%' % strad, 'deep: %d%%' % deep],
-                 numpoints=1, loc='upper right',
+                 numpoints=1, loc='lower right',
                  handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
 
-## TODO: cc.sep(): corrs strength as a f'n of pair seperation
+    def sep(self, ythresh=600, figsize=(7.5, 6.5)):
+        """Plot correlation strength as a f'n of pair separation"""
+        self.calc()
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        nids = self.nids
+        corrs = self.corrs
+        pairis = self.pairis
+        npairs = len(pairis)
+        n = self.r.n
 
+        # color pairs according to whether they're superficial, straddle, or deep
+        c, supis, stradis, deepis = self.laminarity(self.nids, pairis, ythresh)
+        sup = intround(len(supis) / npairs * 100)
+        strad = intround(len(stradis) / npairs * 100)
+        deep = intround(len(deepis) / npairs * 100)
+        supcorrs = corrs[supis]
+        stradcorrs = corrs[stradis]
+        deepcorrs = corrs[deepis]
+
+        # pairwise separations:
+        seps = np.zeros(npairs)
+        for i, pairi in enumerate(pairis):
+            nid0, nid1 = nids[pairi[0]], nids[pairi[1]]
+            seps[i] = dist(n[nid0].pos, n[nid1].pos)
+        supseps = seps[supis]
+        stradseps = seps[stradis]
+        deepseps = seps[deepis]
+
+        a.errorbar(supseps.mean(), supcorrs.mean(),
+                   xerr=supseps.std(), yerr=supcorrs.std(), color=RED, ls='--')
+        a.errorbar(stradseps.mean(), stradcorrs.mean(),
+                   xerr=stradseps.std(), yerr=stradcorrs.std(), color=GREEN, ls='--')
+        a.errorbar(deepseps.mean(), deepcorrs.mean(),
+                   xerr=deepseps.std(), yerr=deepcorrs.std(), color=BLUE, ls='--')
+        a.scatter(seps, corrs, marker='o', c=c, edgecolor='none', s=10, zorder=100)
+        a.set_xlim(left=0)
+        xlim = a.get_xlim()
+        # underplot horizontal line at y=0:
+        a.plot(xlim, (0, 0), c=(0.5, 0.5, 0.5), ls='--', marker=None)
+        a.set_xlim(xlim) # in case plot() caused auto limits to expand a bit
+        a.set_xlabel("pair separation (um)")
+        a.set_ylabel("correlation coefficient")
+        gcfm().window.setWindowTitle(lastcmd())
+        titlestr = '%s' % lastcmd()
+        a.set_title(titlestr)
+        # add stuff to top right of plot:
+        uns = get_ipython().user_ns
+        a.text(0.99, 0.99, '%s\n'
+                           'tres = %d ms\n'
+                           'phase = %d deg\n'
+                           'R = %r um\n'
+                           'minrate = %.2f Hz\n'
+                           'nneurons = %d\n'
+                           'npairs = %d\n'
+                           'ythresh = %d um\n'
+                           'dt = %d min'
+                           % (self.r.name, uns['CODETRES']//1000, uns['CODEPHASE'], self.R,
+                              uns['MINRATE'], len(self.nids), npairs, ythresh,
+                              intround(self.r.dtmin)),
+                           transform = a.transAxes,
+                           horizontalalignment='right',
+                           verticalalignment='top')
+        # make proxy artists for legend:
+        r = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=RED)
+        g = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=GREEN)
+        b = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=BLUE)
+        # add legend to bottom left:
+        a.legend([r, g, b],
+                 ['superficial: %d%%' % sup, 'straddle: %d%%' % strad, 'deep: %d%%' % deep],
+                 numpoints=1, loc='upper center',
+                 handlelength=1, handletextpad=0.5, labelspacing=0.1)
+        f.tight_layout(pad=0.3) # crop figure to contents
+        self.f = f
+        return self
+        
 
 class NeuropyWindow(QtGui.QMainWindow):
     """Base class for all of neuropy's tool windows"""
@@ -1680,8 +1772,8 @@ def tolist(x):
         return [x] # stick it in a list
 
 def to2d(arr):
-    """Converts a 1D array to a 2D array with just a singleton row
-    If arr is already 2D, just returns it. If it's anything more than 2D, raises an error"""
+    """Convert a 1D array to a 2D array with just a singleton row. If arr is already
+    2D, just return it. If it's anything more than 2D, raise an error"""
     nd = arr.ndim
     assert nd in [1, 2], 'array rank > 2'
     if nd == 1:
@@ -1689,7 +1781,7 @@ def to2d(arr):
     return arr
 
 def joinpath(pathlist):
-    """Unlike os.path.join(), takes a list of path segments, returns them joined in a string
+    """Unlike os.path.join(), take a list of path segments, return them joined in a string
     with local separators"""
     path = ''
     for segment in pathlist:
@@ -1697,12 +1789,13 @@ def joinpath(pathlist):
     return path
 
 def dist(a, b):
-    """Returns the Euclidean distance between two coordinates.
-    Both a and b must be (x, y) tuples"""
-    return math.sqrt( (b[0]-a[0])**2 + (b[1]-a[1])**2 )
+    """Return the Euclidean distance between two N-dimensional coordinates"""
+    a = np.asarray(a)
+    b = np.asarray(b)
+    return np.sqrt(((a-b)**2).sum())
 
 def approx(a, b, rtol=1.e-14, atol=1.e-14):
-    """Returns a boolean array describing which components of a and b are equal
+    """Return a boolean array describing which components of a and b are equal
     subject to given tolerances. The relative error rtol must be positive and << 1.0
     The absolute error atol comes into play for those elements of y that are very
     small or zero; it says how small x must be also. Copied and modified from
@@ -1714,7 +1807,7 @@ def approx(a, b, rtol=1.e-14, atol=1.e-14):
     return np.less(np.absolute(x-y), atol + rtol * np.absolute(y))
 
 def histogram(a, bins=10, range=None, normed=False):
-    """Builds a histogram, stolen from numpy.histogram(), modified to allow
+    """Build a histogram, stolen from numpy.histogram(), modified to allow
     normed='pdf' or normed='pmf' (prob mass function)"""
     a = np.asarray(a).ravel()
     if not iterable(bins):
