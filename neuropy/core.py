@@ -806,10 +806,10 @@ class CodeCorr(object):
                     c[i] = REDRGB
                 else: # pair are both deep
                     c[i] = BLUERGB
-        supfrac = (c == REDRGB).all(axis=1).sum() / npairs
-        stradfrac = (c == GREENRGB).all(axis=1).sum() / npairs
-        deepfrac = (c == BLUERGB).all(axis=1).sum() / npairs
-        return c, (supfrac, stradfrac, deepfrac)
+        sup = intround((c == REDRGB).all(axis=1).sum() / npairs * 100)
+        strad = intround((c == GREENRGB).all(axis=1).sum() / npairs * 100)
+        deep = intround((c == BLUERGB).all(axis=1).sum() / npairs * 100)
+        return c, sup, strad, deep
 
     def sort(self, ythresh=600, figsize=(7.5, 6.5)):
         """Plot pair corrs in decreasing order. ythresh (um) is a simple threshold that
@@ -823,10 +823,10 @@ class CodeCorr(object):
         pairis = self.pairis[sortis] # pairis in decreasing corrs order
 
         # color pairs according to whether they're superficial, straddle, or deep
-        c, (supfrac, stradfrac, deepfrac) = self.laminarity(self.nids, pairis, ythresh)
+        c, sup, strad, deep = self.laminarity(self.nids, pairis, ythresh)
             
         # plot horizontal line at y=0:
-        a.scatter(np.arange(self.npairs), corrs, marker='.', c=c, edgecolor='none', s=40)
+        a.scatter(np.arange(self.npairs), corrs, marker='o', c=c, edgecolor='none', s=10)
         a.set_xlim(left=-10)
         a.set_ylim(bottom=-0.05)
         a.plot(a.get_xlim(), (0, 0), c=(0.5, 0.5, 0.5), linestyle='--', marker=None, zorder=-1)
@@ -850,7 +850,7 @@ class CodeCorr(object):
                            'minrate = %.2f Hz\n'
                            'nneurons = %d\n'
                            'npairs = %d\n'
-                           'ythresh = %d\n'
+                           'ythresh = %d um\n'
                            'dt = %d min'
                            % (self.r.name, self.mean, self.median, self.stdev,
                               uns['CODETRES']//1000, uns['CODEPHASE'], self.R,
@@ -865,9 +865,9 @@ class CodeCorr(object):
         b = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=BLUE)
         # add legend to bottom left:
         a.legend([r, g, b],
-                 ['superficial: %.2f' % supfrac, 'straddle: %.2f' % stradfrac,
-                  'deep: %.2f' % deepfrac], numpoints=1, loc=(0.0, 0.0), handlelength=1,
-                  labelspacing=0.1)
+                 ['superficial: %d%%' % sup, 'straddle: %d%%' % strad, 'deep: %d%%' % deep],
+                 numpoints=1, loc='upper center',
+                 handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
@@ -923,7 +923,7 @@ class CodeCorr(object):
         pairis = cc0.pairis
         
         # color pairs according to whether they're superficial, straddle, or deep
-        c, (supfrac, stradfrac, deepfrac) = self.laminarity(nids, pairis, ythresh)
+        c, sup, strad, deep = self.laminarity(nids, pairis, ythresh)
         
         # create the scatter plot:
         f = pl.figure(figsize=figsize)
@@ -941,7 +941,7 @@ class CodeCorr(object):
             lim = minlim, maxlim
 
         a.plot(lim, lim, c=(0.5, 0.5, 0.5), linestyle='--', marker=None) # plot a y=x line
-        a.scatter(corrs0, corrs1, marker='.', c=c, edgecolor='none', s=40)
+        a.scatter(corrs0, corrs1, marker='o', c=c, edgecolor='none', s=10)
         a.set_xlim(lim)
         a.set_ylim(lim)
         a.set_xlabel(xlabel)
@@ -957,15 +957,24 @@ class CodeCorr(object):
                            'minrate = %.2f Hz\n'
                            'nneurons = %d\n'
                            'npairs = %d\n'
-                           'sup, strad, deep = %.2f, %.2f, %.2f\n'
+                           'ythresh = %d um\n'
                            'r%s.dt = %d min\n'
                            'r%s.dt = %d min'                           
                            % (uns['CODETRES']//1000, uns['CODEPHASE'], self.R, uns['MINRATE'],
-                              len(nids), cc0.npairs, supfrac, stradfrac, deepfrac,
+                              len(nids), cc0.npairs, ythresh,
                               r0.id, intround(r0.dtmin), r1.id, intround(r1.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='left',
                            verticalalignment='top')
+        # make proxy artists for legend:
+        r = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=RED)
+        g = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=GREEN)
+        b = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=BLUE)
+        # add legend to top right:
+        a.legend([r, g, b],
+                 ['superficial: %d%%' % sup, 'straddle: %d%%' % strad, 'deep: %d%%' % deep],
+                 numpoints=1, loc='upper right',
+                 handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
