@@ -13,7 +13,7 @@ import matplotlib as mpl
 
 import core
 from core import (PopulationRaster, Codes, CodeCorr,
-                  rstrip, dictattr, warn, binarray2int)
+                  rstrip, dictattr, warn, binarray2int, nCrsamples, entropy_no_sing)
 from core import histogram, histogram2d, lastcmd, intround
 from core import TAB
 from experiment import Experiment
@@ -844,8 +844,8 @@ class NetstateI2vsIN(BaseNetstate):
         self.ngroups = ngroups
 
         self.nidss = nCrsamples(objects=self.neurons.keys(),
-                          r=self.N, # pick N neurons at random
-                          nsamples=self.ngroups) # do it ngroups times
+                                r=self.N, # pick N neurons at random
+                                nsamples=self.ngroups) # do it ngroups times
         I2s = []
         INs = []
         tres = get_ipython().user_ns['CODETRES']

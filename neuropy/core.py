@@ -953,12 +953,15 @@ class CodeCorr(object):
             lim = minlim, maxlim
 
         a.plot(lim, lim, c=(0.5, 0.5, 0.5), ls='--', marker=None) # y=x line
-        a.errorbar(supcorrs0.mean(), supcorrs1.mean(),
-                   xerr=supcorrs0.std(), yerr=supcorrs1.std(), color=RED)
-        a.errorbar(stradcorrs0.mean(), stradcorrs1.mean(),
-                   xerr=stradcorrs0.std(), yerr=stradcorrs1.std(), color=GREEN)
-        a.errorbar(deepcorrs0.mean(), deepcorrs1.mean(),
-                   xerr=deepcorrs0.std(), yerr=deepcorrs1.std(), color=BLUE)
+        if sup > 0:
+            a.errorbar(supcorrs0.mean(), supcorrs1.mean(),
+                       xerr=supcorrs0.std(), yerr=supcorrs1.std(), color=RED)
+        if strad > 0:
+            a.errorbar(stradcorrs0.mean(), stradcorrs1.mean(),
+                       xerr=stradcorrs0.std(), yerr=stradcorrs1.std(), color=GREEN)
+        if deep > 0:
+            a.errorbar(deepcorrs0.mean(), deepcorrs1.mean(),
+                       xerr=deepcorrs0.std(), yerr=deepcorrs1.std(), color=BLUE)
         a.scatter(corrs0, corrs1, marker='o', c=c, edgecolor='none', s=10, zorder=100)
         a.set_xlim(lim)
         a.set_ylim(lim)
@@ -1026,12 +1029,15 @@ class CodeCorr(object):
         stradseps = seps[stradis]
         deepseps = seps[deepis]
 
-        a.errorbar(supseps.mean(), supcorrs.mean(),
-                   xerr=supseps.std(), yerr=supcorrs.std(), color=RED, ls='--')
-        a.errorbar(stradseps.mean(), stradcorrs.mean(),
-                   xerr=stradseps.std(), yerr=stradcorrs.std(), color=GREEN, ls='--')
-        a.errorbar(deepseps.mean(), deepcorrs.mean(),
-                   xerr=deepseps.std(), yerr=deepcorrs.std(), color=BLUE, ls='--')
+        if sup > 0:
+            a.errorbar(supseps.mean(), supcorrs.mean(),
+                       xerr=supseps.std(), yerr=supcorrs.std(), color=RED, ls='--')
+        if strad > 0:
+            a.errorbar(stradseps.mean(), stradcorrs.mean(),
+                       xerr=stradseps.std(), yerr=stradcorrs.std(), color=GREEN, ls='--')
+        if deep > 0:
+            a.errorbar(deepseps.mean(), deepcorrs.mean(),
+                       xerr=deepseps.std(), yerr=deepcorrs.std(), color=BLUE, ls='--')
         a.scatter(seps, corrs, marker='o', c=c, edgecolor='none', s=10, zorder=100)
         a.set_xlim(left=0)
         xlim = a.get_xlim()

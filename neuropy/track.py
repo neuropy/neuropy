@@ -91,7 +91,9 @@ class Track(object):
         pttype = self.r[rids[0]].pttype # init to pttype of first recording
         for rid in rids:
             r = self.r[rid]
-            if pttype != r.pttype:
+            # if recording doesn't have a pttype, it's probably from an old .spk file,
+            # so don't bother doing this test:
+            if hasattr(r, 'pttype') and pttype != r.pttype:
                 raise ValueError("inconsistent polytrode types %r and %r in track %s"
                                  % (pttype, r.pttype, self.id))
         self.pttype = pttype

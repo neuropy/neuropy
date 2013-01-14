@@ -900,10 +900,10 @@ class NeuronRevCorr(BaseNeuron):
         if experiment == None: # no Experiment was passed, use the first experiment this Neuron was involved in
             experiment = self.sort.r.e[0]
         else:
-            try: # assume experiment is an Experiment id, get the associated object
+            if type(experiment) == int:
+                # assume experiment is an Experiment id, get the associated object
                 experiment = self.sort.r.e[experiment]
-            except KeyError: # experiment is probably an Experiment object
-                pass
+            # else: experiment is probably an Experiment object
         stao = STA(neuron=self, experiment=experiment, **kwargs) # init a new STA object
         for sta in self._stas:
             if stao == sta: # need to define special == method for RevCorr class
