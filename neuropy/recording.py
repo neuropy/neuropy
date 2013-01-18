@@ -278,17 +278,19 @@ class RecordingCode(BaseRecording):
         codes.calc()
         return codes
     codes.__doc__ += '\n\nCodes object:\n' + Codes.__doc__
-
+    '''
+    # unused
     def codecorr(self, nid1, nid2, tranges=None):
         """Calculate the correlation coefficient of the codes of two neurons"""
         code1 = self.n[nid1].code(tranges=tranges)
         code2 = self.n[nid2].code(tranges=tranges)
         return corrcoef(code1.c, code2.c)
-
-    def cc(self, tranges=None, experiments=None, nids=None, R=None, shufflenids=False):
+    '''
+    def cc(self, tranges=None, shift=0, experiments=None, nids=None,
+           R=None, shufflenids=False):
         """Return a CodeCorr object"""
-        cc = CodeCorr(recording=self, tranges=tranges, experiments=experiments, nids=nids,
-                      R=None, shufflenids=False)
+        cc = CodeCorr(recording=self, tranges=tranges, shift=shift, experiments=experiments,
+                      nids=nids, R=None, shufflenids=False)
         # run cc.calc() as late as possible, not here
         return cc
 

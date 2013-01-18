@@ -636,7 +636,7 @@ class CodeCorr(object):
     """Calculate and plot the correlations of the codes of all cell pairs (or of all
     cell pairs within some torus of radii R=(R0, R1) in um) in this Recording. See
     Schneidman2006 fig 1d"""
-    def __init__(self, recording=None, tranges=None, experiments=None, nids=None,
+    def __init__(self, recording=None, tranges=None, shift=0, experiments=None, nids=None,
                  R=None, shufflenids=False):
         self.r = recording
         if tranges != None:
@@ -654,6 +654,7 @@ class CodeCorr(object):
                 self.tranges = [ e.trange for e in self.e.values() ]
         else:
             self.tranges = [ self.r.trange ] # use the Recording's trange
+        self.shift = shift # how much to shift spike train of the second of each neuron pair
         self.nids = nids
         if R != None:
             assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
@@ -669,12 +670,12 @@ class CodeCorr(object):
         nneurons = len(nids)
         # it's more efficient to precalculate the means and stds of each cell's codetrain,
         # and then reuse them in calculating the correlation coefficients
-        # store each code mean in a dict:
-        means = dict( ( nid, self.r.n[nid].code(tranges=self.tranges).c.mean() )
-                        for nid in nids )
-        # store each code std in a dict:
-        stds = dict( ( nid, self.r.n[nid].code(tranges=self.tranges).c.std() )
-                       for nid in nids ) 
+        means = {} # store each code mean in a dict
+        stds = {} # store each code std in a dict
+        for nid in nids:
+            c = self.r.n[nid].code(self.tranges).c
+            means[nid] = c.mean()
+            stds[nid] = c.std()
         if self.shufflenids:
         # shuffled neuron ids, this is a control to see if it's the locality of neurons
         # included in the analysis, or the number of neurons included that's important. It
@@ -695,8 +696,9 @@ class CodeCorr(object):
                 if self.R == None or (self.R[0]
                                       < dist(self.r.n[sni0].pos, self.r.n[sni1].pos)
                                       < self.R[1]):
+                    # potentially shift only the second spike train of each pair:
                     c0 = self.r.n[ni0].code(tranges=self.tranges).c
-                    c1 = self.r.n[ni1].code(tranges=self.tranges).c
+                    c1 = self.r.n[ni1].code(tranges=self.tranges, shift=self.shift).c
                     # (mean of product - product of means) / by product of stds
                     denom = stds[ni0] * stds[ni1]
                     if denom == 0.0: # prevent div by 0

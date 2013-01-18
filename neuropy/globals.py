@@ -15,6 +15,7 @@ MINRATE = 0.05 # Hz
 
 """NeuronCode (Ising matrix) and network state parameters"""
 CODEKIND = 'binary'
+CODEVALS = [-1, 1] # values to use for CODEKIND codes
 CODETRES = 20000 # us
 CODEPHASE = 0 # deg
 CODEWORDLEN = 10 # in bits

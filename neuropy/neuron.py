@@ -5,6 +5,7 @@ from __future__ import division
 import os
 import StringIO
 import time
+import hashlib
 
 import numpy as np
 import pylab as pl
@@ -93,6 +94,8 @@ class BaseNeuron(object):
         *args can be: nothing (returns all spikes), None, tstart, or (tstart, tend)
         None and 0 for tstart are shorthand for 'from first spike'
         None and -1 for tend are shorthand for 'to last spike'"""
+        print("WARNING: Neuron.cut should be deprecated, use spikes.searchsorted "
+              "directly instead")
         tstart, tend = self._parse_cutargs(*args)
         '''
         # this is what we're trying to do:
@@ -111,13 +114,18 @@ class BaseNeuron(object):
 
     def cutrel(self, *args):
         """Cuts Neuron spike times and returns them relative to tstart"""
+        print("WARNING: Neuron.cutrel should be deprecated, use spikes.searchsorted "
+              "directly instead")
         tstart, tend = self._parse_cutargs(*args)
         cutspikes = self.cut(tstart, tend)
-        tstart = np.int64(round(tstart)) # let's keep all the returned spikes as integers, us is more than accurate enough
+        # let's keep all the returned spikes as integers, us is more than accurate enough
+        tstart = np.int64(round(tstart))
         return cutspikes - tstart
 
     def _parse_cutargs(self, *args):
         """Takes set of args as passed to cut or cutrel and returns (tstart, tend)"""
+        print("WARNING: Neuron._parse_cutargs should be deprecated, use spikes.searchsorted "
+              "directly instead")
         tstart = None
         tend = None
         if len(args) == 0: # passed nothing
@@ -138,9 +146,11 @@ class BaseNeuron(object):
             tend = args[1]
         else:
             raise ValueError('too many arguments')
-        if tstart in [None, 0]: # shorthand for "from first spike" - would be problematic if a spike existed at t=0
+        if tstart in [None, 0]:
+            # shorthand for "from first spike" - would be problematic if a spike existed at t=0
             tstart = self.spikes[0]
-        if tend in [None, -1]: # shorthand for "to last spike" - would be problematic if a spike existed at t=-1
+        if tend in [None, -1]:
+            # shorthand for "to last spike" - would be problematic if a spike existed at t=-1
             tend = self.spikes[-1]
         return (tstart, tend)
 
@@ -309,100 +319,99 @@ class NeuronXCorr(BaseNeuron):
     xcorr.__doc__ += '\n'+getargstr(XCorr.__init__)
 
 
-class BaseCode(object):
-    """Abstract spike code class. tranges is a list of time ranges to use
-    when generating the code"""
-    def __init__(self, neuron=None, tranges=None):
-        self.neuron = neuron
-        if tranges == None:
-            self.tranges = [ self.neuron.trange ]
-        else:
-            self.tranges = tolist(tranges)
-
-    def __eq__(self, other):
-        selfd = self.__dict__.copy()
-        otherd = other.__dict__.copy()
-        # Delete their c, t, and s attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
-        [ d.__delitem__(key) for d in [selfd, otherd] for key in ['c', 't', 's'] if d.has_key(key) ]
-        if type(self) == type(other) and selfd == otherd:
-            return True
-        else:
-            return False
-
-    def plot(self):
-        # plot some kind of long grid of white and black elements?
-        pass
-
-
-class BinaryCode(BaseCode):
-    """Quantizes the spike train, cut according to tranges, into a binary signal with a
-    given time resolution. phase in us specifies where to start the codetrain in time,
-    relative to the nearest multiple of tres before each trange. Phase is in degrees of a
-    single bin period. -ve phase is leading (codetrain starts earlier in time), +ve is
-    lagging (codetrain starts later in time)"""
-    def __init__(self, neuron=None, tranges=None):
-        super(BinaryCode, self).__init__(neuron=neuron, tranges=tranges)
+class BinaryCode(object):
+    """Quantizes a spike train, cut according to tranges in us, shifted by shift us,
+    into a binary signal with values CODEVALS and time resolution CODETRES in us.
+    CODEPHASE specifies where to start the codetrain in time, relative to the nearest
+    multiple of CODETRES before each trange. Phase is in degrees of a single bin period. -ve
+    phase is leading (codetrain starts earlier in time), +ve is lagging (codetrain starts
+    later in time)"""
+    def __init__(self, spikes=None, tranges=None, shift=0):
         uns = get_ipython().user_ns
         self.kind = 'binary'
+        self.spikes = spikes
+        if tranges == None:
+            tranges = [ self.neuron.trange ] # just the one full trange
+        self.tranges = tranges
+        self.shift = shift
+        self.codevals = uns['CODEVALS']
         self.tres = uns['CODETRES']
         self.phase = uns['CODEPHASE']
 
+    def get_hash(self):
+        """Return characteristic hash of everything that affects calc output"""
+        h = hashlib.md5()
+        for thing in [self.kind, self.spikes, self.tranges, self.shift,
+                      self.codevals, self.tres, self.phase]:
+            if type(thing) in [int, list]:
+                thing = np.asarray(thing) # ints and lists can't be hashed
+            h.update(thing)
+        return h.hexdigest()
+
+    hash = property(get_hash)
+
     def calc(self):
-        # set up empty arrays with correct dtypes (otherwise, when appending to them later,
-        # they'd default to float64s)
-        self.t = np.array([], dtype=np.int64)
-        self.s = np.array([], dtype=np.int64)
-        self.c = np.array([], dtype=np.int8)
+        self.t = [] # bin times
+        self.s = [] # relevant spike times, potentially shifted by self.shift
+        self.c = [] # code values for each bin
         for trange in self.tranges:
             # make the start of the timepoints be an even multiple of self.tres. Round down
             # to the nearest multiple. This way, timepoints will line up for different code
-            #objects. Finally, add phase offset relative to this.
+            # objects
             # left edge of first code bin:
-            tstart = trange[0] - (trange[0] % self.tres) + self.phase/360.0*self.tres
+            tstart = trange[0] - (trange[0] % self.tres)
+            if self.phase: # add phase offset relative to tstart
+                tstart += self.phase / 360.0 * self.tres
+            tstart = intround(tstart) # keep it int
+            tend = intround(trange[1]) # ditto
             # t sequence demarcates left bin edges, add extra tres to end to make t end
-            # inclusive, keep 'em in us integers
-            t = np.int64(np.round(np.arange(tstart, trange[1]+self.tres, self.tres)))
-            # spike times, cut over originally specified trange, not from start to end of
-            # newly generated code bin timepoints
-            s = self.neuron.cut(trange)
-            c = np.zeros(len(t), dtype=np.int8) # init binary code signal
+            # inclusive, keep 'em in us integers:
+            t = np.arange(tstart, tend+self.tres, self.tres) # should come out as int64
+            # get relevant spike times s, cut over originally specified trange, not from
+            # start to end of newly generated code bin timepoints:
+            lo, hi = self.spikes.searchsorted(trange)
+            s = self.spikes[lo:hi] + self.shift
+            c = np.empty(len(t), dtype=np.int8) # init binary code array
+            c[:] = self.codevals[0] # init code to low value
             # searchsorted returns indices where s fits into t. Sometimes more than one
             # spike will fit into the same time bin, which means searchsorted will return
             # multiple occurences of the same index. You can set c at these indices to 1 a
-            # multiple number of times, or prolly more efficient, do an np.unique on it to
+            # multiple number of times, or more efficiently, do an np.unique on it to
             # only set each index to 1 once.
             # dec index by 1 so that you get indices that point to the most recent bin edge.
-            # For each bin that has at least 1 spike in it, set its value to 1:
-            c[np.unique(t.searchsorted(s)) - 1] = 1
-            self.t = np.append(self.t, t) # save 'em
-            self.s = np.append(self.s, s)
-            self.c = np.append(self.c, c)
+            # For each bin that has at least 1 spike in it, set its value to high:
+            c[np.unique(t.searchsorted(s)) - 1] = self.codevals[1]
+            self.t.append(t)
+            self.s.append(s)
+            self.c.append(c)
+        # horizontally concatenate results from each trange:
+        self.t = np.hstack(self.t)
+        self.s = np.hstack(self.s)
+        self.c = np.hstack(self.c)
 
     def plot(self):
-        super(BinaryCode, self).plot()
-        pl.title('neuron %d - binary spike code' % self.neuron.id)
-
+        """Plot some kind of long grid of white and black elements?"""
+        raise NotImplementedError
+        
 
 class NeuronCode(BaseNeuron):
     """Mix-in class that defines the spike code related Neuron methods"""
-    def code(self, tranges=None):
-        """Returns an existing Code object, or creates a new one if necessary"""
+    def code(self, tranges=None, shift=0):
+        """Returns an existing Code object, or creates and calcs a new one if necessary"""
         try:
             self._codes
         except AttributeError: # self._codes doesn't exist yet
-            self._codes = [] # create a list that'll hold Code objects for this Neuron
+            self._codes = {} # create a dict that'll hold Code objects for this Neuron
         kind = get_ipython().user_ns['CODEKIND']
         if kind == 'binary': # init a new BinaryCode object
-            co = BinaryCode(neuron=self, tranges=tranges)
+            co = BinaryCode(self.spikes, tranges, shift)
         else:
             raise ValueError('Unknown kind: %r' % kind)
-        for code in self._codes:
-            if co == code: # need to define special == method for class Code()
-                # returns the first Code object whose attributes match what's desired.
-                # This saves on calc() time and avoids duplicates in self._codes:
-                return code
-        co.calc() # no matching Code was found, calculate it
-        self._codes.append(co) # add it to the Code object list
+        try:
+            co = self._codes[co.hash] # there's already one there that's been calc'd
+        except KeyError:
+            co.calc()
+            self._codes[co.hash] = co # add it to the Code dict
         return co
     code.__doc__ += '\n\nbinary:\n' + BinaryCode.__doc__
 
@@ -594,7 +603,8 @@ class RectRate(BaseRate):
 
 class RatePDF(object):
     """Firing rate probability distribution function"""
-    def __init__(self, neuron=None, rrange=(0, 200), nbins=100, scale='log', normed='pmf', **kwargs):
+    def __init__(self, neuron=None, rrange=(0, 200), nbins=100, scale='log', normed='pmf',
+                 **kwargs):
         # rrange == rate range, ie limits of pdf x axis; nbins == number of rate bins
         self.neuron = neuron
         self.rrange = rrange
@@ -606,8 +616,10 @@ class RatePDF(object):
     def __eq__(self, other):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
-        # Delete their n and r and logrrange attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
-        [ d.__delitem__(key) for d in [selfd, otherd] for key in ['n', 'r', 'logrrange'] if d.has_key(key) ]
+        # Delete their n and r and logrrange attribs, if they exist, to prevent comparing
+        # them below, since those attribs may not have yet been calculated
+        [ d.__delitem__(key) for d in [selfd, otherd] for key in ['n', 'r', 'logrrange']
+          if d.has_key(key) ]
         if type(self) == type(other) and selfd == otherd:
             return True
         else:
