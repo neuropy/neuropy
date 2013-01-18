@@ -111,13 +111,25 @@ class Track(object):
 
     def get_allnids(self, rids=None):
         """Return nids of all neurons (active and quiet) common to all recordings
-        specified in rids"""
+        specified in rids, ie return the intersection. If rids==None, return the union
+        of all nids in the track instead"""
         if rids == None:
             rids = self.r.keys() # all recording ids in self
             return np.unique(np.hstack([ self.r[rid].alln.keys() for rid in rids ]))
         else:
             allnids = [ self.r[rid].alln.keys() for rid in rids ]
             return core.intersect1d(allnids, assume_unique=True)
+
+    def get_alln(self, rids=None):
+        """Return all neurons (active and quiet) common to all recordings specified in rids,
+        with spike times relative to the start of the track"""
+        if rids == None:
+            rids = self.r.keys() # all recording ids in self
+        rids.sort()
+        # get the union of all nids in rids:
+        nids = np.unique(np.hstack([ self.r[rid].alln.keys() for rid in rids ]))
+        raise NotImplementedError('for now...')
+                        
 
     def get_nspikes(self, rids=None):
         """Return total number of spikes in recordings specified by rids"""

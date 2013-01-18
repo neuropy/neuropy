@@ -834,7 +834,7 @@ class CodeCorr(object):
         a.set_xlim(left=-10)
         a.set_ylim(bottom=-0.05)
         # underplot horizontal line at y=0:
-        a.plot(a.get_xlim(), (0, 0), c=(0.5, 0.5, 0.5), ls='--', marker=None)
+        a.axhline(y=0, c=(0.5, 0.5, 0.5), ls='--', marker=None)
         a.set_xlabel("pair index")
         a.set_ylabel("correlation coefficient")
         gcfm().window.setWindowTitle(lastcmd())
@@ -1040,10 +1040,8 @@ class CodeCorr(object):
                        xerr=deepseps.std(), yerr=deepcorrs.std(), color=BLUE, ls='--')
         a.scatter(seps, corrs, marker='o', c=c, edgecolor='none', s=10, zorder=100)
         a.set_xlim(left=0)
-        xlim = a.get_xlim()
         # underplot horizontal line at y=0:
-        a.plot(xlim, (0, 0), c=(0.5, 0.5, 0.5), ls='--', marker=None)
-        a.set_xlim(xlim) # in case plot() caused auto limits to expand a bit
+        a.axhline(y=0, c=(0.5, 0.5, 0.5), ls='--', marker=None)
         a.set_xlabel("pair separation (um)")
         a.set_ylabel("correlation coefficient")
         gcfm().window.setWindowTitle(lastcmd())
