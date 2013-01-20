@@ -836,7 +836,7 @@ class CodeCorr(object):
         a.set_xlim(left=-10)
         a.set_ylim(bottom=-0.05)
         # underplot horizontal line at y=0:
-        a.axhline(y=0, c=(0.5, 0.5, 0.5), ls='--', marker=None)
+        a.axhline(y=0, c='grey', ls='--', marker=None)
         a.set_xlabel("pair index")
         a.set_ylabel("correlation coefficient")
         gcfm().window.setWindowTitle(lastcmd())
@@ -954,7 +954,7 @@ class CodeCorr(object):
             maxlim = max(xlim[1], ylim[1])
             lim = minlim, maxlim
 
-        a.plot(lim, lim, c=(0.5, 0.5, 0.5), ls='--', marker=None) # y=x line
+        a.plot(lim, lim, c='grey', ls='--', marker=None) # y=x line
         if sup > 0:
             a.errorbar(supcorrs0.mean(), supcorrs1.mean(),
                        xerr=supcorrs0.std(), yerr=supcorrs1.std(), color=RED)
@@ -1043,7 +1043,7 @@ class CodeCorr(object):
         a.scatter(seps, corrs, marker='o', c=c, edgecolor='none', s=10, zorder=100)
         a.set_xlim(left=0)
         # underplot horizontal line at y=0:
-        a.axhline(y=0, c=(0.5, 0.5, 0.5), ls='--', marker=None)
+        a.axhline(y=0, c='grey', ls='--', marker=None)
         a.set_xlabel("pair separation (um)")
         a.set_ylabel("correlation coefficient")
         gcfm().window.setWindowTitle(lastcmd())
