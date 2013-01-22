@@ -633,9 +633,9 @@ class Codes(object):
     '''
     
 class CodeCorr(object):
-    """Calculate and plot the correlations of the codes of all cell pairs (or of all
-    cell pairs within some torus of radii R=(R0, R1) in um) in this Recording. See
-    Schneidman2006 fig 1d"""
+    """Calculate and plot the correlations of the codes of all cell pairs from nids (or of
+    all cell pairs within some torus of radii R=(R0, R1) in um) in this Recording, during
+    tranges or experiments. For each pair, shift the second spike train by shift ms."""
     def __init__(self, recording=None, tranges=None, shift=0, experiments=None, nids=None,
                  R=None, shufflenids=False):
         self.r = recording
@@ -654,7 +654,7 @@ class CodeCorr(object):
                 self.tranges = [ e.trange for e in self.e.values() ]
         else:
             self.tranges = [ self.r.trange ] # use the Recording's trange
-        self.shift = shift # how much to shift spike train of the second of each neuron pair
+        self.shift = shift # shift spike train of the second of each neuron pair, in ms
         self.nids = nids
         if R != None:
             assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus

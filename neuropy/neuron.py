@@ -320,7 +320,7 @@ class NeuronXCorr(BaseNeuron):
 
 
 class BinaryCode(object):
-    """Quantizes a spike train, cut according to tranges in us, shifted by shift us,
+    """Quantizes a spike train, cut according to tranges in us, shifted by shift ms,
     into a binary signal with values CODEVALS and time resolution CODETRES in us.
     CODEPHASE specifies where to start the codetrain in time, relative to the nearest
     multiple of CODETRES before each trange. Phase is in degrees of a single bin period. -ve
@@ -354,6 +354,7 @@ class BinaryCode(object):
         self.t = [] # bin times
         self.s = [] # relevant spike times, potentially shifted by self.shift
         self.c = [] # code values for each bin
+        shift = intround(self.shift * 1000) # convert self.shift in ms to int us
         for trange in self.tranges:
             # make the start of the timepoints be an even multiple of self.tres. Round down
             # to the nearest multiple. This way, timepoints will line up for different code
@@ -370,7 +371,7 @@ class BinaryCode(object):
             # get relevant spike times s, cut over originally specified trange, not from
             # start to end of newly generated code bin timepoints:
             lo, hi = self.spikes.searchsorted(trange)
-            s = self.spikes[lo:hi] + self.shift
+            s = self.spikes[lo:hi] + shift
             c = np.empty(len(t), dtype=np.int8) # init binary code array
             c[:] = self.codevals[0] # init code to low value
             # searchsorted returns indices where s fits into t. Sometimes more than one
