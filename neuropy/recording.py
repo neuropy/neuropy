@@ -286,11 +286,11 @@ class RecordingCode(BaseRecording):
         code2 = self.n[nid2].code(tranges=tranges)
         return corrcoef(code1.c, code2.c)
     '''
-    def cc(self, tranges=None, shift=0, experiments=None, nids=None,
+    def cc(self, tranges=None, shift=0, shiftcorrect=0, experiments=None, nids=None,
            R=None, shufflenids=False):
         """Return a CodeCorr object"""
-        cc = CodeCorr(recording=self, tranges=tranges, shift=shift, experiments=experiments,
-                      nids=nids, R=None, shufflenids=False)
+        cc = CodeCorr(recording=self, tranges=tranges, shift=shift, shiftcorrect=shiftcorrect,
+                      experiments=experiments, nids=nids, R=None, shufflenids=False)
         # run cc.calc() as late as possible, not here
         return cc
 

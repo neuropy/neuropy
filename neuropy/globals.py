@@ -15,7 +15,9 @@ MINRATE = 0.05 # Hz
 
 """NeuronCode (Ising matrix) and network state parameters"""
 CODEKIND = 'binary'
-CODEVALS = [-1, 1] # values to use for CODEKIND codes
+# values to use for CODEKIND codes, doesn't seem to make any difference to correlation
+# calcs, unless set to really extreme values like [-100s, 100s]
+CODEVALS = [0, 1]
 CODETRES = 20000 # us
 CODEPHASE = 0 # deg
 CODEWORDLEN = 10 # in bits

@@ -320,7 +320,7 @@ class NeuronXCorr(BaseNeuron):
 
 
 class BinaryCode(object):
-    """Quantizes a spike train, cut according to tranges in us, shifted by shift ms,
+    """Quantize a spike train, cut according to tranges in us, shifted by shift ms,
     into a binary signal with values CODEVALS and time resolution CODETRES in us.
     CODEPHASE specifies where to start the codetrain in time, relative to the nearest
     multiple of CODETRES before each trange. Phase is in degrees of a single bin period. -ve

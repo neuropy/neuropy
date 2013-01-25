@@ -156,7 +156,8 @@ class PTCSHeader(object):
              indexed by 0-based channel IDs)
         nsrcfnamebytes: uint64 (nbytes, keep as multiple of 8 for nice alignment)
         srcfname: nsrcfnamebytes of ASCII text
-            (source file name, probably .srf, padded with null bytes if needed for 8 byte alignment)
+            (source file name, probably .srf, padded with null bytes if needed for
+             8 byte alignment)
         datetime: float64
             (absolute datetime corresponding to t=0 us timestamp, stored as days since
              epoch: December 30, 1899 at 00:00)
@@ -635,9 +636,10 @@ class Codes(object):
 class CodeCorr(object):
     """Calculate and plot the correlations of the codes of all cell pairs from nids (or of
     all cell pairs within some torus of radii R=(R0, R1) in um) in this Recording, during
-    tranges or experiments. For each pair, shift the second spike train by shift ms."""
-    def __init__(self, recording=None, tranges=None, shift=0, experiments=None, nids=None,
-                 R=None, shufflenids=False):
+    tranges or experiments. For each pair, shift the second spike train by shift ms, or
+    shift it by shiftcorrect ms and subtract the correlation from the unshifted value."""
+    def __init__(self, recording=None, tranges=None, shift=0, shiftcorrect=0,
+                 experiments=None, nids=None, R=None, shufflenids=False):
         self.r = recording
         if tranges != None:
             self.tranges = tranges
@@ -655,6 +657,8 @@ class CodeCorr(object):
         else:
             self.tranges = [ self.r.trange ] # use the Recording's trange
         self.shift = shift # shift spike train of the second of each neuron pair, in ms
+        # shift correct spike train of the second of each neuron pair by this much, in ms
+        self.shiftcorrect = shiftcorrect
         self.nids = nids
         if R != None:
             assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
@@ -683,6 +687,9 @@ class CodeCorr(object):
             snids = shuffle(nids)
         else:
             snids = nids
+        shift, shiftcorrect = self.shift, self.shiftcorrect
+        if shift and shiftcorrect:
+            raise ValueError("only one of shift or shiftcorrect can be 0")
         pairis = []
         corrs = []
         for nii0 in range(nneurons):
@@ -698,13 +705,19 @@ class CodeCorr(object):
                                       < self.R[1]):
                     # potentially shift only the second spike train of each pair:
                     c0 = self.r.n[ni0].code(tranges=self.tranges).c
-                    c1 = self.r.n[ni1].code(tranges=self.tranges, shift=self.shift).c
+                    c1 = self.r.n[ni1].code(tranges=self.tranges, shift=shift).c
                     # (mean of product - product of means) / by product of stds
                     denom = stds[ni0] * stds[ni1]
                     if denom == 0.0: # prevent div by 0
                         print('skipped pair (%d, %d) in r%s' % (nii0, nii1, self.r.id))
                         continue # skip to next pair
                     cc = ((c0 * c1).mean() - means[ni0] * means[ni1]) / denom
+                    # potentially shift correct using only the second spike train of each pair:
+                    if shiftcorrect:
+                        c1sc = self.r.n[ni1].code(tranges=self.tranges, shift=shiftcorrect).c
+                        ccsc = ((c0 * c1sc).mean() - means[ni0] * means[ni1]) / denom
+                        ## TODO: might also want to try subtracting abs(ccsc)?
+                        cc -= ccsc
                     pairis.append([nii0, nii1])
                     corrs.append(cc)
         self.pairis = np.array(pairis) # indices into nids
