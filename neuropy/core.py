@@ -728,6 +728,63 @@ class CodeCorr(object):
         self.corrs = [ self.r.codecorr(nids[nii0], nids[nii1], tranges=self.tranges)
                        for nii0 in range(0,nneurons) for nii1 in range(nii0+1,nneurons) ]
         '''
+    def shifts(self, start=-2000, stop=2000, step=20, shiftcorrect=True, figsize=(7.5, 6.5)):
+        """Plot shift-corrected or just shifted median code correlation values of all cell
+        pairs as a function of shifts, from start to stop in steps of step ms"""
+        assert step > 0
+        if stop % step == 0:
+            stop += step # make stop end inclusive
+        assert start < stop
+        shifts = np.arange(start, stop, step) # shift values, in ms
+        medians = np.zeros(len(shifts))
+        for shifti, shift in enumerate(shifts):
+            # calculate corrs for each shift
+            if shiftcorrect:
+                self.shiftcorrect = shift
+            else:
+                self.shift = shift
+            self.calc()
+            medians[shifti] = np.median(self.corrs)
+            print '%d,' % shift, # no newline
+        print # newline
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        a.plot(shifts, medians, 'k-o', )
+        # underplot horizontal line at y=0:
+        a.axhline(y=0, c='grey', ls='--', marker=None)
+        if shiftcorrect:
+            a.set_xlabel("shift correction (ms)")
+            a.set_ylabel("median shift-corrected correlation coefficient")
+            pos = 0.99, 0.01 # put info text in bottom right
+            verticalalignment = 'bottom'
+        else:
+            a.set_xlabel("shift (ms)")
+            a.set_ylabel("median shifted correlation coefficient")
+            verticalalignment = 'top'
+            pos = 0.99, 0.99 # put info text in top right
+        gcfm().window.setWindowTitle(lastcmd())
+        titlestr = '%s' % lastcmd()
+        a.set_title(titlestr)
+        # add info text to top/bottom right of plot:
+        uns = get_ipython().user_ns
+        a.text(pos[0], pos[1], '%s\n'
+                               'tres = %d ms\n'
+                               'phase = %d deg\n'
+                               'R = %r um\n'
+                               'minrate = %.2f Hz\n'
+                               'nneurons = %d\n'
+                               'npairs = %d\n'
+                               'dt = %d min'
+                               % (self.r.name, uns['CODETRES']//1000, uns['CODEPHASE'],
+                                  self.R, uns['MINRATE'], len(self.nids), self.npairs,
+                                  intround(self.r.dtmin)),
+                               transform = a.transAxes,
+                               horizontalalignment='right',
+                               verticalalignment=verticalalignment)
+        f.tight_layout(pad=0.3) # crop figure to contents
+        self.f = f
+        return self
+
     def pdf(self, crange=[-0.05, 0.25], figsize=(7.5, 6.5), limitstats=True,
             nbins=30, normed='pdf'):
         """Plot PDF of corrs. If limitstats, the stats displayed exclude any corr values
