@@ -731,6 +731,8 @@ class CodeCorr(object):
     def shifts(self, start=-2000, stop=2000, step=20, shiftcorrect=True, figsize=(7.5, 6.5)):
         """Plot shift-corrected or just shifted median code correlation values of all cell
         pairs as a function of shifts, from start to stop in steps of step ms"""
+        ## TODO: overplot 4 lines as a f'n of shift instead of just 1: all, superficial,
+        ## deep and straddle
         assert step > 0
         if stop % step == 0:
             stop += step # make stop end inclusive
@@ -749,7 +751,7 @@ class CodeCorr(object):
         print # newline
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.plot(shifts, medians, 'k-o', )
+        a.plot(shifts, medians, 'k', marker='o', ms=3)
         # underplot horizontal line at y=0:
         a.axhline(y=0, c='grey', ls='--', marker=None)
         if shiftcorrect:

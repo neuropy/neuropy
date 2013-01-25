@@ -351,8 +351,9 @@ class BinaryCode(object):
     hash = property(get_hash)
 
     def calc(self):
-        self.t = [] # bin times
-        self.s = [] # relevant spike times, potentially shifted by self.shift
+        """.t and .s attribs are commented out to save substantial memory"""
+        #self.t = [] # bin times
+        #self.s = [] # relevant spike times, potentially shifted by self.shift
         self.c = [] # code values for each bin
         shift = intround(self.shift * 1000) # convert self.shift in ms to int us
         for trange in self.tranges:
@@ -382,13 +383,14 @@ class BinaryCode(object):
             # dec index by 1 so that you get indices that point to the most recent bin edge.
             # For each bin that has at least 1 spike in it, set its value to high:
             c[np.unique(t.searchsorted(s)) - 1] = self.codevals[1]
-            self.t.append(t)
-            self.s.append(s)
+            #self.t.append(t)
+            #self.s.append(s)
             self.c.append(c)
         # horizontally concatenate results from each trange:
-        self.t = np.hstack(self.t)
-        self.s = np.hstack(self.s)
+        #self.t = np.hstack(self.t)
+        #self.s = np.hstack(self.s)
         self.c = np.hstack(self.c)
+        del self.spikes # save memory
 
     def plot(self):
         """Plot some kind of long grid of white and black elements?"""
@@ -406,13 +408,14 @@ class NeuronCode(BaseNeuron):
         kind = get_ipython().user_ns['CODEKIND']
         if kind == 'binary': # init a new BinaryCode object
             co = BinaryCode(self.spikes, tranges, shift)
+            co_hash = co.hash
         else:
             raise ValueError('Unknown kind: %r' % kind)
         try:
-            co = self._codes[co.hash] # there's already one there that's been calc'd
+            co = self._codes[co_hash] # there's already one that's been calc'd
         except KeyError:
             co.calc()
-            self._codes[co.hash] = co # add it to the Code dict
+            self._codes[co_hash] = co # add it to the Code dict
         return co
     code.__doc__ += '\n\nbinary:\n' + BinaryCode.__doc__
 
