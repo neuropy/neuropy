@@ -751,7 +751,7 @@ class CodeCorr(object):
         print # newline
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.plot(shifts, medians, 'k', marker='o', ms=3)
+        a.plot(shifts, medians, 'k-o', ms=3)
         # underplot horizontal line at y=0:
         a.axhline(y=0, c='grey', ls='--', marker=None)
         if shiftcorrect:
