@@ -728,6 +728,31 @@ class CodeCorr(object):
         self.corrs = [ self.r.codecorr(nids[nii0], nids[nii1], tranges=self.tranges)
                        for nii0 in range(0,nneurons) for nii1 in range(nii0+1,nneurons) ]
         '''
+    def laminarity(self, nids, pairis):
+        """Color pairs according to whether they're superficial, straddle, or deep"""
+        # y positions of all nids:
+        ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
+        uns = get_ipython().user_ns
+        ythresh = uns['YTHRESH']
+        supis = ys < ythresh # True values are superficial, False are deep
+        npairs = len(pairis)
+        c = np.empty((npairs, 3), dtype=float) # color RGB array
+        REDRGB = hex2rgb(RED)
+        GREENRGB = hex2rgb(GREEN)
+        BLUERGB = hex2rgb(BLUE)
+        c[:] = GREENRGB # init to GREEN, pairs that straddle remain GREEN
+        for i, pairi in enumerate(pairis):
+            if supis[pairi[0]] == supis[pairi[1]]:
+                # pairs are on the same side of ythresh
+                if supis[pairi[0]]: # pair are both superficial
+                    c[i] = REDRGB
+                else: # pair are both deep
+                    c[i] = BLUERGB
+        supis, = np.where((c == REDRGB).all(axis=1))
+        stradis, = np.where((c == GREENRGB).all(axis=1))
+        deepis, = np.where((c == BLUERGB).all(axis=1))
+        return c, supis, stradis, deepis
+
     def shifts(self, start=-5000, stop=5000, step=50, shiftcorrect=True, figsize=(7.5, 6.5)):
         """Plot shift-corrected or just shifted median code correlation values of all cell
         pairs as a function of shifts, from start to stop in steps of step ms"""
@@ -872,31 +897,6 @@ class CodeCorr(object):
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
-
-    def laminarity(self, nids, pairis):
-        """Color pairs according to whether they're superficial, straddle, or deep"""
-        # y positions of all nids:
-        ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
-        uns = get_ipython().user_ns
-        ythresh = uns['YTHRESH']
-        supis = ys < ythresh # True values are superficial, False are deep
-        npairs = len(pairis)
-        c = np.empty((npairs, 3), dtype=float) # color RGB array
-        REDRGB = hex2rgb(RED)
-        GREENRGB = hex2rgb(GREEN)
-        BLUERGB = hex2rgb(BLUE)
-        c[:] = GREENRGB # init to GREEN, pairs that straddle remain GREEN
-        for i, pairi in enumerate(pairis):
-            if supis[pairi[0]] == supis[pairi[1]]:
-                # pairs are on the same side of ythresh
-                if supis[pairi[0]]: # pair are both superficial
-                    c[i] = REDRGB
-                else: # pair are both deep
-                    c[i] = BLUERGB
-        supis, = np.where((c == REDRGB).all(axis=1))
-        stradis, = np.where((c == GREENRGB).all(axis=1))
-        deepis, = np.where((c == BLUERGB).all(axis=1))
-        return c, supis, stradis, deepis
 
     def sort(self, figsize=(7.5, 6.5)):
         """Plot pair corrs in decreasing order"""
