@@ -776,10 +776,11 @@ class CodeCorr(object):
                                'minrate = %.2f Hz\n'
                                'nneurons = %d\n'
                                'npairs = %d\n'
+                               'ythresh = %d um\n'
                                'dt = %d min'
                                % (self.r.name, uns['CODETRES']//1000, uns['CODEPHASE'],
                                   self.R, uns['MINRATE'], len(self.nids), self.npairs,
-                                  intround(self.r.dtmin)),
+                                  ythresh, intround(self.r.dtmin)),
                                transform = a.transAxes,
                                horizontalalignment='right',
                                verticalalignment=verticalalignment)
@@ -885,9 +886,8 @@ class CodeCorr(object):
         deepis, = np.where((c == BLUERGB).all(axis=1))
         return c, supis, stradis, deepis
 
-    def sort(self, ythresh=600, figsize=(7.5, 6.5)):
-        """Plot pair corrs in decreasing order. ythresh (um) is a simple threshold that
-        seperates superficial layer pairs from deep layer pairs"""
+    def sort(self, ythresh=None, figsize=(7.5, 6.5)):
+        """Plot pair corrs in decreasing order"""
         self.calc()
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -898,6 +898,8 @@ class CodeCorr(object):
         npairs = len(pairis)
 
         # color pairs according to whether they're superficial, straddle, or deep
+        if ythresh == None:
+            ythresh = uns['YTHRESH'] # use global default
         c, supis, stradis, deepis = self.laminarity(self.nids, pairis, ythresh)
         sup = intround(len(supis) / npairs * 100)
         strad = intround(len(stradis) / npairs * 100)
@@ -951,13 +953,12 @@ class CodeCorr(object):
         self.f = f
         return self
 
-    def scat(self, otherrid, nids=None, ythresh=600,
+    def scat(self, otherrid, nids=None, ythresh=None,
              crange=[-0.05, 0.25], figsize=(7.5, 6.5)):
         """Scatter plot corrs of all cell pairs (or of all cell pairs
         within some torus of radii R=(R0, R1) in um) in this recording vs that of another
         recording. If the two recordings are the same, split it in half and scatter plot
-        first half against the second half. ythresh (um) is a simple threshold that
-        seperates superficial layer pairs from deep layer pairs"""
+        first half against the second half."""
         ## TODO: add interleave flag which generates a sufficiently interleaved, equally sized,
         ## non-overlapping set of tranges to scatter plot against each other, to eliminate
         ## temporal bias inherent in a simple split in time
@@ -1004,6 +1005,8 @@ class CodeCorr(object):
         corrs0, corrs1 = cc0.corrs, cc1.corrs
         
         # color pairs according to whether they're superficial, straddle, or deep
+        if ythresh == None:
+            ythresh = uns['YTHRESH'] # use global default
         c, supis, stradis, deepis = self.laminarity(nids, pairis, ythresh)
         sup = intround(len(supis) / npairs * 100)
         strad = intround(len(stradis) / npairs * 100)
@@ -1074,7 +1077,7 @@ class CodeCorr(object):
         self.f = f
         return self
 
-    def sep(self, ythresh=600, figsize=(7.5, 6.5)):
+    def sep(self, ythresh=None, figsize=(7.5, 6.5)):
         """Plot correlation strength as a f'n of pair separation"""
         self.calc()
         f = pl.figure(figsize=figsize)
@@ -1086,6 +1089,8 @@ class CodeCorr(object):
         n = self.r.n
 
         # color pairs according to whether they're superficial, straddle, or deep
+        if ythresh == None:
+            ythresh = uns['YTHRESH'] # use global default
         c, supis, stradis, deepis = self.laminarity(self.nids, pairis, ythresh)
         sup = intround(len(supis) / npairs * 100)
         strad = intround(len(stradis) / npairs * 100)

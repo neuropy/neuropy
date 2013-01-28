@@ -21,3 +21,6 @@ CODEVALS = [0, 1]
 CODETRES = 20000 # us
 CODEPHASE = 0 # deg
 CODEWORDLEN = 10 # in bits
+
+"""Threshold distance down vertical axis of probe separating superficial from deep cells"""
+YTHRESH = 600 # um
