@@ -728,8 +728,7 @@ class CodeCorr(object):
         self.corrs = [ self.r.codecorr(nids[nii0], nids[nii1], tranges=self.tranges)
                        for nii0 in range(0,nneurons) for nii1 in range(nii0+1,nneurons) ]
         '''
-    def shifts(self, start=-5000, stop=5000, step=50, shiftcorrect=True,
-               ythresh=None, figsize=(7.5, 6.5)):
+    def shifts(self, start=-5000, stop=5000, step=50, shiftcorrect=True, figsize=(7.5, 6.5)):
         """Plot shift-corrected or just shifted median code correlation values of all cell
         pairs as a function of shifts, from start to stop in steps of step ms"""
         assert step > 0
@@ -738,10 +737,8 @@ class CodeCorr(object):
         assert start < stop
         shifts = np.arange(start, stop, step) # shift values, in ms
         uns = get_ipython().user_ns
-        if ythresh == None:
-            ythresh = uns['YTHRESH'] # use global default
         self.calc() # run it once here to init self.nids and self.pairis
-        c, supis, stradis, deepis = self.laminarity(self.nids, self.pairis, ythresh)
+        c, supis, stradis, deepis = self.laminarity(self.nids, self.pairis)
         allmeds = np.zeros(len(shifts)) # medians of all pairs
         supmeds = np.zeros(len(shifts)) # medians of superficial pairs
         deepmeds = np.zeros(len(shifts)) # medians of deep pairs
@@ -781,6 +778,7 @@ class CodeCorr(object):
         titlestr = '%s' % lastcmd()
         a.set_title(titlestr)
         # add info text to top/bottom right of plot:
+        uns = get_ipython().user_ns
         a.text(pos[0], pos[1], '%s\n'
                                'tres = %d ms\n'
                                'phase = %d deg\n'
@@ -792,7 +790,7 @@ class CodeCorr(object):
                                'dt = %d min'
                                % (self.r.name, uns['CODETRES']//1000, uns['CODEPHASE'],
                                   self.R, uns['MINRATE'], len(self.nids), self.npairs,
-                                  ythresh, intround(self.r.dtmin)),
+                                  uns['YTHRESH'], intround(self.r.dtmin)),
                                transform = a.transAxes,
                                horizontalalignment='right',
                                verticalalignment=verticalalignment)
@@ -875,10 +873,12 @@ class CodeCorr(object):
         self.f = f
         return self
 
-    def laminarity(self, nids, pairis, ythresh):
+    def laminarity(self, nids, pairis):
         """Color pairs according to whether they're superficial, straddle, or deep"""
         # y positions of all nids:
         ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
+        uns = get_ipython().user_ns
+        ythresh = uns['YTHRESH']
         supis = ys < ythresh # True values are superficial, False are deep
         npairs = len(pairis)
         c = np.empty((npairs, 3), dtype=float) # color RGB array
@@ -898,7 +898,7 @@ class CodeCorr(object):
         deepis, = np.where((c == BLUERGB).all(axis=1))
         return c, supis, stradis, deepis
 
-    def sort(self, ythresh=None, figsize=(7.5, 6.5)):
+    def sort(self, figsize=(7.5, 6.5)):
         """Plot pair corrs in decreasing order"""
         self.calc()
         f = pl.figure(figsize=figsize)
@@ -910,9 +910,7 @@ class CodeCorr(object):
         npairs = len(pairis)
 
         # color pairs according to whether they're superficial, straddle, or deep
-        if ythresh == None:
-            ythresh = uns['YTHRESH'] # use global default
-        c, supis, stradis, deepis = self.laminarity(self.nids, pairis, ythresh)
+        c, supis, stradis, deepis = self.laminarity(self.nids, pairis)
         sup = intround(len(supis) / npairs * 100)
         strad = intround(len(stradis) / npairs * 100)
         deep = intround(len(deepis) / npairs * 100)
@@ -947,7 +945,7 @@ class CodeCorr(object):
                            'dt = %d min'
                            % (self.r.name, self.mean, self.median, self.stdev,
                               uns['CODETRES']//1000, uns['CODEPHASE'], self.R,
-                              uns['MINRATE'], len(self.nids), self.npairs, ythresh,
+                              uns['MINRATE'], len(self.nids), self.npairs, uns['YTHRESH'],
                               intround(self.r.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='right',
@@ -965,8 +963,7 @@ class CodeCorr(object):
         self.f = f
         return self
 
-    def scat(self, otherrid, nids=None, ythresh=None,
-             crange=[-0.05, 0.25], figsize=(7.5, 6.5)):
+    def scat(self, otherrid, nids=None, crange=[-0.05, 0.25], figsize=(7.5, 6.5)):
         """Scatter plot corrs of all cell pairs (or of all cell pairs
         within some torus of radii R=(R0, R1) in um) in this recording vs that of another
         recording. If the two recordings are the same, split it in half and scatter plot
@@ -1017,9 +1014,7 @@ class CodeCorr(object):
         corrs0, corrs1 = cc0.corrs, cc1.corrs
         
         # color pairs according to whether they're superficial, straddle, or deep
-        if ythresh == None:
-            ythresh = uns['YTHRESH'] # use global default
-        c, supis, stradis, deepis = self.laminarity(nids, pairis, ythresh)
+        c, supis, stradis, deepis = self.laminarity(nids, pairis)
         sup = intround(len(supis) / npairs * 100)
         strad = intround(len(stradis) / npairs * 100)
         deep = intround(len(deepis) / npairs * 100)
@@ -1071,7 +1066,7 @@ class CodeCorr(object):
                            'r%s.dt = %d min\n'
                            'r%s.dt = %d min'                           
                            % (uns['CODETRES']//1000, uns['CODEPHASE'], self.R, uns['MINRATE'],
-                              len(nids), cc0.npairs, ythresh,
+                              len(nids), cc0.npairs, uns['YTHRESH'],
                               r0.id, intround(r0.dtmin), r1.id, intround(r1.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='left',
@@ -1089,7 +1084,7 @@ class CodeCorr(object):
         self.f = f
         return self
 
-    def sep(self, ythresh=None, figsize=(7.5, 6.5)):
+    def sep(self, figsize=(7.5, 6.5)):
         """Plot correlation strength as a f'n of pair separation"""
         self.calc()
         f = pl.figure(figsize=figsize)
@@ -1101,9 +1096,7 @@ class CodeCorr(object):
         n = self.r.n
 
         # color pairs according to whether they're superficial, straddle, or deep
-        if ythresh == None:
-            ythresh = uns['YTHRESH'] # use global default
-        c, supis, stradis, deepis = self.laminarity(self.nids, pairis, ythresh)
+        c, supis, stradis, deepis = self.laminarity(self.nids, pairis)
         sup = intround(len(supis) / npairs * 100)
         strad = intround(len(stradis) / npairs * 100)
         deep = intround(len(deepis) / npairs * 100)
@@ -1150,7 +1143,7 @@ class CodeCorr(object):
                            'ythresh = %d um\n'
                            'dt = %d min'
                            % (self.r.name, uns['CODETRES']//1000, uns['CODEPHASE'], self.R,
-                              uns['MINRATE'], len(self.nids), npairs, ythresh,
+                              uns['MINRATE'], len(self.nids), npairs, uns['YTHRESH'],
                               intround(self.r.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='right',
