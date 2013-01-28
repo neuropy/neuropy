@@ -1,5 +1,9 @@
 TODO:
 
+- add ability to report nids of pairs for a given point in any of the cc() plots - tooltip? replace or augment the status bar printout on hover? Will presumably need to deal with MPL hover events, or at a more level, with qt4 hover events
+
+- copy xcorr code from spyke to neuropy, calculate average xcorr for sets of pairs
+
 - add mean, median and mode pairs (for indep and pairwise models) to NetstateDJSHist, as I have for CodeCorrPDFs. And/or, show differences between them for the two models. Problem is the legend is in the top right, so I have to position the text appropriately below it. Should really add other stuff like tres, phase, R, and minrate.
     - maybe do ngroups = 1000 for more confidence
 
@@ -254,4 +258,4 @@ Tuning curves:
 
 - call figure.tight_layout(pad=0.3) on all generated figures to reduce whitespace around edges, better to be nice and cropped when importing into latex docs
 - move CODEKIND, CODETRES, CODEPHASE, and CODEWORDLEN to globals, remove them as keywords everywhere else
-
+- add pair depth to cc.shifts plots

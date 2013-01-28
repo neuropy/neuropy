@@ -728,17 +728,24 @@ class CodeCorr(object):
         self.corrs = [ self.r.codecorr(nids[nii0], nids[nii1], tranges=self.tranges)
                        for nii0 in range(0,nneurons) for nii1 in range(nii0+1,nneurons) ]
         '''
-    def shifts(self, start=-2000, stop=2000, step=20, shiftcorrect=True, figsize=(7.5, 6.5)):
+    def shifts(self, start=-5000, stop=5000, step=50, shiftcorrect=True,
+               ythresh=None, figsize=(7.5, 6.5)):
         """Plot shift-corrected or just shifted median code correlation values of all cell
         pairs as a function of shifts, from start to stop in steps of step ms"""
-        ## TODO: overplot 4 lines as a f'n of shift instead of just 1: all, superficial,
-        ## deep and straddle
         assert step > 0
         if stop % step == 0:
             stop += step # make stop end inclusive
         assert start < stop
         shifts = np.arange(start, stop, step) # shift values, in ms
-        medians = np.zeros(len(shifts))
+        uns = get_ipython().user_ns
+        if ythresh == None:
+            ythresh = uns['YTHRESH'] # use global default
+        self.calc() # run it once here to init self.nids and self.pairis
+        c, supis, stradis, deepis = self.laminarity(self.nids, self.pairis, ythresh)
+        allmeds = np.zeros(len(shifts)) # medians of all pairs
+        supmeds = np.zeros(len(shifts)) # medians of superficial pairs
+        deepmeds = np.zeros(len(shifts)) # medians of deep pairs
+        stradmeds = np.zeros(len(shifts)) # medians of straddle pairs
         for shifti, shift in enumerate(shifts):
             # calculate corrs for each shift
             if shiftcorrect:
@@ -746,12 +753,18 @@ class CodeCorr(object):
             else:
                 self.shift = shift
             self.calc()
-            medians[shifti] = np.median(self.corrs)
+            allmeds[shifti] = np.median(self.corrs)
+            supmeds[shifti] = np.median(self.corrs[supis])
+            deepmeds[shifti] = np.median(self.corrs[deepis])
+            stradmeds[shifti] = np.median(self.corrs[stradis])
             print '%d,' % shift, # no newline
         print # newline
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.plot(shifts, medians, 'k-o', ms=3)
+        a.plot(shifts, allmeds, 'k-o', ms=3)
+        a.plot(shifts, supmeds, 'r-o', ms=3)
+        a.plot(shifts, deepmeds, 'b-o', ms=3)
+        a.plot(shifts, stradmeds, 'g-o', ms=3)
         # underplot horizontal line at y=0:
         a.axhline(y=0, c='grey', ls='--', marker=None)
         if shiftcorrect:
@@ -768,7 +781,6 @@ class CodeCorr(object):
         titlestr = '%s' % lastcmd()
         a.set_title(titlestr)
         # add info text to top/bottom right of plot:
-        uns = get_ipython().user_ns
         a.text(pos[0], pos[1], '%s\n'
                                'tres = %d ms\n'
                                'phase = %d deg\n'
