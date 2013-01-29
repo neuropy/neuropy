@@ -789,6 +789,7 @@ class CodeCorr(object):
         a.plot(shifts, deepmeds, 'b-o', mec='b', ms=3, label='deep')
         # underplot horizontal line at y=0:
         a.axhline(y=0, c='grey', ls='--', marker=None)
+        a.set_xlim(shifts[0], shifts[-1]) # override any MPL smarts
         if shiftcorrect:
             a.set_xlabel("shift correction (ms)")
             a.set_ylabel("median shift-corrected correlation coefficient")
