@@ -777,16 +777,16 @@ class CodeCorr(object):
             self.calc()
             allmeds[shifti] = np.median(self.corrs)
             supmeds[shifti] = np.median(self.corrs[supis])
-            deepmeds[shifti] = np.median(self.corrs[deepis])
             stradmeds[shifti] = np.median(self.corrs[stradis])
+            deepmeds[shifti] = np.median(self.corrs[deepis])
             print '%d,' % shift, # no newline
         print # newline
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.plot(shifts, allmeds, 'k-o', ms=3)
-        a.plot(shifts, supmeds, 'r-o', ms=3)
-        a.plot(shifts, deepmeds, 'b-o', ms=3)
-        a.plot(shifts, stradmeds, 'g-o', ms=3)
+        a.plot(shifts, allmeds, 'k-o', mec='k', ms=3, label='all')
+        a.plot(shifts, supmeds, 'r-o', mec='r', ms=3, label='superficial')
+        a.plot(shifts, stradmeds, 'g-o', mec='g', ms=3, label='straddle')
+        a.plot(shifts, deepmeds, 'b-o', mec='b', ms=3, label='deep')
         # underplot horizontal line at y=0:
         a.axhline(y=0, c='grey', ls='--', marker=None)
         if shiftcorrect:
@@ -794,11 +794,13 @@ class CodeCorr(object):
             a.set_ylabel("median shift-corrected correlation coefficient")
             pos = 0.99, 0.01 # put info text in bottom right
             verticalalignment = 'bottom'
+            legendloc = 'lower left'
         else:
             a.set_xlabel("shift (ms)")
             a.set_ylabel("median shifted correlation coefficient")
             verticalalignment = 'top'
             pos = 0.99, 0.99 # put info text in top right
+            legendloc = 'upper left'
         gcfm().window.setWindowTitle(lastcmd())
         titlestr = '%s' % lastcmd()
         a.set_title(titlestr)
@@ -819,6 +821,8 @@ class CodeCorr(object):
                                transform = a.transAxes,
                                horizontalalignment='right',
                                verticalalignment=verticalalignment)
+        # add legend:
+        a.legend(loc=legendloc, markerscale=2.0, handletextpad=0.5)
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
@@ -954,6 +958,7 @@ class CodeCorr(object):
         r = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc=RED)
         g = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc=GREEN)
         b = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc=BLUE)
+        # add legend:
         a.legend([r, g, b],
                  ['superficial: %d%%' % sup, 'straddle: %d%%' % strad, 'deep: %d%%' % deep],
                  numpoints=1, loc='upper center',
@@ -1074,7 +1079,7 @@ class CodeCorr(object):
         r = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=RED)
         g = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=GREEN)
         b = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=BLUE)
-        # add legend to top right:
+        # add legend:
         a.legend([r, g, b],
                  ['superficial: %d%%' % sup, 'straddle: %d%%' % strad, 'deep: %d%%' % deep],
                  numpoints=1, loc='lower right',
@@ -1151,7 +1156,7 @@ class CodeCorr(object):
         r = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=RED)
         g = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=GREEN)
         b = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=BLUE)
-        # add legend to bottom left:
+        # add legend:
         a.legend([r, g, b],
                  ['superficial: %d%%' % sup, 'straddle: %d%%' % strad, 'deep: %d%%' % deep],
                  numpoints=1, loc='upper center',
