@@ -772,6 +772,7 @@ class CodeCorr(object):
         uns = get_ipython().user_ns
         self.calc() # run it once here to init self.nids and self.pairis
         c, supis, stradis, deepis = self.laminarity(self.nids, self.pairis)
+        nsup, nstrad, ndeep = len(supis), len(stradis), len(deepis)
         allmeds = np.zeros(len(shifts)) # medians of all pairs
         supmeds = np.zeros(len(shifts)) # medians of superficial pairs
         deepmeds = np.zeros(len(shifts)) # medians of deep pairs
@@ -784,18 +785,19 @@ class CodeCorr(object):
                 self.shift = shift
             self.calc()
             allmeds[shifti] = np.median(self.corrs)
-            supmeds[shifti] = np.median(self.corrs[supis])
-            stradmeds[shifti] = np.median(self.corrs[stradis])
-            deepmeds[shifti] = np.median(self.corrs[deepis])
+            # check for empty *is, which raise FloatingPointErrors in np.median:
+            if nsup: supmeds[shifti] = np.median(self.corrs[supis])
+            if nstrad: stradmeds[shifti] = np.median(self.corrs[stradis])
+            if ndeep: deepmeds[shifti] = np.median(self.corrs[deepis])
             print '%d,' % shift, # no newline
         print # newline
         self.clear_codes() # free memory
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         a.plot(shifts, allmeds, 'k-o', mec='k', ms=3, label='all')
-        a.plot(shifts, supmeds, 'r-o', mec='r', ms=3, label='superficial')
-        a.plot(shifts, stradmeds, 'g-o', mec='g', ms=3, label='straddle')
-        a.plot(shifts, deepmeds, 'b-o', mec='b', ms=3, label='deep')
+        if nsup: a.plot(shifts, supmeds, 'r-o', mec='r', ms=3, label='superficial')
+        if nstrad: a.plot(shifts, stradmeds, 'g-o', mec='g', ms=3, label='straddle')
+        if ndeep: a.plot(shifts, deepmeds, 'b-o', mec='b', ms=3, label='deep')
         # underplot horizontal line at y=0:
         a.axhline(y=0, c='grey', ls='--', marker=None)
         a.set_xlim(shifts[0], shifts[-1]) # override any MPL smarts
