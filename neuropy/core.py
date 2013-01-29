@@ -951,10 +951,9 @@ class CodeCorr(object):
                            horizontalalignment='right',
                            verticalalignment='top')
         # make proxy artists for legend:
-        r = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=RED)
-        g = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=GREEN)
-        b = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=BLUE)
-        # add legend to bottom left:
+        r = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc=RED)
+        g = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc=GREEN)
+        b = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc=BLUE)
         a.legend([r, g, b],
                  ['superficial: %d%%' % sup, 'straddle: %d%%' % strad, 'deep: %d%%' % deep],
                  numpoints=1, loc='upper center',
