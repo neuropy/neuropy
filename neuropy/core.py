@@ -728,6 +728,14 @@ class CodeCorr(object):
         self.corrs = [ self.r.codecorr(nids[nii0], nids[nii1], tranges=self.tranges)
                        for nii0 in range(0,nneurons) for nii1 in range(nii0+1,nneurons) ]
         '''
+    def clear_codes(self):
+        """Delete all of recording's cached codes"""
+        for n in self.r.alln.values():
+            try:
+                del n._codes
+            except AttributeError:
+                pass
+
     def laminarity(self, nids, pairis):
         """Color pairs according to whether they're superficial, straddle, or deep"""
         # y positions of all nids:
@@ -781,6 +789,7 @@ class CodeCorr(object):
             deepmeds[shifti] = np.median(self.corrs[deepis])
             print '%d,' % shift, # no newline
         print # newline
+        self.clear_codes() # free memory
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         a.plot(shifts, allmeds, 'k-o', mec='k', ms=3, label='all')

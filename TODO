@@ -1,5 +1,7 @@
 TODO:
 
+- add File/Run dialog to choose a python file to run interactively with %run -i
+
 - add ability to report nids of pairs for a given point in any of the cc() plots - tooltip? replace or augment the status bar printout on hover? Will presumably need to deal with MPL hover events, or at a more level, with qt4 hover events
 
 - copy xcorr code from spyke to neuropy, calculate average xcorr for sets of pairs
