@@ -830,7 +830,7 @@ class CodeCorr(object):
                                % (self.r.name, uns['CODETRES']//1000, uns['CODEPHASE'],
                                   self.R, uns['MINRATE'], len(self.nids), self.npairs,
                                   uns['YTHRESH'], intround(self.r.dtmin)),
-                               transform = a.transAxes,
+                               transform=a.transAxes,
                                horizontalalignment='right',
                                verticalalignment=verticalalignment)
         # add legend:
@@ -889,7 +889,6 @@ class CodeCorr(object):
         else:
             a.set_ylabel('count')
         a.set_xlabel('correlation coefficient')
-        
         # add stuff to top right of plot:
         uns = get_ipython().user_ns
         a.text(0.99, 0.99, '%s\n'
