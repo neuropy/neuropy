@@ -461,9 +461,10 @@ class BinRate(BaseRate):
         # timepoints will line up for different code objects
         tstart = self.trange[0] - (self.trange[0] % self.tres)
         tend   = self.trange[1] - (self.trange[1] % self.tres)
-        t = np.arange( tstart, tend+self.tres, self.tres ) # t sequence demarcates left bin edges, add tres to trange[1] to make t end inclusive
+        # t sequence demarcates left bin edges, add tres to trange[1] to make t end inclusive:
+        t = np.arange(tstart, tend+self.tres, self.tres)
         s = self.neuron.cut(self.trange) # spike times
-        self.r, self.t = histogramSorted(self.neuron.spikes, bins=t) # assumes spikes are in chrono order
+        self.r, self.t = np.histogram(self.neuron.spikes, bins=t)
         self.r = self.r / float(self.tres) * 1000000 # spikes/sec
 
     def plot(self):
@@ -607,14 +608,14 @@ class RectRate(BaseRate):
 
 class RatePDF(object):
     """Firing rate probability distribution function"""
-    def __init__(self, neuron=None, rrange=(0, 200), nbins=100, scale='log', normed='pmf',
+    def __init__(self, neuron=None, rrange=(0, 200), nbins=100, scale='log', density=True,
                  **kwargs):
         # rrange == rate range, ie limits of pdf x axis; nbins == number of rate bins
         self.neuron = neuron
         self.rrange = rrange
         self.nbins = nbins
         self.scale = scale
-        self.normed = normed
+        self.density = density
         self.rate = neuron.rate(**kwargs) # returns a Rate object of some kind
 
     def __eq__(self, other):
@@ -643,7 +644,7 @@ class RatePDF(object):
             r = np.linspace(start=self.rrange[0], stop=self.rrange[1], num=self.nbins, endpoint=True)
         else:
             raise ValueError('unknown scale: %r' % scale)
-        self.n, self.r = histogram(self.rate.r, bins=r, normed=self.normed)
+        self.n, self.r = np.histogram(self.rate.r, bins=r, density=self.density)
 
     def plot(self):
         pl.figure()
@@ -657,15 +658,11 @@ class RatePDF(object):
             barwidth = (self.rrange[1]-self.rrange[0]) / float(self.nbins)
         else:
             raise ValueError('unknown scale: %r' % scale)
-        #hist(self.n, bins=self.r, normed=0, bottom=0, width=None, hold=False) # doesn't seem to work
         pl.bar(left=self.r, height=self.n, width=barwidth)
         pl.axes().set_xscale(self.scale, basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
         title('neuron %d - %s spike rate PDF' % (self.neuron.id, self.rate.kind))
-        if self.normed:
-            if self.normed == 'pmf': # it's a probability mass function
-                pl.ylabel('probability mass')
-            else: # it's a probability density function
-                pl.ylabel('probability density')
+        if self.density:
+            pl.ylabel('probability density')
         else:
             pl.ylabel('count')
         pl.xlabel('spike rate')

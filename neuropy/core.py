@@ -840,28 +840,28 @@ class CodeCorr(object):
         return self
 
     def pdf(self, crange=[-0.05, 0.25], figsize=(7.5, 6.5), limitstats=True,
-            nbins=30, normed='pdf'):
+            nbins=30, density=True):
         """Plot PDF of corrs. If limitstats, the stats displayed exclude any corr values
         that fall outside of crange"""
         self.calc()
         nbins = max(nbins, 2*intround(np.sqrt(self.npairs)))
         self.nbins = nbins
-        self.normed = normed
+        self.density = density
 
         # figure out the bin edges:
         if crange != None:
             bins = np.linspace(start=crange[0], stop=crange[1], num=self.nbins,
                                endpoint=True)
-        else: # let histogram() figure out the bin edges
+        else: # let np.histogram() figure out the bin edges
             bins = self.nbins
-        self.n, self.c = histogram(self.corrs, bins=bins, normed=self.normed)
+        self.n, self.c = np.histogram(self.corrs, bins=bins, density=density)
         binwidth = self.c[1] - self.c[0] # take width of first bin in self.c
 
         # self.n and self.c are the full values, potentially constrained n and c values
         # are what are reported and plotted:
         if limitstats:
             corrs = self.corrs[(self.corrs >= crange[0]) * (self.corrs <= crange[1])]
-            n, c = histogram(corrs, bins=bins, normed=self.normed)
+            n, c = np.histogram(corrs, bins=bins, density=density)
         else:
             corrs = self.corrs
             n = self.n
@@ -1909,247 +1909,19 @@ def approx(a, b, rtol=1.e-14, atol=1.e-14):
     #print y.shape
     return np.less(np.absolute(x-y), atol + rtol * np.absolute(y))
 
-def histogram(a, bins=10, range=None, normed=False):
-    """Build a histogram, stolen from numpy.histogram(), modified to allow
-    normed='pdf' or normed='pmf' (prob mass function)"""
-    a = np.asarray(a).ravel()
-    if not iterable(bins):
-        if range is None:
-            range = (a.min(), a.max())
-        mn, mx = [mi+0.0 for mi in range]
-        if mn == mx:
-            mn -= 0.5
-            mx += 0.5
-        bins = np.linspace(mn, mx, bins, endpoint=False)
-    n = np.sort(a).searchsorted(bins)
-    n = np.concatenate([n, [len(a)]])
-    n = n[1:]-n[:-1]
-    if normed:
-        if normed == 'pdf':
-            db = bins[1] - bins[0]
-            return 1.0/(a.size*db) * n, bins
-        elif normed == 'pmf':
-            return n/float(sum(n)), bins
-    else:
-        return n, bins
+def pmf(a, bins=10, range=None, weights=None):
+    """Return probability mass function of a, where sum of all bins is 1"""
+    n, bins = np.histogram(a, bins=bins, range=range, weights=weights, density=False)
+    n = n / float(sum(n)) # normalize by sum of bins to get pmf
+    return n, bins
 
-def histogramSorted(sorteda, bins=10, range=None, normed=False):
-    """Builds a histogram, stolen from numpy.histogram(), modified to assume
-    sorted input and to allow normed='pdf' or normed='pmf' (prob mass function)"""
-    a = np.asarray(sorteda).ravel()
-    if not iterable(bins):
-        if range is None:
-            range = (a.min(), a.max())
-        mn, mx = [mi+0.0 for mi in range]
-        if mn == mx:
-            mn -= 0.5
-            mx += 0.5
-        bins = np.linspace(mn, mx, bins, endpoint=False)
-    #n = np.sort(a).searchsorted(bins)
-    n = a.searchsorted(bins)
-    n = np.concatenate([n, [len(a)]]) # this adds a bin that includes overflow points
-    n = n[1:]-n[:-1] # subtracts a shifted version of itself
-    if normed:
-        if normed == 'pdf':
-            db = bins[1] - bins[0]
-            return 1.0/(a.size*db) * n, bins
-        elif normed == 'pmf':
-            return n/float(sum(n)), bins
-    else:
-        return n, bins
+def pmf2d(a, bins=10, range=None, weights=None):
+    """Return 2D probability mass function of a, where sum of all bins is 1"""
+    H, xedges, yedges = np.histogram2d(x, y, bins=bins, range=range, normed=False,
+                                       weights=weights)
+    H = H / float(sum(H)) # normalize by sum of bins to get pmf
+    return H, xedges, yedges
 
-def histogram2d(x, y, bins=10, range=None, normed=False):
-    """Compute the 2D histogram for a dataset (x,y) given the edges or
-    the number of bins.
-
-    Stolen from np.histogram2d() in numpy 1.0
-    Modified by mspacek to allow normed='pdf' or normed='pmf' (prob mass function)
-
-    histogram2d(x, y, bins=10, range=None, normed=False) -> H, xedges, yedges
-
-    Compute the 2D histogram from samples x,y.
-
-    Parameters
-    ----------
-    x,y: 1D data series. Both arrays must have the same length.
-    bins: Number of bins -or- [nbin x, nbin y] -or-
-         [bin edges] -or- [x bin edges, y bin edges].
-    range:  A sequence of lower and upper bin edges (default: [min, max]).
-    normed: True or False.
-
-    The histogram array is a count of the number of samples in each
-    two dimensional bin.
-    Setting normed to 'pdf' returns a density rather than a bin count.
-    """
-    try:
-        N = len(bins)
-    except TypeError:
-        N = 1
-        bins = [bins]
-    x = np.asarray(x)
-    y = np.asarray(y)
-    if range is None:
-        xmin, xmax = x.min(), x.max()
-        ymin, ymax = y.min(), y.max()
-    else:
-        xmin, xmax = range[0]
-        ymin, ymax = range[1]
-    if N == 2:
-        if np.isscalar(bins[0]):
-            xnbin = bins[0]
-            xedges = np.linspace(xmin, xmax, xnbin+1)
-        else:
-            xedges = np.asarray(bins[0], float)
-            xnbin = len(xedges)-1
-        if np.isscalar(bins[1]):
-            ynbin = bins[1]
-            yedges = np.linspace(ymin, ymax, ynbin+1)
-        else:
-            yedges = np.asarray(bins[1], float)
-            ynbin = len(yedges)-1
-    elif N == 1:
-        ynbin = xnbin = bins[0]
-        xedges = np.linspace(xmin, xmax, xnbin+1)
-        yedges = np.linspace(ymin, ymax, ynbin+1)
-    else:
-        yedges = np.asarray(bins, float)
-        xedges = yedges.copy()
-        ynbin = len(yedges)-1
-        xnbin = len(xedges)-1
-
-    dxedges = np.diff(xedges)
-    dyedges = np.diff(yedges)
-
-    # Flattened histogram matrix (1D)
-    hist = np.zeros((xnbin)*(ynbin), int)
-
-    # Count the number of sample in each bin (1D)
-    xbin = np.digitize(x, xedges)
-    ybin = np.digitize(y, yedges)
-
-    # Values that fall on an edge are put in the right bin.
-    # For the rightmost bin, we want values equal to the right
-    # edge to be counted in the last bin, and not as an outlier.
-    xdecimal = int(-np.log10(dxedges.min()))+6
-    ydecimal = int(-np.log10(dyedges.min()))+6
-    on_edge_x = np.where(np.around(x, xdecimal) == np.around(xedges[-1], xdecimal))[0]
-    on_edge_y = np.where(np.around(y, ydecimal) == np.around(yedges[-1], ydecimal))[0]
-    xbin[on_edge_x] -= 1
-    ybin[on_edge_y] -= 1
-    # Remove the true outliers
-    outliers = (xbin==0) | (xbin==xnbin+1) | (ybin==0) | (ybin==ynbin+1)
-    xbin = xbin[outliers==False] - 1
-    ybin = ybin[outliers==False] - 1
-
-    # Compute the sample indices in the flattened histogram matrix.
-    if xnbin >= ynbin:
-        xy = ybin*(xnbin) + xbin
-    else:
-        xy = xbin*(ynbin) + ybin
-
-    # Compute the number of repetitions in xy and assign it to the flattened
-    # histogram matrix.
-    flatcount = np.bincount(xy)
-    indices = np.arange(len(flatcount))
-    hist[indices] = flatcount
-
-    # Shape into a proper matrix
-    shape = np.sort([xnbin, ynbin])
-    histmat = hist.reshape(shape)
-    if (shape == (ynbin, xnbin)).all():
-        histmat = histmat.T
-
-    if normed:
-        if normed == 'pdf':
-            diff2 = np.outer(dxedges, dyedges)
-            histmat = histmat / diff2 / histmat.sum()
-        elif normed == 'pmf':
-            histmat = histmat / float(histmat.sum())
-        else:
-            raise ValueError('unknown normed value %s' % normed)
-    return histmat, xedges, yedges
-'''
-def histogram2dold(x, y, bins, normed=False):
-    """Compute the 2D histogram for a dataset (x,y) given the edges or
-    the number of bins. Stolen from np.histogram2d() (numpy 1.0b5), modified to allow
-    normed='pdf' or normed='pmf' (prob mass function)
-
-    NOTE: THIS HAS A SERIOUS BUG, IT FAILS TO TAKE THE TRANSPOSE AT ONE POINT, OR SOMETHING,
-    DON'T USE!!!!!!!!
-
-    Returns histogram, xedges, yedges.
-    The histogram array is a count of the number of samples in each bin.
-    The array is oriented such that H[i,j] is the number of samples falling
-        into binx[j] and biny[i].
-    Data falling outside of the edges are not counted.
-    """
-    try:
-        N = len(bins)
-    except TypeError:
-        N = 1
-        bins = [bins]
-    if N == 2:
-        if np.isscalar(bins[0]):
-            xnbin = bins[0]
-            xedges = np.linspace(x.min(), x.max(), xnbin+1)
-        else:
-            xedges = asarray(bins[0], float)
-            xnbin = len(xedges)-1
-        if np.isscalar(bins[1]):
-            ynbin = bins[1]
-            yedges = np.linspace(y.min(), y.max(), ynbin+1)
-        else:
-            yedges = asarray(bins[1], float)
-            ynbin = len(yedges)-1
-    elif N == 1:
-        ynbin = xnbin = bins[0]
-        xedges = np.linspace(x.min(), x.max(), xnbin+1)
-        yedges = np.linspace(y.max(), y.min(), ynbin+1)
-        xedges[-1] *= 1.0001
-        yedges[-1] *= 1.0001
-    else:
-        yedges = asarray(bins, float)
-        xedges = yedges.copy()
-        ynbin = len(yedges)-1
-        xnbin = len(xedges)-1
-
-    # Flattened histogram matrix (1D)
-    hist = np.zeros((xnbin)*(ynbin), int)
-
-    # Count the number of sample in each bin (1D)
-    xbin = np.digitize(x,xedges)
-    ybin = np.digitize(y,yedges)
-
-    # Remove the outliers
-    outliers = (xbin==0) | (xbin==xnbin+1) | (ybin==0) | (ybin == ynbin+1)
-
-    xbin = xbin[outliers==False]
-    ybin = ybin[outliers==False]
-
-    # Compute the sample indices in the flattened histogram matrix.
-    if xnbin >= ynbin:
-        xy = ybin*(xnbin) + xbin
-        shift = xnbin + 1
-    else:
-        xy = xbin*(ynbin) + ybin
-        shift = ynbin + 1
-
-    # Compute the number of repetitions in xy and assign it to the flattened
-    #  histogram matrix.
-    flatcount = np.bincount(xy)
-    indices = np.arange(len(flatcount)-shift)
-    hist[indices] = flatcount[shift:]
-
-    # Shape into a proper matrix
-    histmat = hist.reshape(xnbin, ynbin)
-
-    if normed == 'pdf':
-        diff2 = np.outer(np.diff(yedges), np.diff(xedges))
-        histmat = histmat / diff2 / histmat.sum()
-    elif normed == 'pmf':
-        histmat = histmat / float(histmat.sum())
-    return histmat, xedges, yedges
-'''
 def sah(t, y, ts, keep=False):
     """Resample using sample and hold. Returns resampled values at ts given the original
     points (t,y) such that the resampled values are just the most recent value in y (think
@@ -2622,21 +2394,21 @@ def MIbinarrays(Nbinarray=None, Mbinarray=None, verbose=False):
     # build up joint pdf of all the possible N words, and the two possible N+1th values
     # (0 and 1)
     # values 0 to 2**N - 1, plus 2**N which is needed as the rightmost bin edge for
-    # histogram2d (annoying):
+    # histogram2d:
     xedges = np.arange(2**N+1)
     yedges = np.arange(2**M+1)
     bins = [xedges, yedges]
     # generate joint pdf
-    jpdf, xedgesout, yedgesout = histogram2d(Nintcodes, Mintcodes, bins, normed='pmf')
+    jpdf, xedgesout, yedgesout = pmf2d(Nintcodes, Mintcodes, bins)
     #print 'jpdf\n', jpdf.__repr__()
     #print 'jpdf.sum()', jpdf.sum()
     assert (np.float64(xedges) == xedgesout).all() # sanity check
     assert (np.float64(yedges) == yedgesout).all()
     # pdf of N cells
-    #Npdf, Nedges = histogram(Nintcodes, bins=range(2**N), normed='pmf')
+    #Npdf, Nedges = pmf(Nintcodes, bins=range(2**N))
     #print 'first 100 Npdf\n', Npdf[:100].__repr__()
     # pdf of M cells
-    #Mpdf, Medges = histogram(Mintcodes, bins=range(2**M), normed='pmf')
+    #Mpdf, Medges = pmf(Mintcodes, bins=range(2**M))
     #print 'first 100 Mpdf\n', Mpdf[:100].__repr__()
     marginalMpdf = jpdf.sum(axis=0)
     # make sure what you get from the joint is what you get when just building up the

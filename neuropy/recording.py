@@ -12,9 +12,8 @@ from pylab import get_current_fig_manager as gcfm
 import matplotlib as mpl
 
 import core
-from core import (PopulationRaster, Codes, CodeCorr,
-                  rstrip, dictattr, warn, binarray2int, nCrsamples, entropy_no_sing)
-from core import histogram, histogram2d, lastcmd, intround
+from core import PopulationRaster, Codes, CodeCorr, binarray2int, nCrsamples, entropy_no_sing
+from core import lastcmd, intround, rstrip, dictattr, warn, pmf
 from core import TAB
 from experiment import Experiment
 from sort import Sort
@@ -172,7 +171,7 @@ class BaseRecording(object):
         dimi = {'x':0, 'y':1}[dim]
         p = [ n.pos[dimi] for n in self.n.values() ] # all y values
         nbins = max(nbins, 2*intround(np.sqrt(self.nneurons)))
-        n, p = histogram(p, bins=nbins)
+        n, p = np.histogram(p, bins=nbins)
         binwidth = p[1] - p[0] # take width of first bin in p
 
         if stats:
@@ -385,7 +384,7 @@ class BaseNetstate(object):
             nids = random.sample(self.cs.nids, uns['CODEWORDLEN'])
         intcodes = self.get_intcodes(nids=nids)
         nbits = len(nids)
-        p, bins = histogram(intcodes, bins=np.arange(2**nbits), normed='pmf')
+        p, bins = pmf(intcodes, bins=np.arange(2**nbits))
         return p, bins
 
     def intcodesFPDF(self, nids=None):
@@ -500,8 +499,8 @@ class NetstateIsingHist(BaseNetstate):
         # histogram them in linear space
         hibins  = np.linspace(start=hirange[0], stop=hirange[1], num=nbins, endpoint=True)
         Jijbins = np.linspace(start=Jijrange[0], stop=Jijrange[1], num=nbins, endpoint=True)
-        nhi  = histogram(self.his, bins=hibins, normed='pdf')[0]
-        nJij = histogram(self.Jijs, bins=Jijbins, normed='pdf')[0]
+        nhi  = np.histogram(self.his, bins=hibins, density=True)[0]
+        nJij = np.histogram(self.Jijs, bins=Jijbins, density=True)[0]
 
         # plot the hi histogram
         f1 = pl.figure()
@@ -553,7 +552,7 @@ class NetstateNspikingPMF(BaseNetstate):
         self.nspiking = {}
         self.pnspiking = {}
         self.bins = {}
-
+        bins = np.arange(self.nneurons+1)
         for shufflecodes in (False, True):
             self.words[shufflecodes] = self.get_intcodes(nids=self.nids,
                                                          shufflecodes=shufflecodes)
@@ -562,9 +561,9 @@ class NetstateNspikingPMF(BaseNetstate):
             # np.binary_repr() is a bit faster than using core.bin()
             self.nspiking[shufflecodes] = [ np.binary_repr(word).count('1')
                                             for word in self.words[shufflecodes] ]
+            # want all probs to add to 1, not their area, so use pmf:
             self.pnspiking[shufflecodes], self.bins[shufflecodes] = (
-                histogram(self.nspiking[shufflecodes], bins=np.arange(self.nneurons+1),
-                normed='pmf')) # want all probs to add to 1, not their area, so use pmf
+                pmf(self.nspiking[shufflecodes], bins=bins))
 
         assert (self.bins[False] == self.bins[True]).all() # paranoid, just checking
         # since they're identical, get rid of the dict and just keep one:
@@ -633,9 +632,8 @@ class NetstateScatter(BaseNetstate):
             self.nbits = min(len(self.nids), self.nbits) # make sure nbits isn't > len(nids)
 
         self.intcodes = self.get_intcodes(nids=self.nids, shufflecodes=self.shufflecodes)
-        self.pobserved, self.observedwords = histogram(self.intcodes,
-                                                       bins=np.arange(2**self.nbits),
-                                                       normed='pmf')
+        self.pobserved, self.observedwords = pmf(self.intcodes, bins=np.arange(2**self.nbits))
+
         if self.model == 'indep':
             # expected, assuming independence:
             self.pexpected, self.expectedwords = self.intcodesFPDF(nids=self.nids)
@@ -950,7 +948,7 @@ class NetstateDJSHist(BaseNetstate):
                         base=10.0)
         n = {} # stores a list of the bin heights in a separate key for each model
         for model in self.models:
-            n[model] = histogram(self.DJSs[model], bins=x, normed=False)[0]
+            n[model] = np.histogram(self.DJSs[model], bins=x, density=False)[0]
         color = {'indep': 'blue', 'ising': 'red'} # maps from model name to colour
         # each bar will have a different width, convert to list so you can append
         barwidths = list(np.diff(x))
@@ -1007,7 +1005,7 @@ class NetstateDJSHist(BaseNetstate):
             f2 = pl.figure()
             a2 = f2.add_subplot(111)
             # bin heights for the DJSratios
-            nratios = histogram(self.DJSratios, bins=x, normed=False)[0]
+            nratios = np.histogram(self.DJSratios, bins=x, density=False)[0]
             a2.bar(left=x, height=nratios, width=barwidths, color='g', edgecolor='g')
             # need to set scale of x axis AFTER bars have been plotted, otherwise
             # autoscale_view() call in bar() raises a ValueError for log scale
@@ -1249,7 +1247,7 @@ class NetstateNNplus1(BaseNetstate):
             notmaskedis = self.IdivS[ni].mask==False
 
             a1 = f.add_subplot(211) # axes with linear bins
-            heights, bins = histogram(self.IdivS[ni, notmaskedis], bins=arange(0, 1, 0.02))
+            heights, bins = np.histogram(self.IdivS[ni, notmaskedis], bins=arange(0, 1, 0.02))
             barwidth = bins[1]-bins[0]
             a1.bar(left=bins, height=heights, width=barwidth, bottom=0, color='k')
             #a1.set_xlabel('mutualinfo(N, N+1th) / entropy(N+1th)')
@@ -1260,7 +1258,7 @@ class NetstateNNplus1(BaseNetstate):
             start = log10(0.001)
             stop = log10(1)
             bins = np.logspace(start=start, stop=stop, num=50, endpoint=True, base=10.0)
-            heights, bins = histogram(self.IdivS[ni, notmaskedis], bins=bins)
+            heights, bins = np.histogram(self.IdivS[ni, notmaskedis], bins=bins)
             # each bar will have a different width, convert to list so you can append:
             barwidth = list(diff(bins))
             # need to add one more entry to barwidth to the end to get nbins of them:
@@ -1285,24 +1283,30 @@ class NetstateCheckcells(BaseNetstate):
         otherniis = nids2niis(othernids)
         nothers = len(othernids)
 
-        nicode = self.cs.c[nii] # 0s and 1s, this picks out the row in the binary code array that corresponds to ni
+        # 0s and 1s, this picks out the row in the binary code array that corresponds to ni:
+        nicode = self.cs.c[nii]
         othercodes = self.cs.c[otherniis]
         if shufflecodes:
             nicode = np.asarray(shuffle(nicode))
             othercodes = np.asarray(shuffle(othercodes))
         nothersactive = othercodes.sum(axis=0) # anywhere from 0 up to and including nothers
 
-        # build up joint pdf of the nicode and nothersactive
-        xedges = np.array([0, 1, 2]) # values 0 and 1, plus 2 which is needed as the rightmost bin edge for histogram2d (annoying)
-        yedges = np.arange(nothers+2) # anywhere from 0 up to and including nothers, plus nothers+1 as the rightmost bin edge
+        # build up joint pdf of the nicode and nothersactive:
+        xedges = np.array([0, 1, 2]) # 2 is needed as the rightmost bin edge for histogram2d
+        # anywhere from 0 up to and including nothers, plus nothers+1 as the
+        # rightmost bin edge:
+        yedges = np.arange(nothers+2)
         bins = [xedges, yedges]
-
-        jpdf, xedgesout, yedgesout = histogram2d(nicode, nothersactive, bins, normed=False) # generate joint pdf, nicode are in the rows, nothersactive are in the columns, leave it unnormalized, just counts
-
-        # now, normalize each column separately, so that say, for nothersactive==5, p(checkcell==0)+p(checkcell==1) == 1.0
+        # generate joint pdf, nicode are in the rows, nothersactive are in the columns,
+        # leave it unnormalized, just counts:
+        jpdf, xedgesout, yedgesout = np.histogram2d(nicode, nothersactive, bins,
+                                                    density=False)
+        # now, normalize each column separately, so that say, for nothersactive==5,
+        # p(checkcell==0)+p(checkcell==1) == 1.0
         jpdf = np.float64(jpdf) # convert to floats, updated entries are trunc'd to ints
         for coli in range(jpdf.shape[-1]):
-            jpdf[:, coli] = normalize(jpdf[:, coli]) # save the normalized column back to the jpdf
+            # save the normalized column back to the jpdf
+            jpdf[:, coli] = normalize(jpdf[:, coli])
         return jpdf
 
     def calc(self, nids=None, othernids=None, nothers=None, nsamples=10, shufflecodes=False):
@@ -1322,7 +1326,8 @@ class NetstateCheckcells(BaseNetstate):
             less = 0
             while nCr(len(self.othernids), len(self.othernids)-less) < nsamples:
                 less += 1
-            nothers = len(self.othernids) - 1 - less # -1 to remove ni, -less again to allow for at least nsamples combos of othernids
+            # -1 to remove ni, -less again to allow for at least nsamples combos of othernids:
+            nothers = len(self.othernids) - 1 - less
         self.N = np.arange(nothers+1)
 
         try: self.jpdfss
@@ -1339,18 +1344,22 @@ class NetstateCheckcells(BaseNetstate):
             except KeyError:
                 othernids = copy(self.othernids) # don't modify the original
                 try:
-                    othernids.remove(ni) # all the other possible nids, excluding the current ni
+                    # all the other possible nids, excluding the current ni
+                    othernids.remove(ni)
                 except ValueError: # ni isn't in othernids, nothing to remove
                     pass
-                othernidss = nCrsamples(objects=othernids, r=nothers, nsamples=nsamples) # get nsamples unique random samples of length nothers from othernids
+                # get nsamples unique random samples of length nothers from othernids:
+                othernidss = nCrsamples(objects=othernids, r=nothers, nsamples=nsamples)
                 jpdfs = []
                 for othernids in othernidss: # collect jpdfs across all random samples
                     jpdf = self._calc(ni=ni, othernids=othernids, shufflecodes=shufflecodes)
                     jpdfs.append(jpdf)
                 jpdfs = np.asarray(jpdfs) # this is an nsamples x 2 x (1+nothers) matrix
                 self.jpdfss[ni] = jpdfs
-                self.jpdfmeans[ni] = jpdfs.mean(axis=0) # find the mean jpdf across all nsamples jpdfs
-                self.jpdfstds[ni] = jpdfs.std(axis=0) # find the stdev across all nsamples jpdfs
+                # find the mean jpdf across all nsamples jpdfs:
+                self.jpdfmeans[ni] = jpdfs.mean(axis=0)
+                # find the stdev across all nsamples jpdfs:
+                self.jpdfstds[ni] = jpdfs.std(axis=0)
                 self.jpdfsems[ni] = self.jpdfstds[ni] / sqrt(nsamples)
         return self
 
@@ -1373,9 +1382,12 @@ class NetstateCheckcells(BaseNetstate):
             a.hold(True)
             # plot all the samples first
             for jpdf in self.jpdfss[ni]: # iter over the hyperrows
-                a.plot(self.N, jpdf[1], '_', markersize=4, color='grey') # marginal pdf of getting a 1 for the check cell
-            # plot the stdevs, means, and sems of marginal pdf of getting a 1 for the check cell
-            #a.errorbar(self.N, self.jpdfmeans[ni][1], yerr=self.jpdfstds[ni][1], fmt=None, capsize=0, ecolor='grey')
+                # marginal pdf of getting a 1 for the check cell:
+                a.plot(self.N, jpdf[1], '_', markersize=4, color='grey')
+            # plot the stdevs, means, and sems of marginal pdf of getting a 1 for the
+            # check cell:
+            #a.errorbar(self.N, self.jpdfmeans[ni][1], yerr=self.jpdfstds[ni][1],
+            #           fmt=None, capsize=0, ecolor='grey')
             a.errorbar(self.N, self.jpdfmeans[ni][1], yerr=self.jpdfsems[ni][1], fmt='k.-')
             a.set_ylim(ymin=0, ymax=1)
 
