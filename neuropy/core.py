@@ -249,7 +249,10 @@ class PTCSNeuronRecord(object):
         self.nwavedatabytes, self.wavedata = self.read_wave(f)
         self.nwavestdbytes, self.wavestd = self.read_wave(f)
         self.nspikes = int(np.fromfile(f, dtype=np.uint64, count=1)) # nspikes
-        self.spikes = np.fromfile(f, dtype=np.uint64, count=self.nspikes) # spike timestamps (us)
+        # spike timestamps (us):
+        self.spikes = np.fromfile(f, dtype=np.uint64, count=self.nspikes)
+        # convert from unsigned to signed int for calculating intervals:
+        self.spikes = np.asarray(self.spikes, dtype=np.int64)
 
     def read_wave(self, f):
         """Read wavedata/wavestd bytes"""
