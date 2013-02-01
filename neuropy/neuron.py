@@ -239,15 +239,17 @@ class BaseNeuron(object):
 
 
 class XCorr(object):
-    def __init__(self, n0, nid1, trange=(-50, 50)):
-        """Cross-correlation object. n0 is a Neuron, nid1 is a nid, trange is in ms"""
+    def __init__(self, n0, nid1, trange=50):
+        """Cross-correlation object. n0 is a Neuron, nid1 is a nid, +/- trange is in ms"""
         self.n0 = n0
         self.n1 = n0.sort.n[nid1]
-        self.trange = np.asarray(trange) * 1000 # convert from tuple of ms to array of us
+        trange = abs(trange) * 1000 # convert to us
+        self.trange = np.array([-trange, trange]) # convert to a +/- array, in us
 
     def calc(self):
         ## TODO: speed this up using spyke's util.xcorr() cython function
         dts = []
+        t0 = time.time()
         for spike in self.n0.spikes:
             # find where the trange around this n0 spike would fit in n1.spikes:
             trangei = self.n1.spikes.searchsorted(spike+self.trange)
@@ -255,34 +257,36 @@ class XCorr(object):
             # trange of this n0 spike:
             dt = self.n1.spikes[trangei[0]:trangei[1]] - spike
             dts.extend(dt)
+        print('xcorr calc took %.3f sec' % (time.time()-t0))
         self.dts = np.array(dts)
         return self
 
-    def plot(self, nbins=None, style=None, figsize=(6.5, 6.5)):
+    def plot(self, nbins=None, style=None, figsize=(7.5, 6.5)):
         """style can be 'rate', but defaults to count"""
         if nbins == None:
             nbins = intround(np.sqrt(len(self.dts))) # good heuristic
         nbins = max(20, nbins) # enforce min nbins
-        nbins = min(100, nbins) # enforce max nbins
+        nbins = min(200, nbins) # enforce max nbins
         t = np.linspace(start=self.trange[0], stop=self.trange[1], num=nbins, endpoint=True)
         assert t.dtype == float # assume this from here on
         n = np.histogram(self.dts, bins=t, density=False)[0]
         t /= 1000 # convert from us to ms
-        t = t[:-1] # keep just the left edges, discard the last right edge
         binwidth = t[1] - t[0] # all should be equal width
         if style == 'rate': # normalize by binwidth and convert to float:
             n = n / float(binwidth)
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.bar(left=t, height=n, width=binwidth)
-        gcfm().window.setWindowTitle(lastcmd())
+        a.bar(left=t[:-1], height=n, width=binwidth) # omit last right edge in t
+        title = lastcmd()
         #a.set_title('n%d spikes relative to n%d spikes' % (self.n1.id, self.n0.id))
-        a.set_title(lastcmd())
-        a.set_xlabel('time (msec)')
+        a.set_xlim(t[0], t[-1])
+        a.set_xlabel('ISI (ms)')
         if style == 'rate':
             a.set_ylabel('spike rate (Hz)')
         else:
             a.set_ylabel('bin count')
+        a.set_title(title)
+        gcfm().window.setWindowTitle(title)
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
@@ -290,8 +294,8 @@ class XCorr(object):
 
 class NeuronXCorr(BaseNeuron):
     """Mix-in class that defines the xcorr Neuron method"""
-    def xcorr(self, nid, trange=(-50, 50)):
-        """Return cross-correlation of self and other nid over trange in ms"""
+    def xcorr(self, nid, trange=50):
+        """Return cross-correlation of self and other nid over +/- trange in ms"""
         xco = XCorr(self, nid, trange=trange)
         xco.calc()
         return xco
