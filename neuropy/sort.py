@@ -12,8 +12,9 @@ from neuron import Neuron
 
 
 class Sort(object):
-    """A sort is a single spike extraction. Generally, sorts of the same name within
-    the same track were extracted in the same spike sorting session"""
+    """A sort is a single spike extraction. Generally, there is one sort per recording,
+    and sorts of the same name within the same track were extracted in the same spike
+    sorting session"""
     def __init__(self, path, id=None, recording=None):
         self.level = 4 # level in the hierarchy
         self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
@@ -34,7 +35,7 @@ class Sort(object):
     n = property(get_n)
 
     def get_qn(self):
-        """Return dict of (quiet) neurons, ie those that fail to meet MINRATE"""
+        """Return dict of quiet neurons, ie those that fail to meet MINRATE"""
         qn = {}
         MINRATE = get_ipython().user_ns['MINRATE']
         for neuron in self.alln.values():
@@ -101,3 +102,48 @@ class Sort(object):
             neuron = Neuron(path, sort=self)
             self.header.read(neuron)
             self.alln[neuron.id] = neuron # save it
+
+
+class TrackSort(object):
+    """A kind of fake sort that holds a concatenation of neurons from all of a track's
+    recordings. These neurons are stored as TrackNeurons"""
+    def __init__(self, track=None):
+        self.level = 3 # just below Track
+        self.path = track.path
+        self.id = track.id
+        self.tr = track
+        self.alln = {} # dict to store all Neurons
+        self.nspikes = None
+        datetime = None
+        pttype = None
+        chanpos = None
+
+    def get_n(self):
+        """Return dict of neurons that meet MINRATE"""
+        n = {}
+        MINRATE = get_ipython().user_ns['MINRATE']
+        for neuron in self.alln.values():
+            if neuron.meanrate >= MINRATE:
+                n[neuron.id] = neuron
+        return n
+
+    n = property(get_n)
+
+    def get_qn(self):
+        """Return dict of quiet neurons, ie those that fail to meet MINRATE"""
+        qn = {}
+        MINRATE = get_ipython().user_ns['MINRATE']
+        for neuron in self.alln.values():
+            if neuron.meanrate < MINRATE:
+                qn[neuron.id] = neuron
+        return qn
+
+    qn = property(get_qn)
+
+    nneurons = property(lambda self: len(self.n))
+    nqneurons = property(lambda self: len(self.qn))
+    nallneurons = property(lambda self: len(self.alln))
+
+    def load(self):
+        """Concatenate neurons from all recordings"""
+        pass
