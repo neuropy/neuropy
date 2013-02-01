@@ -12,6 +12,7 @@ import pylab as pl
 import core
 from core import dictattr, TAB, td2usec
 from recording import Recording
+from sort import TrackSort
 
 
 class Track(object):
@@ -74,7 +75,7 @@ class Track(object):
             self.__setattr__('r' + str(recording.id), recording) # add shortcut attrib
         self.rnames = dirnames # easy way to print out all recording names
 
-        rids = np.sort(self.r.keys()) # all recording ids in self
+        rids = sorted(self.r.keys()) # all recording ids in self
         if len(rids) > 0:
             # calculate total track duration, this is slightly different from what you get
             # from the source .srf files, because exact recording duration is not exported,
@@ -96,14 +97,29 @@ class Track(object):
             if hasattr(r, 'pttype') and pttype != r.pttype:
                 raise ValueError("inconsistent polytrode types %r and %r in track %s"
                                  % (pttype, r.pttype, self.id))
-        self.pttype = pttype
+
+        # create a TrackSort with TrackNeurons:
+        self.sort = TrackSort(self)
+        self.sort.load()
+
+    # shortcuts to various attribs and properties in default sort:
+    n = property(lambda self: self.sort.n)
+    qn = property(lambda self: self.sort.qn)
+    alln = property(lambda self: self.sort.alln)
+    nspikes = property(lambda self: self.sort.nspikes)
+    nneurons = property(lambda self: self.sort.nneurons)
+    nqneurons = property(lambda self: self.sort.nqneurons)
+    nallneurons = property(lambda self: self.sort.nallneurons)
+    datetime = property(lambda self: self.sort.datetime)
+    pttype = property(lambda self: self.sort.pttype)
+    chanpos = property(lambda self: self.sort.chanpos)
 
     def get_nids(self, rids=None):
-        """Return nids of normal (active) neurons common to all recordings specified in
-        rids. Otherwise, return all nids in all recordings. Active neurons in a recording
+        """Return nids of active neurons common to all recordings specified in rids.
+        Otherwise, return all active nids in all recordings. Active neurons in a recording
         are those with at least MINRATE mean spike rate during the recording"""
         if rids == None: # return all nids in all recordings
-            rids = self.r.keys()
+            rids = list(self.r.keys())
             return np.unique(np.hstack([ self.r[rid].n.keys() for rid in rids ]))
         else: # return intersection of nids of specified recordings
             nids = [ self.r[rid].n.keys() for rid in rids ]
@@ -114,29 +130,10 @@ class Track(object):
         specified in rids, ie return the intersection. If rids==None, return the union
         of all nids in the track instead"""
         if rids == None:
-            rids = self.r.keys() # all recording ids in self
-            return np.unique(np.hstack([ self.r[rid].alln.keys() for rid in rids ]))
+            return sorted(self.alln.keys())
         else:
             allnids = [ self.r[rid].alln.keys() for rid in rids ]
             return core.intersect1d(allnids, assume_unique=True)
-
-    def get_alln(self, rids=None):
-        """Return all neurons (active and quiet) common to all recordings specified in rids,
-        with spike times relative to the start of the track"""
-        if rids == None:
-            rids = self.r.keys() # all recording ids in self
-        rids.sort()
-        # get the union of all nids in rids:
-        nids = np.unique(np.hstack([ self.r[rid].alln.keys() for rid in rids ]))
-        raise NotImplementedError('for now...')
-                        
-
-    def get_nspikes(self, rids=None):
-        """Return total number of spikes in recordings specified by rids"""
-        if rids == None:
-            rids = self.r.keys() # all recording ids in self
-        nspikes = [ self.r[rid].nspikes for rid in rids ]
-        return sum(nspikes)
 
     def get_meanrates(self):
         """Return mean firing rates of all neurons across all recordings.
@@ -147,9 +144,6 @@ class Track(object):
             meanrates.append([n.meanrate for n in r.alln.values()])
         return np.hstack(meanrates)
 
-    allnids = property(get_allnids)
-    nallneurons = property(lambda self: len(self.allnids))
-    nspikes = property(get_nspikes)
     meanrates = property(get_meanrates)
 
     def meanratehist(self, bins=None):

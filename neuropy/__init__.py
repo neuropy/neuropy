@@ -6,11 +6,11 @@ r"""Experimental and model neuronal and stimulus data analysis in Python
 
                 Animal            1
                   |
-                Track             2
-                  |
-              Recording           3
-             /         \
-       Experiment      Sort       4
+                Track             2             Track
+                  |                               |
+              Recording           3           TrackSort
+             /         \                          |
+       Experiment      Sort       4          TrackNeuron
             |           |
       (Cat15Movie)    Neuron      5
 
