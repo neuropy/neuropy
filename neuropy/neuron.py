@@ -1077,6 +1077,14 @@ class Neuron(NeuronTune,
     """Inherit all the Neuron classes into a single Neuron class"""
     pass
 
+class TrackNeuron(NeuronRate,
+                  NeuronCode,
+                  NeuronXCorr,
+                  BaseNeuron):
+    """A neuron that spans all recordings in a track, and therefore can't have any
+    experiment-specific analyses"""
+    pass
+
 '''
 class ConstrainedNeuron(Neuron):
     """A Neuron with its spike times constrained to only those periods of
