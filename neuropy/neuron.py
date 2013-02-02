@@ -87,8 +87,11 @@ class BaseNeuron(object):
     def post_load(self):
         if self.nspikes == 0:
             raise RuntimeError('neuron %d in %s has no spikes' % (self.id, self.path))
-        ## TODO: maybe this should be inherited from parent sort or recording??:
         self.trange = self.spikes[0], self.spikes[-1]
+        self.dt = self.trange[1] - self.trange[0]
+        self.dtsec = self.dt / 1e6
+        self.dtmin = self.dtsec / 60
+        self.dthour = self.dtmin / 60
 
 
 class NeuronBasics(object):
