@@ -101,6 +101,12 @@ class Track(object):
         # create a TrackSort with TrackNeurons:
         self.sort = TrackSort(self)
         self.sort.load()
+        tranges = np.asarray([ n.trange for n in self.alln.values() ])
+        self.trange = min(tranges[:, 0]), max(tranges[:, 1])
+        self.dt = self.trange[1] - self.trange[0] # static, no need for a property
+        self.dtsec = self.dt / 1e6
+        self.dtmin = self.dtsec / 60
+        self.dthour = self.dtmin / 60
 
     # shortcuts to various attribs and properties in default sort:
     n = property(lambda self: self.sort.n)
