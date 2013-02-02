@@ -12,6 +12,12 @@ plot mean spike rate distributions for all the neurons in a given track. But, if
 reasonable looking DJS histogram withouth a lot of missing netstates, you need to exclude
 more low firing rate cells, 0.5 works better"""
 MINRATE = 0.05 # Hz
+"""calculate a TrackNeuron's meanrate according to its trange (period between its first and
+last spike), or according to its track's entire duration. Need to reload the track or call
+Track.calc_meanrates() after changing this on the fly"""
+TRACKNEURONPERIOD = 'track' # 'track' or 'trange'
+# ditto for recordings:
+RECNEURONPERIOD = 'recording' # 'recording' or 'trange'
 
 """NeuronCode (Ising matrix) and network state parameters"""
 CODEKIND = 'binary'

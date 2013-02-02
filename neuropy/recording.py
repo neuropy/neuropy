@@ -129,11 +129,47 @@ class BaseRecording(object):
         self.dt = self.trange[1] - self.trange[0] # static, no need for a property
         self.dtsec = self.dt / 1e6
         self.dtmin = self.dtsec / 60
-        # now that self.dtsec is known, calc static mean firing rate for each neuron
-        # in each sort:
-        for sort in self.sorts.values():
-            for neuron in sort.alln.values():
-                neuron.meanrate = neuron.nspikes / self.dtsec
+        self.dthour = self.dtmin / 60
+        self.calc_meanrates()
+
+    def calc_meanrates(self):
+        """Calculate mean firing rates of all neurons in this recording"""
+        RECNEURONPERIOD = get_ipython().user_ns['RECNEURONPERIOD']
+        if RECNEURONPERIOD == 'recording':
+            # calc n.meanrate using entire track duration:
+            for n in self.alln.values():
+                n.meanrate = n.nspikes / self.dtsec
+        elif RECNEURONPERIOD == 'trange':
+            # calc n.meanrate using duration between its first and last spike:
+            for n in self.alln.values():
+                if n.dtsec == 0:
+                    n.meanrate = 0.0
+                else:
+                    n.meanrate = n.nspikes / n.dtsec
+        else:
+            raise ValueError("invalid value for RECNEURONPERIOD: %r" % RECNEURONPERIOD)
+
+    def get_meanrates(self):
+        """Return mean firing rates of all neurons in this recording"""
+        return np.asarray([ n.meanrate for n in self.alln.values() ])
+
+    meanrates = property(get_meanrates)
+
+    def meanratehist(self, bins=None, figsize=(7.5, 6.5)):
+        """Plot histogram of mean firing rates"""
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        if bins == None:
+            bins = np.arange(0, 1, 0.05)
+        n, mr = np.histogram(self.meanrates, bins=bins, density=False)
+        binwidth = mr[1] - mr[0] # take width of first bin
+        a.bar(left=mr[:-1], height=n, width=binwidth, bottom=0, color='k', ec='k')
+        gcfm().window.setWindowTitle(lastcmd())
+        titlestr = '%s' % lastcmd()
+        a.set_title(titlestr)
+        a.set_xlabel('mean firing rate (Hz)')
+        a.set_ylabel('neuron count')
+        f.tight_layout(pad=0.3) # crop figure to contents
 
     def get_nids(self, tranges):
         """Find cells active in all tranges"""

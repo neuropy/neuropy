@@ -8,9 +8,10 @@ import StringIO
 import numpy as np
 
 import pylab as pl
+from pylab import get_current_fig_manager as gcfm
 
 import core
-from core import dictattr, TAB, td2usec
+from core import dictattr, TAB, td2usec, lastcmd
 from recording import Recording
 from sort import TrackSort
 
@@ -107,6 +108,46 @@ class Track(object):
         self.dtsec = self.dt / 1e6
         self.dtmin = self.dtsec / 60
         self.dthour = self.dtmin / 60
+        self.calc_meanrates()
+
+    def calc_meanrates(self):
+        """Calculate mean firing rates of all TrackNeurons in this track"""
+        TRACKNEURONPERIOD = get_ipython().user_ns['TRACKNEURONPERIOD']
+        if TRACKNEURONPERIOD == 'track':
+            # calc tn.meanrate using entire track duration:
+            for tn in self.alln.values():
+                tn.meanrate = tn.nspikes / self.dtsec
+        elif TRACKNEURONPERIOD == 'trange':
+            # calc tn.meanrate using duration between its first and last spike:
+            for tn in self.alln.values():
+                if tn.dtsec == 0:
+                    tn.meanrate = 0.0
+                else:
+                    tn.meanrate = tn.nspikes / tn.dtsec
+        else:
+            raise ValueError("invalid value for TRACKNEURONPERIOD: %r" % TRACKNEURONPERIOD)
+
+    def get_meanrates(self):
+        """Return mean firing rates of all TrackNeurons in this track"""
+        return np.asarray([ n.meanrate for n in self.alln.values() ])
+
+    meanrates = property(get_meanrates)
+
+    def meanratehist(self, bins=None, figsize=(7.5, 6.5)):
+        """Plot histogram of mean firing rates"""
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        if bins == None:
+            bins = np.arange(0, 1, 0.05)
+        n, mr = np.histogram(self.meanrates, bins=bins, density=False)
+        binwidth = mr[1] - mr[0] # take width of first bin
+        a.bar(left=mr[:-1], height=n, width=binwidth, bottom=0, color='k', ec='k')
+        gcfm().window.setWindowTitle(lastcmd())
+        titlestr = '%s' % lastcmd()
+        a.set_title(titlestr)
+        a.set_xlabel('mean firing rate (Hz)')
+        a.set_ylabel('neuron count')
+        f.tight_layout(pad=0.3) # crop figure to contents
 
     # shortcuts to various attribs and properties in default sort:
     n = property(lambda self: self.sort.n)
@@ -142,23 +183,6 @@ class Track(object):
         else:
             allnids = [ self.r[rid].alln.keys() for rid in rids ]
             return core.intersect1d(allnids, assume_unique=True)
-
-    def get_meanrates(self):
-        """Return mean firing rates of all neurons across all recordings.
-        Neurons are counted as many times as they have spikes in a given recording.
-        Maybe this should be weighted by the duration of each recording"""
-        meanrates = []
-        for r in self.r.values():
-            meanrates.append([n.meanrate for n in r.alln.values()])
-        return np.hstack(meanrates)
-
-    meanrates = property(get_meanrates)
-
-    def meanratehist(self, bins=None):
-        f = pl.figure()
-        if bins == None:
-            bins = np.arange(0, 1, 0.01)
-        pl.hist(self.meanrates, bins=bins)
 
     def pospdf(self, rids=None, dim='y', nbins=10, a=None, figsize=(7.5, 6.5)):
         """Plot PDF of cell positions ('x' or 'y') along the polytrode
