@@ -227,7 +227,7 @@ class XCorr(object):
         return self
 
 
-class NeuronXCorr(BaseNeuron):
+class NeuronXCorr(object):
     """Mix-in class that defines the xcorr Neuron method"""
     def xcorr(self, nid, trange=50):
         """Return cross-correlation of self and other nid over +/- trange in ms"""
@@ -314,7 +314,7 @@ class BinaryCode(object):
         raise NotImplementedError
         
 
-class NeuronCode(BaseNeuron):
+class NeuronCode(object):
     """Mix-in class that defines the spike code related Neuron methods"""
     def code(self, tranges=None, shift=0):
         """Returns an existing Code object, or creates and calcs a new one if necessary"""
@@ -585,7 +585,7 @@ class RatePDF(object):
         pl.xlabel('spike rate')
 
 
-class NeuronRate(BaseNeuron):
+class NeuronRate(object):
     """Mix-in class that defines the spike rate related Neuron methods"""
     def rate(self, kind='nisi', **kwargs):
         """Returns an existing Rate object, or creates a new one if necessary"""
@@ -819,7 +819,7 @@ class STC(RevCorr):
     plot.__doc__ = RevCorr.plot.__doc__
 
 
-class NeuronRevCorr(BaseNeuron):
+class NeuronRevCorr(object):
     """Mix-in class that defines the reverse correlation related Neuron methods"""
     def sta(self, experiment=None, **kwargs):
         """Returns an existing STA RevCorr object, or creates a new one if necessary"""
@@ -1013,13 +1013,14 @@ class Neuron(NeuronTune,
     """Inherit all the Neuron classes into a single Neuron class"""
     pass
 
+
 class TrackNeuron(NeuronRate,
                   NeuronCode,
                   NeuronXCorr,
                   NeuronBasics):
     """A neuron that spans all recordings in a track, and therefore can't have any
     experiment-specific analyses"""
-    def __init__(self, path, sort=None):
+    def __init__(self, sort):
         self.level = 4 # level in the hierarchy, just below TrackSort
-        self.path = path
+        self.path = sort.path
         self.sort = sort # a TrackSort
