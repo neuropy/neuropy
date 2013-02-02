@@ -89,7 +89,9 @@ class NeuropyWindow(QtGui.QMainWindow):
         # This seemed to be automatic (via the config?) in ipython 0.12.dev:
         ipyqtwidget.execute('get_ipython().magic("gui qt4")', hidden=True)
         ipyqtwidget.execute('get_ipython().magic("pylab")', hidden=True)
-
+        # this only half works, often the ipdb prompt won't respond. This is probably
+        # some multiprocess problem:
+        #ipyqtwidget.execute('get_ipython().call_pdb = True', hidden=True)
         ipyqtwidget.execute("from __future__ import division", hidden=True)
 
         ## TODO: this doesn't seem to work:
