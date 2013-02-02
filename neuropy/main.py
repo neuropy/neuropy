@@ -91,6 +91,15 @@ class NeuropyWindow(QtGui.QMainWindow):
         ipyqtwidget.execute('get_ipython().magic("pylab")', hidden=True)
 
         ipyqtwidget.execute("from __future__ import division", hidden=True)
+
+        ## TODO: this doesn't seem to work:
+        '''
+        # drop into IPython's debugger on any error:
+        ipyqtwidget.execute("import sys", hidden=False)
+        ipyqtwidget.execute("from IPython.core import ultratb", hidden=False)
+        ipyqtwidget.execute("sys.excepthook = ultratb.FormattedTB(mode='Verbose', call_pdb=1)",
+                            hidden=False)
+        '''
         # def cf() to close all figures:
         ipyqtwidget.execute("cf = lambda: pylab.close('all')", hidden=True)
         ipyqtwidget.execute('import pylab as pl', hidden=True)
