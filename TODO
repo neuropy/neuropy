@@ -2,6 +2,10 @@ TODO:
 
 - add File/Run dialog to choose a python file to run interactively with %run -i
 
+- replace all instances of dt* with td*. td is probably a better acronym for "time duration" than dt is for "duration". td might be mistaken for time delta, but that's not really any different from time duration
+
+- plot log firing rate distributions in meanratehist() plots
+
 - use new Ipython's new InProcessKernel to improve IPython integration - hopefully this will finally allow dropping into the ipython debugger in the qt widget on any error while running neuropy?
     - https://github.com/ipython/ipython/pull/2724
 
