@@ -6,9 +6,11 @@ import os
 import StringIO
 import datetime
 
+import numpy as np
+
 import core
-from core import dictattr, rstrip, eof, TAB, PTCSHeader, SPKHeader, EPOCH
-from neuron import Neuron
+from core import dictattr, rstrip, eof, TAB, PTCSHeader, SPKHeader, EPOCH, td2usec
+from neuron import Neuron, TrackNeuron
 
 
 class Sort(object):
@@ -108,7 +110,7 @@ class TrackSort(object):
     """A kind of fake sort that holds a concatenation of neurons from all of a track's
     recordings. These neurons are stored as TrackNeurons"""
     def __init__(self, track=None):
-        self.level = 3 # just below Track
+        self.level = 3 # level in the hierarchy, just below Track
         self.path = track.path
         self.id = track.id
         self.tr = track
@@ -145,5 +147,52 @@ class TrackSort(object):
     nallneurons = property(lambda self: len(self.alln))
 
     def load(self):
-        """Concatenate neurons from all recordings"""
-        pass
+        """Load TrackNeurons by concatenating spikes from neurons from all recordings"""
+        tr = self.tr
+        rids = sorted(tr.r.keys()) # all recording ids in tr
+        recs = [ tr.r[rid] for rid in rids ]
+        # copy some attribs from first sort, should be the same for all of them:
+        sort = recs[0].sort
+        dt0 = sort.datetime # start of acquisition (t=0) of first recording
+        self.datetime = sort.datetime
+        self.pttype = sort.pttype
+        self.chanpos = sort.chanpos
+        # get the union of all nids in recs:
+        nids = tr.get_allnids()
+        spikes = {}
+        for nid in nids:
+            spikes[nid] = [] # init each value to empty list
+        alln = {} # dict of first Neurons encountered across recordings
+        for rec in recs:
+            dt = td2usec(rec.sort.datetime - dt0) # in us
+            for n in rec.alln.values():
+                # for each neuron in this recordingm append appropriately offset spikes
+                # array to entry in spikes dict:
+                spikes[n.id].append(n.spikes + dt)
+                # for each nid, store the first neuron encountered when iterating over
+                # recordings;
+                if n.id not in alln:
+                    alln[n.id] = n
+
+        for nid in nids:
+            spikes[nid] = np.hstack(spikes[nid]) # concatenate each nid's spikes arrays:
+            assert (np.sort(spikes[nid]) == spikes[nid]).all() # should come out sorted
+            # replace Neuron with TrackNeuron:
+            n = alln[nid]
+            tn = TrackNeuron(self)
+            # point TrackNeuron attribs to relevant Neuron attribs, probably not copies:
+            tn.id = nid
+            tn.descr = n.descr
+            tn.pos = n.pos
+            tn.nchans = n.nchans
+            tn.maxchan = n.maxchan
+            tn.wavedata = n.wavedata
+            tn.wavestd = n.wavestd
+            # assign spikes
+            tn.spikes = spikes[nid]
+            ## TODO: do we need to set tn.trange here?
+            tn.nspikes = len(tn.spikes)
+            alln[nid] = tn # replace
+
+        self.alln = alln # save it
+        ## TODO: do we need to set self.trange here?
