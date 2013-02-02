@@ -130,7 +130,9 @@ class Track(object):
         specified in rids, ie return the intersection. If rids==None, return the union
         of all nids in the track instead"""
         if rids == None:
-            return sorted(self.alln.keys())
+            rids = sorted(self.r.keys())
+            allnids = np.hstack([ self.r[rid].alln.keys() for rid in rids ])
+            return np.unique(allnids)
         else:
             allnids = [ self.r[rid].alln.keys() for rid in rids ]
             return core.intersect1d(allnids, assume_unique=True)
