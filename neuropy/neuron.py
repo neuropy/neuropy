@@ -90,6 +90,9 @@ class BaseNeuron(object):
         ## TODO: maybe this should be inherited from parent sort or recording??:
         self.trange = self.spikes[0], self.spikes[-1]
 
+
+class NeuronBasics(object):
+    """Mix-in class that defines basic Neuron methods"""
     def cut(self, *args):
         """Returns a view of the Neuron's spike times where tstart <= spikes <= tend
         *args can be: nothing (returns all spikes), None, tstart, or (tstart, tend)
@@ -1005,6 +1008,7 @@ class Neuron(NeuronTune,
              NeuronRate,
              NeuronCode,
              NeuronXCorr,
+             NeuronBasics,
              BaseNeuron):
     """Inherit all the Neuron classes into a single Neuron class"""
     pass
@@ -1012,10 +1016,13 @@ class Neuron(NeuronTune,
 class TrackNeuron(NeuronRate,
                   NeuronCode,
                   NeuronXCorr,
-                  BaseNeuron):
+                  NeuronBasics):
     """A neuron that spans all recordings in a track, and therefore can't have any
     experiment-specific analyses"""
-    pass
+    def __init__(self, path, sort=None):
+        self.level = 4 # level in the hierarchy, just below TrackSort
+        self.path = path
+        self.sort = sort # a TrackSort
 
 '''
 class ConstrainedNeuron(Neuron):
