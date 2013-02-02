@@ -58,7 +58,6 @@ class Sort(object):
     pttype = property(lambda self: self.header.pttype)
     chanpos = property(lambda self: self.header.chanpos)
 
-
     def tree(self):
         """Print tree hierarchy"""
         print self.treebuf.getvalue(),
@@ -188,11 +187,15 @@ class TrackSort(object):
             tn.maxchan = n.maxchan
             tn.wavedata = n.wavedata
             tn.wavestd = n.wavestd
-            # assign spikes
+            # assign spikes and calc static attribs:
             tn.spikes = spikes[nid]
-            ## TODO: do we need to set tn.trange here?
             tn.nspikes = len(tn.spikes)
+            tn.trange = tn.spikes[0], tn.spikes[-1]
+            tn.dt = tn.trange[1] - tn.trange[0]
+            tn.dtsec = tn.dt / 1e6
+            tn.dtmin = tn.dtsec / 60
+            tn.dthour = tn.dtmin / 60
+            
             alln[nid] = tn # replace
 
         self.alln = alln # save it
-        ## TODO: do we need to set self.trange here?
