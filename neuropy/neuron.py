@@ -8,6 +8,10 @@ import time
 import hashlib
 
 import numpy as np
+import pyximport
+pyximport.install()
+import util # .pyx file
+
 import pylab as pl
 import matplotlib as mpl
 from pylab import get_current_fig_manager as gcfm
@@ -57,8 +61,7 @@ class BaseNeuron(object):
         """Write to self's tree buffer and to parent's too"""
         self.treebuf.write(string)
         self.sort.writetree(string)
-    '''
-    '''
+
     def load(self, f=None):
         #treestr = self.level*TAB + self.name + '/'
         # print string to tree hierarchy and screen
@@ -185,16 +188,8 @@ class XCorr(object):
         self.trange = np.array([-trange, trange]) # convert to a +/- array, in us
 
     def calc(self):
-        ## TODO: speed this up using spyke's util.xcorr() cython function
-        dts = []
         t0 = time.time()
-        for spike in self.n0.spikes:
-            # find where the trange around this n0 spike would fit in n1.spikes:
-            trangei = self.n1.spikes.searchsorted(spike+self.trange)
-            # find dt between this n0 spike and only those n1.spikes that are in
-            # trange of this n0 spike:
-            dt = self.n1.spikes[trangei[0]:trangei[1]] - spike
-            dts.extend(dt)
+        dts = util.xcorr(self.n0.spikes, self.n1.spikes, trange=self.trange) # in us
         print('xcorr calc took %.3f sec' % (time.time()-t0))
         self.dts = np.array(dts)
         return self

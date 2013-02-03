@@ -1,3 +1,4 @@
 *.pyc
+*.pyxbldc
 dist
 MANIFEST
