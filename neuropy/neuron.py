@@ -184,6 +184,7 @@ class XCorr(object):
         """Cross-correlation object. n0 is a Neuron, nid1 is a nid, +/- trange is in ms"""
         self.n0 = n0
         self.n1 = n0.sort.n[nid1]
+        self.autocorr = self.n0.id == self.n1.id
         trange = abs(trange) * 1000 # convert to us
         self.trange = np.array([-trange, trange]) # convert to a +/- array, in us
 
@@ -192,32 +193,34 @@ class XCorr(object):
         dts = util.xcorr(self.n0.spikes, self.n1.spikes, trange=self.trange) # in us
         print('xcorr calc took %.3f sec' % (time.time()-t0))
         self.dts = np.array(dts)
+        if self.autocorr:
+            self.dts = self.dts[self.dts != 0] # remove 0s for autocorr
         return self
 
-    def plot(self, nbins=None, style=None, figsize=(7.5, 6.5)):
+    def plot(self, nbins=None, rate=False, figsize=(7.5, 6.5)):
         """style can be 'rate', but defaults to count"""
         if nbins == None:
             nbins = intround(np.sqrt(len(self.dts))) # good heuristic
+        dts = self.dts / 1000 # in ms, converts to float64 array
+        trange = self.trange / 1000 # in ms, converts to float64 array
         nbins = max(20, nbins) # enforce min nbins
         nbins = min(200, nbins) # enforce max nbins
-        t = np.linspace(start=self.trange[0], stop=self.trange[1], num=nbins, endpoint=True)
-        assert t.dtype == float # assume this from here on
-        n = np.histogram(self.dts, bins=t, density=False)[0]
-        t /= 1000 # convert from us to ms
+        t = np.linspace(start=trange[0], stop=trange[1], num=nbins, endpoint=True)
+        n = np.histogram(dts, bins=t, density=False)[0]
         binwidth = t[1] - t[0] # all should be equal width
-        if style == 'rate': # normalize by binwidth and convert to float:
+        if rate: # normalize by binwidth and convert to float:
             n = n / float(binwidth)
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         a.bar(left=t[:-1], height=n, width=binwidth) # omit last right edge in t
-        title = lastcmd()
-        #a.set_title('n%d spikes relative to n%d spikes' % (self.n1.id, self.n0.id))
         a.set_xlim(t[0], t[-1])
         a.set_xlabel('ISI (ms)')
-        if style == 'rate':
+        if rate:
             a.set_ylabel('spike rate (Hz)')
         else:
-            a.set_ylabel('bin count')
+            a.set_ylabel('count')
+        #a.set_title('n%d spikes relative to n%d spikes' % (self.n1.id, self.n0.id))
+        title = lastcmd() + ', binwidth: %.2f ms' % binwidth
         a.set_title(title)
         gcfm().window.setWindowTitle(title)
         f.tight_layout(pad=0.3) # crop figure to contents
