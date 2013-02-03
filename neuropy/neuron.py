@@ -9,7 +9,7 @@ import hashlib
 
 import numpy as np
 import pyximport
-pyximport.install()
+pyximport.install(build_in_temp=False, inplace=True)
 import util # .pyx file
 
 import pylab as pl

@@ -1,4 +1,7 @@
 *.pyc
 *.pyxbldc
+*.so
 dist
 MANIFEST
+/neuropy/util.c
+/neuropy/util.html

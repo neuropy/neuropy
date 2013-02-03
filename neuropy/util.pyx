@@ -1,11 +1,11 @@
 """Some functions written in Cython for max performance"""
 
 cimport cython
-from cython.parallel import prange#, parallel
+#from cython.parallel import prange#, parallel
 import numpy as np
 cimport numpy as np
 
-import time
+#import time
 '''
 cdef extern from "math.h":
     int abs(int x)
