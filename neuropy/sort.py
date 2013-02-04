@@ -115,9 +115,9 @@ class TrackSort(object):
         self.tr = track
         self.alln = {} # dict to store all Neurons
         self.nspikes = None
-        datetime = None
-        pttype = None
-        chanpos = None
+        self.datetime = None
+        self.pttype = None
+        self.chanpos = None
 
     def get_n(self):
         """Return dict of neurons that meet MINRATE"""
@@ -173,6 +173,7 @@ class TrackSort(object):
                 if n.id not in alln:
                     alln[n.id] = n
 
+        nspikes = 0 # add them up
         for nid in nids:
             spikes[nid] = np.hstack(spikes[nid]) # concatenate each nid's spikes arrays:
             assert (np.sort(spikes[nid]) == spikes[nid]).all() # should come out sorted
@@ -197,5 +198,7 @@ class TrackSort(object):
             tn.dthour = tn.dtmin / 60
             
             alln[nid] = tn # replace
+            nspikes += tn.nspikes
 
+        self.nspikes = nspikes
         self.alln = alln # save it
