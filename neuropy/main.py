@@ -61,7 +61,7 @@ class NeuropyWindow(QtGui.QMainWindow):
         kernel_manager.start_kernel()
         kernel_manager.start_channels()
         ipyqtwidget.kernel_manager = kernel_manager
-        ipyqtwidget.gui_completion = False
+        ipyqtwidget.gui_completion = 'ncurses' # 'plain, 'droplist' or 'ncurses'
         ipyqtwidget.set_default_style(colors='linux')
         ipyqtwidget.font = QFont('Lucida Console', 12) # 3rd arg can be e.g. QFont.Bold
         ipyqtwidget.font.setFixedPitch(True)
