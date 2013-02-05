@@ -1,6 +1,6 @@
 """Code executed in user namespace on startup.
 
-ip = get_ipython()
+ip = get_ipython() # get current interactive shell
 ip.ex() # execute strings in user namespace
 ip.ev() # evaluates string
 ip.write() # write a string to the shell
@@ -24,3 +24,5 @@ def cf():
 ip = get_ipython()
 ip.call_pdb = True
 ip.magic("pylab")
+ip.Completer.greedy = True
+ip.Completer.omit__names = 1 # all 'magic' names (``__foo__``) will be excluded

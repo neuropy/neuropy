@@ -18,7 +18,6 @@ from IPython.frontend.qt.inprocess_kernelmanager import QtInProcessKernelManager
 from IPython.lib import guisupport
 from IPython.utils.path import get_ipython_dir
 from IPython.config.loader import PyFileConfigLoader
-#from IPython.frontend.terminal.ipapp import load_default_config
 
 from PyQt4 import QtCore, QtGui, uic
 from PyQt4.QtGui import QFont
@@ -170,17 +169,16 @@ class NeuropyWindow(QtGui.QMainWindow):
 
 
 def config_ipw(ipw):
-    """Change some default settings of IPython Qt widget"""
+    """Modify some default settings of IPython Qt widget"""
     ipython_dir = get_ipython_dir()
     profile_dir = os.path.join(ipython_dir, 'profile_default')
     cl = PyFileConfigLoader('ipython_qtconsole_config.py', profile_dir)
     config = cl.load_config()
-    #config = load_default_config()
     ipw.config = config
 
-    ipw.gui_completion = 'droplist' # 'plain, 'droplist' or 'ncurses'
-    ipw.set_default_style(colors='linux')
-    ipw.font = QFont('Lucida Console', 12) # 3rd arg can be e.g. QFont.Bold
+    ipw.gui_completion = 'ncurses' # 'plain, 'droplist' or 'ncurses'
+    ipw.set_default_style(colors='Linux')
+    ipw.font = QFont('Lucida Console', 11) # 3rd arg can be e.g. QFont.Bold
     ipw.font.setFixedPitch(True)
 
 def main():
