@@ -10,11 +10,15 @@ import platform
 
 from IPython import embed
 from IPython.core import ultratb
-from IPython.frontend.terminal.ipapp import load_default_config
 # has to come before Qt imports:
-#from IPython.frontend.qt.console.ipython_widget import IPythonWidget
 from IPython.frontend.qt.console.rich_ipython_widget import RichIPythonWidget
-from IPython.frontend.qt.kernelmanager import QtKernelManager
+from IPython.kernel.inprocess.ipkernel import InProcessKernel
+from IPython.frontend.qt.inprocess_kernelmanager import QtInProcessKernelManager
+#from IPython.frontend.qt.kernelmanager import QtKernelManager
+from IPython.lib import guisupport
+from IPython.utils.path import get_ipython_dir
+from IPython.config.loader import PyFileConfigLoader
+#from IPython.frontend.terminal.ipapp import load_default_config
 
 from PyQt4 import QtCore, QtGui, uic
 from PyQt4.QtGui import QFont
@@ -37,79 +41,13 @@ class NeuropyWindow(QtGui.QMainWindow):
         self.ui = NeuropyUi()
         self.ui.setupUi(self) # lay it out
 
-        # might need local_kernel=True kwarg
-        # can set paging: 'inside', 'vsplit', 'hsplit', 'none'
-        #ipyqtwidget = IPythonWidget(parent=self, local_kernel=True)
-        #ipyqtwidget = RichIPythonWidget(parent=self, config=config) # necessary for inline
-        ipyqtwidget = RichIPythonWidget(parent=self) # necessary for inline
-        self.ipyqtwidget = ipyqtwidget
-        #config = load_default_config()
-        #import ipdb; ipdb.set_trace()
-        from IPython.utils.path import get_ipython_dir
-        ipython_dir = get_ipython_dir()
-        profile_dir = os.path.join(ipython_dir, 'profile_default')
-        from IPython.config.loader import PyFileConfigLoader
-        cl = PyFileConfigLoader('ipython_qtconsole_config.py', profile_dir)
-        config = cl.load_config()
-        #print config
-        #import ipdb; ipdb.set_trace()
-        self.ipyqtwidget.config = config
-
-        #import ipdb; ipdb.set_trace()
-        kernel_manager = QtKernelManager()
-        #kernel_manager.config = config
-        kernel_manager.start_kernel()
-        kernel_manager.start_channels()
-        ipyqtwidget.kernel_manager = kernel_manager
-        ipyqtwidget.gui_completion = 'ncurses' # 'plain, 'droplist' or 'ncurses'
-        ipyqtwidget.set_default_style(colors='linux')
-        ipyqtwidget.font = QFont('Lucida Console', 12) # 3rd arg can be e.g. QFont.Bold
-        ipyqtwidget.font.setFixedPitch(True)
-        # make "exit" and "quit" typed in ipyqtwidget close self
-        ipyqtwidget.exit_requested.connect(self.close)
-        self.setCentralWidget(ipyqtwidget)
-
-        # ip.ex() lets you execute strings in user namespace, where ip is the
-        # IPython.zmq.zmqshell.ZMQInteractiveShell, as in ip = get_ipython()
-        # ip.ev() evaluates string
-        # ip.write() writes a string to the shell
-        # ip.push() pushes a variables in a dict to user namespace
-
-        # to communicate with the ipy kernel user namespace, probably need to
-        # use kernel_manager.kernel.communicate and send a signal somehow
-        # this might be too low level though:
-        #self.ipyqtwidget.kernel_manager.kernel.communicate('sdfsd')
+        ipw = RichIPythonWidget(parent=self)
+        self.ipw = ipw
+        self.setCentralWidget(ipw)
 
         self.setGeometry(0, 0, 960, 1080)
         self.setWindowTitle('neuropy')
         self.path = DATAPATH
-
-        # don't know why I need to call "%gui qt4" here, this seems to be required as of
-        # ipython 0.13.dev, in order to allow mpl figures to pop up without a .show().
-        # This seemed to be automatic (via the config?) in ipython 0.12.dev:
-        ipyqtwidget.execute('get_ipython().magic("gui qt4")', hidden=True)
-        ipyqtwidget.execute('get_ipython().magic("pylab")', hidden=True)
-        # this only half works, often the ipdb prompt won't respond. This is probably
-        # some multiprocess problem:
-        #ipyqtwidget.execute('get_ipython().call_pdb = True', hidden=True)
-        ipyqtwidget.execute("from __future__ import division", hidden=True)
-
-        ## TODO: this doesn't seem to work:
-        '''
-        # drop into IPython's debugger on any error:
-        ipyqtwidget.execute("import sys", hidden=False)
-        ipyqtwidget.execute("from IPython.core import ultratb", hidden=False)
-        ipyqtwidget.execute("sys.excepthook = ultratb.FormattedTB(mode='Verbose', call_pdb=1)",
-                            hidden=False)
-        '''
-        # def cf() to close all figures:
-        ipyqtwidget.execute("cf = lambda: pylab.close('all')", hidden=True)
-        ipyqtwidget.execute('import pylab as pl', hidden=True)
-        ipyqtwidget.execute('from recording import Recording', hidden=True)
-        ipyqtwidget.execute_file('globals.py', hidden=True)
-        # this was used instead when for some reason execute_file wasn't working:
-        #for line in open('globals.py', 'r'):
-        #    ipyqtwidget.execute(line, hidden=True)
 
     @QtCore.pyqtSlot()
     def on_actionOpen_triggered(self):
@@ -182,47 +120,37 @@ class NeuropyWindow(QtGui.QMainWindow):
     def open_animal(self, path, tracknames=None):
         a = Animal(path) # init it just to parse its name
         exec_lines = (
-        "from animal import Animal\n"
         "try: %s; \n"
         "except NameError: %s = Animal(%r)\n"
         "%s.load(%r)" % (a.name, a.name, path, a.name, tracknames)
         )
-        self.ipyqtwidget.execute(exec_lines)
+        self.ipw.execute(exec_lines)
 
     def open_track(self, path):
         tr = Track(path) # init it just to parse its id
         exec_lines = (
-        "from track import Track\n"
         "tr%d = Track(%r)\n"
         "tr%d.load()" % (tr.id, path, tr.id)
         )
-        self.ipyqtwidget.execute(exec_lines)
+        self.ipw.execute(exec_lines)
 
     def open_recording(self, path):
         rec = Recording(path) # init it just to parse its id
         exec_lines = (
-        "from recording import Recording\n"
         "r%d = Recording(%r)\n"
         "r%d.load()" % (rec.id, path, rec.id)
         )
-        self.ipyqtwidget.execute(exec_lines)
+        self.ipw.execute(exec_lines)
 
     @QtCore.pyqtSlot()
     def on_actionShell_triggered(self):
-        embed(display_banner=False) # "self" is accessible
-        # embed() seems to override the excepthook, need to reset it:
-        set_excepthook()
+        ## TODO: this raises an error in IPython 0.14.dev:
+        embed()
 
     @QtCore.pyqtSlot()
     def on_actionQuit_triggered(self):
         self.close()
         #self.destroy() # no longer seems necessary, may cause segfaults?
-
-    def closeEvent(self, event):
-        km = self.ipyqtwidget.kernel_manager
-        if km and km.channels_running:
-            km.shutdown_kernel()
-            event.accept()
 
     @QtCore.pyqtSlot()
     def on_actionAboutNeuropy_triggered(self):
@@ -241,38 +169,53 @@ class NeuropyWindow(QtGui.QMainWindow):
         QtGui.QMessageBox.aboutQt(self)
 
 
-def set_excepthook():
-    """Drops us into IPython's debugger on any error.
-    If you hit "C" to continue execution after the error, this can cause the following error
-    on ipython shutdown:
-    <type 'exceptions.AttributeError'>: 'NoneType' object has no attribute 'ZMQError'
-    If instead of you hit CTRL+D, you don't get the above error on shutdown.
-    Doesn't seem like a big deal. Maybe need to restore InputHook somewhere?"""
-    sys.excepthook = ultratb.FormattedTB(mode='Verbose', call_pdb=1)
+def config_ipw(ipw):
+    """Change some default settings of IPython Qt widget"""
+    ipython_dir = get_ipython_dir()
+    profile_dir = os.path.join(ipython_dir, 'profile_default')
+    cl = PyFileConfigLoader('ipython_qtconsole_config.py', profile_dir)
+    config = cl.load_config()
+    #config = load_default_config()
+    ipw.config = config
+
+    ipw.gui_completion = 'droplist' # 'plain, 'droplist' or 'ncurses'
+    ipw.set_default_style(colors='linux')
+    ipw.font = QFont('Lucida Console', 12) # 3rd arg can be e.g. QFont.Bold
+    ipw.font.setFixedPitch(True)
+
+def main():
+    """Create kernel, start kernel manager, create window, run app event loop,
+    auto execute some code in user namespace. Taken from IPython example in
+    docs/examples/frontend/inprocess_qtconsole.py"""
+    app = guisupport.get_app_qt4()
+    kernel = InProcessKernel(gui='qt4')
+    # populate the kernel's namespace:
+    #kernel.shell.push({'x': 0, 'y': 1, 'z': 2})
+    # create a kernel manager for the frontend and register it with the kernel:
+    km = QtInProcessKernelManager(kernel=kernel)
+    km.start_channels()
+    kernel.frontends.append(km)
+
+    neuropywindow = NeuropyWindow()
+    ipw = neuropywindow.ipw
+    config_ipw(ipw)
+    ipw.exit_requested.connect(app.quit)
+    ipw.kernel_manager = km
+    neuropywindow.show()
+
+    # execute some code directly, note the output appears at the system command line:
+    #kernel.shell.run_cell('print "x=%r, y=%r, z=%r" % (x,y,z)')
+    # execute some code through the frontend (once the event loop is
+    # running). The output appears in the ipw:
+    do_later(ipw.execute_file, 'startup.py', hidden=True)
+    do_later(ipw.execute_file, 'globals.py', hidden=True)
+
+    guisupport.start_event_loop_qt4(app)
+
+def do_later(func, *args, **kwds):
+    from IPython.external.qt import QtCore
+    QtCore.QTimer.singleShot(0, lambda: func(*args, **kwds))
 
 
 if __name__ == "__main__":
-    # prevents "The event loop is already running" errors when dropping into shell:
-    QtCore.pyqtRemoveInputHook()
-    set_excepthook()
-    app = QtCore.QCoreApplication.instance()
-    if app is None:
-        app = QtGui.QApplication([])
-
-    neuropywindow = NeuropyWindow()
-    neuropywindow.show()
-
-    try:
-        from IPython.lib.guisupport import start_event_loop_qt4
-        start_event_loop_qt4(app)
-    except ImportError:
-        app.exec_()
-
-    '''
-    QtCore.pyqtRemoveInputHook()
-    set_excepthook()
-    app = QtGui.QApplication(sys.argv)
-    neuropywindow = NeuropyWindow()
-    neuropywindow.show()
-    sys.exit(app.exec_())
-    '''
+    main()
