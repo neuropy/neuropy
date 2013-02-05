@@ -3,6 +3,7 @@ Access programatically using:
 
 get_ipython().user_ns
 """
+
 import os
 
 MOVIEPATH = os.path.expanduser('~/data/mov')

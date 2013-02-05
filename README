@@ -1,7 +1,8 @@
 neuropy requires recent versions of the following to be installed:
 
 Python (2.x, 3.x hasn't been tested)
-IPython
+IPython 0.14.dev
+ipdb
 numpy
 scipy
 matplotlib
