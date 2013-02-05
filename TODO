@@ -1,5 +1,8 @@
 TODO:
 
+- BUG: first command in new single inprocess IPython widget doesn't print results, subsequent ones work fine
+    - this seems to be limited to inprocess kernel (not zmq), and has something to do with calling ipythonqtwidget.execute('blah', hidden=True). It's the hidden kwarg that seems to cause this problem.
+
 - add File/Run dialog to choose a python file to run interactively with %run -i
 
 - maybe replace all instances of dt* with td*? td is probably a better acronym for "time duration" than dt is for "duration". td might be mistaken for time delta, but that's not really any different from time duration

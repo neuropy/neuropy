@@ -12,9 +12,6 @@ from IPython import embed
 from IPython.core import ultratb
 # has to come before Qt imports:
 from IPython.frontend.qt.console.rich_ipython_widget import RichIPythonWidget
-from IPython.kernel.inprocess.ipkernel import InProcessKernel
-from IPython.frontend.qt.inprocess_kernelmanager import QtInProcessKernelManager
-#from IPython.frontend.qt.kernelmanager import QtKernelManager
 from IPython.lib import guisupport
 from IPython.utils.path import get_ipython_dir
 from IPython.config.loader import PyFileConfigLoader
@@ -30,12 +27,13 @@ from track import Track
 from recording import Recording
 
 DATAPATH = os.path.expanduser('~/data')
+INPROCESS = False # use inprocess kernel? otherwise, use zmq kernel
 
 
 class NeuropyWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
         """Note that a lot of default options can be changed by editing
-        IPython.frontend.qt.console.console_widget.py and ipython_widget.py"""        
+        IPython.frontend.qt.console.console_widget.py and ipython_widget.py"""
         QtGui.QMainWindow.__init__(self)
         self.ui = NeuropyUi()
         self.ui.setupUi(self) # lay it out
@@ -182,17 +180,22 @@ def config_ipw(ipw):
     ipw.font.setFixedPitch(True)
 
 def main():
-    """Create kernel, start kernel manager, create window, run app event loop,
-    auto execute some code in user namespace. Taken from IPython example in
+    """Start kernel manager, create window, run app event loop, auto execute some code
+    in user namespace. Adapted from IPython example in:
     docs/examples/frontend/inprocess_qtconsole.py"""
     app = guisupport.get_app_qt4()
-    kernel = InProcessKernel(gui='qt4')
-    # populate the kernel's namespace:
-    #kernel.shell.push({'x': 0, 'y': 1, 'z': 2})
-    # create a kernel manager for the frontend and register it with the kernel:
-    km = QtInProcessKernelManager(kernel=kernel)
+
+    if INPROCESS:
+        from IPython.kernel.inprocess.ipkernel import InProcessKernel
+        from IPython.frontend.qt.inprocess_kernelmanager import QtInProcessKernelManager
+        kernel = InProcessKernel(gui='qt4')
+        km = QtInProcessKernelManager(kernel=kernel)
+        kernel.frontends.append(km)
+    else:
+        from IPython.frontend.qt.kernelmanager import QtKernelManager
+        km = QtKernelManager()
+        km.start_kernel()
     km.start_channels()
-    kernel.frontends.append(km)
 
     neuropywindow = NeuropyWindow()
     ipw = neuropywindow.ipw
