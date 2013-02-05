@@ -877,18 +877,16 @@ class CodeCorr(object):
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.bar(left=c, height=n, width=binwidth, bottom=0, color='k', ec='k')
+        # omit last right edge in c:
+        a.bar(left=c[:-1], height=n, width=binwidth, bottom=0, color='k', ec='k')
         if crange != None:
             a.set_xlim(crange)
         gcfm().window.setWindowTitle(lastcmd())
         titlestr = '%s' % lastcmd()
         a.set_title(titlestr)
         
-        if self.normed:
-            if self.normed == 'pmf':
-                a.set_ylabel('probability mass')
-            else: # self.normed = 'pdf'
-                a.set_ylabel('probability density')
+        if self.density:
+            a.set_ylabel('probability density')
         else:
             a.set_ylabel('count')
         a.set_xlabel('correlation coefficient')
