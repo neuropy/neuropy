@@ -83,30 +83,25 @@ class BaseRecording(object):
         # print string to tree hierarchy and screen
         self.writetree(treestr + '\n')
         print(treestr)
-        # load Experiments from .din files:
-        dinfnames = [ fname for fname in os.listdir(self.path)
-                      if os.path.isfile(os.path.join(self.path, fname))
-                      and fname.endswith('.din') ] # din filenames
-        dinfnames.sort() # alphabetical order
-        for expid, fname in enumerate(dinfnames): # expids follow order in dinfnames
-            path = os.path.join(self.path, fname)
-            experiment = Experiment(path, id=expid, recording=self)
-            experiment.load()
-            self.e[experiment.id] = experiment
-            self.__setattr__('e' + str(experiment.id), experiment) # add shortcut attrib
-        # load Sorts from .ptcs files and .sort folders:
+
+        # Sorts from .ptcs files and .sort folders, and Experiments from .din files:
         allfdnames = os.listdir(self.path) # all file and dir names in self.path
         sortfdnames = []
+        dinfnames = []
         for fdname in allfdnames:
             fullname = os.path.join(self.path, fdname)
-            isptcsfile = os.path.isfile(fullname) and fdname.endswith('.ptcs')
-            issortfolder = os.path.isdir(fullname) and fdname.endswith('.sort')
+            if os.path.isfile(fullname):
+                isptcsfile = fdname.endswith('.ptcs')
+                issortfolder = fdname.endswith('.sort')
+                isdinfile = fdname.endswith('.din')
             if isptcsfile or issortfolder:
                 sortfdnames.append(fdname)
-        # sort Sort names in alphabetical order, which should correspond to chronological
-        # order assuming all names start with datetime stamp:
+            if isdinfile:
+                dinfnames.append(fdname)
+        # sort filenames alphabetically, which should also be chronologically:
         sortfdnames.sort()
-        ## TODO: don't load all sorts, just the most recent one
+        dinfnames.sort()
+        
         for sortid, fdname in enumerate(sortfdnames):
             path = os.path.join(self.path, fdname)
             sort = Sort(path, id=sortid, recording=self)
@@ -115,6 +110,14 @@ class BaseRecording(object):
             self.__setattr__('sort' + str(sort.id), sort) # add shortcut attrib
         # make last sort the default one
         self.sort = self.sorts[sortfdnames[-1]]
+
+        # load all .din as Experiments:
+        for expid, fname in enumerate(dinfnames): # expids follow order in dinfnames
+            path = os.path.join(self.path, fname)
+            experiment = Experiment(path, id=expid, recording=self)
+            experiment.load()
+            self.e[experiment.id] = experiment
+            self.__setattr__('e' + str(experiment.id), experiment) # add shortcut attrib
         
         if len(self.e) > 0:
             firstexp = min(list(self.e))
