@@ -9,26 +9,6 @@ TODO:
 
 - plot log firing rate distributions in meanratehist() plots
 
-- use new Ipython's new InProcessKernel to improve IPython integration - hopefully this will finally allow dropping into the ipython debugger in the qt widget on any error while running neuropy?
-    - https://github.com/ipython/ipython/pull/2724
-
-- to auto activate pdb, try some of these:
-    - search for "exc" in:    http://ipython.org/ipython-doc/dev/api/generated/IPython.core.interactiveshell.html#IPython.core.interactiveshell.InteractiveShell.set_custom_exc
-        - call_pdb
-    
-    - or, from http://mail.scipy.org/pipermail/ipython-dev/2012-April/008945.html:
-    # define custom exception handler:
-
-    def custom_exc(shell, etype, evalue, tb, tb_offset=None):
-        # do you own thing:
-        print 'hi', etype
-        # also do what IPython would have done, if you want:
-        shell.showtraceback((etype, evalue, tb), tb_offset=tb_offset)
-        # or drop into pdb or ipdb?
-
-    # Tell IPython to use it for any/all Exceptions:
-    get_ipython().set_custom_exc((Exception,), custom_exc)
-
 - add ability to report nids of pairs for a given point in any of the cc() plots - tooltip? replace or augment the status bar printout on hover? Will presumably need to deal with MPL hover events, or at a lower level, with qt4 hover events
 
 - calculate average xcorr for sets of pairs
@@ -289,3 +269,6 @@ Tuning curves:
 - move CODEKIND, CODETRES, CODEPHASE, and CODEWORDLEN to globals, remove them as keywords everywhere else
 - add pair depth to cc.shifts plots
 - copy xcorr code from spyke to neuropy
+- use new Ipython's new InProcessKernel to improve IPython integration - hopefully this will finally allow dropping into the ipython debugger in the qt widget on any error while running neuropy?
+    - https://github.com/ipython/ipython/pull/2724
+- to auto activate pdb, set get_ipython().call_pdb = True
