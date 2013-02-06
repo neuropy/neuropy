@@ -18,7 +18,6 @@ from IPython.config.loader import PyFileConfigLoader
 
 from PyQt4 import QtCore, QtGui, uic
 from PyQt4.QtGui import QFont
-#from PyQt4.QtCore import Qt
 NeuropyUi, NeuropyUiBase = uic.loadUiType('neuropy.ui')
 
 from __init__ import __version__
@@ -27,7 +26,7 @@ from track import Track
 from recording import Recording
 
 DATAPATH = os.path.expanduser('~/data')
-INPROCESS = False # use inprocess kernel? otherwise, use zmq kernel
+INPROCESS = False # use inprocess kernel? otherwise, use 2 process zmq kernel
 
 
 class NeuropyWindow(QtGui.QMainWindow):
@@ -38,7 +37,8 @@ class NeuropyWindow(QtGui.QMainWindow):
         self.ui = NeuropyUi()
         self.ui.setupUi(self) # lay it out
 
-        ipw = RichIPythonWidget(parent=self)
+        # gui_completion: 'plain, 'droplist' or 'ncurses'
+        ipw = RichIPythonWidget(parent=self, gui_completion='plain')
         self.ipw = ipw
         self.setCentralWidget(ipw)
 
@@ -167,14 +167,13 @@ class NeuropyWindow(QtGui.QMainWindow):
 
 
 def config_ipw(ipw):
-    """Modify some default settings of IPython Qt widget"""
+    """Apply and then modify default settings of IPython Qt widget"""
     ipython_dir = get_ipython_dir()
     profile_dir = os.path.join(ipython_dir, 'profile_default')
     cl = PyFileConfigLoader('ipython_qtconsole_config.py', profile_dir)
     config = cl.load_config()
     ipw.config = config
 
-    ipw.gui_completion = 'ncurses' # 'plain, 'droplist' or 'ncurses'
     ipw.set_default_style(colors='Linux')
     ipw.font = QFont('Lucida Console', 11) # 3rd arg can be e.g. QFont.Bold
     ipw.font.setFixedPitch(True)
