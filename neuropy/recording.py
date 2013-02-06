@@ -102,6 +102,10 @@ class BaseRecording(object):
         sortfdnames.sort()
         dinfnames.sort()
         
+        # load all Sorts, or just the most recent one:
+        uns = get_ipython().user_ns
+        if not uns['LOADALLSORTS']:
+            sortfdnames = [sortfdnames[-1]] # just the most recent one
         for sortid, fdname in enumerate(sortfdnames):
             path = os.path.join(self.path, fdname)
             sort = Sort(path, id=sortid, recording=self)
