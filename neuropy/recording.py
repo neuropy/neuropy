@@ -91,13 +91,12 @@ class BaseRecording(object):
         for fdname in allfdnames:
             fullname = os.path.join(self.path, fdname)
             if os.path.isfile(fullname):
-                isptcsfile = fdname.endswith('.ptcs')
-                issortfolder = fdname.endswith('.sort')
-                isdinfile = fdname.endswith('.din')
-            if isptcsfile or issortfolder:
+                if fdname.endswith('.ptcs'):
+                    sortfdnames.append(fdname)
+                elif fdname.endswith('.din'):
+                    dinfnames.append(fdname)
+            elif os.path.isdir(fullname) and fdname.endswith('.sort'):
                 sortfdnames.append(fdname)
-            if isdinfile:
-                dinfnames.append(fdname)
         # sort filenames alphabetically, which should also be chronologically:
         sortfdnames.sort()
         dinfnames.sort()
@@ -114,7 +113,6 @@ class BaseRecording(object):
             self.__setattr__('sort' + str(sort.id), sort) # add shortcut attrib
         # make last sort the default one
         self.sort = self.sorts[sortfdnames[-1]]
-
         # load all .din as Experiments:
         for expid, fname in enumerate(dinfnames): # expids follow order in dinfnames
             path = os.path.join(self.path, fname)
