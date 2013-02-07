@@ -132,7 +132,7 @@ class BaseRecording(object):
         elif nlfpfiles == 1:
             fullname = os.path.join(self.path, lfpfnames[0])
             self.lfp = LFPRecording(fullname)
-            self.lfp.load()
+            #self.lfp.load() # for speed, don't load LFP data automatically
         else:
             raise RuntimeError("%d .lfp.zip files in %s, don't know which one to load"
                                % (nlfpfiles, self.path))

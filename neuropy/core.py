@@ -318,7 +318,7 @@ class SPKNeuronRecord(object):
 class LFPRecording(object):
     """Holds LFP data loaded from a numpy .npz-compatible .lfp.zip file"""
     def __init__(self, fname):
-        self.fname = fname
+        self.fname = fname # with full path
 
     def load(self):
         with open(self.fname, 'rb') as f:
