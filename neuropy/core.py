@@ -349,21 +349,24 @@ class LFPRecording(object):
         # make sure chans are in vertical spatial order:
         assert issorted(self.chanpos[self.chans][1])
 
-    def specgram(self, chanis=0, width=4096, overlap=2048, cmap=None, figsize=(20, 6.5)):
+    def specgram(self, chanis=0, width=4096, overlap=2048, cm=None, figsize=(20, 6.5)):
         """Plot a spectrogram based on channel index chani of LFP data. chanis=0 uses most
-        superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, takes
-        mean of specified chanis. As an alternative to cm.jet (the default), cm.hsv
-        cm.terrain, and cm.cubehelix_r colormaps seem to bring out the most structure in the
-        spectrogram"""
+        superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, takes mean
+        of specified chanis. width and overlap are in ms, assuming LFP sampling frequency is
+        1 kHz. Best to keep both a power of 2. As an alternative to cm.jet (the default),
+        cm.gray, cm.hsv cm.terrain, and cm.cubehelix_r colormaps seem to bring out the most
+        structure in the spectrogram"""
         FILTERMIN = 0.1 # Hz
         FILTERMAX = 150 # Hz
+        assert width > overlap
         try:
             self.data
         except AttributeError:
             self.load()
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        sampfreq = 1e6 / self.tres # in Hz
+        sampfreq = 1e6 / self.tres # in Hz, should be 1000 Hz
+        assert sampfreq == 1000
         if iterable(chanis):
             data = self.data[chanis].mean(axis=0) # take mean of data on chanis
         else:
@@ -375,7 +378,7 @@ class LFPRecording(object):
         Z = 10. * np.log10(Pxx) # convert power to dB
         Z = np.flipud(Z) # flip for compatibility with imshow
         extent = t[0], t[-1], freqs[0], freqs[-1]
-        a.imshow(Z, extent=extent, cmap=cmap)
+        a.imshow(Z, extent=extent, cmap=cm)
         a.axis('auto') # make axes use full figure window?
         a.autoscale(enable=True, tight=True)
         a.set_xlabel("time from t0=%.1f (sec)" % roundto(self.t0 / 1e6, 0.1))
