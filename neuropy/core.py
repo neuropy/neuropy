@@ -355,14 +355,14 @@ class PopulationRaster(object):
             self.t0 = self.e[firstexp].trange[0] # start time of the first experiment
         else: # use absolute time origin
             self.t0 = 0 # leave the time origin at when acquisition began
-        experimentmarkers = [] # a flat list of all experiment start and stop times, in sorted order
+        experimentmarkers = [] # a flat sorted list of all experiment start and stop times
         for e in self.e.values():
             experimentmarkers.extend(e.trange)
         self.experimentmarkers = np.asarray(experimentmarkers) - self.t0 # make 'em relative to t0
-        self.experimentmarkers.sort() # just in case exps weren't in sorted order for some reason
+        self.experimentmarkers.sort() # just in case exps weren't sorted for some reason
 
         self.jumpts = np.asarray(jumpts)
-        self.jumpts.sort() # just in case jumpts weren't in sorted order for some reason
+        self.jumpts.sort() # just in case jumpts weren't sorted for some reason
 
         units2tconv = {'usec': 1e0, 'msec': 1e3, 'sec': 1e6}
         self.units = units
