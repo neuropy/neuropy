@@ -317,7 +317,7 @@ class SPKNeuronRecord(object):
 
 class LFPRecording(object):
     """Holds LFP data loaded from a numpy .npz-compatible .lfp.zip file"""
-    def __init__(self, fname):
+    def __init__(self, recording, fname):
         """
         self.chanpos: array of (x, y) LFP channel positions on probe, in order of
                       increasing zero-based channel IDs
@@ -330,6 +330,7 @@ class LFPRecording(object):
         self.tres: temporal resolution in us of each LFP timepoint
         self.uVperAd: number of uV per AD voltage value in LFP data
         """
+        self.r = recording
         self.fname = fname # with full path
 
     def load(self):
@@ -348,13 +349,14 @@ class LFPRecording(object):
         # make sure chans are in vertical spatial order:
         assert issorted(self.chanpos[self.chans][1])
 
-    def specgram(self, chanis=0, width=4096, overlap=2048, figsize=(20, 6.5)):
+    def specgram(self, chanis=0, width=4096, overlap=2048, cmap=None, figsize=(20, 6.5)):
         """Plot a spectrogram based on channel index chani of LFP data. chanis=0 uses most
         superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, takes
-        mean of specified chanis"""
-        ## TODO: set proper time offset from t0 on x axis
-        ## TODO: limit colour scaling to freqs of interest: 0.1 to 150 Hz, maybe even limit
-        ## to 100Hz
+        mean of specified chanis. As an alternative to cm.jet (the default), cm.hsv
+        cm.terrain, and cm.cubehelix_r colormaps seem to bring out the most structure in the
+        spectrogram"""
+        FILTERMIN = 0.1 # Hz
+        FILTERMAX = 150 # Hz
         try:
             self.data
         except AttributeError:
@@ -366,14 +368,23 @@ class LFPRecording(object):
             data = self.data[chanis].mean(axis=0) # take mean of data on chanis
         else:
             data = self.data[chanis] # get single row of data at chanis
-        a.specgram(data, NFFT=width, Fs=sampfreq, noverlap=overlap)
-        a.autoscale(enable=True, axis='x', tight=True)
-        a.set_ylim(0.1, 150) # low pass filter limits, in Hz
+        Pxx, freqs, t = mpl.mlab.specgram(data, NFFT=width, Fs=sampfreq, noverlap=overlap)
+        # keep only freqs between FILTERMIN and FILTERMAX:
+        lo, hi = freqs.searchsorted([FILTERMIN, FILTERMAX])
+        Pxx, freqs = Pxx[lo:hi], freqs[lo:hi]
+        Z = 10. * np.log10(Pxx) # convert power to dB
+        Z = np.flipud(Z) # flip for compatibility with imshow
+        extent = t[0], t[-1], freqs[0], freqs[-1]
+        a.imshow(Z, extent=extent, cmap=cmap)
+        a.axis('auto') # make axes use full figure window?
+        a.autoscale(enable=True, tight=True)
         a.set_xlabel("time from t0=%.1f (sec)" % roundto(self.t0 / 1e6, 0.1))
         a.set_ylabel("frequency (Hz)")
         gcfm().window.setWindowTitle(lastcmd())
         titlestr = '%s' % lastcmd()
         a.set_title(titlestr)
+        a.text(0.998, 0.99, '%s' % self.r.name, transform=a.transAxes,
+               horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
