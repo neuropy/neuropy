@@ -2512,3 +2512,9 @@ def hex2rgb(s):
     r, g, b = s[0:2], s[2:4], s[4:6]
     r, g, b = int(r, base=16), int(g, base=16), int(b, base=16)
     return np.float64([r, g, b]) / 255
+
+def issorted(x):
+    """Check if x is sorted"""
+    return (np.diff(x) >= 0).all() # is difference between consecutive entries >= 0?
+    # or, you could compare the array to an explicitly sorted version of itself,
+    # and see if they're identical
