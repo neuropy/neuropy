@@ -19,7 +19,8 @@ from recording import Recording
 
 
 def cf():
-    pl.close('all')
+    import pylab
+    pylab.close('all')
     
 ip = get_ipython()
 ip.call_pdb = True
