@@ -348,6 +348,32 @@ class LFPRecording(object):
         # make sure chans are in vertical spatial order:
         assert issorted(self.chanpos[self.chans][1])
 
+    def specgram(self, chani=0, width=4096, overlap=0, figsize=(20, 6.5)):
+        """Plot a spectrogram based on channel index chani of LFP data. chani=0 uses most
+        superficial channel, chani=-1 uses deepest channel"""
+        ## TODO: set proper time offset from t0 on x axis
+        ## TODO: limit colour scaling to freqs of interest: 0.1 to 150 Hz, maybe even limit
+        ## to 100Hz
+        try:
+            self.data
+        except AttributeError:
+            self.load()
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        sampfreq = 1e6 / self.tres # in Hz
+        a.specgram(self.data[chani], NFFT=width, Fs=sampfreq, noverlap=overlap)
+        a.autoscale(enable=True, axis='x', tight=True)
+        a.set_ylim(0.1, 150) # low pass filter limits, in Hz
+        a.set_xlabel("time (sec)")
+        a.set_ylabel("frequency (Hz)")
+        gcfm().window.setWindowTitle(lastcmd())
+        titlestr = '%s' % lastcmd()
+        a.set_title(titlestr)
+        f.tight_layout(pad=0.3) # crop figure to contents
+        self.f = f
+        return self
+        
+
 class PopulationRaster(object):
     """A population spike raster plot. nids are indices of neurons to
     plot in the raster, in order from bottom to top.
