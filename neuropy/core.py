@@ -318,6 +318,18 @@ class SPKNeuronRecord(object):
 class LFPRecording(object):
     """Holds LFP data loaded from a numpy .npz-compatible .lfp.zip file"""
     def __init__(self, fname):
+        """
+        self.chanpos: array of (x, y) LFP channel positions on probe, in order of
+                      increasing zero-based channel IDs
+        self.chans: channel IDs of rows in self.chanpos and self.data, in vertical
+                    spatial order
+        self.data: LFP voltage values, channels in rows (in vertical spatial order),
+                   timepoints in columns
+        self.t0: time in us of first LFP timepoint, from start of recording acquisition
+        self.t1: time in us of last LFP timepoint
+        self.tres: temporal resolution in us of each LFP timepoint
+        self.uVperAd: number of uV per AD voltage value in LFP data
+        """
         self.fname = fname # with full path
 
     def load(self):
@@ -327,8 +339,14 @@ class LFPRecording(object):
                                         'uVperAD']
             # bind arrays in .lfp.zip file to self:
             for key, val in d.iteritems():
+                # pop some singleton vals out of their arrays:
+                if key in ['t0', 't1', 'tres']:
+                    val = int(val)
+                elif key == 'uVperAD':
+                    val = float(val)
                 self.__setattr__(key, val)
-
+        # make sure chans are in vertical spatial order:
+        assert issorted(self.chanpos[self.chans][1])
 
 class PopulationRaster(object):
     """A population spike raster plot. nids are indices of neurons to
