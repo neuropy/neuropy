@@ -12,9 +12,8 @@ from pylab import get_current_fig_manager as gcfm
 import matplotlib as mpl
 
 import core
-from core import PopulationRaster, Codes, CodeCorr, binarray2int, nCrsamples, entropy_no_sing
-from core import lastcmd, intround, rstrip, dictattr, warn, pmf
-from core import TAB
+from core import (LFPRecording, PopulationRaster, Codes, CodeCorr, binarray2int, nCrsamples,
+                  entropy_no_sing, lastcmd, intround, rstrip, dictattr, warn, pmf, TAB)
 from experiment import Experiment
 from sort import Sort
 '''
@@ -88,6 +87,7 @@ class BaseRecording(object):
         allfdnames = os.listdir(self.path) # all file and dir names in self.path
         sortfdnames = []
         dinfnames = []
+        lfpfnames = []
         for fdname in allfdnames:
             fullname = os.path.join(self.path, fdname)
             if os.path.isfile(fullname):
@@ -95,11 +95,14 @@ class BaseRecording(object):
                     sortfdnames.append(fdname)
                 elif fdname.endswith('.din'):
                     dinfnames.append(fdname)
+                elif fdname.endswith('.lfp.zip'):
+                    lfpfnames.append(fdname)
             elif os.path.isdir(fullname) and fdname.endswith('.sort'):
                 sortfdnames.append(fdname)
         # sort filenames alphabetically, which should also be chronologically:
         sortfdnames.sort()
         dinfnames.sort()
+        lfpfnames.sort()
         
         # load all Sorts, or just the most recent one:
         uns = get_ipython().user_ns
@@ -113,6 +116,7 @@ class BaseRecording(object):
             self.__setattr__('sort' + str(sort.id), sort) # add shortcut attrib
         # make last sort the default one
         self.sort = self.sorts[sortfdnames[-1]]
+
         # load all .din as Experiments:
         for expid, fname in enumerate(dinfnames): # expids follow order in dinfnames
             path = os.path.join(self.path, fname)
@@ -120,6 +124,18 @@ class BaseRecording(object):
             experiment.load()
             self.e[experiment.id] = experiment
             self.__setattr__('e' + str(experiment.id), experiment) # add shortcut attrib
+
+        # load any LFP data from a .lfp.zip file:
+        nlfpfiles = len(lfpfnames)
+        if nlfpfiles == 0:
+            pass
+        elif nlfpfiles == 1:
+            fullname = os.path.join(self.path, lfpfnames[0])
+            self.lfp = LFPRecording(fullname)
+            self.lfp.load()
+        else:
+            raise RuntimeError("%d .lfp.zip files in %s, don't know which one to load"
+                               % (nlfpfiles, self.path))
         
         if len(self.e) > 0:
             firstexp = min(list(self.e))

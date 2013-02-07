@@ -315,6 +315,21 @@ class SPKNeuronRecord(object):
         self.nspikes = len(self.spikes)
     
 
+class LFPRecording(object):
+    """Holds LFP data loaded from a numpy .npz-compatible .lfp.zip file"""
+    def __init__(self, fname):
+        self.fname = fname
+
+    def load(self):
+        with open(self.fname, 'rb') as f:
+            d = np.load(f)
+            assert sorted(d.keys()) == ['chanpos', 'chans', 'data', 't0', 't1', 'tres',
+                                        'uVperAD']
+            # bind arrays in .lfp.zip file to self:
+            for key, val in d.iteritems():
+                self.__setattr__(key, val)
+
+
 class PopulationRaster(object):
     """A population spike raster plot. nids are indices of neurons to
     plot in the raster, in order from bottom to top.
