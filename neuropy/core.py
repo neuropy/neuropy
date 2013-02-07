@@ -339,7 +339,7 @@ class LFPRecording(object):
                                         'uVperAD']
             # bind arrays in .lfp.zip file to self:
             for key, val in d.iteritems():
-                # pop some singleton vals out of their arrays:
+                # pull some singleton vals out of their arrays:
                 if key in ['t0', 't1', 'tres']:
                     val = int(val)
                 elif key == 'uVperAD':
@@ -348,9 +348,10 @@ class LFPRecording(object):
         # make sure chans are in vertical spatial order:
         assert issorted(self.chanpos[self.chans][1])
 
-    def specgram(self, chani=0, width=4096, overlap=0, figsize=(20, 6.5)):
-        """Plot a spectrogram based on channel index chani of LFP data. chani=0 uses most
-        superficial channel, chani=-1 uses deepest channel"""
+    def specgram(self, chanis=0, width=4096, overlap=2048, figsize=(20, 6.5)):
+        """Plot a spectrogram based on channel index chani of LFP data. chanis=0 uses most
+        superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, takes
+        mean of specified chanis"""
         ## TODO: set proper time offset from t0 on x axis
         ## TODO: limit colour scaling to freqs of interest: 0.1 to 150 Hz, maybe even limit
         ## to 100Hz
@@ -361,10 +362,14 @@ class LFPRecording(object):
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         sampfreq = 1e6 / self.tres # in Hz
-        a.specgram(self.data[chani], NFFT=width, Fs=sampfreq, noverlap=overlap)
+        if iterable(chanis):
+            data = self.data[chanis].mean(axis=0) # take mean of data on chanis
+        else:
+            data = self.data[chanis] # get single row of data at chanis
+        a.specgram(data, NFFT=width, Fs=sampfreq, noverlap=overlap)
         a.autoscale(enable=True, axis='x', tight=True)
         a.set_ylim(0.1, 150) # low pass filter limits, in Hz
-        a.set_xlabel("time (sec)")
+        a.set_xlabel("time from t0=%.1f (sec)" % roundto(self.t0 / 1e6, 0.1))
         a.set_ylabel("frequency (Hz)")
         gcfm().window.setWindowTitle(lastcmd())
         titlestr = '%s' % lastcmd()
