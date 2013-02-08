@@ -356,6 +356,7 @@ class LFPRecording(object):
         1 kHz. Best to keep both a power of 2. As an alternative to cm.jet (the default),
         cm.gray, cm.hsv cm.terrain, and cm.cubehelix_r colormaps seem to bring out the most
         structure in the spectrogram"""
+        ## Add scalebar?
         FILTERMIN = 0.1 # Hz
         FILTERMAX = 150 # Hz
         assert width > overlap
@@ -376,7 +377,7 @@ class LFPRecording(object):
         lo, hi = freqs.searchsorted([FILTERMIN, FILTERMAX])
         Pxx, freqs = Pxx[lo:hi], freqs[lo:hi]
         Z = 10. * np.log10(Pxx) # convert power to dB
-        Z = np.flipud(Z) # flip for compatibility with imshow
+        Z = Z[::-1] # flip vertically for compatibility with imshow
         extent = t[0], t[-1], freqs[0], freqs[-1]
         a.imshow(Z, extent=extent, cmap=cm)
         a.axis('auto') # make axes use full figure window?
