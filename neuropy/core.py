@@ -379,11 +379,11 @@ class LFP(object):
         segments[:, :, 0] = x
         segments[:, :, 1] = data
         # add offsets:
-        for chani in chanis:
+        for chanii, chani in enumerate(chanis):
             chan = self.chans[chani]
             xpos, ypos = self.chanpos[chan]
             #segments[chani, :, 0] += xpos
-            segments[chani, :, 1] -= ypos # vertical distance below top of probe
+            segments[chanii, :, 1] -= ypos # vertical distance below top of probe
         lc = LineCollection(segments, linewidth=1, linestyle='-', colors='k',
                             antialiased=True, visible=True)
         f = pl.figure(figsize=figsize)
