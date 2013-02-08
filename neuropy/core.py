@@ -30,6 +30,7 @@ import matplotlib as mpl
 import matplotlib.cm
 import pylab as pl
 from pylab import get_current_fig_manager as gcfm
+from matplotlib.collections import LineCollection
 
 TAB = '    ' # 4 spaces
 EPOCH = datetime.datetime(1899, 12, 30, 0, 0, 0) # epoch for datetime stamps in .ptcs
@@ -349,6 +350,57 @@ class LFPRecording(object):
         # make sure chans are in vertical spatial order:
         assert issorted(self.chanpos[self.chans][1])
 
+    def plot(self, t0=None, t1=None, chanis=None, figsize=(20, 6.5)):
+        """Plot chanis of LFP data between t0 and t1 in sec"""
+        GAIN = 0.1
+        try:
+            self.data
+        except AttributeError:
+            self.load()
+        # full set of timestamps, in sec:
+        ts = np.arange(self.t0/1e6, self.t1/1e6, self.tres/1e6)
+        if t0 == None:
+            t0 = ts[0]
+        if t1 == None:
+            t1 = t0 + 10 # 10 sec window
+        if chanis == None:
+            chanis = range(len(self.chans)) # all chans
+        t0i, t1i = ts.searchsorted((t0, t1))
+        ts = ts[t0i:t1i] # constrained set of timestamps, in sec
+        chanis = tolist(chanis)
+        nchans = len(chanis)
+        # grab desired channels and time range, and AD values to uV:
+        data = self.data[chanis][:, t0i:t1i] * self.uVperAD * GAIN
+        nt = len(ts)
+        assert nt == data.shape[1]
+        x = np.tile(ts, nchans)
+        x.shape = nchans, nt
+        segments = np.zeros((nchans, nt, 2)) # x vals in col 0, yvals in col 1
+        segments[:, :, 0] = x
+        segments[:, :, 1] = data
+        # add offsets:
+        for chani in chanis:
+            chan = self.chans[chani]
+            xpos, ypos = self.chanpos[chan]
+            #segments[chani, :, 0] += xpos
+            segments[chani, :, 1] -= ypos # vertical distance below top of probe
+        lc = LineCollection(segments, linewidth=1, linestyle='-', colors='k',
+                            antialiased=True, visible=True)
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        a.add_collection(lc) # add to axes' pool of LCs
+        a.autoscale(enable=True, tight=True)
+        a.set_xlabel("time (sec)")
+        a.set_ylabel("depth (um)")
+        gcfm().window.setWindowTitle(lastcmd())
+        titlestr = '%s' % lastcmd()
+        a.set_title(titlestr)
+        a.text(0.998, 0.99, '%s' % self.r.name, transform=a.transAxes,
+               horizontalalignment='right', verticalalignment='top')
+        f.tight_layout(pad=0.3) # crop figure to contents
+        self.f = f
+        return self
+        
     def specgram(self, chanis=0, width=4096, overlap=2048, cm=None, figsize=(20, 6.5)):
         """Plot a spectrogram based on channel index chani of LFP data. chanis=0 uses most
         superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, takes mean
