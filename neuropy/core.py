@@ -316,7 +316,7 @@ class SPKNeuronRecord(object):
         self.nspikes = len(self.spikes)
     
 
-class LFPRecording(object):
+class LFP(object):
     """Holds LFP data loaded from a numpy .npz-compatible .lfp.zip file"""
     def __init__(self, recording, fname):
         """

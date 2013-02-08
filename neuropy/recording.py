@@ -12,7 +12,7 @@ from pylab import get_current_fig_manager as gcfm
 import matplotlib as mpl
 
 import core
-from core import (LFPRecording, PopulationRaster, Codes, CodeCorr, binarray2int, nCrsamples,
+from core import (LFP, PopulationRaster, Codes, CodeCorr, binarray2int, nCrsamples,
                   entropy_no_sing, lastcmd, intround, rstrip, dictattr, warn, pmf, TAB)
 from experiment import Experiment
 from sort import Sort
@@ -131,7 +131,7 @@ class BaseRecording(object):
             pass
         elif nlfpfiles == 1:
             fullname = os.path.join(self.path, lfpfnames[0])
-            self.lfp = LFPRecording(self, fullname)
+            self.lfp = LFP(self, fullname)
             #self.lfp.load() # for speed, don't load LFP data automatically
         else:
             raise RuntimeError("%d .lfp.zip files in %s, don't know which one to load"
