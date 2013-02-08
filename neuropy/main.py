@@ -208,6 +208,8 @@ def main():
     # execute some code through the frontend (once the event loop is
     # running). The output appears in the ipw:
     do_later(ipw.execute_file, 'startup.py', hidden=True)
+    # import division in startup.py doesn't seem to work, execute directly:
+    do_later(ipw.execute, "from __future__ import division", hidden=True)
     do_later(ipw.execute_file, 'globals.py', hidden=True)
 
     guisupport.start_event_loop_qt4(app)
