@@ -352,6 +352,40 @@ class LFP(object):
         self.sampfreq = 1e6 / self.tres # in Hz
         assert self.sampfreq == 1000 # should be 1000 Hz
 
+    def save(self):
+        ## TODO: option to overwrite original .lfp.zip file from spyke with filtered data,
+        ## add filteredfreqs and filteredbws keywords when resaving to indicate what exactly
+        ## was filtered out. Also, make sure data dtype is still int16?
+        pass
+
+    def filter(self, freqs=60, bws=1):
+        """Filter out frequencies centerd on freqs (Hz), of bandwidths bws (Hz) in data.
+        Filtering out by setting components to 0 is probably naive, but it's a start.
+        Should probably do more careful filtering to further reduce say 60 Hz noise,
+        and prevent aliasing artifacts"""
+        try: self.data
+        except AttributeError: self.load()
+        nt = self.data.shape[1]
+        dt = self.tres / 1e6 # in sec
+        f = np.fft.fftfreq(nt, dt) # fft bin frequencies
+        f = f[:nt//2] # grab +ve freqs by splitting f in half
+        franges = []
+        freqs = tolist(freqs)
+        bws = tolist(bws)
+        if len(freqs) > 1 and len(bws) == 1:
+            bws = bws * len(freqs) # make freqs and bw the same length
+        for freq, bw in zip(freqs, bws):
+            franges.append(freq-bw)
+            franges.append(freq+bw)
+        fis = f.searchsorted(franges)
+        fis = np.hstack([fis, -fis]) # indices for both +ve and -ve freq ranges
+        fis.shape = -1, 2 # reshape to 2 columns
+        fdata = np.fft.fft(self.data)
+        for f0i, f1i in fis:
+            fdata[:, f0i:f1i] = 0 # replace desired components with minval
+            # maybe try using complex average of freq bins just outside of freqs +/- bws
+        self.data = np.fft.ifft(fdata).real # inverse FFT, overwrite data, leave as float
+
     def plot(self, t0=None, t1=None, chanis=None, figsize=(20, 6.5)):
         """Plot chanis of LFP data between t0 and t1 in sec"""
         GAIN = 0.1
