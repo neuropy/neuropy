@@ -401,7 +401,7 @@ class LFP(object):
         self.f = f
         return self
         
-    def specgram(self, chanis=0, width=4096, overlap=2048, cm=None, figsize=(20, 6.5)):
+    def specgram(self, chanis=-1, width=4096, overlap=2048, cm=None, figsize=(20, 6.5)):
         """Plot a spectrogram based on channel index chani of LFP data. chanis=0 uses most
         superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, takes mean
         of specified chanis. width and overlap are in ms, assuming LFP sampling frequency is
