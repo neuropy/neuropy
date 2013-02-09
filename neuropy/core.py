@@ -1833,8 +1833,8 @@ def innerclass(cls):
     return InnerDescriptor()
 
 def intround(n):
-    """Round to the nearest integer, return an integer. Works on arrays,
-    saves on parentheses, nothing more"""
+    """Round to the nearest integer, return an integer. Works on arrays.
+    Saves on parentheses, nothing more"""
     if iterable(n): # it's a sequence, return as an int64 array
         return np.int64(np.round(n))
     else: # it's a scalar, return as normal Python int
