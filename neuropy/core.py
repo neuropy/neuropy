@@ -342,21 +342,21 @@ class LFP(object):
             # bind arrays in .lfp.zip file to self:
             for key, val in d.iteritems():
                 # pull some singleton vals out of their arrays:
-                if key in ['t0', 't1', 'tres']:
+                if key in ['t0', 't1', 'tres']: # should all be us
                     val = int(val)
                 elif key == 'uVperAD':
                     val = float(val)
                 self.__setattr__(key, val)
         # make sure chans are in vertical spatial order:
         assert issorted(self.chanpos[self.chans][1])
+        self.sampfreq = 1e6 / self.tres # in Hz
+        assert self.sampfreq == 1000 # should be 1000 Hz
 
     def plot(self, t0=None, t1=None, chanis=None, figsize=(20, 6.5)):
         """Plot chanis of LFP data between t0 and t1 in sec"""
         GAIN = 0.1
-        try:
-            self.data
-        except AttributeError:
-            self.load()
+        try: self.data
+        except AttributeError: self.load()
         # full set of timestamps, in sec:
         ts = np.arange(self.t0/1e6, self.t1/1e6, self.tres/1e6)
         if t0 == None:
@@ -408,25 +408,24 @@ class LFP(object):
         1 kHz. Best to keep both a power of 2. As an alternative to cm.jet (the default),
         cm.gray, cm.hsv cm.terrain, and cm.cubehelix_r colormaps seem to bring out the most
         structure in the spectrogram"""
-        ## Add scalebar?
-        FILTERMIN = 0.1 # Hz
-        FILTERMAX = 150 # Hz
+        ## TODO: make x axis start from t0, for consistency with .plot(), need to change
+        ## tick labels to prevent stupid + 12.14234 way of labelling
+        ## TODO: Add scalebar?
+        FMIN = 0.1 # Hz
+        FMAX = 150 # Hz
         assert width > overlap
-        try:
-            self.data
-        except AttributeError:
-            self.load()
+        try: self.data
+        except AttributeError: self.load()
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        sampfreq = 1e6 / self.tres # in Hz, should be 1000 Hz
-        assert sampfreq == 1000
         if iterable(chanis):
             data = self.data[chanis].mean(axis=0) # take mean of data on chanis
         else:
             data = self.data[chanis] # get single row of data at chanis
-        Pxx, freqs, t = mpl.mlab.specgram(data, NFFT=width, Fs=sampfreq, noverlap=overlap)
-        # keep only freqs between FILTERMIN and FILTERMAX:
-        lo, hi = freqs.searchsorted([FILTERMIN, FILTERMAX])
+        Pxx, freqs, t = mpl.mlab.specgram(data, NFFT=width, Fs=self.sampfreq,
+                                          noverlap=overlap)
+        # keep only freqs between FMIN and FMAX:
+        lo, hi = freqs.searchsorted([FMIN, FMAX])
         Pxx, freqs = Pxx[lo:hi], freqs[lo:hi]
         Z = 10. * np.log10(Pxx) # convert power to dB
         Z = Z[::-1] # flip vertically for compatibility with imshow
