@@ -358,8 +358,8 @@ class LFP(object):
         ## was filtered out. Also, make sure data dtype is still int16?
         pass
 
-    def filter(self, freqs=60, bws=1):
-        """Filter out frequencies centerd on freqs (Hz), of bandwidths bws (Hz) in data.
+    def naivefftfilter(self, freqs=60, bws=1):
+        """Filter out frequencies centered on freqs (Hz), of bandwidths bws (Hz) in data.
         Filtering out by setting components to 0 is probably naive, but it's a start.
         Should probably do more careful filtering to further reduce say 60 Hz noise,
         and prevent aliasing artifacts"""
@@ -382,7 +382,7 @@ class LFP(object):
         fis.shape = -1, 2 # reshape to 2 columns
         fdata = np.fft.fft(self.data)
         for f0i, f1i in fis:
-            fdata[:, f0i:f1i] = 0 # replace desired components with minval
+            fdata[:, f0i:f1i] = 0 # replace desired components with 0
             # maybe try using complex average of freq bins just outside of freqs +/- bws
         self.data = np.fft.ifft(fdata).real # inverse FFT, overwrite data, leave as float
 
