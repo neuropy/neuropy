@@ -25,6 +25,7 @@ import numpy as np
 # make overflow, underflow, div by zero, and invalid all raise errors
 # this really should be the default in numpy...
 np.seterr(all='raise')
+import scipy.signal
 
 import matplotlib as mpl
 import matplotlib.cm
@@ -356,7 +357,32 @@ class LFP(object):
         ## TODO: option to overwrite original .lfp.zip file from spyke with filtered data,
         ## add filteredfreqs and filteredbws keywords when resaving to indicate what exactly
         ## was filtered out. Also, make sure data dtype is still int16?
-        pass
+        raise NotImplementedError
+
+    def filter(self, freq=60, bw=0.25, chanis=None, ftype='ellip'):
+        """Filter out frequencies centered on freq (Hz), of bandwidth bw (Hz) in data on
+        data row indices chanis.
+
+        elliptic : 'ellip'
+        Butterworth : 'butter'
+        Chebyshev I : 'cheby1'
+        Chebyshev II: 'cheby2'
+        Bessel : 'bessel'
+        """
+        try: self.data
+        except AttributeError: self.load()
+        if chanis == None:
+            chanis = np.arange(len(self.data))
+        w = freq / (self.sampfreq / 2) # fraction of Nyquist frequency == 1/2 sampling rate
+        bw = bw / (self.sampfreq / 2)
+        wp = [w-2*bw, w+2*bw] # outer bandpass
+        ws = [w-bw, w+bw] # inner bandstop
+        # using more extreme values for gpass or gstop seems to cause IIR filter instability.
+        # 'ellip' is the only one that seems to work
+        b, a = scipy.signal.iirdesign(wp, ws, gpass=0.01, gstop=30, analog=0, ftype=ftype)
+        ## TODO: do np.round and np.int16? No, because after filtering some values are out
+        ## of range of int16. Could use int32 though, or float32 for that matter
+        self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
 
     def naivefftfilter(self, freqs=60, bws=1):
         """Filter out frequencies centered on freqs (Hz), of bandwidths bws (Hz) in data.
