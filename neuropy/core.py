@@ -435,7 +435,8 @@ class LFP(object):
         self.f = f
         return self
         
-    def specgram(self, chanis=-1, width=4096, overlap=2048, cm=None, figsize=(20, 6.5)):
+    def specgram(self, chanis=-1, width=4096, overlap=2048, fmin=0.1, fmax=100, cm=None,
+                 figsize=(20, 6.5)):
         """Plot a spectrogram based on channel index chani of LFP data. chanis=0 uses most
         superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, takes mean
         of specified chanis. width and overlap are in ms, assuming LFP sampling frequency is
@@ -445,8 +446,6 @@ class LFP(object):
         ## TODO: make x axis start from t0, for consistency with .plot(), need to change
         ## tick labels to prevent stupid + 12.14234 way of labelling
         ## TODO: Add scalebar?
-        FMIN = 0.1 # Hz
-        FMAX = 150 # Hz
         assert width > overlap
         try: self.data
         except AttributeError: self.load()
@@ -458,8 +457,8 @@ class LFP(object):
             data = self.data[chanis] # get single row of data at chanis
         Pxx, freqs, t = mpl.mlab.specgram(data, NFFT=width, Fs=self.sampfreq,
                                           noverlap=overlap)
-        # keep only freqs between FMIN and FMAX:
-        lo, hi = freqs.searchsorted([FMIN, FMAX])
+        # keep only freqs between fmin and fmax:
+        lo, hi = freqs.searchsorted([fmin, fmax])
         Pxx, freqs = Pxx[lo:hi], freqs[lo:hi]
         Z = 10. * np.log10(Pxx) # convert power to dB
         Z = Z[::-1] # flip vertically for compatibility with imshow
