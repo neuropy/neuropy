@@ -450,6 +450,9 @@ class LFP(object):
         a = f.add_subplot(111)
         a.add_collection(lc) # add to axes' pool of LCs
         a.autoscale(enable=True, tight=True)
+        # turn off annoying "+2.41e3" type offset on x axis:
+        formatter = mpl.ticker.ScalarFormatter(useOffset=False)
+        a.xaxis.set_major_formatter(formatter)
         a.set_xlabel("time (sec)")
         a.set_ylabel("depth (um)")
         gcfm().window.setWindowTitle(lastcmd())
@@ -469,8 +472,6 @@ class LFP(object):
         1 kHz. Best to keep both a power of 2. As an alternative to cm.jet (the default),
         cm.gray, cm.hsv cm.terrain, and cm.cubehelix_r colormaps seem to bring out the most
         structure in the spectrogram"""
-        ## TODO: make x axis start from t0, for consistency with .plot(), need to change
-        ## tick labels to prevent stupid + 12.14234 way of labelling
         ## TODO: Add scalebar?
         assert width > overlap
         try: self.data
@@ -488,11 +489,15 @@ class LFP(object):
         Pxx, freqs = Pxx[lo:hi], freqs[lo:hi]
         Z = 10. * np.log10(Pxx) # convert power to dB
         Z = Z[::-1] # flip vertically for compatibility with imshow
-        extent = t[0], t[-1], freqs[0], freqs[-1]
+        t0 = self.t0 / 1e6 # sec
+        extent = t[0]+t0, t[-1]+t0, freqs[0], freqs[-1]
         a.imshow(Z, extent=extent, cmap=cm)
         a.axis('auto') # make axes use full figure window?
         a.autoscale(enable=True, tight=True)
-        a.set_xlabel("time from t0=%.1f (sec)" % roundto(self.t0 / 1e6, 0.1))
+        # turn off annoying "+2.41e3" type offset on x axis:
+        formatter = mpl.ticker.ScalarFormatter(useOffset=False)
+        a.xaxis.set_major_formatter(formatter)
+        a.set_xlabel("time (sec)")
         a.set_ylabel("frequency (Hz)")
         gcfm().window.setWindowTitle(lastcmd())
         titlestr = '%s' % lastcmd()
