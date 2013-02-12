@@ -359,7 +359,7 @@ class LFP(object):
         ## was filtered out. Also, make sure data dtype is still int16?
         raise NotImplementedError
 
-    def filter(self, freq=60, bw=0.25, chanis=None, ftype='ellip'):
+    def filter(self, chanis=None, freq=60, bw=0.25, ftype='ellip'):
         """Filter out frequencies centered on freq (Hz), of bandwidth bw (Hz) in data on
         data row indices chanis.
 
