@@ -537,7 +537,8 @@ class PopulationRaster(object):
         experimentmarkers = [] # a flat sorted list of all experiment start and stop times
         for e in self.e.values():
             experimentmarkers.extend(e.trange)
-        self.experimentmarkers = np.asarray(experimentmarkers) - self.t0 # make 'em relative to t0
+        # make them relative to t0:
+        self.experimentmarkers = np.asarray(experimentmarkers) - self.t0
         self.experimentmarkers.sort() # just in case exps weren't sorted for some reason
 
         self.jumpts = np.asarray(jumpts)
