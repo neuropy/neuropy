@@ -471,7 +471,7 @@ class LFP(object):
 
 class PopulationRaster(object):
     """Population spike raster plot"""
-    def __init__(self, neurons=None, trange=None, units='sec', text=None, figsize=(20, 6.5)):
+    def __init__(self, trange=None, neurons=None, units='sec', text=None, figsize=(20, 6.5)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
         is displayed in time units of units"""
         ## TODO: add alternating colors to each nid, otherwise cells that share similar depth
@@ -482,10 +482,9 @@ class PopulationRaster(object):
         UNITSTX = {'us': 1, 'ms': 1000, 'sec': 1000000} # convert units to us
         tx = UNITSTX[units] # spike time multiplier to use raster labels
         assert len(trange) == 2
+        trange = np.asarray(trange)
         nids = sorted(neurons.keys())
-        x = []
-        y = []
-        c = []
+        x, y, c, s = [], [], [], []
         for nid in nids:
             n = neurons[nid]
             lo, hi = n.spikes.searchsorted(trange)
@@ -496,17 +495,22 @@ class PopulationRaster(object):
                 y.append(np.tile(-n.pos[1], nspikes)) # -ve, distance below top of electrode
                 color = CLUSTERCOLOURRGBDICT[nid]
                 c.append(np.tile(color, nspikes))
+                # use big points for low rate cells, small points for high rate cells:
+                ms = max(min(10000/nspikes, 50), 5)
+                s.append(np.tile(ms, nspikes))
         x = np.hstack(x)
         if tx != 1:
             x = x / tx # don't do in-place, in order to allow conversion to float
         y = np.hstack(y)
         c = np.hstack(c)
         c.shape = -1, 3
+        s = np.hstack(s)
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.scatter(x, y, marker='.', c=c, edgecolor='none', s=50)
-        a.autoscale(enable=True, axis='y', tight=True)
+        a.scatter(x, y, marker='.', c=c, edgecolor='none', s=s)
+        a.autoscale(enable=True, axis='both', tight=True)
+        a.set_xlim(trange/tx)
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
