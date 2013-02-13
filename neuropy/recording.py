@@ -12,7 +12,7 @@ from pylab import get_current_fig_manager as gcfm
 import matplotlib as mpl
 
 import core
-from core import (LFP, PopulationRaster, Codes, CodeCorr, binarray2int, nCrsamples,
+from core import (LFP, PopulationRaster, Codes, CodeCorr, binarray2int, nCrsamples, iterable,
                   entropy_no_sing, lastcmd, intround, rstrip, dictattr, warn, pmf, TAB)
 from experiment import Experiment
 from sort import Sort
@@ -293,7 +293,7 @@ class RecordingRevCorr(BaseRecording):
 
 class RecordingRaster(BaseRecording):
     """Mix-in class that defines the raster related Recording methods"""
-    def raster(self, neurons=None, trange=None, units='sec'):
+    def raster(self, trange=None, neurons=None, units='sec'):
         """Create a population spike raster plot. neurons can be None, 'quiet', 'all',
         or a dict"""
         if neurons == None:
@@ -303,11 +303,14 @@ class RecordingRaster(BaseRecording):
         elif neurons == 'all':
             neurons = self.alln
         if trange == None:
-            trange = self.trange[0], self.trange[0]+10000000 # 10 sec window from start, in us
+            trange = self.trange # use full recording trange, in us
         else:
             UNITSTX = {'us': 1, 'ms': 1000, 'sec': 1000000}
             trange = np.asarray(trange) * UNITSTX[units] # convert trange from units to us
-        return PopulationRaster(neurons=neurons, trange=trange, units=units, text=self.name)
+            if not iterable(trange): # only the start time was passed
+                # use 10 sec window from start value, in us
+                trange = trange, trange+10000000
+        return PopulationRaster(trange=trange, neurons=neurons, units=units, text=self.name)
     raster.__doc__ += '\n\n'+PopulationRaster.__init__.__doc__
 
 
