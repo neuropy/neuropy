@@ -510,173 +510,56 @@ class LFP(object):
         
 
 class PopulationRaster(object):
-    """A population spike raster plot. nids are indices of neurons to
-    plot in the raster, in order from bottom to top.
-    jumpts are a sequence of timepoints (in us) that can then be quickly cycled
-    through in the plot using keyboard controls.
-    Defaults to absolute time origin (when acquisition began)"""
-    def __init__(self, recording=None, experiments=None, nids=None,
-                 jumpts=None, binwidth=None, relativet0=False, units='msec',
-                 publication=False):
-        self.r = recording
-        if experiments == None:
-            self.e = recording.e # dictionary
-        else:
-            self.e = experiments # should also be a dict
-        if binwidth == None:
-            self.binwidth = get_ipython().user_ns['CODETRES']
-        else:
-            self.binwidth = binwidth
-        assert self.binwidth >= 10000
-        self.plotbinedges = False # keyboard controlled
-        if relativet0: # set time origin to start of first experiment
-            firstexp = min(self.e.keys())
-            self.t0 = self.e[firstexp].trange[0] # start time of the first experiment
-        else: # use absolute time origin
-            self.t0 = 0 # leave the time origin at when acquisition began
-        experimentmarkers = [] # a flat sorted list of all experiment start and stop times
-        for e in self.e.values():
-            experimentmarkers.extend(e.trange)
-        # make them relative to t0:
-        self.experimentmarkers = np.asarray(experimentmarkers) - self.t0
-        self.experimentmarkers.sort() # just in case exps weren't sorted for some reason
+    """Population spike raster plot"""
+    def __init__(self, neurons=None, trange=None, units='sec', figsize=(20, 6.5)):
+        """neurons is a dict, trange is time range in us to raster plot over. Raster plot
+        is displayed in time units of units"""
+        ## TODO: add alternating colors to each nid, otherwise cells that share similar depth
+        ## will interleave their rasters, which is bad. Or, have alternate mode where
+        ## vertical separation is a function of nid, not actual depth. Or, enforce some
+        ## kind of minimum depth separation?
+        UNITSTX = {'us': 1, 'ms': 1000, 'sec': 1000000} # convert units to us
+        tx = UNITSTX[units] # spike time multiplier to use raster labels
+        assert len(trange) == 2
+        nids = sorted(neurons.keys())
+        x = []
+        y = []
+        for nid in nids:
+            n = neurons[nid]
+            lo, hi = n.spikes.searchsorted(trange)
+            spikes = n.spikes[lo:hi]
+            nspikes = len(spikes)
+            if nspikes > 0:
+                x.append(spikes)
+                y.append(np.tile(-n.pos[1], nspikes)) # -ve, distance below top of electrode
+        x = np.hstack(x)
+        if tx != 1:
+            x = x / tx # don't do in-place, in order to allow conversion to float
+        y = np.hstack(y)
 
-        self.jumpts = np.asarray(jumpts)
-        self.jumpts.sort() # just in case jumpts weren't sorted for some reason
-
-        units2tconv = {'usec': 1e0, 'msec': 1e3, 'sec': 1e6}
-        self.units = units
-        self.tconv = units2tconv[units]
-
-        self.publication = publication
-
-        self.neurons = self.r.n # still a dictattr
-        if nids != None:
-            self.nids = nids
-        else:
-            self.nids = self.r.n.keys()
-            self.nids.sort() # keep it tidy
-
-    def plot(self, left=None, width=200000):
-        """Plots the raster, units are us wrt self.t0"""
-        if left == None:
-            try:
-                left = self.experimentmarkers[0] # init left window edge to first exp marker, ie start of first experiment
-            except IndexError: # ain't no experiments, no associated markers
-                left = min([ neuron.spikes[0] for neuron in self.r.n.values() ]) # set it to the earliest spike in the population
-        try:
-            self.f
-        except AttributeError: # prepare the fig if it hasn't been done already
-            figheight = 1.25+0.2*len(self.nids)
-            self.f = pl.figure(figsize=(14, figheight))
-            self.a = self.f.add_subplot(111)
-            self.formatter = NeuropyScalarFormatter() # better behaved tick label formatter
-            self.formatter.thousandsSep = ',' # use a thousands separator
-            if not self.publication:
-                self.a.xaxis.set_major_locator(NeuropyAutoLocator()) # better behaved tick locator
-                self.a.xaxis.set_major_formatter(self.formatter)
-                self.a.set_yticks([]) # turn off y axis
-            gcfm().window.setWindowTitle(lastcmd())
-            #self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) # create a long tooltip with newline to get around bug where newlines aren't recognized on subsequent self.tooltip.SetTip() calls
-            #self.tooltip.Enable(False) # leave disabled for now
-            #self.tooltip.SetDelay(0) # set popup delay in ms
-            #gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
-            self.a.set_xlabel('time (%s)' % self.units)
-            if not self.publication:
-                self.yrange = (0, len(self.nids))
-            else:
-                self.a.set_ylabel('cell index') # not really cell id, it's the ii (the index into the id)
-                self.yrange = (-0.5, len(self.nids)-0.5)
-            self.a.set_ylim(self.yrange)
-            #aheight = min(0.025*len(self.nids), 1.0)
-            bottominches = 0.75
-            heightinches = 0.15+0.2*len(self.nids)
-            bottom = bottominches / figheight
-            height = heightinches / figheight
-            if not self.publication:
-                self.a.set_position([0.02, bottom, 0.96, height])
-            else:
-                self.a.set_position([0.05, bottom, 0.96, height])
-            self.f.canvas.mpl_connect('motion_notify_event', self._onmotion)
-            self.f.canvas.mpl_connect('key_press_event', self._onkeypress)
-
-        self.left = left
-        self.width = width
-        # plot experiment start and endpoints
-        for etrange in self.experimentmarkers.reshape(-1, 2): # reshape the flat array into a new nx2, each row is a trange
-            estart = etrange[0]-self.t0
-            eend = etrange[1]-self.t0
-            if left <=  estart and estart <= left+width: # experiment start point is within view
-                startlines = self.a.vlines(x=estart/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], color='k', linestyle='-') # marks exp start, convert to ms
-                #startlines[0].set_color((0, 1, 0)) # set to bright green, can't do this for line coll
-            if left <= eend and eend <= left+width: # experiment end point is within view
-                endlines = self.a.vlines(x=eend/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], color='k', linestyle='-') # marks exp end, convert t
-                #endlines[0].set_color((1, 0, 0)) # set to bright red, can't do this for line coll
-        # plot the bin edges. Not taking into account self.t0 for now, assuming it's 0
-        if self.plotbinedges:
-            leftbinedge = (left // self.binwidth + 1)*self.binwidth
-            binedges = np.arange(leftbinedge, left+width, self.binwidth)
-            binlines = self.a.vlines(x=binedges/self.tconv, ymin=self.yrange[0], ymax=self.yrange[1], color='b', linestyle=':') # convert t
-        # plot the rasters
-        for nii, ni in enumerate(self.nids):
-            neuron = self.neurons[ni]
-            x = (neuron.cut((self.t0+left, self.t0+left+width)) - self.t0) / self.tconv # make spike times always relative to t0, convert t
-            if not self.publication:
-                self.a.vlines(x=x, ymin=nii, ymax=nii+1, color='k', linestyle='-')
-            else:
-                self.a.vlines(x=x, ymin=nii-0.5, ymax=nii+0.5, color='k', linestyle='-')
-        self.a.set_xlim(left/self.tconv, (left+width)/self.tconv) # convert t
-
-    def _panx(self, npages=None, left=None):
-        """Pans the raster along the x axis by npages, or to position left"""
-        self.a.lines = [] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
-        if left != None: # use left
-            self.plot(left=left, width=self.width)
-        else: # use npages instead
-            self.plot(left=self.left+self.width*npages, width=self.width)
-        self.f.canvas.draw() # redraw the figure
-
-    def _zoomx(self, factor):
-        """Zooms the raster along the x axis by factor"""
-        self.a.lines = [] # first, clear all the vlines, this is easy but a bit innefficient, since we'll probably be redrawing most of the ones we just cleared
-        centre = (self.left + self.left+self.width) / 2.0
-        width = self.width / float(factor)
-        left = centre - width / 2.0
-        self.plot(left=left, width=width)
-        self.f.canvas.draw() # redraw the figure
-
-    def _goto(self):
-        """Bring up a dialog box to jump to timepoint, mark it with a dotted line"""
-        ted = wx.TextEntryDialog(parent=None, message='Go to timepoint (ms):', caption='Goto',
-                                 defaultValue=str(intround(self.left / self.tconv)), #wx.EmptyString,
-                                 style=wx.TextEntryDialogStyle, pos=wx.DefaultPosition)
-        if ted.ShowModal() == wx.ID_OK: # if OK button has been clicked
-            response = ted.GetValue()
-            try:
-                left = float(response)
-                self.plot(left=left*self.tconv, width=self.width)
-                self.f.canvas.draw() # redraw the figure
-            except ValueError: # response wasn't a valid number
-                pass
-
-    def _cyclethousandssep(self):
-        """Cycles the tick formatter through thousands separators"""
-        if self.formatter.thousandsSep == ',':
-            self.formatter.thousandsSep = ' '
-        elif self.formatter.thousandsSep == ' ':
-            self.formatter.thousandsSep = None
-        else:
-            self.formatter.thousandsSep = ','
-        self.f.canvas.draw() # redraw the figure
-
-    def _togglebinedges(self):
-        """Toggles plotting of bin edges"""
-        self.plotbinedges = not self.plotbinedges
-        self._panx(npages=0) # replot and redraw by panning by 0
-
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        a.plot(x, y, 'k.')
+        #a.autoscale(enable=True, tight=True)
+        # turn off annoying "+2.41e3" type offset on x axis:
+        formatter = mpl.ticker.ScalarFormatter(useOffset=False)
+        a.xaxis.set_major_formatter(formatter)
+        a.set_xlabel("time (%s)" % units)
+        a.set_ylabel("depth (um)")
+        gcfm().window.setWindowTitle(lastcmd())
+        titlestr = '%s' % lastcmd()
+        a.set_title(titlestr)
+        #a.text(0.998, 0.99, '%s' % self.r.name, transform=a.transAxes,
+        #       horizontalalignment='right', verticalalignment='top')
+        f.tight_layout(pad=0.3) # crop figure to contents
+        self.f = f
+    '''
     def _onmotion(self, event):
         """Called during mouse motion over figure. Pops up neuron and
         experiment info in a tooltip when hovering over a neuron row."""
+        self.f.canvas.mpl_connect('motion_notify_event', self._onmotion)
+        self.f.canvas.mpl_connect('key_press_event', self._onkeypress)
+
         if event.inaxes: # if mouse is inside the axes
             nii = int(math.floor(event.ydata)) # use ydata to get index into sorted list of neurons
             ni = self.nids[nii]
@@ -748,7 +631,7 @@ class PopulationRaster(object):
                 self._zoomx(3.0)
             elif key == wx.WXK_DOWN: # zoom out faster
                 self._zoomx(1/3.0)
-
+    '''
 
 class Codes(object):
     """A 2D array where each row is a neuron code, and each column

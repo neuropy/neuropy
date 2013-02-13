@@ -291,15 +291,22 @@ class RecordingRevCorr(BaseRecording):
 
 class RecordingRaster(BaseRecording):
     """Mix-in class that defines the raster related Recording methods"""
-    def raster(self, experiments=None, nids=None,
-                     jumpts=None, binwidth=None, relativet0=False, units='msec',
-                     publication=False):
-        """Return a population spike raster plot"""
-        return PopulationRaster(recording=self, experiments=experiments, nids=nids,
-                                                jumpts=jumpts, binwidth=binwidth,
-                                                relativet0=relativet0, units=units,
-                                                publication=publication)
-    raster.__doc__ += '\n\n'+PopulationRaster.__doc__
+    def raster(self, neurons=None, trange=None, units='sec'):
+        """Create a population spike raster plot. neurons can be None, 'quiet', 'all',
+        or a dict"""
+        if neurons == None:
+            neurons = self.n
+        elif neurons == 'quiet':
+            neurons = self.qn
+        elif neurons == 'all':
+            neurons = self.alln
+        if trange == None:
+            trange = self.trange[0], self.trange[0]+10000000 # 10 sec window from start, in us
+        else:
+            UNITSTX = {'us': 1, 'ms': 1000, 'sec': 1000000}
+            trange = np.asarray(trange) * UNITSTX[units] # convert trange from units to us
+        return PopulationRaster(neurons=neurons, trange=trange, units=units)
+    raster.__doc__ += '\n\n'+PopulationRaster.__init__.__doc__
 
 
 class RecordingCode(BaseRecording):
