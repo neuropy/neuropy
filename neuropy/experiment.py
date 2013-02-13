@@ -738,28 +738,7 @@ class ExperimentRevCorr(BaseExperiment):
     stc.__doc__ += getargstr(STCs.__init__)
 
 
-class ExperimentPopulationRaster(PopulationRaster):
-    """A population raster limited to a single experiment"""
-    def __init__(self, experiment):
-        super(ExperimentPopulationRaster, self).__init__(recording=experiment.r,
-                                                         experiments={experiment.id:
-                                                         experiment})
-
-
-class ExperimentRaster(BaseExperiment):
-    """Mix-in class that defines the raster related experiment methods"""
-    def raster(self, **kwargs):
-        """Creates a population spike raster plot"""
-        pr = ExperimentPopulationRaster(experiment=self, sortby=sortby)
-        pr.plot(**kwargs)
-    raster.__doc__ += '\n\n'+ExperimentPopulationRaster.__doc__
-    raster.__doc__ += '\n\n**kwargs:'
-    raster.__doc__ += '\n__init__: '+getargstr(ExperimentPopulationRaster.__init__)
-    raster.__doc__ += '\n    plot: '+getargstr(ExperimentPopulationRaster.plot)
-
-
-class Experiment(ExperimentRaster,
-                 ExperimentRevCorr,
+class Experiment(ExperimentRevCorr,
                  ExperimentRate,
                  ExperimentCode,
                  BaseExperiment):
