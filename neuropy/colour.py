@@ -9,6 +9,7 @@ import numpy as np
 RED = '#ff0000'
 ORANGE = '#ff7f00'
 YELLOW = '#ffff00'
+DARKYELLOW = '#efef00'
 GREEN = '#00ff00'
 CYAN = '#00ffff'
 LIGHTBLUE = '#007fff'
@@ -17,7 +18,7 @@ VIOLET = '#7f00ff'
 MAGENTA = '#ff00ff'
 GREY = '#7f7f7f'
 WHITE = '#ffffff'
-BROWN = '#Af5050'
+BROWN = '#af5050'
 DARKGREY = '#303030'
 LIGHTBLACK = '#202020'
 BLACK = '#000000'
@@ -51,7 +52,7 @@ def hex2floatrgb(s):
 
 
 # for plotting on white:
-PLOTCOLOURS = [RED, ORANGE, YELLOW, GREEN, CYAN, LIGHTBLUE, VIOLET, MAGENTA, BROWN,
+PLOTCOLOURS = [RED, ORANGE, DARKYELLOW, GREEN, CYAN, LIGHTBLUE, VIOLET, MAGENTA, BROWN,
                GREY, BLACK]
 CLUSTERCOLOURS = copy(PLOTCOLOURS)
 CLUSTERCOLOURS.remove(GREY)
