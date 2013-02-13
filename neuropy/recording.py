@@ -228,7 +228,7 @@ class BaseRecording(object):
         dimi = {'x':0, 'y':1}[dim]
         p = [ n.pos[dimi] for n in self.n.values() ] # all y values
         nbins = max(nbins, 2*intround(np.sqrt(self.nneurons)))
-        n, p = np.histogram(p, bins=nbins)
+        n, p = np.histogram(p, bins=nbins) # p includes rightmost bin edge
         binwidth = p[1] - p[0] # take width of first bin in p
 
         if stats:
@@ -247,7 +247,8 @@ class BaseRecording(object):
             
         color = core.PLOTCOLOURDICT[int(self.id)]
 
-        a.bar(left=p, height=n, width=binwidth, bottom=0, color=color, ec=color,
+        # exclude rightmost bin edge in p
+        a.bar(left=p[:-1], height=n, width=binwidth, bottom=0, color=color, ec=color,
               yerr=None, xerr=None, capsize=3)
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
