@@ -100,6 +100,8 @@ BLACK = '#000000'
 # for plotting on white:
 PLOTCOLOURS = [RED, ORANGE, YELLOW, GREEN, CYAN, LIGHTBLUE, VIOLET, MAGENTA, BROWN,
                GREY, BLACK]
+CLUSTERCOLOURS = copy(PLOTCOLOURS)
+CLUSTERCOLOURS.remove(GREY)
 
 class ColourDict(dict):
     """Just an easy way to cycle through colours given some index,
@@ -113,7 +115,7 @@ class ColourDict(dict):
     def __getitem__(self, key):
         if key < 0: # invalid index into self.colours
             return self.nocolour
-        i = key % len(self.colours)
+        i = key % len(self.colours) - 1 # convert 1-based indices into 0-based
         return self.colours[i]
 
     def __setitem__(self, key, val):
@@ -121,6 +123,7 @@ class ColourDict(dict):
 
 
 PLOTCOLOURDICT = ColourDict(colours=PLOTCOLOURS)
+CLUSTERCOLOURDICT = ColourDict(colours=CLUSTERCOLOURS)
 
 
 class PTCSHeader(object):
