@@ -340,8 +340,8 @@ class LFP(object):
         # using more extreme values for gpass or gstop seems to cause IIR filter instability.
         # 'ellip' is the only one that seems to work
         b, a = scipy.signal.iirdesign(wp, ws, gpass=0.01, gstop=30, analog=0, ftype=ftype)
-        ## TODO: do np.round and np.int16? No, because after filtering some values are out
-        ## of range of int16. Could use int32 though, or float32 for that matter
+        ## TODO: apply np.round and np.int16? No, because after filtering some values are out
+        ## of range of int16. Would have to set any out of range values to int16 limits
         self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
 
     def naivefftfilter(self, freqs=60, bws=1):
@@ -471,19 +471,21 @@ class LFP(object):
 
 class PopulationRaster(object):
     """Population spike raster plot"""
-    def __init__(self, neurons=None, trange=None, units='sec', figsize=(20, 6.5)):
+    def __init__(self, neurons=None, trange=None, units='sec', text=None, figsize=(20, 6.5)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
         is displayed in time units of units"""
         ## TODO: add alternating colors to each nid, otherwise cells that share similar depth
         ## will interleave their rasters, which is bad. Or, have alternate mode where
         ## vertical separation is a function of nid, not actual depth. Or, enforce some
-        ## kind of minimum depth separation?
+        ## kind of minimum depth separation? Or, just draw a faint grey horizontal line
+        ## underneath every neuron y position
         UNITSTX = {'us': 1, 'ms': 1000, 'sec': 1000000} # convert units to us
         tx = UNITSTX[units] # spike time multiplier to use raster labels
         assert len(trange) == 2
         nids = sorted(neurons.keys())
         x = []
         y = []
+        c = []
         for nid in nids:
             n = neurons[nid]
             lo, hi = n.spikes.searchsorted(trange)
@@ -492,15 +494,19 @@ class PopulationRaster(object):
             if nspikes > 0:
                 x.append(spikes)
                 y.append(np.tile(-n.pos[1], nspikes)) # -ve, distance below top of electrode
+                color = CLUSTERCOLOURRGBDICT[nid]
+                c.append(np.tile(color, nspikes))
         x = np.hstack(x)
         if tx != 1:
             x = x / tx # don't do in-place, in order to allow conversion to float
         y = np.hstack(y)
+        c = np.hstack(c)
+        c.shape = -1, 3
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.plot(x, y, 'k.')
-        #a.autoscale(enable=True, tight=True)
+        a.scatter(x, y, marker='.', c=c, edgecolor='none', s=50)
+        a.autoscale(enable=True, axis='y', tight=True)
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
@@ -509,8 +515,9 @@ class PopulationRaster(object):
         gcfm().window.setWindowTitle(lastcmd())
         titlestr = '%s' % lastcmd()
         a.set_title(titlestr)
-        #a.text(0.998, 0.99, '%s' % self.r.name, transform=a.transAxes,
-        #       horizontalalignment='right', verticalalignment='top')
+        if text:
+            a.text(0.998, 0.99, '%s' % text, transform=a.transAxes,
+                   horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
     '''

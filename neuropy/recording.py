@@ -307,7 +307,7 @@ class RecordingRaster(BaseRecording):
         else:
             UNITSTX = {'us': 1, 'ms': 1000, 'sec': 1000000}
             trange = np.asarray(trange) * UNITSTX[units] # convert trange from units to us
-        return PopulationRaster(neurons=neurons, trange=trange, units=units)
+        return PopulationRaster(neurons=neurons, trange=trange, units=units, text=self.name)
     raster.__doc__ += '\n\n'+PopulationRaster.__init__.__doc__
 
 
