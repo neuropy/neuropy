@@ -33,6 +33,8 @@ import pylab as pl
 from pylab import get_current_fig_manager as gcfm
 from matplotlib.collections import LineCollection
 
+from colour import RED, GREEN, BLUE, hex2floatrgb, CLUSTERCOLOURRGBDICT
+
 TAB = '    ' # 4 spaces
 EPOCH = datetime.datetime(1899, 12, 30, 0, 0, 0) # epoch for datetime stamps in .ptcs
 
@@ -79,51 +81,6 @@ class dictattr(dict):
         if key.__class__ == str and not key[0].isdigit():
             key = key.replace(' ', '_') # get rid of any spaces
             self.__dict__[key] = val # make the key show up as an attrib upon dir()
-
-
-RED = '#ff0000'
-ORANGE = '#ff7f00'
-YELLOW = '#ffff00'
-GREEN = '#00ff00'
-CYAN = '#00ffff'
-LIGHTBLUE = '#007fff'
-BLUE = '#0000ff'
-VIOLET = '#7f00ff'
-MAGENTA = '#ff00ff'
-GREY = '#7f7f7f'
-WHITE = '#ffffff'
-BROWN = '#Af5050'
-DARKGREY = '#303030'
-LIGHTBLACK = '#202020'
-BLACK = '#000000'
-
-# for plotting on white:
-PLOTCOLOURS = [RED, ORANGE, YELLOW, GREEN, CYAN, LIGHTBLUE, VIOLET, MAGENTA, BROWN,
-               GREY, BLACK]
-CLUSTERCOLOURS = copy(PLOTCOLOURS)
-CLUSTERCOLOURS.remove(GREY)
-
-class ColourDict(dict):
-    """Just an easy way to cycle through colours given some index,
-    like say a chan id or a neuron id. Better than using a generator,
-    cuz you don't need to keep calling .next(). This is like a dict
-    of infinite length. Copied from spyke.plot"""
-    def __init__(self, colours=None, nocolour=None):
-        self.colours = colours
-        self.nocolour = nocolour
-
-    def __getitem__(self, key):
-        if key < 0: # invalid index into self.colours
-            return self.nocolour
-        i = key % len(self.colours) - 1 # convert 1-based indices into 0-based
-        return self.colours[i]
-
-    def __setitem__(self, key, val):
-        raise RuntimeError('ColourDict is unsettable')
-
-
-PLOTCOLOURDICT = ColourDict(colours=PLOTCOLOURS)
-CLUSTERCOLOURDICT = ColourDict(colours=CLUSTERCOLOURS)
 
 
 class PTCSHeader(object):
@@ -829,9 +786,9 @@ class CodeCorr(object):
         supis = ys < ythresh # True values are superficial, False are deep
         npairs = len(pairis)
         c = np.empty((npairs, 3), dtype=float) # color RGB array
-        REDRGB = hex2rgb(RED)
-        GREENRGB = hex2rgb(GREEN)
-        BLUERGB = hex2rgb(BLUE)
+        REDRGB = hex2floatrgb(RED)
+        GREENRGB = hex2floatrgb(GREEN)
+        BLUERGB = hex2floatrgb(BLUE)
         c[:] = GREENRGB # init to GREEN, pairs that straddle remain GREEN
         for i, pairi in enumerate(pairis):
             if supis[pairi[0]] == supis[pairi[1]]:
@@ -2571,13 +2528,6 @@ def td2usec(td):
     sec = td.total_seconds() # float
     usec = intround(sec * 1000000) # round to nearest us
     return usec
-
-def hex2rgb(s):
-    """Convert RGB hex string s into an RGB float array"""
-    s = s[len(s)-6:len(s)] # get last 6 characters
-    r, g, b = s[0:2], s[2:4], s[4:6]
-    r, g, b = int(r, base=16), int(g, base=16), int(b, base=16)
-    return np.float64([r, g, b]) / 255
 
 def issorted(x):
     """Check if x is sorted"""

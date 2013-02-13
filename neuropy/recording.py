@@ -245,7 +245,8 @@ class BaseRecording(object):
             a.hold(True)
             f = pl.gcf()
             
-        color = core.PLOTCOLOURDICT[int(self.id)]
+        # use CLUSTERCOLOURDICT for familiarity with len 10 1-based id to colour mapping
+        color = core.CLUSTERCOLOURDICT[int(self.id)]
 
         # exclude rightmost bin edge in p
         a.bar(left=p[:-1], height=n, width=binwidth, bottom=0, color=color, ec=color,
