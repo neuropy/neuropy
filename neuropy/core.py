@@ -372,15 +372,18 @@ class LFP(object):
             # maybe try using complex average of freq bins just outside of freqs +/- bws
         self.data = np.fft.ifft(fdata).real # inverse FFT, overwrite data, leave as float
 
+    def get_tssec(self):
+        """Return full set of timestamps, in sec"""
+        return np.arange(self.t0/1e6, self.t1/1e6, self.tres/1e6)
+
     def plot(self, t0=None, t1=None, chanis=None, figsize=(20, 6.5)):
         """Plot chanis of LFP data between t0 and t1 in sec"""
         GAIN = 0.1
         try: self.data
         except AttributeError: self.load()
-        # full set of timestamps, in sec:
-        ts = np.arange(self.t0/1e6, self.t1/1e6, self.tres/1e6)
+        ts = self.get_tssec() # full set of timestamps, in sec
         if t0 == None:
-            t0 = ts[0]
+            t0, t1 = ts[0], ts[-1]
         if t1 == None:
             t1 = t0 + 10 # 10 sec window
         if chanis == None:
@@ -424,33 +427,41 @@ class LFP(object):
         self.f = f
         return self
         
-    def specgram(self, chanis=-1, width=4096, overlap=2048, fmin=0.1, fmax=100, cm=None,
-                 figsize=(20, 6.5)):
-        """Plot a spectrogram based on channel index chani of LFP data. chanis=0 uses most
-        superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, takes mean
-        of specified chanis. width and overlap are in ms, assuming LFP sampling frequency is
-        1 kHz. Best to keep both a power of 2. As an alternative to cm.jet (the default),
-        cm.gray, cm.hsv cm.terrain, and cm.cubehelix_r colormaps seem to bring out the most
-        structure in the spectrogram"""
+    def specgram(self, t0=None, t1=None, f0=0.1, f1=100, chanis=-1,
+                 width=4096, overlap=2048, cm=None, figsize=(20, 6.5)):
+        """Plot a spectrogram from t0 to t1 in sec, based on channel index chani of LFP
+        data. chanis=0 uses most superficial channel, chanis=-1 uses deepest channel. If
+        len(chanis) > 1, take mean of specified chanis. width and overlap are in ms,
+        assuming LFP sampling frequency is 1 kHz. Best to keep both a power of 2. As an
+        alternative to cm.jet (the default), cm.gray, cm.hsv cm.terrain, and cm.cubehelix_r
+        colormaps seem to bring out the most structure in the spectrogram"""
         ## TODO: Add scalebar?
         assert width > overlap
         try: self.data
         except AttributeError: self.load()
+        ts = self.get_tssec() # full set of timestamps, in sec
+        if t0 == None:
+            t0, t1 = ts[0], ts[-1] # full duration
+        if t1 == None:
+            t1 = t0 + 10 # 10 sec window
+        t0i, t1i = ts.searchsorted((t0, t1))
+        #ts = ts[t0i:t1i] # constrained set of timestamps, in sec
+        data = self.data[:, t0i:t1i] # slice data
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         if iterable(chanis):
-            data = self.data[chanis].mean(axis=0) # take mean of data on chanis
+            data = data[chanis].mean(axis=0) # take mean of data on chanis
         else:
-            data = self.data[chanis] # get single row of data at chanis
+            data = data[chanis] # get single row of data at chanis
+        # returned t is in sec from start of data:
         Pxx, freqs, t = mpl.mlab.specgram(data, NFFT=width, Fs=self.sampfreq,
                                           noverlap=overlap)
-        # keep only freqs between fmin and fmax:
-        lo, hi = freqs.searchsorted([fmin, fmax])
+        # keep only freqs between f0 and f1:
+        lo, hi = freqs.searchsorted([f0, f1])
         Pxx, freqs = Pxx[lo:hi], freqs[lo:hi]
         Z = 10. * np.log10(Pxx) # convert power to dB
         Z = Z[::-1] # flip vertically for compatibility with imshow
-        t0 = self.t0 / 1e6 # sec
-        extent = t[0]+t0, t[-1]+t0, freqs[0], freqs[-1]
+        extent = t0+t[0], t0+t[-1], freqs[0], freqs[-1]
         a.imshow(Z, extent=extent, cmap=cm)
         a.axis('auto') # make axes use full figure window?
         a.autoscale(enable=True, tight=True)
