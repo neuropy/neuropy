@@ -293,23 +293,25 @@ class RecordingRevCorr(BaseRecording):
 
 class RecordingRaster(BaseRecording):
     """Mix-in class that defines the raster related Recording methods"""
-    def raster(self, trange=None, neurons=None, units='sec'):
+    def raster(self, t0=None, t1=None, neurons=None, units='sec'):
         """Create a population spike raster plot. neurons can be None, 'quiet', 'all',
         or a dict"""
         if neurons == None:
-            neurons = self.n
+            neurons = self.n # use active neurons
         elif neurons == 'quiet':
-            neurons = self.qn
+            neurons = self.qn # use quiet neurons
         elif neurons == 'all':
-            neurons = self.alln
-        if trange == None:
-            trange = self.trange # use full recording trange, in us
+            neurons = self.alln # use all neurons
+        if t0 == None:
+            t0, t1 = self.trange # use full recording trange
         else:
-            UNITSTX = {'us': 1, 'ms': 1000, 'sec': 1000000}
-            trange = np.asarray(trange) * UNITSTX[units] # convert trange from units to us
-            if not iterable(trange): # only the start time was passed
-                # use 10 sec window from start value, in us
-                trange = trange, trange+10000000
+            tx = {'us': 1, 'ms': 1000, 'sec': 1000000}[units]
+            t0 *= tx # convert to us
+            if t1 == None:
+                t1 = t0 + 10000000
+            else:
+                t1 *= tx # convert to us
+        trange = np.array([t0, t1])
         return PopulationRaster(trange=trange, neurons=neurons, units=units, text=self.name)
     raster.__doc__ += '\n\n'+PopulationRaster.__init__.__doc__
 

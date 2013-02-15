@@ -474,13 +474,6 @@ class PopulationRaster(object):
     def __init__(self, trange=None, neurons=None, units='sec', text=None, figsize=(20, 6.5)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
         is displayed in time units of units"""
-        ## TODO: add alternating colors to each nid, otherwise cells that share similar depth
-        ## will interleave their rasters, which is bad. Or, have alternate mode where
-        ## vertical separation is a function of nid, not actual depth. Or, enforce some
-        ## kind of minimum depth separation? Or, just draw a faint grey horizontal line
-        ## underneath every neuron y position
-        UNITSTX = {'us': 1, 'ms': 1000, 'sec': 1000000} # convert units to us
-        tx = UNITSTX[units] # spike time multiplier to use raster labels
         assert len(trange) == 2
         trange = np.asarray(trange)
         nids = sorted(neurons.keys())
@@ -499,6 +492,8 @@ class PopulationRaster(object):
                 ms = max(min(10000/nspikes, 50), 5)
                 s.append(np.tile(ms, nspikes))
         x = np.hstack(x)
+        # spike time multiplier to use for raster labels:
+        tx = {'us': 1, 'ms': 1000, 'sec': 1000000}[units]
         if tx != 1:
             x = x / tx # don't do in-place, in order to allow conversion to float
         y = np.hstack(y)
