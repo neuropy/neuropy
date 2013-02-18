@@ -1,5 +1,7 @@
 TODO:
 
+- check that removing all dt == 0 from autocorr is really an OK thing to do, maybe implement it without that assumption...? Can confirm with matplotlib.pyplot.acorr?
+
 - move cell_type.py script to neuropy
     - plot fwhm (half amplitude duration) ala Bartho2004, instead of neuron trough to peak time (dt), which when measured from templates suffers from quantization, although that could be remedied by using very high interpolation of some kind around the peaks. Anyways, for each neuron, scatterplot some measure of average spike duration against another measure of spike duration, or against spatial spread
     - Also, see figure S6 in Luczak2007
