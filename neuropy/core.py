@@ -431,7 +431,7 @@ class LFP(object):
         self.f = f
         return self
         
-    def specgram(self, t0=None, t1=None, f0=0.1, f1=100, p0=-60, p1=None, chanis=-1,
+    def specgram(self, t0=None, t1=None, f0=0.1, f1=60, p0=-60, p1=None, chanis=-1,
                  width=4096, overlap=2048, cm=None, colorbar=False, figsize=(20, 6.5)):
         """Plot a spectrogram from t0 to t1 in sec, from f0 to f1 in Hz, and clip power
         values from p0 to p1 in dB. based on channel index chani of LFP data. chanis=0 uses
@@ -440,7 +440,6 @@ class LFP(object):
         frequency is 1 kHz. Best to keep both a power of 2. As an alternative to cm.jet (the
         default), cm.gray, cm.hsv cm.terrain, and cm.cubehelix_r colormaps seem to bring out
         the most structure in the spectrogram"""
-        ## TODO: Add scalebar?
         assert width > overlap
         self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
@@ -484,7 +483,7 @@ class LFP(object):
         gcfm().window.setWindowTitle(lastcmd())
         titlestr = '%s' % lastcmd()
         a.set_title(titlestr)
-        a.text(0.998, 0.99, '%s' % self.r.name, transform=a.transAxes,
+        a.text(0.998, 0.99, '%s' % self.r.name, color='w', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
         if colorbar:
