@@ -320,6 +320,14 @@ class LFP(object):
         ## was filtered out. Also, convert data back to int16?
         raise NotImplementedError
 
+    def get_data(self):
+        """Return data, testing first to see if it's been loaded"""
+        try:
+            self.data
+        except AttributeError:
+            self.load()
+        return self.data
+
     def filter(self, chanis=None, freq=60, bw=0.25, ftype='ellip'):
         """Filter out frequencies centered on freq (Hz), of bandwidth bw (Hz) in data on
         data row indices chanis.
@@ -330,8 +338,7 @@ class LFP(object):
         Chebyshev II: 'cheby2'
         Bessel : 'bessel'
         """
-        try: self.data
-        except AttributeError: self.load()
+        self.get_data()
         if chanis == None:
             chanis = np.arange(len(self.data))
         w = freq / (self.sampfreq / 2) # fraction of Nyquist frequency == 1/2 sampling rate
@@ -348,8 +355,7 @@ class LFP(object):
         Filtering out by setting components to 0 is probably naive, but it's a start.
         Should probably do more careful filtering to further reduce say 60 Hz noise,
         and prevent aliasing artifacts"""
-        try: self.data
-        except AttributeError: self.load()
+        self.get_data()
         nt = self.data.shape[1]
         dt = self.tres / 1e6 # in sec
         f = np.fft.fftfreq(nt, dt) # fft bin frequencies
@@ -378,8 +384,7 @@ class LFP(object):
     def plot(self, t0=None, t1=None, chanis=None, figsize=(20, 6.5)):
         """Plot chanis of LFP data between t0 and t1 in sec"""
         GAIN = 0.1
-        try: self.data
-        except AttributeError: self.load()
+        self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
         if t0 == None:
             t0, t1 = ts[0], ts[-1]
@@ -437,8 +442,7 @@ class LFP(object):
         the most structure in the spectrogram"""
         ## TODO: Add scalebar?
         assert width > overlap
-        try: self.data
-        except AttributeError: self.load()
+        self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
         if t0 == None:
             t0, t1 = ts[0], ts[-1] # full duration
