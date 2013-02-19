@@ -490,6 +490,18 @@ class LFP(object):
             f.colorbar(im, pad=0) # creates big whitespace to the right for some reason
         self.f = f
         return self
+
+    def hilbert(self, chani=-1):
+        """Return power and phase of Hilbert transform of data on chani. Default to deepest
+        channel"""
+        data = self.get_data()
+        x = data[chani] / 1e3 # convert from uV to mV
+        ## TODO: do band pass filtering here
+        hx = scipy.signal.hilbert(x) # Hilbert transform of x
+        Ex = np.abs(hx) # amplitude == energy?
+        Phx = np.angle(hx) # phase
+        Px = 10 * np.log(Ex**2) # power in dB
+        return Px, Phx
         
 
 class PopulationRaster(object):
