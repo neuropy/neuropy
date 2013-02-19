@@ -312,11 +312,12 @@ class LFP(object):
         assert issorted(self.chanpos[self.chans][1])
         self.sampfreq = 1e6 / self.tres # in Hz
         assert self.sampfreq == 1000 # should be 1000 Hz
+        self.data = self.data * self.uVperAD # convert to float uV
 
     def save(self):
         ## TODO: option to overwrite original .lfp.zip file from spyke with filtered data,
         ## add filteredfreqs and filteredbws keywords when resaving to indicate what exactly
-        ## was filtered out. Also, make sure data dtype is still int16?
+        ## was filtered out. Also, convert data back to int16?
         raise NotImplementedError
 
     def filter(self, chanis=None, freq=60, bw=0.25, ftype='ellip'):
@@ -340,8 +341,6 @@ class LFP(object):
         # using more extreme values for gpass or gstop seems to cause IIR filter instability.
         # 'ellip' is the only one that seems to work
         b, a = scipy.signal.iirdesign(wp, ws, gpass=0.01, gstop=30, analog=0, ftype=ftype)
-        ## TODO: apply np.round and np.int16? No, because after filtering some values are out
-        ## of range of int16. Would have to set any out of range values to int16 limits
         self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
 
     def naivefftfilter(self, freqs=60, bws=1):
