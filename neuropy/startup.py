@@ -21,7 +21,20 @@ from recording import Recording
 def cf():
     import pylab
     pylab.close('all')
-    
+
+def fontsize(pts=None):
+    """Get/set font size in points of various typical plot features. Needs work"""
+    rc = get_ipython().user_ns['rcParams']
+    if pts == None:
+        return rc['font.size']
+    rc['axes.titlesize'] = pts
+    rc['axes.labelsize'] = pts
+    rc['xtick.labelsize'] = pts
+    rc['ytick.labelsize'] = pts
+    rc['legend.fontsize'] = pts
+    rc['font.size'] = pts
+    print('font size set to %r points' % pts)
+
 ip = get_ipython()
 ip.call_pdb = True
 ip.magic("pylab")
