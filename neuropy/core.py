@@ -426,14 +426,15 @@ class LFP(object):
         self.f = f
         return self
         
-    def specgram(self, t0=None, t1=None, f0=0.1, f1=100, chanis=-1,
-                 width=4096, overlap=2048, cm=None, figsize=(20, 6.5)):
-        """Plot a spectrogram from t0 to t1 in sec, based on channel index chani of LFP
-        data. chanis=0 uses most superficial channel, chanis=-1 uses deepest channel. If
-        len(chanis) > 1, take mean of specified chanis. width and overlap are in ms,
-        assuming LFP sampling frequency is 1 kHz. Best to keep both a power of 2. As an
-        alternative to cm.jet (the default), cm.gray, cm.hsv cm.terrain, and cm.cubehelix_r
-        colormaps seem to bring out the most structure in the spectrogram"""
+    def specgram(self, t0=None, t1=None, f0=0.1, f1=100, p0=-60, p1=None, chanis=-1,
+                 width=4096, overlap=2048, cm=None, colorbar=False, figsize=(20, 6.5)):
+        """Plot a spectrogram from t0 to t1 in sec, from f0 to f1 in Hz, and clip power
+        values from p0 to p1 in dB. based on channel index chani of LFP data. chanis=0 uses
+        most superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, take
+        mean of specified chanis. width and overlap are in ms, assuming LFP sampling
+        frequency is 1 kHz. Best to keep both a power of 2. As an alternative to cm.jet (the
+        default), cm.gray, cm.hsv cm.terrain, and cm.cubehelix_r colormaps seem to bring out
+        the most structure in the spectrogram"""
         ## TODO: Add scalebar?
         assert width > overlap
         try: self.data
@@ -452,16 +453,23 @@ class LFP(object):
             data = data[chanis].mean(axis=0) # take mean of data on chanis
         else:
             data = data[chanis] # get single row of data at chanis
-        # returned t is in sec from start of data:
-        Pxx, freqs, t = mpl.mlab.specgram(data, NFFT=width, Fs=self.sampfreq,
+        # convert data from uV to mV, returned t is in sec from start of data
+        # I think E is in mV^2?:
+        E, freqs, t = mpl.mlab.specgram(data/1e3, NFFT=width, Fs=self.sampfreq,
                                           noverlap=overlap)
         # keep only freqs between f0 and f1:
         lo, hi = freqs.searchsorted([f0, f1])
-        Pxx, freqs = Pxx[lo:hi], freqs[lo:hi]
-        Z = 10. * np.log10(Pxx) # convert power to dB
-        Z = Z[::-1] # flip vertically for compatibility with imshow
+        E, freqs = E[lo:hi], freqs[lo:hi]
+        P = 10. * np.log10(E) # convert power to dB
+        P = P[::-1] # flip vertically for compatibility with imshow
+        # for better visualization, clip power values to within (p0, p1) dB
+        if p0 != None:
+            P[P < p0] = p0
+        if p1 != None:
+            P[P > p1] = p1
+        #self.E, self.P = E, P
         extent = t0+t[0], t0+t[-1], freqs[0], freqs[-1]
-        a.imshow(Z, extent=extent, cmap=cm)
+        im = a.imshow(P, extent=extent, cmap=cm)
         a.axis('auto') # make axes use full figure window?
         a.autoscale(enable=True, tight=True)
         # turn off annoying "+2.41e3" type offset on x axis:
@@ -475,6 +483,8 @@ class LFP(object):
         a.text(0.998, 0.99, '%s' % self.r.name, transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
+        if colorbar:
+            f.colorbar(im, pad=0) # creates big whitespace to the right for some reason
         self.f = f
         return self
         
