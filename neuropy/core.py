@@ -373,20 +373,36 @@ class LFP(object):
             # maybe try using complex average of freq bins just outside of freqs +/- bws
         self.data = np.fft.ifft(fdata).real # inverse FFT, overwrite data, leave as float
 
+    def bandpass(self, chanis=None, f0=0, f1=7, fr=0.25, ftype='ellip'):
+        """Bandpass filter data on row indices chanis, between f0 and f1 (Hz), with
+        filter rolloff (?) ft (Hz)"""
+        self.get_data()
+        if chanis == None:
+            chanis = np.arange(len(self.data))
+        w0 = f0 / (self.sampfreq / 2) # fraction of Nyquist frequency == 1/2 sampling rate
+        w1 = f1 / (self.sampfreq / 2)
+        wr = fr / (self.sampfreq / 2)
+        if w0 == 0:
+            wp = w1
+            ws = w1+wr
+        else:
+            wp = [w0, w1]
+            ws = [w0-wr, w0+wr]
+        b, a = scipy.signal.iirdesign(wp, ws, gpass=0.01, gstop=30, analog=0, ftype=ftype)
+        self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
+
     def hilbert(self, chani=-1):
         """Return power (dB wrt 1 mV) and phase (rad) of Hilbert transform of data on chani.
         Default to deepest channel"""
         data = self.get_data()
         x = data[chani] / 1e3 # convert from uV to mV
-        self.filter(
+        self.bandpass(chanis=[chani])
         ## TODO: do band pass filtering here
         hx = scipy.signal.hilbert(x) # Hilbert transform of x
         Ex = np.abs(hx) # amplitude == energy?
         Phx = np.angle(hx) # phase
         Px = 10 * np.log(Ex**2) # power in dB wrt 1 mV^2?
         return Px, Phx
-        
-
 
     def get_tssec(self):
         """Return full set of timestamps, in sec"""
