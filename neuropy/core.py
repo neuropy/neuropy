@@ -329,7 +329,7 @@ class LFP(object):
         return self.data
 
     def notch(self, chanis=None, freq=60, bw=0.25, ftype='ellip'):
-        """Filter out frequencies centered on freq (Hz), of bandwidth bw (Hz) in data on
+        """Filter out frequencies centered on freq (Hz), of bandwidth +/- bw (Hz) on
         data row indices chanis.
 
         ftype: 'ellip', 'butter', 'cheby1', 'cheby2', 'bessel'
@@ -374,8 +374,8 @@ class LFP(object):
         self.data = np.fft.ifft(fdata).real # inverse FFT, overwrite data, leave as float
 
     def hilbert(self, chani=-1):
-        """Return power and phase of Hilbert transform of data on chani. Default to deepest
-        channel"""
+        """Return power (dB wrt 1 mV) and phase (rad) of Hilbert transform of data on chani.
+        Default to deepest channel"""
         data = self.get_data()
         x = data[chani] / 1e3 # convert from uV to mV
         self.filter(
@@ -383,7 +383,7 @@ class LFP(object):
         hx = scipy.signal.hilbert(x) # Hilbert transform of x
         Ex = np.abs(hx) # amplitude == energy?
         Phx = np.angle(hx) # phase
-        Px = 10 * np.log(Ex**2) # power in dB
+        Px = 10 * np.log(Ex**2) # power in dB wrt 1 mV^2?
         return Px, Phx
         
 
@@ -468,20 +468,20 @@ class LFP(object):
         else:
             data = data[chanis] # get single row of data at chanis
         # convert data from uV to mV, returned t is in sec from start of data
-        # I think E is in mV^2?:
-        E, freqs, t = mpl.mlab.specgram(data/1e3, NFFT=width, Fs=self.sampfreq,
-                                          noverlap=overlap)
+        # I think P is in mV^2?:
+        P, freqs, t = mpl.mlab.specgram(data/1e3, NFFT=width, Fs=self.sampfreq,
+                                        noverlap=overlap)
         # keep only freqs between f0 and f1:
         lo, hi = freqs.searchsorted([f0, f1])
-        E, freqs = E[lo:hi], freqs[lo:hi]
-        P = 10. * np.log10(E) # convert power to dB
+        P, freqs = P[lo:hi], freqs[lo:hi]
+        P = 10. * np.log10(P) # convert power to dB wrt 1 mV^2?
         P = P[::-1] # flip vertically for compatibility with imshow
         # for better visualization, clip power values to within (p0, p1) dB
         if p0 != None:
             P[P < p0] = p0
         if p1 != None:
             P[P > p1] = p1
-        #self.E, self.P = E, P
+        #self.P = P
         extent = t0+t[0], t0+t[-1], freqs[0], freqs[-1]
         im = a.imshow(P, extent=extent, cmap=cm)
         a.axis('auto') # make axes use full figure window?
