@@ -328,81 +328,6 @@ class LFP(object):
             self.load()
         return self.data
 
-    def notch(self, chanis=None, freq=60, bw=0.25, ftype='ellip'):
-        """Filter out frequencies centered on freq (Hz), of bandwidth +/- bw (Hz) on
-        data row indices chanis.
-
-        ftype: 'ellip', 'butter', 'cheby1', 'cheby2', 'bessel'
-        """
-        self.get_data()
-        if chanis == None:
-            chanis = np.arange(len(self.data))
-        w = freq / (self.sampfreq / 2) # fraction of Nyquist frequency == 1/2 sampling rate
-        bw = bw / (self.sampfreq / 2)
-        wp = [w-2*bw, w+2*bw] # outer bandpass
-        ws = [w-bw, w+bw] # inner bandstop
-        # using more extreme values for gpass or gstop seems to cause IIR filter instability.
-        # 'ellip' is the only one that seems to work
-        b, a = scipy.signal.iirdesign(wp, ws, gpass=0.01, gstop=30, analog=0, ftype=ftype)
-        self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
-
-    def naivenotch(self, freqs=60, bws=1):
-        """Filter out frequencies centered on freqs (Hz), of bandwidths bws (Hz) in data.
-        Filtering out by setting components to 0 is probably naive, but it's a start.
-        Should probably do more careful filtering to further reduce say 60 Hz noise,
-        and prevent aliasing artifacts"""
-        self.get_data()
-        nt = self.data.shape[1]
-        dt = self.tres / 1e6 # in sec
-        f = np.fft.fftfreq(nt, dt) # fft bin frequencies
-        f = f[:nt//2] # grab +ve freqs by splitting f in half
-        franges = []
-        freqs = tolist(freqs)
-        bws = tolist(bws)
-        if len(freqs) > 1 and len(bws) == 1:
-            bws = bws * len(freqs) # make freqs and bw the same length
-        for freq, bw in zip(freqs, bws):
-            franges.append(freq-bw)
-            franges.append(freq+bw)
-        fis = f.searchsorted(franges)
-        fis = np.hstack([fis, -fis]) # indices for both +ve and -ve freq ranges
-        fis.shape = -1, 2 # reshape to 2 columns
-        fdata = np.fft.fft(self.data)
-        for f0i, f1i in fis:
-            fdata[:, f0i:f1i] = 0 # replace desired components with 0
-            # maybe try using complex average of freq bins just outside of freqs +/- bws
-        self.data = np.fft.ifft(fdata).real # inverse FFT, overwrite data, leave as float
-
-    def bandpass(self, chanis=None, f0=0, f1=7, fr=0.5, ftype='ellip'):
-        """Bandpass filter data on row indices chanis, between f0 and f1 (Hz), with
-        filter rolloff (?) fr (Hz)"""
-        self.get_data()
-        if chanis == None:
-            chanis = np.arange(len(self.data))
-        w0 = f0 / (self.sampfreq / 2) # fraction of Nyquist frequency == 1/2 sampling rate
-        w1 = f1 / (self.sampfreq / 2)
-        wr = fr / (self.sampfreq / 2)
-        if w0 == 0:
-            wp = w1
-            ws = w1+wr
-        else:
-            wp = [w0, w1]
-            ws = [w0-wr, w1+wr]
-        b, a = scipy.signal.iirdesign(wp, ws, gpass=0.01, gstop=30, analog=0, ftype=ftype)
-        self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
-
-    def hilbert(self, chani=-1):
-        """Return power (dB wrt 1 mV) and phase (rad) of Hilbert transform of data on chani.
-        Default to deepest channel"""
-        self.get_data()
-        self.bandpass(chanis=chani) # bandpass filter the data
-        x = self.data[chani] / 1e3 # convert from uV to mV
-        hx = scipy.signal.hilbert(x) # Hilbert transform of x
-        Ex = np.abs(hx) # amplitude == energy?
-        Phx = np.angle(hx) # phase
-        Px = 10 * np.log(Ex**2) # power in dB wrt 1 mV^2?
-        return Px, Phx
-
     def get_tssec(self):
         """Return full set of timestamps, in sec"""
         return np.arange(self.t0/1e6, self.t1/1e6, self.tres/1e6)
@@ -516,6 +441,82 @@ class LFP(object):
             f.colorbar(im, pad=0) # creates big whitespace to the right for some reason
         self.f = f
         return self
+
+    def notch(self, chanis=None, freq=60, bw=0.25, ftype='ellip'):
+        """Filter out frequencies centered on freq (Hz), of bandwidth +/- bw (Hz) on
+        data row indices chanis.
+
+        ftype: 'ellip', 'butter', 'cheby1', 'cheby2', 'bessel'
+        """
+        self.get_data()
+        if chanis == None:
+            chanis = np.arange(len(self.data))
+        w = freq / (self.sampfreq / 2) # fraction of Nyquist frequency == 1/2 sampling rate
+        bw = bw / (self.sampfreq / 2)
+        wp = [w-2*bw, w+2*bw] # outer bandpass
+        ws = [w-bw, w+bw] # inner bandstop
+        # using more extreme values for gpass or gstop seems to cause IIR filter instability.
+        # 'ellip' is the only one that seems to work
+        b, a = scipy.signal.iirdesign(wp, ws, gpass=0.01, gstop=30, analog=0, ftype=ftype)
+        self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
+
+    def naivenotch(self, freqs=60, bws=1):
+        """Filter out frequencies centered on freqs (Hz), of bandwidths bws (Hz) in data.
+        Filtering out by setting components to 0 is probably naive, but it's a start.
+        Should probably do more careful filtering to further reduce say 60 Hz noise,
+        and prevent aliasing artifacts"""
+        self.get_data()
+        nt = self.data.shape[1]
+        dt = self.tres / 1e6 # in sec
+        f = np.fft.fftfreq(nt, dt) # fft bin frequencies
+        f = f[:nt//2] # grab +ve freqs by splitting f in half
+        franges = []
+        freqs = tolist(freqs)
+        bws = tolist(bws)
+        if len(freqs) > 1 and len(bws) == 1:
+            bws = bws * len(freqs) # make freqs and bw the same length
+        for freq, bw in zip(freqs, bws):
+            franges.append(freq-bw)
+            franges.append(freq+bw)
+        fis = f.searchsorted(franges)
+        fis = np.hstack([fis, -fis]) # indices for both +ve and -ve freq ranges
+        fis.shape = -1, 2 # reshape to 2 columns
+        fdata = np.fft.fft(self.data)
+        for f0i, f1i in fis:
+            fdata[:, f0i:f1i] = 0 # replace desired components with 0
+            # maybe try using complex average of freq bins just outside of freqs +/- bws
+        self.data = np.fft.ifft(fdata).real # inverse FFT, overwrite data, leave as float
+
+    def bandpass(self, chanis=None, f0=0, f1=7, fr=0.5, ftype='ellip'):
+        """Bandpass filter data on row indices chanis, between f0 and f1 (Hz), with
+        filter rolloff (?) fr (Hz)"""
+        self.get_data()
+        if chanis == None:
+            chanis = np.arange(len(self.data))
+        w0 = f0 / (self.sampfreq / 2) # fraction of Nyquist frequency == 1/2 sampling rate
+        w1 = f1 / (self.sampfreq / 2)
+        wr = fr / (self.sampfreq / 2)
+        if w0 == 0:
+            wp = w1
+            ws = w1+wr
+        else:
+            wp = [w0, w1]
+            ws = [w0-wr, w1+wr]
+        b, a = scipy.signal.iirdesign(wp, ws, gpass=0.01, gstop=30, analog=0, ftype=ftype)
+        self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
+
+    def hilbert(self, chani=-1):
+        """Return power (dB wrt 1 mV) and phase (rad) of Hilbert transform of data on chani.
+        Default to deepest channel"""
+        self.get_data()
+        self.bandpass(chanis=chani) # bandpass filter the data
+        x = self.data[chani] / 1e3 # convert from uV to mV
+        hx = scipy.signal.hilbert(x) # Hilbert transform of x
+        Ex = np.abs(hx) # amplitude == energy?
+        Phx = np.angle(hx) # phase
+        Px = 10 * np.log(Ex**2) # power in dB wrt 1 mV^2?
+        return Px, Phx
+
 
 class PopulationRaster(object):
     """Population spike raster plot"""
