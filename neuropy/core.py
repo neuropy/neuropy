@@ -328,15 +328,11 @@ class LFP(object):
             self.load()
         return self.data
 
-    def filter(self, chanis=None, freq=60, bw=0.25, ftype='ellip'):
+    def notch(self, chanis=None, freq=60, bw=0.25, ftype='ellip'):
         """Filter out frequencies centered on freq (Hz), of bandwidth bw (Hz) in data on
         data row indices chanis.
 
-        elliptic : 'ellip'
-        Butterworth : 'butter'
-        Chebyshev I : 'cheby1'
-        Chebyshev II: 'cheby2'
-        Bessel : 'bessel'
+        ftype: 'ellip', 'butter', 'cheby1', 'cheby2', 'bessel'
         """
         self.get_data()
         if chanis == None:
@@ -350,7 +346,7 @@ class LFP(object):
         b, a = scipy.signal.iirdesign(wp, ws, gpass=0.01, gstop=30, analog=0, ftype=ftype)
         self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
 
-    def naivefftfilter(self, freqs=60, bws=1):
+    def naivenotch(self, freqs=60, bws=1):
         """Filter out frequencies centered on freqs (Hz), of bandwidths bws (Hz) in data.
         Filtering out by setting components to 0 is probably naive, but it's a start.
         Should probably do more careful filtering to further reduce say 60 Hz noise,
@@ -376,6 +372,21 @@ class LFP(object):
             fdata[:, f0i:f1i] = 0 # replace desired components with 0
             # maybe try using complex average of freq bins just outside of freqs +/- bws
         self.data = np.fft.ifft(fdata).real # inverse FFT, overwrite data, leave as float
+
+    def hilbert(self, chani=-1):
+        """Return power and phase of Hilbert transform of data on chani. Default to deepest
+        channel"""
+        data = self.get_data()
+        x = data[chani] / 1e3 # convert from uV to mV
+        self.filter(
+        ## TODO: do band pass filtering here
+        hx = scipy.signal.hilbert(x) # Hilbert transform of x
+        Ex = np.abs(hx) # amplitude == energy?
+        Phx = np.angle(hx) # phase
+        Px = 10 * np.log(Ex**2) # power in dB
+        return Px, Phx
+        
+
 
     def get_tssec(self):
         """Return full set of timestamps, in sec"""
@@ -490,19 +501,6 @@ class LFP(object):
             f.colorbar(im, pad=0) # creates big whitespace to the right for some reason
         self.f = f
         return self
-
-    def hilbert(self, chani=-1):
-        """Return power and phase of Hilbert transform of data on chani. Default to deepest
-        channel"""
-        data = self.get_data()
-        x = data[chani] / 1e3 # convert from uV to mV
-        ## TODO: do band pass filtering here
-        hx = scipy.signal.hilbert(x) # Hilbert transform of x
-        Ex = np.abs(hx) # amplitude == energy?
-        Phx = np.angle(hx) # phase
-        Px = 10 * np.log(Ex**2) # power in dB
-        return Px, Phx
-        
 
 class PopulationRaster(object):
     """Population spike raster plot"""
