@@ -387,7 +387,7 @@ class LFP(object):
             ws = w1+wr
         else:
             wp = [w0, w1]
-            ws = [w0-wr, w0+wr]
+            ws = [w0-wr, w1+wr]
         b, a = scipy.signal.iirdesign(wp, ws, gpass=0.01, gstop=30, analog=0, ftype=ftype)
         self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
 
