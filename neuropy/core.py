@@ -394,10 +394,9 @@ class LFP(object):
     def hilbert(self, chani=-1):
         """Return power (dB wrt 1 mV) and phase (rad) of Hilbert transform of data on chani.
         Default to deepest channel"""
-        data = self.get_data()
-        x = data[chani] / 1e3 # convert from uV to mV
-        self.bandpass(chanis=[chani])
-        ## TODO: do band pass filtering here
+        self.get_data()
+        self.bandpass(chanis=chani) # bandpass filter the data
+        x = self.data[chani] / 1e3 # convert from uV to mV
         hx = scipy.signal.hilbert(x) # Hilbert transform of x
         Ex = np.abs(hx) # amplitude == energy?
         Phx = np.angle(hx) # phase
