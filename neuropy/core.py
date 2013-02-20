@@ -394,7 +394,7 @@ class LFP(object):
 
     def plot(self, t0=None, t1=None, chanis=None, figsize=(20, 6.5)):
         """Plot chanis of LFP data between t0 and t1 in sec"""
-        GAIN = 0.1
+        GAIN = 2
         self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
         if t0 == None:
