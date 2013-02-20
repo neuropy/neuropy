@@ -373,9 +373,9 @@ class LFP(object):
             # maybe try using complex average of freq bins just outside of freqs +/- bws
         self.data = np.fft.ifft(fdata).real # inverse FFT, overwrite data, leave as float
 
-    def bandpass(self, chanis=None, f0=0, f1=7, fr=0.25, ftype='ellip'):
+    def bandpass(self, chanis=None, f0=0, f1=7, fr=0.5, ftype='ellip'):
         """Bandpass filter data on row indices chanis, between f0 and f1 (Hz), with
-        filter rolloff (?) ft (Hz)"""
+        filter rolloff (?) fr (Hz)"""
         self.get_data()
         if chanis == None:
             chanis = np.arange(len(self.data))
