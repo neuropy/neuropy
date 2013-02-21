@@ -412,6 +412,10 @@ class LFP(object):
         P, freqs, t = mpl.mlab.specgram(data/1e3, NFFT=width, Fs=self.sampfreq,
                                         noverlap=overlap)
         # keep only freqs between f0 and f1:
+        if f0 == None:
+            f0 = freqs[0]
+        if f1 == None:
+            f1 = freqs[-1]
         lo, hi = freqs.searchsorted([f0, f1])
         P, freqs = P[lo:hi], freqs[lo:hi]
         P = 10. * np.log10(P) # convert power to dB wrt 1 mV^2?
