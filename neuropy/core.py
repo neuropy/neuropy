@@ -446,7 +446,7 @@ class LFP(object):
         self.f = f
         return self
 
-    def notch(self, chanis=None, freq=60, bw=0.25, ftype='ellip'):
+    def notch(self, chanis=None, freq=60, bw=0.25, gpass=0.01, gstop=30, ftype='ellip'):
         """Filter out frequencies centered on freq (Hz), of bandwidth +/- bw (Hz) on
         data row indices chanis.
 
@@ -461,7 +461,7 @@ class LFP(object):
         ws = [w-bw, w+bw] # inner bandstop
         # using more extreme values for gpass or gstop seems to cause IIR filter instability.
         # 'ellip' is the only one that seems to work
-        b, a = scipy.signal.iirdesign(wp, ws, gpass=0.01, gstop=30, analog=0, ftype=ftype)
+        b, a = scipy.signal.iirdesign(wp, ws, gpass=gpass, gstop=gstop, analog=0, ftype=ftype)
         self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
 
     def naivenotch(self, freqs=60, bws=1):
@@ -491,7 +491,7 @@ class LFP(object):
             # maybe try using complex average of freq bins just outside of freqs +/- bws
         self.data = np.fft.ifft(fdata).real # inverse FFT, overwrite data, leave as float
 
-    def bandpass(self, chanis=None, f0=0, f1=7, fr=0.5, ftype='ellip'):
+    def bandpass(self, chanis=None, f0=0, f1=7, fr=0.5, gpass=0.01, gstop=30, ftype='ellip'):
         """Bandpass filter data on row indices chanis, between f0 and f1 (Hz), with
         filter rolloff (?) fr (Hz)"""
         self.get_data()
@@ -506,7 +506,7 @@ class LFP(object):
         else:
             wp = [w0, w1]
             ws = [w0-wr, w1+wr]
-        b, a = scipy.signal.iirdesign(wp, ws, gpass=0.01, gstop=30, analog=0, ftype=ftype)
+        b, a = scipy.signal.iirdesign(wp, ws, gpass=gpass, gstop=gstop, analog=0, ftype=ftype)
         self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
 
     def hilbert(self, chani=-1):
