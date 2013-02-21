@@ -503,6 +503,9 @@ class LFP(object):
         if w0 == 0:
             wp = w1
             ws = w1+wr
+        elif w1 == 0:
+            wp = w0
+            ws = w0-wr
         else:
             wp = [w0, w1]
             ws = [w0-wr, w1+wr]
