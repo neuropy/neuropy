@@ -313,6 +313,7 @@ class LFP(object):
         self.sampfreq = 1e6 / self.tres # in Hz
         assert self.sampfreq == 1000 # should be 1000 Hz
         self.data = self.data * self.uVperAD # convert to float uV
+        self.PLOTGAIN = 2
 
     def save(self):
         ## TODO: option to overwrite original .lfp.zip file from spyke with filtered data,
@@ -334,7 +335,6 @@ class LFP(object):
 
     def plot(self, t0=None, t1=None, chanis=None, figsize=(20, 6.5)):
         """Plot chanis of LFP data between t0 and t1 in sec"""
-        GAIN = 2
         self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
         if t0 == None:
@@ -348,7 +348,7 @@ class LFP(object):
         chanis = tolist(chanis)
         nchans = len(chanis)
         # grab desired channels and time range, and AD values to uV:
-        data = self.data[chanis][:, t0i:t1i] * self.uVperAD * GAIN
+        data = self.data[chanis][:, t0i:t1i] * self.uVperAD * self.PLOTGAIN
         nt = len(ts)
         assert nt == data.shape[1]
         x = np.tile(ts, nchans)
