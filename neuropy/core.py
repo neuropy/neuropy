@@ -493,7 +493,10 @@ class LFP(object):
 
     def bandpass(self, chanis=None, f0=0, f1=7, fr=0.5, gpass=0.01, gstop=30, ftype='ellip'):
         """Bandpass filter data on row indices chanis, between f0 and f1 (Hz), with
-        filter rolloff (?) fr (Hz)"""
+        filter rolloff (?) fr (Hz)
+
+        ftype: 'ellip', 'butter', 'cheby1', 'cheby2', 'bessel'
+        """
         self.get_data()
         if chanis == None:
             chanis = np.arange(len(self.data))
@@ -510,6 +513,16 @@ class LFP(object):
             wp = [w0, w1]
             ws = [w0-wr, w1+wr]
         b, a = scipy.signal.iirdesign(wp, ws, gpass=gpass, gstop=gstop, analog=0, ftype=ftype)
+        self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
+
+    def filter(self, chanis=None, f0=300, f1=None, order=4, btype='highpass', ftype='butter'):
+        if f1 != None:
+            fn = np.array([f0, f1])
+        else:
+            fn = f0
+        wn = fn / (self.sampfreq / 2)
+        b, a = scipy.signal.iirfilter(order, wn, rp=None, rs=None, btype=btype, analog=0,
+                                      ftype=ftype, output='ba')
         self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
 
     def hilbert(self, chani=-1):
