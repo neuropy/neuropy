@@ -10,6 +10,11 @@ class BZData(LFP):
         LFP.__init__(self, Recording(''), fname) # give it a fake recording
 
     def load(self):
+        try:
+            del self.data # try and prevent memory bloat
+            gc.collect()
+        except AttributeError:
+            pass
         self.uVperAD = 0.1 # blind guess
         data = np.fromfile(self.fname, dtype=np.int16)
         data = data * self.uVperAD # convert to float uV
