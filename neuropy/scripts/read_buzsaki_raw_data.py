@@ -1,6 +1,17 @@
 """Read raw .dat data file from Buzsaki (from Julia Farms spike sorting meeting) and treat it
-as an LFP object. Experiment with different filtering settings"""
+as an LFP object. Experiment with different filter settings.
 
+The commonly used 4th order butterworth filter rolls off at 24 dB per octave (frequency
+doubling or halving), so asking for 24 dB of attenuation from 300 Hz to 150 Hz should return
+a 4th order filter (see http://en.wikipedia.org/wiki/Butterworth_filter). Butterworth has
+less ripple than elliptic, but falls off more slowly.
+
+According to Wiltschko2008 Fig 6, a Bessel 4 pole (4th order?) filter is almost as good as
+their recommended 6th or 7th order Daubechies 4 wavelet multi-level decomposition and
+reconstruction method. But, as according to wiki, bessel delays the spike a bit, by maybe 1
+ms. AFAICT, despite the claims in Wiltschko2008, bessel still seems to distort spike
+waveforms as much as butterworth or elliptic.
+"""
 
 import gc
 from core import LFP
