@@ -514,8 +514,10 @@ class LFP(object):
             ws = [w0-wr, w1+wr]
         b, a = scipy.signal.iirdesign(wp, ws, gpass=gpass, gstop=gstop, analog=0, ftype=ftype)
         self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
+        return b, a
 
     def filter(self, chanis=None, f0=300, f1=None, order=4, btype='highpass', ftype='butter'):
+        """Filter data by specifying filter order and btype, instead of gpass and gstop"""
         if f1 != None:
             fn = np.array([f0, f1])
         else:
@@ -524,6 +526,7 @@ class LFP(object):
         b, a = scipy.signal.iirfilter(order, wn, rp=None, rs=None, btype=btype, analog=0,
                                       ftype=ftype, output='ba')
         self.data[chanis] = scipy.signal.lfilter(b, a, self.data[chanis])
+        return b, a
 
     def hilbert(self, chani=-1):
         """Return power (dB wrt 1 mV) and phase (rad) of Hilbert transform of data on chani.

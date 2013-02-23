@@ -57,18 +57,19 @@ class BZData(LFP):
 
     def bandpass(self, chanis=-1, f0=500, f1=0, fr=100, gpass=0.01, gstop=50, ftype='ellip',
                  plot=False):
-        LFP.bandpass(self, chanis, f0, f1, fr, gpass, gstop, ftype)
+        b, a = LFP.bandpass(self, chanis, f0, f1, fr, gpass, gstop, ftype)
         if plot:
             self.plot(0.31, 0.325, chanis=-1)
             self.specgram(0, 500, p0=None, p1=None, f1=2000)
+        return b, a
 
     def filter(self, chanis=-1, f0=300, f1=None, order=4, btype='highpass', ftype='butter',
                plot=False):
-        LFP.filter(self, chanis, f0, f1, order, btype, ftype)
+        b, a = LFP.filter(self, chanis, f0, f1, order, btype, ftype)
         if plot:
             self.plot(0.31, 0.325, chanis=-1)
             self.specgram(0, 500, p0=None, p1=None, f1=2000)
-
+        return b, a
 
 bz = BZData()
 bz.load()
@@ -76,6 +77,7 @@ bz.load()
 bz.bandpass(chanis=-1, f0=300, fr=150, gstop=24, ftype='butterworth', plot=True)
 bz.filter(chanis=-1, f0=300, order=4, btype='highpass', ftype='butter', plot=True)
 bz.filter(chanis=-1, f0=300, order=4, btype='highpass', ftype='bessel', plot=True)
+bz.filter(chanis=-1, f0=300, f1=6000, order=4, btype='bandpass', ftype='butter', plot=True)
 bz.filter(chanis=-1, f0=300, f1=6000, order=4, btype='bandpass', ftype='bessel', plot=True)
 
 bz.plot(0.31, 0.325, chanis=-1)
