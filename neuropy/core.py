@@ -467,9 +467,9 @@ class LFP(object):
         data = self.get_data()
         self.data = filter.naivenotch(data, self.sampfreq, freqs, bws)
 
-    def bandpass(self, chanis=None, f0=0, f1=7, fr=0.5, gpass=0.01, gstop=30, ftype='ellip'):
-        """Bandpass filter data on row indices chanis, between f0 and f1 (Hz), with
-        filter rolloff (?) fr (Hz).
+    def filter(self, chanis=None, f0=0, f1=7, fr=0.5, gpass=0.01, gstop=30, ftype='ellip'):
+        """Bandpass filter data on row indices chanis, between f0 and f1 (Hz), with filter
+        rolloff (?) fr (Hz).
 
         ftype: 'ellip', 'butter', 'cheby1', 'cheby2', 'bessel'
         """
@@ -477,18 +477,19 @@ class LFP(object):
         if chanis == None:
             chanis = np.arange(len(data))
         data = data[chanis]
-        data, b, a = filter.bandpass(data, self.sampfreq, f0, f1, fr, gpass, gstop, ftype)
+        data, b, a = filter.filter(data, self.sampfreq, f0, f1, fr, gpass, gstop, ftype)
         self.data[chanis] = data
         return b, a
 
-    def filter(self, chanis=None, f0=300, f1=None, order=4, rp=None, rs=None,
-               btype='highpass', ftype='butter'):
-        """Filter data by specifying filter order and btype, instead of gpass and gstop"""
+    def filterord(self, chanis=None, f0=300, f1=None, order=4, rp=None, rs=None,
+                  btype='highpass', ftype='butter'):
+        """Bandpass filter data by specifying filter order and btype, instead of gpass and
+        gstop"""
         data = self.get_data()
         if chanis == None:
             chanis = np.arange(len(data))
         data = data[chanis]
-        data, b, a = filter.filter(data, self.sampfreq, f0, f1, order, rp, rs, btype, ftype)
+        data, b, a = filter.filterord(data, self.sampfreq, f0, f1, order, rp, rs, btype, ftype)
         self.data[chanis] = data
         return b, a
 

@@ -46,9 +46,9 @@ def naivenotch(data, sampfreq=1000, freqs=60, bws=1):
     data = np.fft.ifft(fdata).real # inverse FFT, leave as float
     return data
 
-def bandpass(data, sampfreq=1000, f0=0, f1=7, fr=0.5, gpass=0.01, gstop=30, ftype='ellip'):
-    """Bandpass filter data on row indices chanis, between f0 and f1 (Hz), with
-    filter rolloff (?) fr (Hz).
+def filter(data, sampfreq=1000, f0=0, f1=7, fr=0.5, gpass=0.01, gstop=30, ftype='ellip'):
+    """Bandpass filter data on row indices chanis, between f0 and f1 (Hz), with filter
+    rolloff (?) fr (Hz).
 
     ftype: 'ellip', 'butter', 'cheby1', 'cheby2', 'bessel'
     """
@@ -68,9 +68,9 @@ def bandpass(data, sampfreq=1000, f0=0, f1=7, fr=0.5, gpass=0.01, gstop=30, ftyp
     data = scipy.signal.lfilter(b, a, data)
     return data, b, a
 
-def filter(data, sampfreq=1000, f0=300, f1=None, order=4, rp=None, rs=None,
-           btype='highpass', ftype='butter'):
-    """Filter data by specifying filter order and btype, instead of gpass and gstop
+def filterord(data, sampfreq=1000, f0=300, f1=None, order=4, rp=None, rs=None,
+              btype='highpass', ftype='butter'):
+    """Bandpass filter data by specifying filter order and btype, instead of gpass and gstop.
 
     ftype: 'ellip', 'butter', 'cheby1', 'cheby2', 'bessel'
 
