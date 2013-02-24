@@ -1,12 +1,13 @@
 """Filtering functions"""
 
+from __future__ import division
+
 import numpy as np
 import scipy.signal
 
 
 def notch(data, sampfreq=1000, freq=60, bw=0.25, gpass=0.01, gstop=30, ftype='ellip'):
-    """Filter out frequencies in data centered on freq (Hz), of bandwidth +/- bw (Hz) on
-    data row indices chanis.
+    """Filter out frequencies in data centered on freq (Hz), of bandwidth +/- bw (Hz).
 
     ftype: 'ellip', 'butter', 'cheby1', 'cheby2', 'bessel'
     """
