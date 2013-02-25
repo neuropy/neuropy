@@ -2408,7 +2408,7 @@ def ensurenormed(p, atol=1e-8):
         p /= float(psum)
     return p
 
-def logy(x, base=10):
+def logn(x, base=10):
     """Performs log of x with specified base"""
     return np.log(x) / np.log(base)
 
@@ -2418,7 +2418,7 @@ def log_no_sing(x, subval=0.0, base=np.e):
     x = np.asarray(x)
     singi = x==0 # find the singularities
     x[singi] = 1 # replace 'em with 1s, or anything else that's safe to take the log of
-    result = logy(x, base=base) # now it's safe to take the log
+    result = logn(x, base=base) # now it's safe to take the log
     # substitute the result where the singularities were with the substitution value:
     result[singi] = subval
     return result
