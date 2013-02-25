@@ -1801,17 +1801,20 @@ def txtdin2binarydin(fin, fout):
     for line in fi:
         line = line.split(',')
         '''
-        # for old NVS display, converts from NVS condition numbers (which increment with repeats) to dimstim sweepis (which don't)
+        # for old NVS display, converts from NVS condition numbers (which increment with
+        # repeats) to dimstim sweepis (which don't)
         nruns = 18
         line[1] = int(line[1]) % nruns
         '''
-        fo.write( struct.pack('@qq', int(line[0]), int(line[1])) ) # write both values out as a C long longs, using the system's native ('@') byte order
+        # write both values out as a C long longs, using the system's native ('@') byte order:
+        fo.write( struct.pack('@qq', int(line[0]), int(line[1])) )
     fi.close()
     fo.close()
     print 'Converted ascii din: %r to binary din: %r' % (fin, fout)
 
 def convertalltxtdin2binarydin(path=None):
-    """Converts all text .csv din files in path (or cwd) to 64 bit binary .din files of the same name"""
+    """Converts all text .csv din files in path (or cwd) to 64 bit binary .din files of the
+    same name"""
     if path == None:
         path = os.getcwd()
 
@@ -2029,8 +2032,11 @@ def corrcoef(x, y):
     #assert len(x) == len(y), 'arrays need to be of equal length'
     x = np.float64(x)
     y = np.float64(y)
-    return np.corrcoef(x, y)[0, 1] # pick one of the 2 entries in the correlation coefficient matrix, on the -ve diagonal (er, the one that goes from bottom left to top right, that's what I mean)
-    #return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std()) # this works just fine as well, easier to understand too
+    # pick one of the 2 entries in the correlation coefficient matrix, on the -ve diagonal
+    # (er, the one that goes from bottom left to top right, that's what I mean):
+    return np.corrcoef(x, y)[0, 1]
+    # this works just fine as well, easier to understand too:
+    #return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std())
 
 def bin(i, minbits=8):
     """Return a string with the binary representation of an integer, or sequence of integers.
@@ -2070,21 +2076,26 @@ def binarray2int(bin):
     multiplier = []
     for i in range(nbits):
         multiplier.append(2**i)
-    multiplier = np.array(multiplier, ndmin=2).transpose() # convert from list and transpose to a column vector (have to make it 2D to transpose)
+    # convert from list and transpose to a column vector (have to make it 2D to transpose):
+    multiplier = np.array(multiplier, ndmin=2).transpose()
     #print multiplier
     x = bin*multiplier
     #print x
-    return x.sum(axis=0) # sum over the first dimension (the rows), that way, you're left with only columns in a row vector
+    # sum over the first dimension (the rows), that way, you're left with only columns in
+    # a row vector:
+    return x.sum(axis=0)
 
 def getbinarytable(nbits=8):
-    """Generates a 2D binary table containing all possible words for nbits, with bits in the rows and words in the columns (LSB to MSB from top to bottom)"""
+    """Generate a 2D binary table containing all possible words for nbits, with bits in the
+    rows and words in the columns (LSB to MSB from top to bottom)"""
     rowlength = 2**nbits
     '''
     x = np.zeros((nbits, 2**nbits)) # init an array
     for bit in range(nbits):
         pattern = [0]*2**bit
         pattern.extend([1]*2**bit)
-        npatterns = rowlength / len(pattern) # == 2**nbits / len(pattern) == 2**nbits / 2**(bit+1) == 2**(nbits-bit-1)
+        npatterns = rowlength / len(pattern) # == 2**nbits / len(pattern) == 2**nbits /
+                                             # 2**(bit+1) == 2**(nbits-bit-1)
         row = pattern*npatterns
         x[bit]=row
     return x
@@ -2094,7 +2105,8 @@ def getbinarytable(nbits=8):
     for bit in range(nbits): # one row at a time
         pattern = np.array(0, dtype=np.int8).repeat(2**bit)
         pattern = np.concatenate((pattern, np.array(1, dtype=np.int8).repeat(2**bit)))
-        npatterns = rowlength / len(pattern) # == 2**nbits / len(pattern) == 2**nbits / 2**(bit+1) == 2**(nbits-bit-1)
+        npatterns = rowlength / len(pattern) # == 2**nbits / len(pattern) == 2**nbits /
+                                             # 2**(bit+1) == 2**(nbits-bit-1)
         row = np.tile(pattern, [1, npatterns])
         x[bit::,::] = row
     return x
@@ -2104,7 +2116,8 @@ def getbinarytable(nbits=8):
     for bit in range(nbits): # one row at a time
         pattern = np.array(0, dtype=np.int8).repeat(2**bit)
         pattern = np.concatenate((pattern, np.array(1, dtype=np.int8).repeat(2**bit)))
-        npatterns = rowlength / len(pattern) # == 2**nbits / len(pattern) == 2**nbits / 2**(bit+1) == 2**(nbits-bit-1)
+        # == 2**nbits / len(pattern) == 2**nbits / 2**(bit+1) == 2**(nbits-bit-1)
+        npatterns = rowlength / len(pattern)
         row = np.tile(pattern, [1, npatterns])
         x.append(row)
     return np.concatenate(x)
@@ -2123,7 +2136,8 @@ def enlarge(a, x=2, y=None):
     return a.repeat(y, axis=0).repeat(x, axis=1)
 
 def charfind(string, char):
-    """Finds char in string, returns matching indices. There's gotta be a built-in way to do this somewhere..."""
+    """Finds char in string, returns matching indices. There's gotta be a built-in way to do
+    this somewhere..."""
     assert len(char) == 1
     i = []
     # maybe more efficient to use .find() method on successively smaller slices of string
@@ -2133,15 +2147,15 @@ def charfind(string, char):
     return i
 '''
 def shuffle(x):
-    """Takes an input list x and returns a shuffled (without replacement) copy. Its only benefit
-    over and above random.sample() is that you don't have to pass a second argument len(x)
-    every time you use it.
-    In NumPy, it's better (and faster) to use np.random.shuffle()"""
+    """Takes an input list x and returns a shuffled (without replacement) copy. Its only
+    benefit over and above random.sample() is that you don't have to pass a second argument
+    len(x) every time you use it. In NumPy, it's better (and faster) to use
+    np.random.shuffle()"""
     return random.sample(x, len(x))
 '''
 def shuffle(seq):
-    """Takes a sequence and returns a shuffled (without replacement) copy.
-    Its only benefit over np.random.shuffle is that it returns a copy instead of shuffling in-place"""
+    """Takes a sequence and returns a shuffled (without replacement) copy. Its only benefit
+    over np.random.shuffle is that it returns a copy instead of shuffling in-place"""
     result = copy(seq)
     np.random.shuffle(result) # shuffles in-place, doesn't convert to an array
     return result
