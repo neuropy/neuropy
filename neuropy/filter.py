@@ -88,9 +88,11 @@ def filterord(data, sampfreq=1000, f0=300, f1=None, order=4, rp=None, rs=None,
     return data, b, a
 
 def hilbert(x):
-    """Return power (dB wrt 1 mV) and phase (rad) of Hilbert transform of data in x"""
+    """Return power (dB wrt 1 mV), phase (rad), energy, and amplitude of Hilbert transform of
+    data in x"""
     hx = scipy.signal.hilbert(x) # Hilbert transform of x
-    Ex = np.abs(hx) # amplitude == energy?
+    Ax = np.abs(hx) # amplitude
     Phx = np.angle(hx) # phase
-    Px = 10 * np.log(Ex**2) # power in dB wrt 1 mV^2?
-    return Px, Phx
+    Ex = Ax ** 2 # energy == amplitude squared?
+    Px = 10 * np.log10(Ex) # power in dB wrt 1 mV^2?
+    return Px, Phx, Ex, Ax
