@@ -493,6 +493,19 @@ class LFP(object):
         self.data[chanis] = data
         return b, a
 
+    def low_highlow(self, chani=-1, f0=4, f1=20, f2=60):
+        """Return L/(H+L) ratio of power, as measured by Hilbert transform (see Saleem2010).
+        f0 is the high cutoff of the lowpass filter, f1 and f2 are the low and high cutoff
+        of the highpass filter"""
+        data = self.get_data()
+        x = data[chani] / 1e3 # convert from uV to mV
+        x = filter.notch(x)[0] # remove 60 Hz mains noise
+        l = filter.filter(data=x, f0=0, f1=7, fr=0.5)[0]
+        h = filter.filter(data=x, f0=20, f1=60, fr=10)[0]
+        lP, lPh, lE, lA = filter.hilbert(l)
+        hP, hPh, hE, hA = filter.hilbert(h)
+        return lP/(hP + lP)
+
 
 class PopulationRaster(object):
     """Population spike raster plot"""
