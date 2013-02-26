@@ -39,8 +39,8 @@ PyQt4 (PySide will probably work, but is untested)
 
 To install for use as a library:
 
->>> python setup.py install
+$ python setup.py install
 
 To run:
 
->>> python main.py # in the neuropy folder
+$ python main.py # in the neuropy folder
