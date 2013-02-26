@@ -21,8 +21,9 @@ Main Qt event loop creates a
         IPython session which imports
             neuropy modules
     
-So, something like get_ipython() only works from within those neuropy modules that have been
-imported during the IPython session, but not in any of NeuropyWindow's methods.
+So, something like get_ipython() only works from within those neuropy modules
+that have been imported during the IPython session, but not in any of
+NeuropyWindow's methods.
 
 
 Dependencies:
@@ -36,10 +37,10 @@ scipy
 matplotlib
 PyQt4 (PySide will probably work, but is untested)
 
-To install:
+To install for use as a library:
 
 >>> python setup.py install
 
 To run:
 
->>> python main.py
+>>> python main.py # in the neuropy folder
