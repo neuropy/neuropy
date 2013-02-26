@@ -1,6 +1,6 @@
-"""Read raw .dat data file from Buzsaki (from Julia Farms spike sorting meeting) and treat it
-as an LFP object. Experiment with different filter settings. File contents are meant to be cut
-and pasted into neuropy's IPython window.
+"""Read raw .dat data file from Buzsaki (from Janelia Farm 2013 spike sorting meeting) and
+treat it as an LFP object. Experiment with different filter settings. File contents are
+meant to be cut and pasted into neuropy's IPython window.
 
 The commonly used 4th order butterworth filter rolls off at 24 dB per octave (frequency
 doubling or halving), so asking for 24 dB of attenuation from 300 Hz to 150 Hz should return
