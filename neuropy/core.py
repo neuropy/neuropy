@@ -501,11 +501,16 @@ class LFP(object):
         data = self.get_data()
         x = data[chani] / 1e3 # convert from uV to mV
         x = filter.notch(x)[0] # remove 60 Hz mains noise
-        l = filter.filter(data=x, f0=0, f1=7, fr=0.5)[0]
-        h = filter.filter(data=x, f0=20, f1=60, fr=10)[0]
+        # remove everything below f0:
+        #x = filter.filterord(data=x, f0=f0, order=4, btype='highpass')[0]
+        #x = filter.filter(data=x, f0=0.5, f1=0, fr=0.1, ftype='ellip', gstop=20)
+        # remove everything above f3:
+        x = filter.filterord(data=x, f0=f3, order=10, btype='lowpass')[0]
+        l = filter.filterord(data=x, f0=f1, order=4, btype='lowpass')[0]
+        h = filter.filterord(data=x, f0=f2, order=11, btype='highpass')[0]
         lP, lPh, lE, lA = filter.hilbert(l)
         hP, hPh, hE, hA = filter.hilbert(h)
-        return lP/(hP + lP)
+        return lP / (hP + lP)
 
 
 class PopulationRaster(object):
