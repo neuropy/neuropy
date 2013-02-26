@@ -45,7 +45,8 @@ class dictattr(dict):
     def __init__(self, *args, **kwargs):
         super(dictattr, self).__init__(*args, **kwargs)
         for k, v in kwargs.iteritems():
-            self.__setitem__(k, v) # call our own __setitem__ so we get keys as attribs even on kwarg init
+            # call our own __setitem__ so we get keys as attribs even on kwarg init:
+            self.__setitem__(k, v)
     
     def __getattr__(self, key):
         try:
@@ -163,7 +164,8 @@ class PTCSNeuronRecord(object):
     def __init__(self, header):
         self.VER2FUNC = {1: self.read_ver_1, 2:self.read_ver_2} # call the appropriate method
         self.header = header
-        self.wavedtype = {2: np.float16, 4: np.float32, 8: np.float64}[self.header.nsamplebytes]
+        nsamplebytes = self.header.nsamplebytes
+        self.wavedtype = {2: np.float16, 4: np.float32, 8: np.float64}[nsamplebytes]
 
     def read(self, f):
         self.VER2FUNC[self.header.FORMATVERSION](f) # call the appropriate method
@@ -219,7 +221,8 @@ class PTCSNeuronRecord(object):
 
     def read_wave(self, f):
         """Read wavedata/wavestd bytes"""
-        nbytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # nwavedata/nwavestd bytes, padded
+        # nwavedata/nwavestd bytes, padded:
+        nbytes = int(np.fromfile(f, dtype=np.uint64, count=1))
         fp = f.tell()
         count = nbytes // self.header.nsamplebytes # trunc to ignore any pad bytes
         X = np.fromfile(f, dtype=self.wavedtype, count=count) # wavedata/wavestd (uV)
