@@ -496,10 +496,8 @@ class LFP(object):
         self.data[chanis] = data
         return b, a
 
-    def low_highlow(self, chani=-1, f0=4, f1=20, f2=60):
-        """Return L/(H+L) ratio of power, as measured by Hilbert transform (see Saleem2010).
-        f0 is the high cutoff of the lowpass filter, f1 and f2 are the low and high cutoff
-        of the highpass filter"""
+    def low_highlow_hilbert(self, chani=-1, f0=0.5, f1=4, f2=20, f3=60):
+        """Return L/(H+L) ratio of power (Saleem2010), as measured by Hilbert transform"""
         data = self.get_data()
         x = data[chani] / 1e3 # convert from uV to mV
         x = filter.notch(x)[0] # remove 60 Hz mains noise
