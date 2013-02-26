@@ -496,6 +496,25 @@ class LFP(object):
         self.data[chanis] = data
         return b, a
 
+    def low_highlow_fourier(self, chani=-1, f0=0.5, f1=4, f2=20, f3=60,
+                            NFFT=4096, noverlap=2048):
+        """Return L/(H+L) ratio of power (Saleem2010), as measured by Fourier transform"""
+        data = self.get_data()
+        x = data[chani] / 1e3 # convert from uV to mV
+        P, freqs, t = mpl.mlab.specgram(x, NFFT=NFFT, Fs=self.sampfreq, noverlap=noverlap)
+        P = 10. * np.log10(P) # convert power to dB wrt 1 mV^2?
+        # keep only freqs between f0 and f1, and f2 and f3:
+        if f0 == None:
+            f0 = freqs[0]
+        if f1 == None:
+            f1 = freqs[-1]
+        f0i, f1i, f2i, f3i = freqs.searchsorted([f0, f1, f2, f3])
+        lP = P[f0i:f1i]
+        hP = P[f2i:f3i]
+        lP = lP.mean(axis=0)
+        hP = hP.mean(axis=0)
+        return (lP / (hP + lP)), lP/hP
+        
     def low_highlow_hilbert(self, chani=-1, f0=0.5, f1=4, f2=20, f3=60):
         """Return L/(H+L) ratio of power (Saleem2010), as measured by Hilbert transform"""
         data = self.get_data()
