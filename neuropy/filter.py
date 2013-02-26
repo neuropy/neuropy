@@ -73,6 +73,7 @@ def filterord(data, sampfreq=1000, f0=300, f1=None, order=4, rp=None, rs=None,
               btype='highpass', ftype='butter'):
     """Bandpass filter data by specifying filter order and btype, instead of gpass and gstop.
 
+    btype: 'lowpass', 'highpass', 'bandpass', 'bandstop'
     ftype: 'ellip', 'butter', 'cheby1', 'cheby2', 'bessel'
 
     For 'ellip', need to also specify passband and stopband ripple with rp and rs.
