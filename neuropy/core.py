@@ -502,6 +502,9 @@ class LFP(object):
         Returned time series can probably be smoothed by increasing noverlap"""
         data = self.get_data()
         x = data[chani] / 1e3 # convert from uV to mV
+        x = filter.notch(x)[0] # remove 60 Hz mains noise
+        # returned t is in sec from start of data
+        # I think P is in mV^2?:
         P, freqs, t = mpl.mlab.specgram(x, NFFT=NFFT, Fs=self.sampfreq, noverlap=noverlap)
         # don't convert power to dB, just washes out the signal in the ratio:
         #P = 10. * np.log10(P)
