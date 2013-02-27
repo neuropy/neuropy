@@ -432,7 +432,6 @@ class LFP(object):
         #self.P = P
         extent = t0+t[0], t0+t[-1], freqs[0], freqs[-1]
         im = a.imshow(P, extent=extent, cmap=cm)
-        a.axis('auto') # make axes use full figure window?
         a.autoscale(enable=True, tight=True)
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
@@ -562,9 +561,10 @@ class LFP(object):
         a.set_xlabel("time (sec)")
         if ylabel == None:
             ylabel = "power (AU?)"
+        elif ylabel == 'L/(H+L)':
+            a.set_ylim(0, 1)
         a.set_ylabel(ylabel)
-        a.axis('auto') # make axes use full figure window?
-        a.autoscale(enable=True, tight=True)
+        a.autoscale(axis='x', enable=True, tight=True)
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
