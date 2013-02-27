@@ -503,7 +503,8 @@ class LFP(object):
         data = self.get_data()
         x = data[chani] / 1e3 # convert from uV to mV
         P, freqs, t = mpl.mlab.specgram(x, NFFT=NFFT, Fs=self.sampfreq, noverlap=noverlap)
-        P = 10. * np.log10(P) # convert power to dB wrt 1 mV^2?
+        # don't convert power to dB, just washes out the signal in the ratio:
+        #P = 10. * np.log10(P)
         # keep only freqs between f0 and f1, and f2 and f3:
         if f0 == None:
             f0 = freqs[0]
