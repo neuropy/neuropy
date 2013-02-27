@@ -511,9 +511,9 @@ class LFP(object):
         f0i, f1i, f2i, f3i = freqs.searchsorted([f0, f1, f2, f3])
         lP = P[f0i:f1i]
         hP = P[f2i:f3i]
-        lP = lP.mean(axis=0)
-        hP = hP.mean(axis=0)
         return (lP / (hP + lP)), lP/hP
+        lP = lP.sum(axis=0)
+        hP = hP.sum(axis=0)
         
     def low_highlow_hilbert(self, chani=-1, f0=0.5, f1=4, f2=20, f3=60):
         """Return L/(H+L) ratio of power (Saleem2010), as measured by Hilbert transform"""
