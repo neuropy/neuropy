@@ -531,6 +531,33 @@ class LFP(object):
         hP, hPh, hE, hA = filter.hilbert(h)
         return lP / (hP + lP)
 
+    def powerplot(self, t, P, ylabel=None, title=None, text=None, figsize=(20, 6.5)):
+        """Plot some measure of power as a function of time, with hopefully the same
+        temporal scale as some of the other plots in self"""
+        if figsize == None:
+            f = pl.gcf()
+            a = pl.gca()
+        else:
+            f = pl.figure(figsize=figsize)
+            a = f.add_subplot(111)
+        a.plot(t, P, '.')
+        a.set_xlabel("time (sec)")
+        if ylabel == None:
+            ylabel = "power (AU?)"
+        a.set_ylabel(ylabel)
+        a.axis('auto') # make axes use full figure window?
+        a.autoscale(enable=True, tight=True)
+        # turn off annoying "+2.41e3" type offset on x axis:
+        formatter = mpl.ticker.ScalarFormatter(useOffset=False)
+        a.xaxis.set_major_formatter(formatter)
+        if title:
+            gcfm().window.setWindowTitle(title)
+            a.set_title(title)
+        if text:
+            a.text(0.998, 0.99, '%s' % text, color='k', transform=a.transAxes,
+                   horizontalalignment='right', verticalalignment='top')
+        f.tight_layout(pad=0.3) # crop figure to contents
+        
 
 class PopulationRaster(object):
     """Population spike raster plot"""
