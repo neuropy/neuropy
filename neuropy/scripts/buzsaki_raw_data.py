@@ -16,6 +16,9 @@ waveforms as much as butterworth or elliptic.
 
 import gc
 from core import LFP
+import pywt	
+import numpy as np
+from numpy import array
 
 class BZData(LFP):
     def __init__(self, fname='/home/mspacek/work/Buzsaki_raw_data/trace_8Chan_High-Sleep.dat'):
@@ -71,6 +74,31 @@ class BZData(LFP):
             self.plot(0.31, 0.325, chanis=-1)
             self.specgram(0, 500, p0=None, p1=None, f1=2000)
         return b, a
+
+    def wavelet(self, maxlevel = 6, plot = False):
+        # We will use the Daubechies(4) wavelet
+        wname = "db4"	
+        self.data = np.atleast_2d(self.data)
+        numwires, datalength = self.data.shape
+
+        # Initialize the container for the filtered data
+        fdata = np.empty((numwires, datalength))
+
+        for i in range(numwires):
+	        # Decompose the signal
+	        c = pywt.wavedec(self.data[i,:], wname, level=maxlevel)
+	        # Destroy the approximation coefficients
+	        c[0][:] = 0
+	        # Reconstruct the signal and save it
+	        fdata[i,:] = pywt.waverec(c, wname)
+
+        self.data = fdata
+        if plot:
+	        self.plot(0.31, 0.325, chanis=-1)
+        if fdata.shape[0] == 1:
+	        return fdata.ravel() # If the signal is 1D, return a 1D array
+        else:
+	        return fdata # Otherwise, give back the 2D array
 
 bz = BZData()
 bz.load()

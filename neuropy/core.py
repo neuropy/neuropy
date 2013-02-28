@@ -575,7 +575,11 @@ class LFP(object):
             a.text(0.998, 0.99, '%s' % text, color='k', transform=a.transAxes,
                    horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
-        
+
+    def filterwavelet(self, wname = "db4", maxlevel = 6):
+        data = self.get_data()
+        data = filter.wavelet(data, wname, maxlevel)
+        return data        
 
 class PopulationRaster(object):
     """Population spike raster plot"""
