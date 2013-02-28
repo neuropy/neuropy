@@ -497,7 +497,7 @@ class LFP(object):
         return b, a
 
     def lowhigh_fourier(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
-                        NFFT=2**14, noverlap=2**13+2**12):
+                        NFFT=2**15, noverlap=32000):
         """Return power of low and high bands as measured by Fourier transform.
         Returned time series can probably be smoothed by increasing noverlap"""
         data = self.get_data()
