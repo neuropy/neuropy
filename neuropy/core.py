@@ -386,7 +386,7 @@ class LFP(object):
         self.f = f
         return self
         
-    def specgram(self, t0=None, t1=None, f0=0.1, f1=60, p0=-60, p1=None, chanis=-1,
+    def specgram(self, t0=None, t1=None, f0=0.1, f1=100, p0=-60, p1=None, chanis=-1,
                  width=4096, overlap=2048, cm=None, colorbar=False, figsize=(20, 6.5)):
         """Plot a spectrogram from t0 to t1 in sec, from f0 to f1 in Hz, and clip power
         values from p0 to p1 in dB. based on channel index chani of LFP data. chanis=0 uses
@@ -433,6 +433,7 @@ class LFP(object):
         extent = t0+t[0], t0+t[-1], freqs[0], freqs[-1]
         im = a.imshow(P, extent=extent, cmap=cm)
         a.autoscale(enable=True, tight=True)
+        a.axis('tight')
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
