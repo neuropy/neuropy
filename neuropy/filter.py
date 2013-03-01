@@ -97,3 +97,20 @@ def hilbert(x):
     Ex = Ax ** 2 # energy == amplitude squared?
     Px = 10 * np.log10(Ex) # power in dB wrt 1 mV^2?
     return Px, Phx, Ex, Ax
+
+def wavelet(data, wname = "db4", maxlevel = 6):
+    import pywt	
+
+    data = np.atleast_2d(data)
+    numwires, datalength = data.shape
+
+    #doing the wavelet filtering inline
+    for i in range(numwires):
+        # Decompose the signal
+        c = pywt.wavedec(data[i,:], wname, level=maxlevel)
+        # Destroy the approximation coefficients
+        c[0][:] = 0
+        # Reconstruct the signal and save it
+        data[i,:] = pywt.waverec(c, wname)
+    
+    return data
