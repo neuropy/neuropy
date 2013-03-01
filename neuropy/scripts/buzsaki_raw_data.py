@@ -16,9 +16,8 @@ waveforms as much as butterworth or elliptic.
 
 import gc
 from core import LFP
-import pywt	
+import pywt
 import numpy as np
-from numpy import array
 
 class BZData(LFP):
     def __init__(self, fname='/home/mspacek/work/Buzsaki_raw_data/trace_8Chan_High-Sleep.dat'):
@@ -40,16 +39,16 @@ class BZData(LFP):
         self.sampfreq = 20000
         self.tres = 50 # 50 us per sample at 20 kHz
         # fake chanpos and chans, there are correct values, but I dont know what they are:
-        self.chanpos = array([[   0,    0],
-                              [   0,  100],
-                              [   0,  200],
-                              [   0,  300],
-                              [   0,  400],
-                              [   0,  500],
-                              [   0,  600],
-                              [   0,  700],
-                                         ])
-        self.chans = np.arange(8)                             
+        self.chanpos = np.array([[   0,    0],
+                                 [   0,  100],
+                                 [   0,  200],
+                                 [   0,  300],
+                                 [   0,  400],
+                                 [   0,  500],
+                                 [   0,  600],
+                                 [   0,  700],
+                                            ])
+        self.chans = np.arange(8)
         self.t0 = 0
         self.t1 = (nt-1) * self.tres
         self.PLOTGAIN = 20
@@ -60,43 +59,27 @@ class BZData(LFP):
                      figsize)
 
     def filter(self, chanis=-1, f0=500, f1=0, fr=100, gpass=0.01, gstop=50, ftype='ellip',
-                 plot=False):
+               plot=False):
         b, a = LFP.filter(self, chanis, f0, f1, fr, gpass, gstop, ftype)
         if plot:
-            self.plot(0.31, 0.325, chanis=-1)
-            self.specgram(0, 500, p0=None, p1=None, f1=2000)
+            self.plot(0.31, 0.325, chanis=chanis)
+            self.specgram(0, 500, f1=2000, p0=None, p1=None)
         return b, a
 
     def filterord(self, chanis=-1, f0=300, f1=None, order=4, btype='highpass', ftype='butter',
                plot=False):
         b, a = LFP.filterord(self, chanis, f0, f1, order, btype, ftype)
         if plot:
-            self.plot(0.31, 0.325, chanis=-1)
-            self.specgram(0, 500, p0=None, p1=None, f1=2000)
+            self.plot(0.31, 0.325, chanis=chanis)
+            self.specgram(0, 500, f1=2000, p0=None, p1=None)
         return b, a
 
-    def wavelet(self, maxlevel = 6, plot = False):
-        # We will use the Daubechies(4) wavelet
-        wname = "db4"	
-        self.data = np.atleast_2d(self.data)
-        numwires, datalength = self.data.shape
-
-        # Initialize the container for the filtered data
-        #fdata = np.empty((numwires, datalength))
-
-        for i in range(numwires):
-	        # Decompose the signal
-	        c = pywt.wavedec(self.data[i,:], wname, level=maxlevel)
-	        # Destroy the approximation coefficients
-	        c[0][:] = 0
-	        # Reconstruct the signal and save it
-	        self.data[i,:] = pywt.waverec(c, wname)
-
-        #self.data = fdata
+    def filterwavelet(self, chanis=-1, wname="db4", maxlevel=6, plot=False):
+        LFP.filterwavelet(self, chanis, wname, maxlevel)
         if plot:
-	        self.plot(0.31, 0.325, chanis=-1)
+            self.plot(0.31, 0.325, chanis=chanis)
+            self.specgram(0, 500, f1=2000, p0=None, p1=None)
 
-        return self.data # Otherwise, give back the 2D array
 
 bz = BZData()
 bz.load()
@@ -106,6 +89,7 @@ bz.filterord(chanis=-1, f0=300, order=4, btype='highpass', ftype='butter', plot=
 bz.filterord(chanis=-1, f0=300, order=4, btype='highpass', ftype='bessel', plot=True)
 bz.filterord(chanis=-1, f0=300, f1=6000, order=4, btype='bandpass', ftype='butter', plot=True)
 bz.filterord(chanis=-1, f0=300, f1=6000, order=4, btype='bandpass', ftype='bessel', plot=True)
+bz.filterwavelet(chanis=-1, plot=True)
 
 bz.plot(0.31, 0.325, chanis=-1)
 bz.specgram(0, 500, p0=None, p1=None, f1=2000)

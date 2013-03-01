@@ -581,10 +581,15 @@ class LFP(object):
                    horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def filterwavelet(self, wname = "db4", maxlevel = 6):
+    def filterwavelet(self, chanis=None, wname="db4", maxlevel=6):
+        """Filter data using wavelet multi-level decomposition and reconstruction (WMLDR)"""
         data = self.get_data()
+        if chanis == None:
+            chanis = np.arange(len(data))
+        data = data[chanis]
         data = filter.wavelet(data, wname, maxlevel)
-        return data        
+        self.data[chanis] = data
+
 
 class PopulationRaster(object):
     """Population spike raster plot"""

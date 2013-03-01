@@ -98,19 +98,19 @@ def hilbert(x):
     Px = 10 * np.log10(Ex) # power in dB wrt 1 mV^2?
     return Px, Phx, Ex, Ax
 
-def wavelet(data, wname = "db4", maxlevel = 6):
-    import pywt	
+def wavelet(data, wname="db4", maxlevel=6):
+    """Perform wavelet multi-level decomposition and reconstruction (WMLDR) on data.
+    See Wiltschko2008. Default to Daubechies(4) wavelet"""
+    import pywt
 
     data = np.atleast_2d(data)
-    numwires, datalength = data.shape
-
-    #doing the wavelet filtering inline
-    for i in range(numwires):
-        # Decompose the signal
+    # filter data in place
+    for i in range(len(data)):
+        # decompose the signal
         c = pywt.wavedec(data[i,:], wname, level=maxlevel)
-        # Destroy the approximation coefficients
+        # destroy the approximation coefficients
         c[0][:] = 0
-        # Reconstruct the signal and save it
+        # reconstruct the signal
         data[i,:] = pywt.waverec(c, wname)
     
     return data
