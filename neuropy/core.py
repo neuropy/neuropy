@@ -386,7 +386,7 @@ class LFP(object):
         self.f = f
         return self
         
-    def specgram(self, t0=None, t1=None, f0=0.1, f1=60, p0=-60, p1=None, chanis=-1,
+    def specgram(self, t0=None, t1=None, f0=0.1, f1=100, p0=-60, p1=None, chanis=-1,
                  width=4096, overlap=2048, cm=None, colorbar=False, figsize=(20, 6.5)):
         """Plot a spectrogram from t0 to t1 in sec, from f0 to f1 in Hz, and clip power
         values from p0 to p1 in dB. based on channel index chani of LFP data. chanis=0 uses
@@ -433,6 +433,7 @@ class LFP(object):
         extent = t0+t[0], t0+t[-1], freqs[0], freqs[-1]
         im = a.imshow(P, extent=extent, cmap=cm)
         a.autoscale(enable=True, tight=True)
+        a.axis('tight')
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
@@ -496,12 +497,14 @@ class LFP(object):
         return b, a
 
     def lowhigh_fourier(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
-                        NFFT=2**14, noverlap=2**13+2**12):
+                        NFFT=2**15, noverlap=32000):
         """Return power of low and high bands as measured by Fourier transform.
         Returned time series can probably be smoothed by increasing noverlap"""
         data = self.get_data()
         x = data[chani] / 1e3 # convert from uV to mV
         x = filter.notch(x)[0] # remove 60 Hz mains noise
+        if '66Hz' in self.r.name:
+            x = filter.notch(x, freq=66)[0] # remove 66 Hz CRT raster interference
         # returned t is in sec from start of data
         # I think P is in mV^2?:
         P, freqs, t = mpl.mlab.specgram(x, NFFT=NFFT, Fs=self.sampfreq, noverlap=noverlap)
@@ -530,6 +533,8 @@ class LFP(object):
         data = self.get_data()
         x = data[chani] / 1e3 # convert from uV to mV
         x = filter.notch(x)[0] # remove 60 Hz mains noise
+        if '66Hz' in self.r.name:
+            x = filter.notch(x, freq=66)[0] # remove 66 Hz CRT raster interference
         # remove everything below f0:
         #x = filter.filterord(data=x, f0=f0, order=4, btype='highpass')[0]
         #x = filter.filter(data=x, f0=0.5, f1=0, fr=0.1, ftype='ellip', gstop=20)
