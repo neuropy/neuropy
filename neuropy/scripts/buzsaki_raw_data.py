@@ -82,7 +82,7 @@ class BZData(LFP):
         numwires, datalength = self.data.shape
 
         # Initialize the container for the filtered data
-        fdata = np.empty((numwires, datalength))
+        #fdata = np.empty((numwires, datalength))
 
         for i in range(numwires):
 	        # Decompose the signal
@@ -90,15 +90,13 @@ class BZData(LFP):
 	        # Destroy the approximation coefficients
 	        c[0][:] = 0
 	        # Reconstruct the signal and save it
-	        fdata[i,:] = pywt.waverec(c, wname)
+	        self.data[i,:] = pywt.waverec(c, wname)
 
-        self.data = fdata
+        #self.data = fdata
         if plot:
 	        self.plot(0.31, 0.325, chanis=-1)
-        if fdata.shape[0] == 1:
-	        return fdata.ravel() # If the signal is 1D, return a 1D array
-        else:
-	        return fdata # Otherwise, give back the 2D array
+
+        return self.data # Otherwise, give back the 2D array
 
 bz = BZData()
 bz.load()
