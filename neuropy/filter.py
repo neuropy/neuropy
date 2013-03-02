@@ -109,7 +109,7 @@ def wavelet(data, wname="db4", maxlevel=6):
         # decompose the signal
         c = pywt.wavedec(data[i], wname, level=maxlevel)
         # destroy the approximation coefficients
-        c[0][:] = 0
+        c[0] = None
         # reconstruct the signal
         data[i] = pywt.waverec(c, wname)
     
