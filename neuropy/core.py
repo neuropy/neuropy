@@ -582,7 +582,8 @@ class LFP(object):
         f.tight_layout(pad=0.3) # crop figure to contents
 
     def filterwavelet(self, chanis=None, wname="db4", maxlevel=6):
-        """Filter data using wavelet multi-level decomposition and reconstruction (WMLDR)"""
+        """Filter data using wavelet multi-level decomposition and reconstruction (WMLDR).
+        See Wiltschko2008"""
         data = self.get_data()
         if chanis == None:
             chanis = np.arange(len(data))
@@ -875,7 +876,7 @@ class CodeCorr(object):
                     # potentially shift only the second spike train of each pair:
                     c0 = self.r.n[ni0].code(tranges=self.tranges).c
                     c1 = self.r.n[ni1].code(tranges=self.tranges, shift=shift).c
-                    # (mean of product - product of means) / by product of stds
+                    # (mean of product - product of means) / product of stds
                     denom = stds[ni0] * stds[ni1]
                     if denom == 0.0: # prevent div by 0
                         print('skipped pair (%d, %d) in r%s' % (nii0, nii1, self.r.id))
