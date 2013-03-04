@@ -497,9 +497,10 @@ class LFP(object):
         return b, a
 
     def lowhigh_fourier(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
-                        NFFT=2**15, noverlap=32000):
-        """Return power of low and high bands as measured by Fourier transform.
-        Returned time series can probably be smoothed by increasing noverlap"""
+                        NFFT=2**15, noverlap=32000, plot=False):
+        """Return ratio of power of low and high bands as measured by Fourier transform.
+        Use either L/(H+L) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan 2009).
+        Smoothness of returned time series can be controlled with noverlap"""
         data = self.get_data()
         x = data[chani] / 1e3 # convert from uV to mV
         x = filter.notch(x)[0] # remove 60 Hz mains noise
@@ -521,15 +522,18 @@ class LFP(object):
         lP = lP.sum(axis=0)
         hP = hP.sum(axis=0)
         if ratio == 'L/(H+L)':
-            self.powerplot(t, lP/(hP + lP), ratio, title=lastcmd(), text=self.r.name)
+            r = lP/(hP + lP)
         elif ratio == 'L/H':
-            self.powerplot(t, lP/hP, ratio, title=lastcmd(), text=self.r.name)
+            r = lP/hP
         else:
             raise ValueError
-        return lP, hP, t
+        return r, t
         
-    def lowhigh_hilbert(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)'):
-        """Return power of low and high bands as measured by Hilbert transform (Saleem2010)"""
+    def lowhigh_hilbert(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
+                        plot=False):
+        """Return ratio of power of low and high bands as measured by Hilbert transform
+        (Saleem2010). Use either L/(H+L) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan 2009).
+        Smoothness of returned time series can be controlled with noverlap"""
         data = self.get_data()
         x = data[chani] / 1e3 # convert from uV to mV
         x = filter.notch(x)[0] # remove 60 Hz mains noise
@@ -544,14 +548,14 @@ class LFP(object):
         h = filter.filterord(data=x, f0=f2, order=11, btype='highpass')[0]
         lP, lPh, lE, lA = filter.hilbert(l)
         hP, hPh, hE, hA = filter.hilbert(h)
-        ts = self.get_tssec() # full set of timestamps, in sec
+        t = self.get_tssec() # full set of timestamps, in sec
         if ratio == 'L/(H+L)':
-            self.powerplot(t, lP/(hP + lP), ratio, title=lastcmd(), text=self.r.name)
+            r = lP/(hP + lP)
         elif ratio == 'L/H':
-            self.powerplot(t, lP/hP, ratio, title=lastcmd(), text=self.r.name)
+            r = lP/hP
         else:
             raise ValueError
-        return lP, hP, ts
+        return r, t
 
     def powerplot(self, t, P, ylabel=None, title=None, text=None, figsize=(20, 6.5)):
         """Plot some measure of power as a function of time, with hopefully the same
