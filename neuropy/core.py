@@ -527,6 +527,8 @@ class LFP(object):
             r = lP/hP
         else:
             raise ValueError
+        if plot:
+            self.powerplot(t, r, ratio, title=lastcmd(), text=self.r.name)
         return r, t
         
     def lowhigh_hilbert(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
@@ -555,6 +557,8 @@ class LFP(object):
             r = lP/hP
         else:
             raise ValueError
+        if plot:
+            self.powerplot(t, r, ratio, title=lastcmd(), text=self.r.name)
         return r, t
 
     def powerplot(self, t, P, ylabel=None, title=None, text=None, figsize=(20, 6.5)):
