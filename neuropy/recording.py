@@ -356,11 +356,18 @@ class RecordingCode(BaseRecording):
         code2 = self.n[nid2].code(tranges=tranges)
         return corrcoef(code1.c, code2.c)
     '''
-    def cc(self, tranges=None, shift=0, shiftcorrect=0, experiments=None, nids=None,
-           R=None, shufflenids=False):
+    def cc(self, tranges=None, weights=None, shift=0, shiftcorrect=0, experiments=None,
+           nids=None, R=None, shufflenids=False):
         """Return a CodeCorr object"""
-        cc = CodeCorr(recording=self, tranges=tranges, shift=shift, shiftcorrect=shiftcorrect,
-                      experiments=experiments, nids=nids, R=None, shufflenids=False)
+        if weights in ['synch', 'desynch']:
+            r, t = self.lfp.lowhigh_fourier()
+            if weights == 'synch':
+                weights = r, t
+            else: # weights == 'desynch'
+                weights = 1-r, t
+        cc = CodeCorr(recording=self, tranges=tranges, weights=weights, shift=shift,
+                      shiftcorrect=shiftcorrect, experiments=experiments, nids=nids,
+                      R=None, shufflenids=False)
         # run cc.calc() as late as possible, not here
         return cc
 

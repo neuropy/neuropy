@@ -818,9 +818,11 @@ class Codes(object):
 class CodeCorr(object):
     """Calculate and plot the correlations of the codes of all cell pairs from nids (or of
     all cell pairs within some torus of radii R=(R0, R1) in um) in this Recording, during
-    tranges or experiments. For each pair, shift the second spike train by shift ms, or
-    shift it by shiftcorrect ms and subtract the correlation from the unshifted value."""
-    def __init__(self, recording=None, tranges=None, shift=0, shiftcorrect=0,
+    tranges or experiments. Weights is a tuple of weight values and times, to weight
+    different parts of the recording differently. For each pair, shift the second spike
+    train by shift ms, or shift it by shiftcorrect ms and subtract the correlation from the
+    unshifted value."""
+    def __init__(self, recording=None, tranges=None, weights=None, shift=0, shiftcorrect=0,
                  experiments=None, nids=None, R=None, shufflenids=False):
         self.r = recording
         if tranges != None:
@@ -838,6 +840,7 @@ class CodeCorr(object):
                 self.tranges = [ e.trange for e in self.e.values() ]
         else:
             self.tranges = [ self.r.trange ] # use the Recording's trange
+        self.weights = weights
         self.shift = shift # shift spike train of the second of each neuron pair, in ms
         # shift correct spike train of the second of each neuron pair by this much, in ms
         self.shiftcorrect = shiftcorrect
@@ -854,14 +857,36 @@ class CodeCorr(object):
             self.nids.sort()
         nids = self.nids
         nneurons = len(nids)
+
         # it's more efficient to precalculate the means and stds of each cell's codetrain,
         # and then reuse them in calculating the correlation coefficients
         means = {} # store each code mean in a dict
         stds = {} # store each code std in a dict
         for nid in nids:
-            c = self.r.n[nid].code(self.tranges).c
-            means[nid] = c.mean()
-            stds[nid] = c.std()
+            code = self.r.n[nid].code(self.tranges)
+            means[nid] = code.c.mean()
+            stds[nid] = code.c.std()
+
+        # get bin times from last neuron's code, should be same for all neurons:
+        bint = code.t
+        nbins = len(bint)
+        # calculate bin weights:
+        if self.weights != None:
+            w, wt = self.weights # weights and weight times
+            assert len(w) == len(wt)
+            binw = np.zeros(nbins) # bin weights
+            # this might assume that there are fewer weight times than bin times,
+            # but that should be a safe assumption:
+            assert len(wt) < nbins
+            tis = bint.searchsorted(wt) # where weight times fit into bin times
+            tis = np.append(tis, nbins)
+            for i in range(len(tis)-1):
+                ti0 = tis[i]
+                ti1 = tis[i+1]
+                binw[ti0:ti1] = w[i]
+        else:
+            binw = 1
+
         if self.shufflenids:
         # shuffled neuron ids, this is a control to see if it's the locality of neurons
         # included in the analysis, or the number of neurons included that's important. It
@@ -885,7 +910,7 @@ class CodeCorr(object):
                 if self.R == None or (self.R[0]
                                       < dist(self.r.n[sni0].pos, self.r.n[sni1].pos)
                                       < self.R[1]):
-                    # potentially shift only the second spike train of each pair:
+                    # potentially shift only the second code train of each pair:
                     c0 = self.r.n[ni0].code(tranges=self.tranges).c
                     c1 = self.r.n[ni1].code(tranges=self.tranges, shift=shift).c
                     # (mean of product - product of means) / product of stds
@@ -893,7 +918,7 @@ class CodeCorr(object):
                     if denom == 0.0: # prevent div by 0
                         print('skipped pair (%d, %d) in r%s' % (nii0, nii1, self.r.id))
                         continue # skip to next pair
-                    cc = ((c0 * c1).mean() - means[ni0] * means[ni1]) / denom
+                    cc = ((c0 * c1 * binw).mean() - means[ni0] * means[ni1]) / denom
                     # potentially shift correct using only the second spike train of each pair:
                     if shiftcorrect:
                         c1sc = self.r.n[ni1].code(tranges=self.tranges, shift=shiftcorrect).c
