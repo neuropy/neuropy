@@ -877,6 +877,7 @@ class CodeCorr(object):
                 binw[ti0:ti1] = w[i]
         else:
             binw = 1
+        meanw = np.mean(binw)
 
         # it's more efficient to precalculate the means and stds of each cell's codetrain,
         # and then reuse them in calculating the correlation coefficients
@@ -918,7 +919,7 @@ class CodeCorr(object):
                     if denom == 0.0: # prevent div by 0
                         print('skipped pair (%d, %d) in r%s' % (nii0, nii1, self.r.id))
                         continue # skip to next pair
-                    cc = ((c0 * c1 * binw).mean() - means[ni0] * means[ni1]) / denom
+                    cc = ((c0 * c1 * binw).mean() - means[ni0] * means[ni1] * meanw) / denom
                     # potentially shift correct using only the second spike train of each pair:
                     if shiftcorrect:
                         c1sc = self.r.n[ni1].code(tranges=self.tranges, shift=shiftcorrect).c
