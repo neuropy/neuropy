@@ -270,7 +270,7 @@ class BinaryCode(object):
 
     def calc(self):
         """.t and .s attribs are commented out to save substantial memory"""
-        #self.t = [] # bin times
+        self.t = [] # bin times
         #self.s = [] # relevant spike times, potentially shifted by self.shift
         self.c = [] # code values for each bin
         shift = intround(self.shift * 1000) # convert self.shift in ms to int us
@@ -301,14 +301,14 @@ class BinaryCode(object):
             # dec index by 1 so that you get indices that point to the most recent bin edge.
             # For each bin that has at least 1 spike in it, set its value to high:
             c[np.unique(t.searchsorted(s)) - 1] = self.codevals[1]
-            #self.t.append(t)
+            self.t.append(t)
             #self.s.append(s)
             self.c.append(c)
         # horizontally concatenate results from each trange:
-        #self.t = np.hstack(self.t)
+        self.t = np.hstack(self.t)
         #self.s = np.hstack(self.s)
         self.c = np.hstack(self.c)
-        del self.spikes # save memory
+        del self.spikes # no need for spikes any more, save memory
 
     def plot(self):
         """Plot some kind of long grid of white and black elements?"""
