@@ -496,8 +496,8 @@ class LFP(object):
         self.data[chanis] = data
         return b, a
 
-    def lowhigh_fourier(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
-                        NFFT=2**15, noverlap=32000, plot=False):
+    def lowhigh(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
+                NFFT=2**15, noverlap=32000, plot=False):
         """Return ratio of power of low and high bands as measured by Fourier transform.
         Use either L/(H+L) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan 2009).
         Smoothness of returned time series can be controlled with noverlap"""

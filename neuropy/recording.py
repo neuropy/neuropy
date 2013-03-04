@@ -360,7 +360,7 @@ class RecordingCode(BaseRecording):
            nids=None, R=None, shufflenids=False):
         """Return a CodeCorr object"""
         if weights in ['synch', 'desynch']:
-            r, t = self.lfp.lowhigh_fourier()
+            r, t = self.lfp.lowhigh()
             if weights == 'synch':
                 weights = r, t
             else: # weights == 'desynch'
