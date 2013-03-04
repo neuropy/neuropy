@@ -504,8 +504,10 @@ class LFP(object):
         data = self.get_data()
         x = data[chani] / 1e3 # convert from uV to mV
         x = filter.notch(x)[0] # remove 60 Hz mains noise
-        if '66Hz' in self.r.name:
-            x = filter.notch(x, freq=66)[0] # remove 66 Hz CRT raster interference
+        rr = self.r.e0.I['REFRESHRATE']
+        if rr <= 100: # CRT was at low vertical refresh rate
+            print('filtering out %d Hz from LFP in %s' % (intround(rr), self.r.name))
+            x = filter.notch(x, freq=rr)[0] # remove CRT interference
         # returned t is in sec from start of data
         # I think P is in mV^2?:
         P, freqs, t = mpl.mlab.specgram(x, NFFT=NFFT, Fs=self.sampfreq, noverlap=noverlap)
@@ -539,8 +541,10 @@ class LFP(object):
         data = self.get_data()
         x = data[chani] / 1e3 # convert from uV to mV
         x = filter.notch(x)[0] # remove 60 Hz mains noise
-        if '66Hz' in self.r.name:
-            x = filter.notch(x, freq=66)[0] # remove 66 Hz CRT raster interference
+        rr = self.r.e0.I['REFRESHRATE']
+        if rr <= 100: # CRT was at low vertical refresh rate
+            print('filtering out %d Hz from LFP in %s' % (intround(rr), self.r.name))
+            x = filter.notch(x, freq=rr)[0] # remove CRT interference
         # remove everything below f0:
         #x = filter.filterord(data=x, f0=f0, order=4, btype='highpass')[0]
         #x = filter.filter(data=x, f0=0.5, f1=0, fr=0.1, ftype='ellip', gstop=20)
