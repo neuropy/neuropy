@@ -858,17 +858,8 @@ class CodeCorr(object):
         nids = self.nids
         nneurons = len(nids)
 
-        # it's more efficient to precalculate the means and stds of each cell's codetrain,
-        # and then reuse them in calculating the correlation coefficients
-        means = {} # store each code mean in a dict
-        stds = {} # store each code std in a dict
-        for nid in nids:
-            code = self.r.n[nid].code(self.tranges)
-            means[nid] = code.c.mean()
-            stds[nid] = code.c.std()
-
-        # get bin times from last neuron's code, should be same for all neurons:
-        bint = code.t
+        # get bin times from first neuron's code, should be same for all neurons:
+        bint = self.r.n[nids[0]].code(self.tranges).t
         nbins = len(bint)
         # calculate bin weights:
         if self.weights != None:
@@ -886,6 +877,15 @@ class CodeCorr(object):
                 binw[ti0:ti1] = w[i]
         else:
             binw = 1
+
+        # it's more efficient to precalculate the means and stds of each cell's codetrain,
+        # and then reuse them in calculating the correlation coefficients
+        means = {} # store each code mean in a dict
+        stds = {} # store each code std in a dict
+        for nid in nids:
+            c = self.r.n[nid].code(self.tranges).c
+            means[nid] = c.mean()
+            stds[nid] = c.std()
 
         if self.shufflenids:
         # shuffled neuron ids, this is a control to see if it's the locality of neurons
