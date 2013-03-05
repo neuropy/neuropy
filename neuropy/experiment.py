@@ -136,7 +136,7 @@ class BaseExperiment(object):
         '''
         # Add .static and .dynamic params to fake dimstim experiment
         self.e = dictattr()
-        self.e.I = dictattr() # fake InternalParams object
+        self.I = dictattr() # fake InternalParams object
         self.e.static = dictattr() # fake StaticParams object
         self.e.dynamic = dictattr() # fake DynamicParams object
         # maps Cat 15 param names to dimstim 0.16 param types and names, wherever possible
@@ -193,6 +193,9 @@ class BaseExperiment(object):
             else:
                 try:
                     paramtype, newname = _15to16[oldname]
+                    if paramtype == 'I':
+                        # bind InternalParams directly to self, not to self.e:
+                        self.I[newname] = val
                     self.e[paramtype][newname] = val
                 except KeyError: # oldname doesn't have a newname equivalent
                     pass
