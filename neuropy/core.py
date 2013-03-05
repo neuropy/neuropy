@@ -422,6 +422,13 @@ class LFP(object):
             f1 = freqs[-1]
         lo, hi = freqs.searchsorted([f0, f1])
         P, freqs = P[lo:hi], freqs[lo:hi]
+        # check for and replace zero power values (ostensibly due to gaps in recording)
+        # before attempting to convert to dB:
+        zis = np.where(P == 0.0) # row and column indices where P has zero power
+        if len(zis[0]) > 0: # at least one hit
+            P[zis] = np.finfo(np.float64).max # temporarily replace zeros with max float
+            minnzval = P.min() # get minimum nonzero value
+            P[zis] = minnzval # replace with min nonzero values
         P = 10. * np.log10(P) # convert power to dB wrt 1 mV^2?
         P = P[::-1] # flip vertically for compatibility with imshow
         # for better visualization, clip power values to within (p0, p1) dB
