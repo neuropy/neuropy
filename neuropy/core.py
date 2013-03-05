@@ -589,8 +589,8 @@ class LFP(object):
             gcfm().window.setWindowTitle(title)
             a.set_title(title)
         if text:
-            a.text(0.998, 0.99, '%s' % text, color='k', transform=a.transAxes,
-                   horizontalalignment='right', verticalalignment='top')
+            a.text(0.998, 0.01, '%s' % text, color='k', transform=a.transAxes,
+                   horizontalalignment='right', verticalalignment='bottom')
         f.tight_layout(pad=0.3) # crop figure to contents
 
     def filterwavelet(self, chanis=None, wname="db4", maxlevel=6):
@@ -865,6 +865,8 @@ class CodeCorr(object):
         if self.weights != None:
             w, wt = self.weights # weights and weight times
             assert len(w) == len(wt)
+            ## TODO: maybe w needs to be recentered between max and min possible synch
+            ## values (1 and 0.15 it seems)
             binw = np.zeros(nbins) # bin weights
             # this might assume that there are fewer weight times than bin times,
             # but that should be a safe assumption:
