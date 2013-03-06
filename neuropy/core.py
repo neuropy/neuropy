@@ -504,7 +504,7 @@ class LFP(object):
         return b, a
 
     def pratio(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
-               NFFT=2**15, noverlap=32000, plot=False):
+               NFFT=2**15, noverlap=32000, plot=True):
         """Return power ratio of low vs high bands as measured by Fourier transform.
         Use either L/(H+L) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan 2009).
         Smoothness of returned time series can be controlled with noverlap"""
@@ -541,7 +541,7 @@ class LFP(object):
         return r, t
         
     def pratio_hilbert(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
-                       plot=False):
+                       plot=True):
         """Return power ratio of low vs high bands as measured by Hilbert transform
         (Saleem2010). Use either L/(H+L) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan 2009).
         Smoothness of returned time series can be controlled with noverlap"""
