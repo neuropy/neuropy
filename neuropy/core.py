@@ -411,10 +411,13 @@ class LFP(object):
             data = data[chanis].mean(axis=0) # take mean of data on chanis
         else:
             data = data[chanis] # get single row of data at chanis
-        # convert data from uV to mV, returned t is in sec from start of data
-        # I think P is in mV^2?:
+        # convert data from uV to mV, returned t is midpoints of timebins in sec from
+        # start of data. I think P is in mV^2?:
         P, freqs, t = mpl.mlab.specgram(data/1e3, NFFT=width, Fs=self.sampfreq,
                                         noverlap=overlap)
+        # for completeness, should convert t to time from start of acquisition, although
+        # there's no need to because t isn't used anywhere:
+        #t += t0
         # keep only freqs between f0 and f1:
         if f0 == None:
             f0 = freqs[0]
@@ -437,7 +440,11 @@ class LFP(object):
         if p1 != None:
             P[P > p1] = p1
         #self.P = P
-        extent = t0+t[0], t0+t[-1], freqs[0], freqs[-1]
+        # Label far left, right, top and bottom edges of imshow image. imshow interpolates
+        # between these to place the axes ticks. Time limits are
+        # set from start of acquisition:
+        extent = t0, t1, freqs[0], freqs[-1]
+        print('specgram extent: %r' % (extent,))
         im = a.imshow(P, extent=extent, cmap=cm)
         a.autoscale(enable=True, tight=True)
         a.axis('tight')
@@ -509,17 +516,21 @@ class LFP(object):
         Use either L/(H+L) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan 2009).
         Smoothness of returned time series can be controlled with noverlap"""
         data = self.get_data()
+        ts = self.get_tssec() # full set of timestamps, in sec
+        t0, t1 = ts[0], ts[-1] # full duration
         x = data[chani] / 1e3 # convert from uV to mV
         x = filter.notch(x)[0] # remove 60 Hz mains noise
         rr = self.r.e0.I['REFRESHRATE']
         if rr <= 100: # CRT was at low vertical refresh rate
             print('filtering out %d Hz from LFP in %s' % (intround(rr), self.r.name))
             x = filter.notch(x, freq=rr)[0] # remove CRT interference
-        # returned t is in sec from start of data
+        # returned t is midpoints of timebins in sec from start of data.
         # I think P is in mV^2?:
         P, freqs, t = mpl.mlab.specgram(x, NFFT=NFFT, Fs=self.sampfreq, noverlap=noverlap)
         # don't convert power to dB, just washes out the signal in the ratio:
         #P = 10. * np.log10(P)
+        # convert t to time from start of acquisition:
+        t += t0
         # keep only freqs between f0 and f1, and f2 and f3:
         if f0 == None:
             f0 = freqs[0]
@@ -537,7 +548,7 @@ class LFP(object):
         else:
             raise ValueError
         if plot:
-            self.powerplot(t, r, ratio, title=lastcmd(), text=self.r.name)
+            self.powerplot(t, r, t0, t1, ratio, title=lastcmd(), text=self.r.name)
         return r, t
         
     def pratio_hilbert(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
@@ -546,6 +557,8 @@ class LFP(object):
         (Saleem2010). Use either L/(H+L) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan 2009).
         Smoothness of returned time series can be controlled with noverlap"""
         data = self.get_data()
+        t = self.get_tssec() # full set of timestamps, in sec
+        t0, t1 = t[0], t[-1] # full duration
         x = data[chani] / 1e3 # convert from uV to mV
         x = filter.notch(x)[0] # remove 60 Hz mains noise
         rr = self.r.e0.I['REFRESHRATE']
@@ -561,7 +574,7 @@ class LFP(object):
         h = filter.filterord(data=x, f0=f2, order=11, btype='highpass')[0]
         lP, lPh, lE, lA = filter.hilbert(l)
         hP, hPh, hE, hA = filter.hilbert(h)
-        t = self.get_tssec() # full set of timestamps, in sec
+
         if ratio == 'L/(H+L)':
             r = lP/(hP + lP)
         elif ratio == 'L/H':
@@ -569,10 +582,11 @@ class LFP(object):
         else:
             raise ValueError
         if plot:
-            self.powerplot(t, r, ratio, title=lastcmd(), text=self.r.name)
+            self.powerplot(t, r, t0, t1, ratio, title=lastcmd(), text=self.r.name)
         return r, t
 
-    def powerplot(self, t, P, ylabel=None, title=None, text=None, figsize=(20, 6.5)):
+    def powerplot(self, t, P, t0=None, t1=None, ylabel=None, title=None, text=None,
+                  figsize=(20, 6.5)):
         """Plot some measure of power as a function of time, with hopefully the same
         temporal scale as some of the other plots in self"""
         if figsize == None:
@@ -585,10 +599,11 @@ class LFP(object):
         a.set_xlabel("time (sec)")
         if ylabel == None:
             ylabel = "power (AU?)"
-        elif ylabel == 'L/(H+L)':
+        elif ylabel in ['L/(H+L)', 'H/(H+L)']:
             a.set_ylim(0, 1)
+        a.set_xlim(t0, t1) # low/high limits are unchanged if None
         a.set_ylabel(ylabel)
-        a.autoscale(axis='x', enable=True, tight=True)
+        #a.autoscale(axis='x', enable=True, tight=True)
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
