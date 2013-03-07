@@ -840,12 +840,14 @@ class Codes(object):
 class CodeCorr(object):
     """Calculate and plot the correlations of the codes of all cell pairs from nids (or of
     all cell pairs within some torus of radii R=(R0, R1) in um) in this Recording, during
-    tranges or experiments. Weights is a tuple of weight values and times, to weight
+    tranges or experiments. If tres is not None, calculate self as a function of time, with
+    time resolution tres in sec. Weights is a tuple of weight values and times, to weight
     different parts of the recording differently. For each pair, shift the second spike
     train by shift ms, or shift it by shiftcorrect ms and subtract the correlation from the
     unshifted value."""
-    def __init__(self, recording=None, tranges=None, weights=None, shift=0, shiftcorrect=0,
-                 experiments=None, nids=None, R=None, shufflenids=False):
+    def __init__(self, recording=None, tranges=None, tres=None, weights=None,
+                 shift=0, shiftcorrect=0, experiments=None, nids=None, R=None,
+                 shufflenids=False):
         self.r = recording
         if tranges != None:
             self.tranges = tranges
@@ -862,6 +864,22 @@ class CodeCorr(object):
                 self.tranges = [ e.trange for e in self.e.values() ]
         else:
             self.tranges = [ self.r.trange ] # use the Recording's trange
+
+        if tres != None:
+            # split up tranges into lots of smaller ones, each of size tres
+            tres = intround(tres * 1000000) # convert from sec to us
+            newtranges = []
+            for trange in self.tranges:
+                t0, t1 = trange
+                assert tres < (t1 - t0)
+                edges = np.arange(t0, t1, tres) # edges of subtranges that fall within trange
+                if edges[-1] != t1:
+                    edges = np.append(edges, t1) # make sure edges includes t1
+                subtranges = [(t0, t1) for t0, t1 in zip(edges[:-1], edges[1:])]
+                newtranges.append(subtranges)
+            self.tranges = np.vstack(newtranges) # replace
+        self.tres = tres # in us
+
         self.weights = weights
         self.shift = shift # shift spike train of the second of each neuron pair, in ms
         # shift correct spike train of the second of each neuron pair by this much, in ms
@@ -873,22 +891,40 @@ class CodeCorr(object):
         self.shufflenids = shufflenids
 
     def calc(self):
-        """Calculate self constrained to self.tranges and torus described by self.R"""
+        if self.tres != None:
+            # compute correlation coefficients separately for each trange
+            corrss = []
+            for trange in self.tranges:
+                # all pairis should be identical for all tranges
+                corrs, pairis = self.calc_tranges(tranges=[trange])
+                corrss.append(corrs)
+            corrs = np.asarray(corrss) # each row is a timepoint, each column a pair
+            corrs = corrs.T # each row is a pair, each column a timepoint
+        else:
+            # compute correlation coefficients once across entire set of tranges
+            corrs, pairis = self.calc_tranges(tranges=self.tranges)
+        self.corrs = corrs
+        self.pairis = pairis
+        self.npairs = len(pairis)
+        
+    def calc_tranges(self, tranges=None):
+        """Calculate self constrained to tranges and torus described by self.R,
+        weighted by self.weights"""
         if self.nids == None:
             self.nids = self.r.n.keys()
             self.nids.sort()
         nids = self.nids
         nneurons = len(nids)
 
-        # get bin times from first neuron's code, should be same for all neurons:
-        bint = self.r.n[nids[0]].code(self.tranges).t
-        nbins = len(bint)
         # calculate bin weights:
         if self.weights != None:
             w, wt = self.weights # weights and weight times
             assert len(w) == len(wt)
             ## TODO: maybe w needs to be recentered between max and min possible synch
             ## values (1 and 0.15 it seems)
+            # get bin times from first neuron's code, should be same for all neurons:
+            bint = self.r.n[nids[0]].code(tranges).t
+            nbins = len(bint)
             binw = np.zeros(nbins) # bin weights
             # this might assume that there are fewer weight times than bin times,
             # but that should be a safe assumption:
@@ -908,7 +944,7 @@ class CodeCorr(object):
         means = {} # store each code mean in a dict
         stds = {} # store each code std in a dict
         for nid in nids:
-            c = self.r.n[nid].code(self.tranges).c
+            c = self.r.n[nid].code(tranges).c
             means[nid] = c.mean()
             stds[nid] = c.std()
 
@@ -936,8 +972,8 @@ class CodeCorr(object):
                                       < dist(self.r.n[sni0].pos, self.r.n[sni1].pos)
                                       < self.R[1]):
                     # potentially shift only the second code train of each pair:
-                    c0 = self.r.n[ni0].code(tranges=self.tranges).c
-                    c1 = self.r.n[ni1].code(tranges=self.tranges, shift=shift).c
+                    c0 = self.r.n[ni0].code(tranges=tranges).c
+                    c1 = self.r.n[ni1].code(tranges=tranges, shift=shift).c
                     # (mean of product - product of means) / product of stds
                     numer = (c0 * c1 * binw).mean() - means[ni0] * means[ni1] * meanw
                     denom = stds[ni0] * stds[ni1]
@@ -950,15 +986,16 @@ class CodeCorr(object):
                         cc = numer / denom
                     # potentially shift correct using only the second spike train of each pair:
                     if shiftcorrect:
-                        c1sc = self.r.n[ni1].code(tranges=self.tranges, shift=shiftcorrect).c
+                        c1sc = self.r.n[ni1].code(tranges=tranges, shift=shiftcorrect).c
                         ccsc = ((c0 * c1sc).mean() - means[ni0] * means[ni1]) / denom
                         ## TODO: might also want to try subtracting abs(ccsc)?
                         cc -= ccsc
                     pairis.append([nii0, nii1])
                     corrs.append(cc)
-        self.pairis = np.array(pairis) # indices into nids
-        self.corrs = np.array(corrs)
-        self.npairs = len(corrs)
+        corrs = np.array(corrs)
+        pairis = np.array(pairis) # indices into nids
+        return corrs, pairis
+
     def clear_codes(self):
         """Delete all of recording's cached codes"""
         for n in self.r.alln.values():
