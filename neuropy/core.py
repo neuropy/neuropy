@@ -939,11 +939,15 @@ class CodeCorr(object):
                     c0 = self.r.n[ni0].code(tranges=self.tranges).c
                     c1 = self.r.n[ni1].code(tranges=self.tranges, shift=shift).c
                     # (mean of product - product of means) / product of stds
+                    numer = (c0 * c1 * binw).mean() - means[ni0] * means[ni1] * meanw
                     denom = stds[ni0] * stds[ni1]
-                    if denom == 0.0: # prevent div by 0
+                    if numer == 0.0:
+                        cc = 0.0 # even if denom is also 0
+                    elif denom == 0.0: # numer is not 0, but denom is 0, prevent div by 0
                         print('skipped pair (%d, %d) in r%s' % (nii0, nii1, self.r.id))
                         continue # skip to next pair
-                    cc = ((c0 * c1 * binw).mean() - means[ni0] * means[ni1] * meanw) / denom
+                    else:
+                        cc = numer / denom
                     # potentially shift correct using only the second spike train of each pair:
                     if shiftcorrect:
                         c1sc = self.r.n[ni1].code(tranges=self.tranges, shift=shiftcorrect).c
