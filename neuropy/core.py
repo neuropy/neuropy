@@ -959,11 +959,6 @@ class CodeCorr(object):
         self.pairis = np.array(pairis) # indices into nids
         self.corrs = np.array(corrs)
         self.npairs = len(corrs)
-        '''
-        # simpler, but slower way without precalculation of means and stds:
-        self.corrs = [ self.r.codecorr(nids[nii0], nids[nii1], tranges=self.tranges)
-                       for nii0 in range(0,nneurons) for nii1 in range(nii0+1,nneurons) ]
-        '''
     def clear_codes(self):
         """Delete all of recording's cached codes"""
         for n in self.r.alln.values():
