@@ -838,7 +838,7 @@ class Codes(object):
     '''
     
 class CodeCorr(object):
-    """Calculate and plot the correlations of the codes of all cell pairs from nids (or of
+    """Calculate and plot the spike code correlations of all cell pairs from nids (or of
     all cell pairs within some torus of radii R=(R0, R1) in um) in this Recording, during
     tranges or experiments. If tres is not None, calculate self as a function of time, with
     time resolution tres in sec. Weights is a tuple of weight values and times, to weight
@@ -896,20 +896,20 @@ class CodeCorr(object):
             corrss = []
             for trange in self.tranges:
                 # all pairis should be identical for all tranges
-                corrs, pairis = self.calc_tranges(tranges=[trange])
+                corrs, pairis = self.calc_single(tranges=[trange])
                 corrss.append(corrs)
             corrs = np.asarray(corrss) # each row is a timepoint, each column a pair
             corrs = corrs.T # each row is a pair, each column a timepoint
         else:
             # compute correlation coefficients once across entire set of tranges
-            corrs, pairis = self.calc_tranges(tranges=self.tranges)
+            corrs, pairis = self.calc_single(tranges=self.tranges)
         self.corrs = corrs
         self.pairis = pairis
         self.npairs = len(pairis)
         
-    def calc_tranges(self, tranges=None):
-        """Calculate self constrained to tranges and torus described by self.R,
-        weighted by self.weights"""
+    def calc_single(self, tranges=None):
+        """Calculate single code correlation value for each cell pair, constrained to
+        tranges and torus described by self.R, weighted by self.weights"""
         if self.nids == None:
             self.nids = self.r.n.keys()
             self.nids.sort()
@@ -1005,7 +1005,7 @@ class CodeCorr(object):
                 pass
 
     def laminarity(self, nids, pairis):
-        """Color pairs according to whether they're superficial, straddle, or deep"""
+        """Color cell pairs according to whether they're superficial, straddle, or deep"""
         # y positions of all nids:
         ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
         uns = get_ipython().user_ns
@@ -1030,8 +1030,8 @@ class CodeCorr(object):
         return c, supis, stradis, deepis
 
     def shifts(self, start=-5000, stop=5000, step=50, shiftcorrect=True, figsize=(7.5, 6.5)):
-        """Plot shift-corrected or just shifted median code correlation values of all cell
-        pairs as a function of shifts, from start to stop in steps of step ms"""
+        """Plot shift-corrected, or just shifted, median pairwise code correlations of all
+        cell pairs as a function of shifts, from start to stop in steps of step ms"""
         assert step > 0
         if stop % step == 0:
             stop += step # make stop end inclusive
@@ -1109,8 +1109,8 @@ class CodeCorr(object):
 
     def pdf(self, crange=[-0.05, 0.25], figsize=(7.5, 6.5), limitstats=True,
             nbins=30, density=True):
-        """Plot PDF of corrs. If limitstats, the stats displayed exclude any corr values
-        that fall outside of crange"""
+        """Plot PDF of pairwise code correlations. If limitstats, the stats displayed
+        exclude any corr values that fall outside of crange"""
         self.calc()
         nbins = max(nbins, 2*intround(np.sqrt(self.npairs)))
         self.nbins = nbins
@@ -1180,7 +1180,7 @@ class CodeCorr(object):
         return self
 
     def sort(self, figsize=(7.5, 6.5)):
-        """Plot pair corrs in decreasing order"""
+        """Plot pairwise code correlations in decreasing order"""
         self.calc()
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -1245,10 +1245,9 @@ class CodeCorr(object):
         return self
 
     def scat(self, otherrid, nids=None, crange=[-0.05, 0.25], figsize=(7.5, 6.5)):
-        """Scatter plot corrs of all cell pairs (or of all cell pairs
-        within some torus of radii R=(R0, R1) in um) in this recording vs that of another
-        recording. If the two recordings are the same, split it in half and scatter plot
-        first half against the second half."""
+        """Scatter plot pairwise code correlations in this recording vs that of
+        another recording. If the two recordings are the same, split it in half and scatter
+        plot first half against the second half."""
         ## TODO: add interleave flag which generates a sufficiently interleaved, equally sized,
         ## non-overlapping set of tranges to scatter plot against each other, to eliminate
         ## temporal bias inherent in a simple split in time
@@ -1366,7 +1365,7 @@ class CodeCorr(object):
         return self
 
     def sep(self, figsize=(7.5, 6.5)):
-        """Plot correlation strength as a f'n of pair separation"""
+        """Plot pairwise code correlations as a f'n of pair separation"""
         self.calc()
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
