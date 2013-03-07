@@ -4,6 +4,8 @@ TODO:
     - wouldn't this pretty much be the same as calculating MUA with 20ms bins? No, it wouldn't. Because MUA is just a measure of population firing rate. Regardless of the bin size, it doesn't say anything about whether a specific subset of neurons (such as a pair) increase or decrease their rates of coincides. A big change in MUA could simply be due to a single neuron's firing rate changing dramatically, while all the other cells stay silent, which means that cell is completely uncorrelated from all the others.
     - try overlapping tranges to get smoother signal
 
+- cc.scat() doesn't plot points or legend any more, change in MPL?
+
 - check that removing all dt == 0 from autocorr is really an OK thing to do, maybe implement it without that assumption...? Can confirm with matplotlib.pyplot.acorr?
 
 - move cell_type.py script to neuropy

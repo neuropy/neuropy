@@ -1440,7 +1440,56 @@ class CodeCorr(object):
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
-        
+
+    def plot(self, pairs='mean', figsize=(20, 6.5)):
+        """Plot pairwise code correlations as a function of time. pairs can be 'mean',
+        'median', 'max', 'min', or 'all', or a specific set of indices into self.pairis."""
+        self.calc()
+        if self.corrs.ndim == 1:
+            raise RuntimeError("can't plot code correlations as a f'n of time because only "
+                               "static ones have been calculated")
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        if pairs == 'mean':
+            corrs = self.corrs.mean(axis=0)
+            ylabel = 'mean correlation coefficient (%d pairs)' % self.npairs
+        elif pairs == 'median':
+            ## TODO: median doesn't seem to work right, for some reason:
+            corrs = np.median(self.corrs, axis=0)
+            ylabel = 'median correlation coefficient (%d pairs)' % self.npairs
+        elif pairs == 'max':
+            corrs = self.corrs.max(axis=0)
+            ylabel = 'max correlation coefficient (%d pairs)' % self.npairs
+        elif pairs == 'min':
+            corrs = self.corrs.min(axis=0)
+            ylabel = 'min correlation coefficient (%d pairs)' % self.npairs
+        else:
+            if pairs == 'all':
+                pairs = range(self.npairs)
+            corrs = self.corrs[pairs]
+            corrs = corrs.T # need the transpose for some reason when plotting
+            ylabel = 'correlation coefficients (%d pairs)' % len(pairs)
+        t = self.tranges[:, 0] / 1000000 # grab start of each trange, convert from us to sec
+        a.plot(t, corrs)
+        a.set_xlabel("time (sec)")
+        a.set_ylabel(ylabel)
+        # limit plot to duration of acquistion, in sec:
+        t0, t1 = np.asarray(self.r.trange) / 1000000
+        ymax = max(0.1, corrs.max())
+        ymin = min(0, corrs.min())
+        a.set_ylim(ymin, ymax)
+        a.set_xlim(t0, t1)
+        #a.autoscale(axis='x', enable=True, tight=True)
+        # turn off annoying "+2.41e3" type offset on x axis:
+        formatter = mpl.ticker.ScalarFormatter(useOffset=False)
+        a.xaxis.set_major_formatter(formatter)
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        a.set_title(titlestr)
+        a.text(0.998, 0.99, '%s' % self.r.name, color='k', transform=a.transAxes,
+               horizontalalignment='right', verticalalignment='top')
+        f.tight_layout(pad=0.3) # crop figure to contents
+
 
 class NeuropyWindow(QtGui.QMainWindow):
     """Base class for all of neuropy's tool windows"""
