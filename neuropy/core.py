@@ -377,8 +377,8 @@ class LFP(object):
         a.xaxis.set_major_formatter(formatter)
         a.set_xlabel("time (sec)")
         a.set_ylabel("depth (um)")
-        gcfm().window.setWindowTitle(lastcmd())
-        titlestr = '%s' % lastcmd()
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         a.text(0.998, 0.99, '%s' % self.r.name, transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
@@ -453,8 +453,8 @@ class LFP(object):
         a.xaxis.set_major_formatter(formatter)
         a.set_xlabel("time (sec)")
         a.set_ylabel("frequency (Hz)")
-        gcfm().window.setWindowTitle(lastcmd())
-        titlestr = '%s' % lastcmd()
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         a.text(0.998, 0.99, '%s' % self.r.name, color='w', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
@@ -668,8 +668,8 @@ class PopulationRaster(object):
         a.xaxis.set_major_formatter(formatter)
         a.set_xlabel("time (%s)" % units)
         a.set_ylabel("depth (um)")
-        gcfm().window.setWindowTitle(lastcmd())
-        titlestr = '%s' % lastcmd()
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         if text:
             a.text(0.998, 0.99, '%s' % text, transform=a.transAxes,
@@ -1081,8 +1081,8 @@ class CodeCorr(object):
             verticalalignment = 'top'
             pos = 0.99, 0.99 # put info text in top right
             legendloc = 'upper left'
-        gcfm().window.setWindowTitle(lastcmd())
-        titlestr = '%s' % lastcmd()
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         # add info text to top/bottom right of plot:
         uns = get_ipython().user_ns
@@ -1146,8 +1146,8 @@ class CodeCorr(object):
         a.bar(left=c[:-1], height=n, width=binwidth, bottom=0, color='k', ec='k')
         if crange != None:
             a.set_xlim(crange)
-        gcfm().window.setWindowTitle(lastcmd())
-        titlestr = '%s' % lastcmd()
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         
         if self.density:
@@ -1204,8 +1204,8 @@ class CodeCorr(object):
         a.axhline(y=0, c='grey', ls='--', marker=None)
         a.set_xlabel("pair index")
         a.set_ylabel("correlation coefficient")
-        gcfm().window.setWindowTitle(lastcmd())
-        titlestr = '%s' % lastcmd()
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         self.mean = np.mean(corrs)
         self.median = np.median(corrs)
@@ -1331,8 +1331,8 @@ class CodeCorr(object):
         a.set_ylim(lim)
         a.set_xlabel(xlabel)
         a.set_ylabel(ylabel)
-        gcfm().window.setWindowTitle(lastcmd())
-        titlestr = '%s' % lastcmd()
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         # add stuff to top left of plot:
         uns = get_ipython().user_ns
@@ -1408,8 +1408,8 @@ class CodeCorr(object):
         a.axhline(y=0, c='grey', ls='--', marker=None)
         a.set_xlabel("pair separation (um)")
         a.set_ylabel("correlation coefficient")
-        gcfm().window.setWindowTitle(lastcmd())
-        titlestr = '%s' % lastcmd()
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         # add stuff to top right of plot:
         uns = get_ipython().user_ns

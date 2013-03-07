@@ -185,8 +185,8 @@ class BaseRecording(object):
         n, mr = np.histogram(self.meanrates, bins=bins, density=False)
         binwidth = mr[1] - mr[0] # take width of first bin
         a.bar(left=mr[:-1], height=n, width=binwidth, bottom=0, color='k', ec='k')
-        gcfm().window.setWindowTitle(lastcmd())
-        titlestr = '%s' % lastcmd()
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         a.set_xlabel('mean firing rate (Hz)')
         a.set_ylabel('neuron count')
