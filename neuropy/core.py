@@ -24,7 +24,7 @@ from PyQt4.QtCore import Qt, QSize
 import numpy as np
 # make overflow, underflow, div by zero, and invalid all raise errors
 # this really should be the default in numpy...
-np.seterr(all='raise')
+np.seterr(all='raise', under='ignore') # raise all except float underflow
 import scipy.signal
 
 import matplotlib as mpl
@@ -1441,7 +1441,7 @@ class CodeCorr(object):
         self.f = f
         return self
 
-    def plot(self, pairs='mean', figsize=(20, 6.5)):
+    def plot(self, pairs='mean', mask0=True, figsize=(20, 6.5)):
         """Plot pairwise code correlations as a function of time. pairs can be 'mean',
         'median', 'max', 'min', or 'all', or a specific set of indices into self.pairis."""
         self.calc()
@@ -1450,23 +1450,31 @@ class CodeCorr(object):
                                "static ones have been calculated")
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
+        # when collapsing across pairwise corrs in each time bin, mask out pairs that
+        # have exactly zero corrs, because these are almost certainly pairs which had
+        # insufficient spikes in the given time bin to determine their spike correlations
+        # with any accuracy. For example, an excess of 0 corr values biases the median
+        # measure towards zero.
+        corrs = self.corrs
+        if mask0:
+            corrs = np.ma.masked_values(corrs, 0.0) # mask out the zeros
         if pairs == 'mean':
-            corrs = self.corrs.mean(axis=0)
+            corrs = corrs.mean(axis=0)
             ylabel = 'mean correlation coefficient (%d pairs)' % self.npairs
         elif pairs == 'median':
             ## TODO: median doesn't seem to work right, for some reason:
-            corrs = np.median(self.corrs, axis=0)
+            corrs = np.median(corrs, axis=0)
             ylabel = 'median correlation coefficient (%d pairs)' % self.npairs
         elif pairs == 'max':
-            corrs = self.corrs.max(axis=0)
+            corrs = corrs.max(axis=0)
             ylabel = 'max correlation coefficient (%d pairs)' % self.npairs
         elif pairs == 'min':
-            corrs = self.corrs.min(axis=0)
+            corrs = corrs.min(axis=0)
             ylabel = 'min correlation coefficient (%d pairs)' % self.npairs
         else:
             if pairs == 'all':
                 pairs = range(self.npairs)
-            corrs = self.corrs[pairs]
+            corrs = corrs[pairs]
             corrs = corrs.T # need the transpose for some reason when plotting
             ylabel = 'correlation coefficients (%d pairs)' % len(pairs)
         t = self.tranges[:, 0] / 1000000 # grab start of each trange, convert from us to sec
