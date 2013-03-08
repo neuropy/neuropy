@@ -779,7 +779,6 @@ class Codes(object):
             return self.nids2niisdict[nids]
 
     def calc(self):
-        self.s = [] # stores the corresponding spike times for each neuron, for reference
         self.c = [] # stores the 2D code array
         # append neurons in their order in self.neurons, store them LSB to MSB from top to
         # bottom
@@ -787,7 +786,6 @@ class Codes(object):
             codeo = neuron.code(tranges=self.tranges)
             # build up nested list (ie, 2D) of spike times, each row will have different
             # length:
-            self.s.append(codeo.s)
             if self.shufflecodes:
                 c = codeo.c.copy() # make a copy (leave the codeo's codetrain untouched)
                 np.random.shuffle(c) # shuffle each neuron's codetrain separately, in-place
