@@ -1481,7 +1481,8 @@ class CodeCorr(object):
             corrs = corrs[pairs]
             corrs = corrs.T # need the transpose for some reason when plotting
             ylabel = 'correlation coefficients (%d pairs)' % len(pairs)
-        t = self.tranges[:, 0] / 1000000 # grab start of each trange, convert from us to sec
+        # get midpoint of each trange, convert from us to sec:
+        t = self.tranges.mean(axis=1) / 1000000
         a.plot(t, corrs)
         a.set_xlabel("time (sec)")
         a.set_ylabel(ylabel)
