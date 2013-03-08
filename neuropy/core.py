@@ -853,6 +853,15 @@ class CodeCorr(object):
         else:
             self.tranges = [ self.r.trange ] # use the Recording's trange
 
+        if shift or shiftcorrect:
+            raise NotImplementedError("shift and shiftcorrect are currently disabled to "
+                                      "simplify the logic")
+
+        if nids == None:
+            nids = sorted(self.r.n)
+        self.nids = nids
+        self.codes = self.r.codes(nids=nids, tranges=tranges) # calculate them once
+
         if width != None:
             if overlap == None:
                 overlap = 0
@@ -880,7 +889,6 @@ class CodeCorr(object):
         self.shift = shift # shift spike train of the second of each neuron pair, in ms
         # shift correct spike train of the second of each neuron pair by this much, in ms
         self.shiftcorrect = shiftcorrect
-        self.nids = nids
         if R != None:
             assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
         self.R = R
@@ -890,39 +898,44 @@ class CodeCorr(object):
             # compute correlation coefficients separately for each trange
             corrss = []
             for trange in self.tranges:
+                # slice out codes according to trange:
+                t0i, t1i = self.codes.t.searchsorted(trange)
+                codes = copy(self.codes)
+                codes.c = codes.c[:, t0i:t1i]
+                codes.t = codes.t[t0i:t1i]
                 # all pairis should be identical for all tranges
-                corrs, pairis = self.calc_single(tranges=[trange])
+                corrs, pairis = self.calc_single(codes)
                 corrss.append(corrs)
             corrs = np.asarray(corrss) # each row is a timepoint, each column a pair
             corrs = corrs.T # each row is a pair, each column a timepoint
         else:
             # compute correlation coefficients once across entire set of tranges
-            corrs, pairis = self.calc_single(tranges=self.tranges)
+            corrs, pairis = self.calc_single(self.codes)
         self.corrs = corrs
         self.pairis = pairis
         self.npairs = len(pairis)
         
-    def calc_single(self, tranges=None):
-        """Calculate single code correlation value for each cell pair, constrained to
-        tranges and torus described by self.R, weighted by self.weights"""
-        if self.nids == None:
-            self.nids = self.r.n.keys()
-            self.nids.sort()
+    def calc_single(self, codes):
+        """Calculate one code correlation value for each cell pair, given codes spanning
+        some subset of self.tranges, contrained to torus described by self.R, weighted by
+        self.weights"""
+        c = codes.c
         nids = self.nids
         nneurons = len(nids)
 
         # calculate bin weights:
+        binw = 1 # default
         if self.weights != None:
             w, wt = self.weights # weights and weight times
             assert len(w) == len(wt)
-            ## TODO: maybe w needs to be recentered between max and min possible synch
-            ## values (1 and 0.15 it seems)
-            # get bin times from first neuron's code, should be same for all neurons:
-            bint = self.r.n[nids[0]].code(tranges).t
+            ## TODO: maybe w needs to be recentered between max and min possible LFP
+            ## synch values (say, 1 and 0.15?)
+            # get bin times from codes:
+            bint = codes.t
             nbins = len(bint)
             binw = np.zeros(nbins) # bin weights
             # this might assume that there are fewer weight times than bin times,
-            # but that should be a safe assumption:
+            # but that should usually be a safe assumption if weights come from LFP:
             assert len(wt) < nbins
             tis = bint.searchsorted(wt) # where weight times fit into bin times
             tis = np.append(tis, nbins)
@@ -930,54 +943,52 @@ class CodeCorr(object):
                 ti0 = tis[i]
                 ti1 = tis[i+1]
                 binw[ti0:ti1] = w[i]
-        else:
-            binw = 1
         meanw = np.mean(binw)
 
-        # it's more efficient to precalculate the means and stds of each cell's codetrain,
-        # and then reuse them in calculating the correlation coefficients
-        means = {} # store each code mean in a dict
-        stds = {} # store each code std in a dict
-        for nid in nids:
-            c = self.r.n[nid].code(tranges).c
-            means[nid] = c.mean()
-            stds[nid] = c.std()
+        # precalculate mean and std of each cell's codetrain, rows correspond to nids:
+        means = c.mean(axis=1)
+        stds = c.std(axis=1)
+        
+        #shift, shiftcorrect = self.shift, self.shiftcorrect
+        #if shift and shiftcorrect:
+        #    raise ValueError("only one of shift or shiftcorrect can be nonzero")
 
-        shift, shiftcorrect = self.shift, self.shiftcorrect
-        if shift and shiftcorrect:
-            raise ValueError("only one of shift or shiftcorrect can be 0")
+        # iterate over all pairs:
+        n = self.r.n
+        R = self.R
         pairis = []
         corrs = []
         for nii0 in range(nneurons):
             ni0 = nids[nii0]
             for nii1 in range(nii0+1, nneurons):
                 ni1 = nids[nii1]
-                # calc the pair's code correlation if there's no torus specified, or if
-                # the pair's separation falls within bounds of specified torus:
-                if self.R == None or (self.R[0]
-                                      < dist(self.r.n[ni0].pos, self.r.n[ni1].pos)
-                                      < self.R[1]):
-                    # potentially shift only the second code train of each pair:
-                    c0 = self.r.n[ni0].code(tranges=tranges).c
-                    c1 = self.r.n[ni1].code(tranges=tranges, shift=shift).c
-                    # (mean of product - product of means) / product of stds
-                    numer = (c0 * c1 * binw).mean() - means[ni0] * means[ni1] * meanw
-                    denom = stds[ni0] * stds[ni1]
-                    if numer == 0.0:
-                        cc = 0.0 # even if denom is also 0
-                    elif denom == 0.0: # numer is not 0, but denom is 0, prevent div by 0
-                        print('skipped pair (%d, %d) in r%s' % (nii0, nii1, self.r.id))
-                        continue # skip to next pair
-                    else:
-                        cc = numer / denom
-                    # potentially shift correct using only the second spike train of each pair:
-                    if shiftcorrect:
-                        c1sc = self.r.n[ni1].code(tranges=tranges, shift=shiftcorrect).c
-                        ccsc = ((c0 * c1sc).mean() - means[ni0] * means[ni1]) / denom
-                        ## TODO: might also want to try subtracting abs(ccsc)?
-                        cc -= ccsc
-                    pairis.append([nii0, nii1])
-                    corrs.append(cc)
+                # skip the pair's code correlation if a torus is specified and if
+                # the pair's separation falls outside bounds of specified torus:
+                if R != None and not (R[0] < dist(n[ni0].pos, n[ni1].pos) < R[1]):
+                    continue # to next pair
+                # potentially shift only the second code train of each pair:
+                #c0 = self.r.n[ni0].code(tranges=tranges).c
+                #c1 = self.r.n[ni1].code(tranges=tranges, shift=shift).c
+                c0 = c[nii0]
+                c1 = c[nii1]
+                # (mean of product - product of means) / product of stds
+                numer = (c0 * c1 * binw).mean() - means[nii0] * means[nii1] * meanw
+                denom = stds[nii0] * stds[nii1]
+                if numer == 0.0:
+                    cc = 0.0 # even if denom is also 0
+                elif denom == 0.0: # numer is not 0, but denom is 0, prevent div by 0
+                    print('skipped pair (%d, %d) in r%s' % (ni0, ni1, self.r.id))
+                    continue # skip to next pair
+                else:
+                    cc = numer / denom
+                # potentially shift correct using only the second spike train of each pair:
+                #if shiftcorrect:
+                #    c1sc = self.r.n[ni1].code(tranges=tranges, shift=shiftcorrect).c
+                #    ccsc = ((c0 * c1sc).mean() - means[ni0] * means[ni1]) / denom
+                #    ## TODO: might also want to try subtracting abs(ccsc)?
+                #    cc -= ccsc
+                pairis.append([nii0, nii1])
+                corrs.append(cc)
         corrs = np.array(corrs)
         pairis = np.array(pairis) # indices into nids
         return corrs, pairis
