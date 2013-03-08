@@ -320,17 +320,16 @@ class RecordingRaster(BaseRecording):
 
 class RecordingCode(BaseRecording):
     """Mix-in class that defines spike code related methods"""
-    def codes(self, nids=None, experiments=None, shufflecodes=False):
-        """Return a Codes object, a 2D array where each row is a neuron code constrained to
-        the time range of this Recording, or if specified, to the time ranges of Experiments
-        in this Recording"""
+    def codes(self, nids=None, tranges=None, experiments=None, shufflecodes=False):
+        """Return a Codes object, a 2D array where each row is a neuron code constrained
+        to tranges, or to the tranges of experiments"""
         if nids == None:
             nids = self.get_nids() # sorted nids of all active neurons
         neurons = [ self.n[nid] for nid in nids ] # sorted list of neurons
-        if experiments == None:
+        if tranges == None:
             tranges = [self.trange] # use whole Recording trange
-        else:
-            tranges = [ e.trange for e in experiments ] # assume a list of Experiments
+            if experiments != None:
+                tranges = [ e.trange for e in experiments ] # assume a list of Experiments
         codes = Codes(neurons=neurons, tranges=tranges, shufflecodes=shufflecodes)
         codes.calc()
         return codes
