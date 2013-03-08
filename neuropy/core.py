@@ -850,16 +850,7 @@ class CodeCorr(object):
         if tranges != None:
             self.tranges = tranges
         elif experiments != None:
-            try:
-                assert experiments.__class__ == dictattr
-            except AssertionError: # maybe it's a seq of exp ids?
-                eids = toiter(experiments)
-                experiments = dictattr()
-                for eid in eids:
-                    experiments[eid] = self.r.e[eid]
-            self.e = experiments # save it, should be a dictattr if not None
-            if self.e != None: # specific experiments were specified
-                self.tranges = [ e.trange for e in self.e.values() ]
+            self.tranges = [ e.trange for e in experiments ]
         else:
             self.tranges = [ self.r.trange ] # use the Recording's trange
 
