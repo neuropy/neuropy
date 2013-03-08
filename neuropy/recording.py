@@ -343,7 +343,7 @@ class RecordingCode(BaseRecording):
         return corrcoef(code1.c, code2.c)
     '''
     def cc(self, tranges=None, width=None, overlap=None, weights=None, shift=0,
-           shiftcorrect=0, experiments=None, nids=None, R=None, shufflenids=False):
+           shiftcorrect=0, experiments=None, nids=None, R=None):
         """Return a CodeCorr object"""
         if weights in ['synch', 'desynch']:
             r, t = self.lfp.pratio(plot=False)
@@ -353,7 +353,7 @@ class RecordingCode(BaseRecording):
                 weights = 1-r, t
         cc = CodeCorr(recording=self, tranges=tranges, width=width, overlap=overlap,
                       weights=weights, shift=shift, shiftcorrect=shiftcorrect,
-                      experiments=experiments, nids=nids, R=None, shufflenids=False)
+                      experiments=experiments, nids=nids, R=None)
         # run cc.calc() as late as possible, not here
         return cc
 
@@ -488,7 +488,7 @@ class BaseNetstate(object):
         intcodeps = x.prod(axis=0)
         return intcodeps, intcodes
 
-    def ising(self, nids=None, R=None, shufflenids=False, algorithm='CG'):
+    def ising(self, nids=None, R=None, algorithm='CG'):
         """Returns a maximum entropy Ising model that takes into account pairwise
         correlations within neuron codes. R = (R0, R1) torus. Algorithm can be 'CG', 'BFGS',
         'LBFGSB', 'Powell', or 'Nelder-Mead'"""
@@ -499,14 +499,6 @@ class BaseNetstate(object):
         if R:
             assert len(R) == 2 and R[0] < R[1] # should be R = (R0, R1) torus
         codes = self.codes(nids=nids)
-
-        if shufflenids:
-            # shuffled neuron ids, this is a control to see if it's the locality of neurons
-            # included in the analysis, or the number of neurons included that's important.
-            # Seems like both are
-            snids = shuffle(nids)
-        else:
-            snids = nids
 
         #c = codes.c
         # convert values in codes object from [0, 1] to [-1, 1] by mutliplying by 2 and
@@ -519,8 +511,8 @@ class BaseNetstate(object):
         pairmeans = []
         for i in range(0, nrows):
             for j in range(i+1, nrows):
-                if R == None or (R[0] < core.dist(self.r.n[snids[i]].pos,
-                                                  self.r.n[snids[j]].pos) < R[1]):
+                if R == None or (R[0] < core.dist(self.r.n[nids[i]].pos,
+                                                  self.r.n[nids[j]].pos) < R[1]):
                     # take a pair of rows, find the mean of their elementwise product:
                     pairmeans.append((c[i]*c[j]).mean())
                 else:
@@ -669,8 +661,7 @@ class NetstateNspikingPMF(BaseNetstate):
 
 class NetstateScatter(BaseNetstate):
     """Netstate scatter analysis object. See Schneidman Figures 1f and 2a"""
-    def calc(self, model='both', R=None, shufflenids=False, shufflecodes=False,
-             algorithm='CG'):
+    def calc(self, model='both', R=None, shufflecodes=False, algorithm='CG'):
         """Calculates the expected probabilities, assuming a model in ['indep', 'ising',
         'both'], of all possible population codes vs their observed probabilities. R = (R0,
         R1) torus. self's nids are treated in LSB to MSB order"""
@@ -680,7 +671,6 @@ class NetstateScatter(BaseNetstate):
         self.R = R
         if R:
             assert len(R) == 2 and R[0] < R[1] # should be R = (R0, R1) torus
-        self.shufflenids = shufflenids
         self.shufflecodes = shufflecodes
         self.algorithm = algorithm
 
@@ -700,14 +690,12 @@ class NetstateScatter(BaseNetstate):
             self.pexpected, self.expectedwords = self.intcodesFPDF(nids=self.nids)
         elif self.model == 'ising':
             # get a maxent Ising model:
-            ising = self.ising(nids=self.nids, R=self.R, shufflenids=self.shufflenids,
-                               algorithm=self.algorithm)
+            ising = self.ising(nids=self.nids, R=self.R, algorithm=self.algorithm)
             self.pexpected = ising.p # expected, assuming maxent Ising model
             self.expectedwords = ising.intsamplespace
         elif self.model == 'both':
             # get a maxent Ising model:
-            ising = self.ising(nids=self.nids, R=self.R, shufflenids=self.shufflenids,
-                               algorithm=self.algorithm)
+            ising = self.ising(nids=self.nids, R=self.R, algorithm=self.algorithm)
             self.pexpected = ising.p # expected, assuming maxent Ising model
             self.expectedwords = ising.intsamplespace
             # expected, assuming independence:
@@ -958,8 +946,8 @@ class NetstateI2vsIN(BaseNetstate):
 
 class NetstateDJSHist(BaseNetstate):
     """Jensen-Shannon histogram analysis. See Schneidman 2006 figure 2b"""
-    def calc(self, ngroups=5, models=['ising', 'indep'], R=None, shufflenids=False,
-             shufflecodes=False, algorithm='CG'):
+    def calc(self, ngroups=5, models=['ising', 'indep'], R=None, shufflecodes=False,
+             algorithm='CG'):
         """Calculates Jensen-Shannon divergences and their ratios
         for ngroups random groups of cells, each of length nbits. R = (R0, R1) torus"""
         uns = get_ipython().user_ns
@@ -969,7 +957,6 @@ class NetstateDJSHist(BaseNetstate):
         self.R = R
         if R:
             assert len(R) == 2 and R[0] < R[1] # should be R = (R0, R1) torus
-        self.shufflenids = shufflenids
         self.shufflecodes = shufflecodes
         self.algorithm = algorithm
 
@@ -986,8 +973,8 @@ class NetstateDJSHist(BaseNetstate):
             self.nidss.append(nids)
             for modeli, model in enumerate(self.models): # for each model, use the same nids
                 so = NetstateScatter(recording=self.r, experiments=self.e, nids=nids)
-                so.calc(model=model, R=self.R, shufflenids=self.shufflenids,
-                        shufflecodes=self.shufflecodes, algorithm=self.algorithm)
+                so.calc(model=model, R=self.R, shufflecodes=self.shufflecodes,
+                        algorithm=self.algorithm)
                 self.DJSs[model].append(core.DJS(so.pobserved, so.pexpected))
             print '%d' % groupi,
         print('\n')
@@ -1600,20 +1587,20 @@ class RecordingNetstate(BaseRecording):
         """Returns a NetstateNspikingPMF object"""
         return NetstateNspikingPMF(recording=self, experiments=experiments, nids=nids)
 
-    def ns_scatter(self, experiments=None, nids=None, R=None, shufflenids=False):
+    def ns_scatter(self, experiments=None, nids=None, R=None):
         """Returns a NetstateScatter object"""
         ns_so = NetstateScatter(recording=self, experiments=experiments, nids=nids)
-        ns_so.calc(R=R, shufflenids=shufflenids)
+        ns_so.calc(R=R)
         return ns_so
 
     def ns_i2vsin(self, experiments=None, nids=None):
         """Returns a NetstateI2vsIN object"""
         return NetstateI2vsIN(recording=self, experiments=experiments, nids=nids)
 
-    def ns_djshist(self, experiments=None, nids=None, ngroups=5, R=None, shufflenids=False):
+    def ns_djshist(self, experiments=None, nids=None, ngroups=5, R=None):
         """Returns a NetstateDJSHist object"""
         ns_djso = NetstateDJSHist(recording=self, experiments=experiments, nids=nids)
-        ns_djso.calc(ngroups=ngroups, R=R, shufflenids=shufflenids)
+        ns_djso.calc(ngroups=ngroups, R=R)
         return ns_djso
 
     def ns_s1invsn(self, experiments=None, nids=None):

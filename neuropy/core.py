@@ -844,8 +844,7 @@ class CodeCorr(object):
     recording differently. For each pair, shift the second spike train by shift ms, or
     shift it by shiftcorrect ms and subtract the correlation from the unshifted value."""
     def __init__(self, recording=None, tranges=None, width=None, overlap=None, weights=None,
-                 shift=0, shiftcorrect=0, experiments=None, nids=None, R=None,
-                 shufflenids=False):
+                 shift=0, shiftcorrect=0, experiments=None, nids=None, R=None):
         self.r = recording
         if tranges != None:
             self.tranges = tranges
@@ -885,7 +884,6 @@ class CodeCorr(object):
         if R != None:
             assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
         self.R = R
-        self.shufflenids = shufflenids
 
     def calc(self):
         if self.width != None:
@@ -945,28 +943,19 @@ class CodeCorr(object):
             means[nid] = c.mean()
             stds[nid] = c.std()
 
-        if self.shufflenids:
-        # shuffled neuron ids, this is a control to see if it's the locality of neurons
-        # included in the analysis, or the number of neurons included that's important. It
-        # seems that both are.
-            snids = shuffle(nids)
-        else:
-            snids = nids
         shift, shiftcorrect = self.shift, self.shiftcorrect
         if shift and shiftcorrect:
             raise ValueError("only one of shift or shiftcorrect can be 0")
         pairis = []
         corrs = []
         for nii0 in range(nneurons):
+            ni0 = nids[nii0]
             for nii1 in range(nii0+1, nneurons):
-                ni0 = nids[nii0]
-                sni0 = snids[nii0]
                 ni1 = nids[nii1]
-                sni1 = snids[nii1]
                 # calc the pair's code correlation if there's no torus specified, or if
                 # the pair's separation falls within bounds of specified torus:
                 if self.R == None or (self.R[0]
-                                      < dist(self.r.n[sni0].pos, self.r.n[sni1].pos)
+                                      < dist(self.r.n[ni0].pos, self.r.n[ni1].pos)
                                       < self.R[1]):
                     # potentially shift only the second code train of each pair:
                     c0 = self.r.n[ni0].code(tranges=tranges).c
@@ -1281,10 +1270,8 @@ class CodeCorr(object):
 
         # given the same nids, calculate corrs for both, constrained to tranges0
         # and tranges1 respectively, and to the torus described by R:
-        cc0 = CodeCorr(recording=r0, tranges=tranges0, nids=nids,
-                       R=self.R, shufflenids=self.shufflenids)
-        cc1 = CodeCorr(recording=r1, tranges=tranges1, nids=nids,
-                       R=self.R, shufflenids=self.shufflenids)
+        cc0 = CodeCorr(recording=r0, tranges=tranges0, nids=nids, R=self.R)
+        cc1 = CodeCorr(recording=r1, tranges=tranges1, nids=nids, R=self.R)
         cc0.calc()
         cc1.calc()
         # just to be sure:
