@@ -838,12 +838,12 @@ class Codes(object):
 class CodeCorr(object):
     """Calculate and plot the spike code correlations of all cell pairs from nids (or of
     all cell pairs within some torus of radii R=(R0, R1) in um) in this Recording, during
-    tranges or experiments. If tres is not None, calculate self as a function of time, with
-    time resolution tres in sec. Weights is a tuple of weight values and times, to weight
-    different parts of the recording differently. For each pair, shift the second spike
-    train by shift ms, or shift it by shiftcorrect ms and subtract the correlation from the
-    unshifted value."""
-    def __init__(self, recording=None, tranges=None, tres=None, weights=None,
+    tranges or experiments. If width is not None, calculate self as a function of time,
+    with bin widths width sec that overlap their immediate neighbours by overlap sec.
+    Weights is a tuple of weight values and times, to weight different parts of the
+    recording differently. For each pair, shift the second spike train by shift ms, or
+    shift it by shiftcorrect ms and subtract the correlation from the unshifted value."""
+    def __init__(self, recording=None, tranges=None, width=None, overlap=None, weights=None,
                  shift=0, shiftcorrect=0, experiments=None, nids=None, R=None,
                  shufflenids=False):
         self.r = recording
@@ -854,20 +854,28 @@ class CodeCorr(object):
         else:
             self.tranges = [ self.r.trange ] # use the Recording's trange
 
-        if tres != None:
-            # split up tranges into lots of smaller ones, each of size tres
-            tres = intround(tres * 1000000) # convert from sec to us
+        if width != None:
+            if overlap == None:
+                overlap = 0
+            assert overlap < width
+            # split up tranges into lots of smaller ones, with width and overlap:
+            width = intround(width * 1000000) # convert from sec to us
+            overlap = intround(overlap * 1000000) # convert from sec to us
             newtranges = []
             for trange in self.tranges:
                 t0, t1 = trange
-                assert tres < (t1 - t0)
-                edges = np.arange(t0, t1, tres) # edges of subtranges that fall within trange
-                if edges[-1] != t1:
-                    edges = np.append(edges, t1) # make sure edges includes t1
-                subtranges = [(t0, t1) for t0, t1 in zip(edges[:-1], edges[1:])]
+                assert width < (t1 - t0)
+                # calculate bin left and right edges that fall within trange:
+                ledges = np.arange(t0, t1, width-overlap)
+                redges = ledges + width
+                # at this point the last right edge almost certainly exceeds t1
+                assert redges[-1] >= t1
+                redges[-1] = t1 # correct it
+                subtranges = [ (le, re) for le, re in zip(ledges, redges) ]
                 newtranges.append(subtranges)
             self.tranges = np.vstack(newtranges) # replace
-        self.tres = tres # in us
+        self.width = width # now in us
+        self.overlap = overlap # now in us
 
         self.weights = weights
         self.shift = shift # shift spike train of the second of each neuron pair, in ms
@@ -880,7 +888,7 @@ class CodeCorr(object):
         self.shufflenids = shufflenids
 
     def calc(self):
-        if self.tres != None:
+        if self.width != None:
             # compute correlation coefficients separately for each trange
             corrss = []
             for trange in self.tranges:

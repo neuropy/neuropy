@@ -342,8 +342,8 @@ class RecordingCode(BaseRecording):
         code2 = self.n[nid2].code(tranges=tranges)
         return corrcoef(code1.c, code2.c)
     '''
-    def cc(self, tranges=None, tres=None, weights=None, shift=0, shiftcorrect=0,
-           experiments=None, nids=None, R=None, shufflenids=False):
+    def cc(self, tranges=None, width=None, overlap=None, weights=None, shift=0,
+           shiftcorrect=0, experiments=None, nids=None, R=None, shufflenids=False):
         """Return a CodeCorr object"""
         if weights in ['synch', 'desynch']:
             r, t = self.lfp.pratio(plot=False)
@@ -351,9 +351,9 @@ class RecordingCode(BaseRecording):
                 weights = r, t
             else: # weights == 'desynch'
                 weights = 1-r, t
-        cc = CodeCorr(recording=self, tranges=tranges, tres=tres, weights=weights,
-                      shift=shift, shiftcorrect=shiftcorrect, experiments=experiments,
-                      nids=nids, R=None, shufflenids=False)
+        cc = CodeCorr(recording=self, tranges=tranges, width=width, overlap=overlap,
+                      weights=weights, shift=shift, shiftcorrect=shiftcorrect,
+                      experiments=experiments, nids=nids, R=None, shufflenids=False)
         # run cc.calc() as late as possible, not here
         return cc
 
