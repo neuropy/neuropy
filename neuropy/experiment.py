@@ -562,12 +562,12 @@ class ExperimentCode(BaseExperiment):
     code.__doc__ += '\nNeuron.code: '+getargstr(neuron.Neuron.code)
     code.__doc__ += '\nbinary: '+getargstr(neuron.BinaryCode.__init__)
 
-    def codes(self, neurons=None, **kwargs):
+    def codes(self, nids=None, **kwargs):
         """Returns a 2D array where each row is a neuron code constrained to the time range
         of this experiment"""
-        if neurons == None:
-            neurons = self.r.n
-        codeso = self.r.codes(neurons=neurons, experiments=[self], **kwargs)
+        if nids == None:
+            nids = self.r.get_nids() # sorted
+        codeso = self.r.codes(nids=nids, experiments=[self], **kwargs)
         codeso.calc()
         return codeso
     codes.__doc__ += '\n\n**kwargs:'

@@ -319,37 +319,21 @@ class RecordingRaster(BaseRecording):
 
 
 class RecordingCode(BaseRecording):
-    """Mix-in class that defines the spike code related Recording methods"""
-    def codes(self, neurons=None, experiments=None, shufflecodes=False):
+    """Mix-in class that defines spike code related methods"""
+    def codes(self, nids=None, experiments=None, shufflecodes=False):
         """Return a Codes object, a 2D array where each row is a neuron code constrained to
         the time range of this Recording, or if specified, to the time ranges of Experiments
         in this Recording"""
-        if neurons != None:
-            if neurons.__class__ == list:
-                try: # assume a list of nids?
-                    # build up list of Neurons, ordered according to the nids in neurons:
-                    neurons = [ self.n[ni] for ni in neurons ]
-                except: # assume a list of Neurons
-                    pass
-            else: # assume neurons is a dict of neurons
-                neurons = list(neurons.values()) # convert to list of Neurons
+        if nids == None:
+            nids = self.get_nids() # sorted nids of all active neurons
+        neurons = [ self.n[nid] for nid in nids ] # sorted list of neurons
+        if experiments == None:
+            tranges = [self.trange] # use whole Recording trange
         else:
-            neurons = list(self.n.values()) # list of all Neurons
-        if experiments != None:
-            # need to preserve order of expids as specified
-            if experiments.__class__ == list:
-                try: # assume a list of Experiment ids?
-                    tranges = [ self.e[ei].trange for ei in experiments ]
-                except: # assume a list of Experiments
-                    tranges = [ e.trange for e in experiments ]
-            else: # assume experiments is a dict of Experiments
-                tranges = [ e.trange for e in experiments.values() ]
-        else: # no experiments specified, use whole Recording trange
-            tranges = [self.trange]
+            tranges = [ e.trange for e in experiments ] # assume a list of Experiments
         codes = Codes(neurons=neurons, tranges=tranges, shufflecodes=shufflecodes)
         codes.calc()
         return codes
-    codes.__doc__ += '\n\nCodes object:\n' + Codes.__doc__
     '''
     # unused
     def codecorr(self, nid1, nid2, tranges=None):
@@ -413,12 +397,9 @@ class BaseNetstate(object):
     def codes(self, nids=None, shufflecodes=False):
         """Returns the appropriate Codes object, depending on the recording
         and experiments defined for this Netstate object"""
-        # get codes for this Recording constrained to when stimuli were on screen
-        # build up list of neurons, according to nids:
-        neurons = [ self.r.n[ni] for ni in nids ]
         ## TODO: codes are not currently constrained to when stimuli are on the screen,
         ## although this shouldn't be a big deal most of the time...
-        return self.r.codes(neurons=neurons, experiments=self.e, shufflecodes=shufflecodes)
+        return self.r.codes(nids=nids, experiments=self.e, shufflecodes=shufflecodes)
 
     def get_wordts(self, nids=None, mids=None):
         """Returns word times, ie the times of the left bin edges for which all the
