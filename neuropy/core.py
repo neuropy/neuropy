@@ -1248,6 +1248,11 @@ class CodeCorr(object):
         """Scatter plot pairwise code correlations in this recording vs that of
         another recording. If the two recordings are the same, split it in half and scatter
         plot first half against the second half."""
+        ## FIXME: this triggers: ValueError: to_rgba: Invalid rgba arg "None"
+        ##                       to_rgb: Invalid rgb arg "None"
+        ##                       cannot convert argument to rgb sequence
+
+
         ## TODO: add interleave flag which generates a sufficiently interleaved, equally sized,
         ## non-overlapping set of tranges to scatter plot against each other, to eliminate
         ## temporal bias inherent in a simple split in time
@@ -1462,7 +1467,6 @@ class CodeCorr(object):
             corrs = corrs.mean(axis=0)
             ylabel = 'mean correlation coefficient (%d pairs)' % self.npairs
         elif pairs == 'median':
-            ## TODO: median doesn't seem to work right, for some reason:
             corrs = np.median(corrs, axis=0)
             ylabel = 'median correlation coefficient (%d pairs)' % self.npairs
         elif pairs == 'max':
