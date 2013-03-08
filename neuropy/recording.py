@@ -192,8 +192,10 @@ class BaseRecording(object):
         a.set_ylabel('neuron count')
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def get_nids(self, tranges):
+    def get_nids(self, tranges=None):
         """Find cells active in all tranges"""
+        if tranges == None:
+            return sorted(self.n) # return sorted nids of all active neurons
         # start with all neurons, even those with average rates below MINRATE over the
         # span of self. Remove them one by one if their average rates fall below MINRATE
         # in any trange in tranges
