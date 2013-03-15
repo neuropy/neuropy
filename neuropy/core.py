@@ -26,6 +26,7 @@ import numpy as np
 # this really should be the default in numpy...
 np.seterr(all='raise', under='ignore') # raise all except float underflow
 import scipy.signal
+from scipy.special import cbrt # real cube root
 
 import matplotlib as mpl
 import matplotlib.cm
@@ -2837,3 +2838,22 @@ def issorted(x):
     return (np.diff(x) >= 0).all() # is difference between consecutive entries >= 0?
     # or, you could compare the array to an explicitly sorted version of itself,
     # and see if they're identical
+
+def inverse_uquadratic_cdf(y, a=0, b=1):
+    assert b > a
+    alpha = 12 / ((b - a)**3)
+    beta = (b + a) / 2
+    print (y * 3 / alpha - (beta - a)**3)
+    return cbrt(y * 3 / alpha - (beta - a)**3) + beta
+
+def sample_uquadratic(a=0, b=1, size=None):
+    """Randomly sample the U-quadratic distribution. Good for modelling
+    bimodal distributions. a and b specify upper and lower bounds.
+    See:
+    http://en.wikipedia.org/wiki/UQuadratic_distribution
+    http://distributome.org/js/exp/UQuadraticExperiment.html
+    """
+    assert b > a
+    x = np.random.random(size=size) # sample uniform distrib
+    x = (b - a) * x + a # scale so that min(x) == a and max(x) == b
+    return inverse_uquadratic_cdf(x, a, b)
