@@ -1,3 +1,8 @@
+# cython: boundscheck=False
+# cython: wraparound=False
+# cython: cdivision=True
+# cython: profile=False
+
 """Some functions written in Cython for max performance"""
 
 cimport cython
@@ -25,10 +30,6 @@ cdef extern from "string.h":
     cdef void *memset(void *, int, size_t) nogil # sets n bytes in memory to constant
 '''
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.cdivision(True) # might be necessary to release the GIL?
-@cython.profile(False)
 def xcorr(np.ndarray[np.int64_t, ndim=1, mode='c'] x,
           np.ndarray[np.int64_t, ndim=1, mode='c'] y,
           np.ndarray[np.int64_t, ndim=1, mode='c'] trange):
@@ -77,10 +78,7 @@ def xcorr(np.ndarray[np.int64_t, ndim=1, mode='c'] x,
     dts = dts[:dtsi] # trim it down
     return dts
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.cdivision(True) # might be necessary to release the GIL?
-@cython.profile(False)
+
 def intersect1d_uint8(arrs):
     """Find the intersection of any number of 1D arrays in arrs list.
     Return the sorted, unique values that are in all of the input arrays.
