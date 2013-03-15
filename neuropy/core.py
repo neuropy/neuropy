@@ -901,7 +901,7 @@ class CodeCorr(object):
             for trange in self.tranges:
                 # slice out codes according to trange:
                 t0i, t1i = self.codes.t.searchsorted(trange)
-                codes = copy(self.codes)
+                codes = copy(self.codes) # this copy is necessary
                 codes.c = codes.c[:, t0i:t1i]
                 codes.t = codes.t[t0i:t1i]
                 # all pairis should be identical for all tranges
