@@ -19,9 +19,9 @@ MINRATE = 0.05 # Hz
 """Calculate a TrackNeuron's meanrate according to its trange (period between its first and
 last spike), or according to its track's entire duration. Need to reload the track or call
 Track.calc_meanrates() after changing this on the fly"""
-TRACKNEURONPERIOD = 'track' # 'track' or 'trange'
+TRACKNEURONPERIOD = 'track' # 'trange' or 'track'
 # ditto for recordings:
-RECNEURONPERIOD = 'recording' # 'recording' or 'trange'
+RECNEURONPERIOD = 'recording' # 'trange' or 'recording'
 
 """NeuronCode (Ising matrix) and network state parameters"""
 CODEKIND = 'binary'
