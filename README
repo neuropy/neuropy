@@ -38,7 +38,7 @@ matplotlib
 PyQt4 (PySide will probably work, but is untested)
 Cython
 
-neuropy is developed in Ubuntu 12.10. It should work in other Linux
+neuropy is developed in Xubuntu 12.10. It should work in other Linux
 distributions. In principle, it should also work in Windows and OSX.
 
 To run:
