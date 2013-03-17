@@ -112,8 +112,6 @@ OLD:
     - also, maybe reduce mseq black and white pix values from 0, 255 to 0, 1, so you can accumulate in a smaller sized data type (maybe pure int instead of float, for int speed)
     - also maybe keep in mind what NVS said about finding average of a large number of floats by first adding them up and then dividing at the end: you lose precision because of the limited mantissa. Hopefully I'm adding up ints anyway, so this shouldn't apply
 
-- auto drop into ipdb in the Qt widget on any error encountered in the ipython kernel during execution
-
 - the whole ContrainedNeuron thing seems pretty retarted to me after not looking at it for a while... Is it really necessary? Why are there two separate sets loaded for each rip (both Neurons *and* ConstrainedNeurons)?
 
 - change best rip from being part of foldername (which causes problems when renaming folders with svn when you wanna temporarily change which rip folder is used for analysis) to just being an empty file called "BEST" or something within that rip's folder, or maybe a text file called "DEFAULT" in the Track's folder that has the default rip folder's name in it

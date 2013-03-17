@@ -8,9 +8,16 @@ import os
 import sys
 import platform
 
-from IPython import embed
-from IPython.core import ultratb
-# has to come before Qt imports:
+# instantiate an IPython embedded shell which shows up in the terminal on demand
+# and on every exception in the GUI code:
+from IPython.frontend.terminal.ipapp import load_default_config
+from IPython.frontend.terminal.embed import InteractiveShellEmbed
+config = load_default_config()
+# automatically call the pdb debugger after every exception, override default config:
+config.TerminalInteractiveShell.pdb = True
+ipshell = InteractiveShellEmbed(display_banner=False, config=config)
+
+# IPython GUI imports, have to come before Qt imports:
 from IPython.frontend.qt.console.rich_ipython_widget import RichIPythonWidget
 from IPython.lib import guisupport
 from IPython.utils.path import get_ipython_dir
@@ -141,8 +148,7 @@ class NeuropyWindow(QtGui.QMainWindow):
 
     @QtCore.pyqtSlot()
     def on_actionShell_triggered(self):
-        ## TODO: this raises an error in IPython 0.14.dev:
-        embed()
+        ipshell()
 
     @QtCore.pyqtSlot()
     def on_actionQuit_triggered(self):
@@ -220,4 +226,6 @@ def do_later(func, *args, **kwds):
 
 
 if __name__ == "__main__":
+    # prevents "The event loop is already running" messages when calling ipshell():
+    QtCore.pyqtRemoveInputHook()
     main()
