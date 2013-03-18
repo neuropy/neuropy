@@ -2639,6 +2639,12 @@ def mean_accum2(data, indices):
     result /= len(indices)
     return result
 
+def normalize_range(a):
+    """Normalize a such that all of its values span the interval [0, 1]"""
+    a = a - a.min()
+    a = a / a.max()
+    return a
+
 def normalize(p):
     """Normalize distribution p such that sum(p) == 1. Return zeros if sum(p) == 0"""
     p = np.asarray(p)
