@@ -2639,13 +2639,13 @@ def mean_accum2(data, indices):
     result /= len(indices)
     return result
 
-def normalize(seq):
-    """Normalizes a sequence, returning zeros if sum(seq) == 0"""
-    a = np.asarray(seq)
-    if a.sum() == 0: # numpy doesn't raise ZeroDivisionErrors for some reason
-        return np.zeros(a.shape) # just return zeros
+def normalize(p):
+    """Normalize distribution p such that sum(p) == 1. Return zeros if sum(p) == 0"""
+    p = np.asarray(p)
+    if p.sum() == 0:
+        return np.zeros(p.shape) # just return zeros
     else:
-        return a / float(a.sum()) # return it normalized
+        return p / float(p.sum()) # return it normalized
 
 def ensurenormed(p, atol=1e-8):
     """Ensures p is normalized. Returns p unchanged if it's already normalized,
