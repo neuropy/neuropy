@@ -875,11 +875,8 @@ class CodeCorr(object):
                 t0, t1 = trange
                 assert width < (t1 - t0)
                 # calculate bin left and right edges that fall within trange:
-                ledges = np.arange(t0, t1, width-overlap)
+                ledges = np.arange(t0, t1-width, width-overlap)
                 redges = ledges + width
-                # at this point the last right edge almost certainly exceeds t1
-                assert redges[-1] >= t1
-                redges[-1] = t1 # correct it
                 subtranges = [ (le, re) for le, re in zip(ledges, redges) ]
                 newtranges.append(subtranges)
             self.tranges = np.vstack(newtranges) # replace
@@ -896,7 +893,7 @@ class CodeCorr(object):
 
     def calc(self):
         if self.width != None:
-            # compute correlation coefficients separately for each trange
+            # compute correlation coefficients separately for each trange:
             corrss = []
             for trange in self.tranges:
                 # slice out codes according to trange:
