@@ -1529,10 +1529,12 @@ class CodeCorr(object):
         f.tight_layout(pad=0.3) # crop figure to contents
 
     def vs_pratio(self, pairs='mean', mask0=True, chani=-1, ratio='L/(H+L)',
-                  figsize=(7.5, 6.5)):
+                  colour=True, lines=False, figsize=(7.5, 6.5)):
         """Scatter plot code correlations as a function of time, vs LFP pratio as
         a function of time"""
         ## TODO: plot superficial, deep, and straddle pairs separately
+        if colour and lines:
+            raise RuntimeError("Sorry, can't plot colour and lines simultaneously")
         # ct are center timepoints of corrs tranges:
         corrs, ct, ylabel = self.cct(pairs=pairs, mask0=mask0)
         r, rt = self.r.lfp.pratio(chani=chani, ratio=ratio, plot=False)
@@ -1555,9 +1557,14 @@ class CodeCorr(object):
             corrs = corrs[cti]
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        c = normalize_range(rt) # indices into colormap, as a function of time
-        #a.plot(r, corrs)
-        a.scatter(r, corrs, c=c, cmap=mpl.cm.jet, edgecolors='none')
+        if colour:
+            c = normalize_range(rt) # indices into colormap, as a function of time
+        else:
+            c = 'black'
+        if lines:
+            a.plot(r, corrs, color='black', marker='.', ms=6, mew=0)
+        else:
+            a.scatter(r, corrs, c=c, cmap=mpl.cm.jet, marker='.', s=20, edgecolor='none')
         a.set_xlim(0.0, 1.0)
         a.set_xlabel("LFP power ratio (%s)" % ratio)
         a.set_ylabel(ylabel)
