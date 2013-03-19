@@ -36,5 +36,9 @@ CODEWORDLEN = 10 # in bits
 PRATIOWIDTH = 32768000 # us (2**15 ms)
 PRATIOOVERLAP = 32000000 # us
 
+"""Code correlation overlapping time range windows"""
+CCWIDTH = PRATIOWIDTH # us
+CCOVERLAP = PRATIOOVERLAP # us
+
 """Threshold distance down vertical axis of probe separating superficial from deep cells"""
 YTHRESH = 600 # um

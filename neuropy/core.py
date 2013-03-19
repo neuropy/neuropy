@@ -1462,10 +1462,12 @@ class CodeCorr(object):
     def cct(self, pairs='mean', mask0=True):
         """Calculate pairwise code correlations as a function of time. pairs can be 'mean',
         'median', 'max', 'min', or 'all', or a specific set of indices into self.pairis."""
+        uns = get_ipython().user_ns
+        if self.width == None:
+            self.width = uns['CCWIDTH'] # us
+        if self.overlap == None:
+            self.overlap = uns['CCOVERLAP'] # us
         self.calc()
-        if self.corrs.ndim == 1:
-            raise RuntimeError("can't plot code correlations as a f'n of time because only "
-                               "static ones have been calculated")
         # when collapsing across pairwise corrs in each time bin, mask out pairs that
         # have exactly zero corrs, because these are almost certainly pairs which had
         # insufficient spikes in the given time bin to determine their spike correlations
