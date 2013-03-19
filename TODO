@@ -1,5 +1,7 @@
 TODO:
 
+- rename "straddle" pairs to "cross" pairs?
+
 - NVS: DONE: try calculating cc as a function of time individually for each cell pair, and also average that signal over all cell pairs. Do this by splitting tranges up into chunks of tres = 30 sec or so. Then compare each of these signals (or the average signal) with the LFP pratio signal. How well do they correlate? That would give good indication of just much of the variance in the correlations is a function of cortical state.
     - wouldn't this pretty much be the same as calculating MUA with 20ms bins? No, it wouldn't. Because MUA is just a measure of population firing rate. Regardless of the bin size, it doesn't say anything about whether a specific subset of neurons (such as a pair) increase or decrease their rates of coincides. A big change in MUA could simply be due to a single neuron's firing rate changing dramatically, while all the other cells stay silent, which means that cell is completely uncorrelated from all the others.
     - DONE: try overlapping tranges to get smoother signal

@@ -1468,12 +1468,16 @@ class CodeCorr(object):
         if self.overlap == None:
             self.overlap = uns['CCOVERLAP'] # us
         self.calc()
-        # when collapsing across pairwise corrs in each time bin, mask out pairs that
+        corrs = self.corrs
+        # when collapsing across pairwise corrs in each trange, mask out pairs that
         # have exactly zero corrs, because these are almost certainly pairs which had
-        # insufficient spikes in the given time bin to determine their spike correlations
+        # insufficient spikes in the given trange to determine their spike correlations
         # with any accuracy. For example, an excess of 0 corr values biases the median
         # measure towards zero.
-        corrs = self.corrs
+        ## TODO: maybe instead of simply masking out 0 corr values, I should be weighting
+        ## each pairwise corr in each trange by the sum of spikes of the two cells within
+        ## that trange, or at least by the number of "high" (nonzero) entries in the codetrain
+        ## pair
         if mask0:
             corrs = np.ma.masked_values(corrs, 0.0) # mask out the zeros
         if pairs == 'mean':
