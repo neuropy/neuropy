@@ -882,21 +882,10 @@ class CodeCorr(object):
             if overlap == None:
                 overlap = 0
             assert overlap < width
-            # split up tranges into lots of smaller ones, with width and overlap:
             width = intround(width * 1000000) # convert from sec to us
             overlap = intround(overlap * 1000000) # convert from sec to us
-            newtranges = []
-            for trange in self.tranges:
-                t0, t1 = trange
-                assert width < (t1 - t0)
-                # calculate bin left and right edges that fall within trange:
-                ledges = np.arange(t0, t1-width, width-overlap)
-                redges = ledges + width
-                subtranges = [ (le, re) for le, re in zip(ledges, redges) ]
-                newtranges.append(subtranges)
-            self.tranges = np.vstack(newtranges) # replace
-        self.width = width # now in us
-        self.overlap = overlap # now in us
+        self.width = width
+        self.overlap = overlap
 
         self.weights = weights
         self.shift = shift # shift spike train of the second of each neuron pair, in ms
@@ -908,6 +897,7 @@ class CodeCorr(object):
 
     def calc(self):
         if self.width != None:
+            self.calc_tranges()
             # compute correlation coefficients separately for each trange:
             corrss = []
             for trange in self.tranges:
@@ -927,7 +917,22 @@ class CodeCorr(object):
         self.corrs = corrs
         self.pairis = pairis
         self.npairs = len(pairis)
-        
+
+    def calc_tranges(self):
+        """Split up tranges into lots of smaller ones, with self.width and self.overlap"""
+        width = self.width
+        overlap = self.overlap
+        newtranges = []
+        for trange in self.tranges:
+            t0, t1 = trange
+            assert width < (t1 - t0)
+            # calculate left and right edges of subtranges that fall within trange:
+            ledges = np.arange(t0, t1-width, width-overlap)
+            redges = ledges + width
+            subtranges = [ (le, re) for le, re in zip(ledges, redges) ]
+            newtranges.append(subtranges)
+        self.tranges = np.vstack(newtranges) # replace
+
     def calc_single(self, codes):
         """Calculate one code correlation value for each cell pair, given codes spanning
         some subset of self.tranges, contrained to torus described by self.R, weighted by
