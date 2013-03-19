@@ -1528,6 +1528,47 @@ class CodeCorr(object):
                horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
 
+    def vs_pratio(self, pairs='mean', mask0=True, chani=-1, ratio='L/(H+L)',
+                  figsize=(7.5, 6.5)):
+        """Scatter plot code correlations as a function of time, vs LFP pratio as
+        a function of time"""
+        ## TODO: plot superficial, deep, and straddle pairs separately
+        # ct are center timepoints of corrs tranges:
+        corrs, ct, ylabel = self.cct(pairs=pairs, mask0=mask0)
+        r, rt = self.r.lfp.pratio(chani=chani, ratio=ratio, plot=False)
+        # get common time resolution, r typically has finer temporal resolution than corrs:
+        if len(rt) > len(ct):
+            rti = rt.searchsorted(ct)
+            rtii = rti < len(rt) # prevent right side out of bounds indices into r
+            ct = ct[rtii]
+            corrs = corrs[rtii]
+            rti = rti[rtii]
+            rt = rt[rti]
+            r = r[rti]
+        else:
+            cti = ct.searchsorted(rt)
+            ctii = cti < len(ct) # prevent right side out of bounds indices into corrs
+            rt = rt[ctii]
+            r = r[ctii]
+            cti = cti[ctii]
+            ct = ct[cti]
+            corrs = corrs[cti]
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        c = normalize_range(rt) # indices into colormap, as a function of time
+        #a.plot(r, corrs)
+        a.scatter(r, corrs, c=c, cmap=mpl.cm.jet, edgecolors='none')
+        a.set_xlim(0.0, 1.0)
+        a.set_xlabel("LFP power ratio (%s)" % ratio)
+        a.set_ylabel(ylabel)
+        a.autoscale(enable=True, axis='y', tight=True)
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        a.set_title(titlestr)
+        a.text(0.998, 0.99, '%s' % self.r.name, color='k', transform=a.transAxes,
+               horizontalalignment='right', verticalalignment='top')
+        f.tight_layout(pad=0.3) # crop figure to contents
+
 
 class NeuropyWindow(QtGui.QMainWindow):
     """Base class for all of neuropy's tool windows"""
