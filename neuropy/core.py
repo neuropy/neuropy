@@ -512,10 +512,11 @@ class LFP(object):
         return b, a
 
     def pratio(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
-               NFFT=2**15, noverlap=32000, plot=True):
-        """Return power ratio of low vs high bands as measured by Fourier transform.
-        Use either L/(H+L) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan 2009).
-        Smoothness of returned time series can be controlled with noverlap"""
+               width=None, overlap=None, plot=True):
+        """Return power ratio of low vs high bands as measured by Fourier transform. Use
+        either L/(H+L) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan 2009). Time resolution
+        of this ratio is controlled by width in sec. Smoothness of returned time series is
+        controlled by overlap in sec."""
         data = self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
         t0, t1 = ts[0], ts[-1] # full duration
@@ -525,8 +526,22 @@ class LFP(object):
         if rr <= 100: # CRT was at low vertical refresh rate
             print('filtering out %d Hz from LFP in %s' % (intround(rr), self.r.name))
             x = filter.notch(x, freq=rr)[0] # remove CRT interference
-        # returned t is midpoints of timebins in sec from start of data.
-        # I think P is in mV^2?:
+
+        uns = get_ipython().user_ns
+        if width != None:
+            if overlap == None:
+                overlap = 0
+            assert overlap < width
+            width = intround(width * 1000000) # convert from sec to us
+            overlap = intround(overlap * 1000000) # convert from sec to us
+        if width == None:
+            width = uns['PRATIOWIDTH'] # us
+        if overlap == None:
+            overlap = uns['PRATIOOVERLAP'] # us
+        NFFT = intround(width / self.tres) # both are in us
+        noverlap = intround(overlap / self.tres) # both are in us
+
+        # t is midpoints of timebins in sec from start of data. P is in mV^2?:
         P, freqs, t = mpl.mlab.specgram(x, NFFT=NFFT, Fs=self.sampfreq, noverlap=noverlap)
         # don't convert power to dB, just washes out the signal in the ratio:
         #P = 10. * np.log10(P)

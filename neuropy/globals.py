@@ -32,5 +32,9 @@ CODETRES = 20000 # us
 CODEPHASE = 0 # deg
 CODEWORDLEN = 10 # in bits
 
+"""LFP power ratio overlapping time range windows"""
+PRATIOWIDTH = 32768000 # us (2**15 ms)
+PRATIOOVERLAP = 32000000 # us
+
 """Threshold distance down vertical axis of probe separating superficial from deep cells"""
 YTHRESH = 600 # um
