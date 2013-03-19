@@ -1459,15 +1459,13 @@ class CodeCorr(object):
         self.f = f
         return self
 
-    def plot(self, pairs='mean', mask0=True, figsize=(20, 6.5)):
-        """Plot pairwise code correlations as a function of time. pairs can be 'mean',
+    def cct(self, pairs='mean', mask0=True):
+        """Calculate pairwise code correlations as a function of time. pairs can be 'mean',
         'median', 'max', 'min', or 'all', or a specific set of indices into self.pairis."""
         self.calc()
         if self.corrs.ndim == 1:
             raise RuntimeError("can't plot code correlations as a f'n of time because only "
                                "static ones have been calculated")
-        f = pl.figure(figsize=figsize)
-        a = f.add_subplot(111)
         # when collapsing across pairwise corrs in each time bin, mask out pairs that
         # have exactly zero corrs, because these are almost certainly pairs which had
         # insufficient spikes in the given time bin to determine their spike correlations
@@ -1496,6 +1494,14 @@ class CodeCorr(object):
             ylabel = 'correlation coefficients (%d pairs)' % len(pairs)
         # get midpoint of each trange, convert from us to sec:
         t = self.tranges.mean(axis=1) / 1000000
+        return corrs, t, ylabel
+
+    def plot(self, pairs='mean', mask0=True, figsize=(20, 6.5)):
+        """Plot pairwise code correlations as a function of time. pairs can be 'mean',
+        'median', 'max', 'min', or 'all', or a specific set of indices into self.pairis."""
+        corrs, t, ylabel = self.cct(pairs=pairs, mask0=mask0)
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
         a.plot(t, corrs)
         a.set_xlabel("time (sec)")
         a.set_ylabel(ylabel)
