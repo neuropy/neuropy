@@ -26,7 +26,8 @@ RECNEURONPERIOD = 'recording' # 'trange' or 'recording'
 """NeuronCode (Ising matrix) and network state parameters"""
 CODEKIND = 'binary'
 # values to use for CODEKIND codes, doesn't seem to make any difference to correlation
-# calcs, unless set to really extreme values like [-100s, 100s]
+# calcs, unless set to really extreme values like [-100s, 100s], which is probably due to
+# int8 overflow
 CODEVALS = [0, 1]
 CODETRES = 20000 # us
 CODEPHASE = 0 # deg

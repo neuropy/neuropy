@@ -36,6 +36,7 @@ def fontsize(pts=None):
     print('font size set to %r points' % pts)
 
 ip = get_ipython()
+ip.pdb = True # not sure what the difference is between .pdb and .call_pdb
 ip.call_pdb = True
 ip.magic("pylab")
 ip.Completer.greedy = True
