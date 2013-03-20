@@ -900,6 +900,7 @@ class CodeCorr(object):
             self.calc_tranges()
             # compute correlation coefficients separately for each trange:
             corrss = []
+            countss = []
             for trange in self.tranges:
                 # slice out codes according to trange:
                 t0i, t1i = self.codes.t.searchsorted(trange)
@@ -907,14 +908,18 @@ class CodeCorr(object):
                 codes.c = codes.c[:, t0i:t1i]
                 codes.t = codes.t[t0i:t1i]
                 # all pairis should be identical for all tranges
-                corrs, pairis = self.calc_single(codes)
+                corrs, counts, pairis = self.calc_single(codes)
                 corrss.append(corrs)
+                countss.append(counts)
             corrs = np.asarray(corrss) # each row is a timepoint, each column a pair
             corrs = corrs.T # each row is a pair, each column a timepoint
+            counts = np.asarray(countss)
+            counts = counts.T
         else:
             # compute correlation coefficients once across entire set of tranges
-            corrs, pairis = self.calc_single(self.codes)
+            corrs, counts, pairis = self.calc_single(self.codes)
         self.corrs = corrs
+        self.counts = counts
         self.pairis = pairis
         self.npairs = len(pairis)
 
@@ -937,7 +942,7 @@ class CodeCorr(object):
         """Calculate one code correlation value for each cell pair, given codes spanning
         some subset of self.tranges, contrained to torus described by self.R, weighted by
         self.weights"""
-        c = codes.c
+        c = codes.c # nneurons x nbins array
         nids = self.nids
         nneurons = len(nids)
 
@@ -966,6 +971,14 @@ class CodeCorr(object):
         # precalculate mean and std of each cell's codetrain, rows correspond to nids:
         means = c.mean(axis=1)
         stds = c.std(axis=1)
+
+        # precalculate number of high states in each neuron's code:
+        nhigh = np.zeros(nneurons, dtype=np.int64)
+        uns = get_ipython().user_ns
+        if uns['CODEVALS'] != [0, 1]:
+            raise RuntimeError("counting of high states assumes CODEVALS = [0, 1]")
+        for nii0 in range(nneurons):
+            nhigh[nii0] = c[nii0].sum()
         
         #shift, shiftcorrect = self.shift, self.shiftcorrect
         #if shift and shiftcorrect:
@@ -974,8 +987,9 @@ class CodeCorr(object):
         # iterate over all pairs:
         n = self.r.n
         R = self.R
-        pairis = []
         corrs = []
+        counts = []
+        pairis = []
         for nii0 in range(nneurons):
             ni0 = nids[nii0]
             for nii1 in range(nii0+1, nneurons):
@@ -1005,11 +1019,16 @@ class CodeCorr(object):
                 #    ccsc = ((c0 * c1sc).mean() - means[ni0] * means[ni1]) / denom
                 #    ## TODO: might also want to try subtracting abs(ccsc)?
                 #    cc -= ccsc
-                pairis.append([nii0, nii1])
                 corrs.append(cc)
+                pairis.append([nii0, nii1])
+                # take sum of high code counts of pair. Note that taking the mean wouldn't
+                # change results in self.cct(), because it would end up simply normalizing
+                # by half the value
+                counts.append((nhigh[nii0] + nhigh[nii1])/2)
         corrs = np.array(corrs)
+        counts = np.array(counts)
         pairis = np.array(pairis) # indices into nids
-        return corrs, pairis
+        return corrs, counts, pairis
 
     def clear_codes(self):
         """Delete all of recording's cached codes"""
@@ -1459,9 +1478,10 @@ class CodeCorr(object):
         self.f = f
         return self
 
-    def cct(self, pairs='mean', mask0=True):
-        """Calculate pairwise code correlations as a function of time. pairs can be 'mean',
-        'median', 'max', 'min', or 'all', or a specific set of indices into self.pairis."""
+    def cct(self, pairs='weightedmean'):
+        """Calculate pairwise code correlations as a function of time. pairs can be
+        'weightedmean', 'mean', 'median', 'max', 'min', or 'all', or a specific set of
+        indices into self.pairis."""
         uns = get_ipython().user_ns
         if self.width == None:
             self.width = uns['CCWIDTH'] # us
@@ -1469,18 +1489,18 @@ class CodeCorr(object):
             self.overlap = uns['CCOVERLAP'] # us
         self.calc()
         corrs = self.corrs
-        # when collapsing across pairwise corrs in each trange, mask out pairs that
-        # have exactly zero corrs, because these are almost certainly pairs which had
-        # insufficient spikes in the given trange to determine their spike correlations
-        # with any accuracy. For example, an excess of 0 corr values biases the median
-        # measure towards zero.
-        ## TODO: maybe instead of simply masking out 0 corr values, I should be weighting
-        ## each pairwise corr in each trange by the sum of spikes of the two cells within
-        ## that trange, or at least by the number of "high" (nonzero) entries in the codetrain
-        ## pair
-        if mask0:
-            corrs = np.ma.masked_values(corrs, 0.0) # mask out the zeros
-        if pairs == 'mean':
+        """Instead of simply masking out 0 corr values, weigh each pairwise corr in each
+        trange by the sum of high code counts of the codetrains of the two cells within that
+        trange"""
+        #if mask0:
+        #    corrs = np.ma.masked_values(corrs, 0.0) # mask out the zeros
+        if pairs == 'weightedmean':
+            # weight each pair and trange by its normalized count:
+            corrs = corrs * self.counts / self.counts.sum(axis=0)
+            # sum over all pairs:
+            corrs = corrs.sum(axis=0)
+            ylabel = 'weighted mean correlation coefficient (%d pairs)' % self.npairs
+        elif pairs == 'mean':
             corrs = corrs.mean(axis=0)
             ylabel = 'mean correlation coefficient (%d pairs)' % self.npairs
         elif pairs == 'median':
@@ -1502,10 +1522,10 @@ class CodeCorr(object):
         t = self.tranges.mean(axis=1) / 1000000
         return corrs, t, ylabel
 
-    def plot(self, pairs='mean', mask0=True, figsize=(20, 6.5)):
+    def plot(self, pairs='weightedmean', figsize=(20, 6.5)):
         """Plot pairwise code correlations as a function of time. pairs can be 'mean',
         'median', 'max', 'min', or 'all', or a specific set of indices into self.pairis."""
-        corrs, t, ylabel = self.cct(pairs=pairs, mask0=mask0)
+        corrs, t, ylabel = self.cct(pairs=pairs)
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         a.plot(t, corrs)
@@ -1528,7 +1548,7 @@ class CodeCorr(object):
                horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def vs_pratio(self, pairs='mean', mask0=True, chani=-1, ratio='L/(H+L)',
+    def vs_pratio(self, pairs='weightedmean', chani=-1, ratio='L/(H+L)',
                   colour=True, lines=False, figsize=(7.5, 6.5)):
         """Scatter plot code correlations as a function of time, vs LFP pratio as
         a function of time"""
@@ -1536,7 +1556,7 @@ class CodeCorr(object):
         if colour and lines:
             raise RuntimeError("Sorry, can't plot colour and lines simultaneously")
         # ct are center timepoints of corrs tranges:
-        corrs, ct, ylabel = self.cct(pairs=pairs, mask0=mask0)
+        corrs, ct, ylabel = self.cct(pairs=pairs)
         r, rt = self.r.lfp.pratio(chani=chani, ratio=ratio, plot=False)
         # get common time resolution, r typically has finer temporal resolution than corrs:
         if len(rt) > len(ct):
