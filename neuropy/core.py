@@ -894,6 +894,8 @@ class CodeCorr(object):
 
         if nids == None:
             nids = sorted(self.r.n)
+            if len(nids) == 0:
+                raise RuntimeError("Recording %s has no active neurons" % self.r.id)
         self.nids = nids
         self.codes = self.r.codes(nids=nids, tranges=tranges) # calculate them once
 
