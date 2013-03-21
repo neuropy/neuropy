@@ -1057,8 +1057,8 @@ class CodeCorr(object):
             except AttributeError:
                 pass
 
-    def sortednids(self, metric=False, n_init=10, max_iter=1000, verbose=0, eps=-np.inf,
-                   n_jobs=1, init=None):
+    def norder(self, metric=False, n_init=10, max_iter=1000, verbose=0, eps=-np.inf,
+               n_jobs=1, init=None):
         """Return nids of self's recording sorted according to their pairwise correlations.
         This uses multidimensional scaling (MDS) to take N*(N-1)/2 pairwise values and
         return a 1D projection in which cells with the greatest similarity are kept as close
@@ -1107,10 +1107,10 @@ class CodeCorr(object):
         sortis = pos.ravel().argsort()
         #print('sortis:')
         #print(sortis)
-        sortednids = np.asarray(self.nids)[sortis]
+        norder = np.asarray(self.nids)[sortis]
         #print('sorted nids:')
-        #print(sortednids)
-        return sortednids
+        #print(norder)
+        return norder
 
     def laminarity(self, nids, pairis):
         """Color cell pairs according to whether they're superficial, straddle, or deep"""

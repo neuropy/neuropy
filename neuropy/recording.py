@@ -317,7 +317,7 @@ class RecordingRaster(BaseRecording):
                 t1 *= tx # convert to us
         trange = np.array([t0, t1])
         if norder == True:
-            norder = self.cc().sortednids()
+            norder = self.cc().norder()
         return PopulationRaster(trange=trange, neurons=neurons, norder=norder, units=units,
                                 text=self.name)
 
