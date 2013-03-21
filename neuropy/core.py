@@ -644,21 +644,30 @@ class LFP(object):
 
 class PopulationRaster(object):
     """Population spike raster plot"""
-    def __init__(self, trange=None, neurons=None, units='sec', text=None, figsize=(20, 6.5)):
+    def __init__(self, trange=None, neurons=None, norder=None, units='sec', text=None,
+                 figsize=(20, 6.5)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
         is displayed in time units of units"""
         assert len(trange) == 2
         trange = np.asarray(trange)
-        nids = sorted(neurons.keys())
+        if norder != None:
+            nids = norder
+        else:
+            nids = sorted(neurons.keys())
+        nneurons = len(nids)
         x, y, c, s = [], [], [], []
-        for nid in nids:
+        for nidi, nid in enumerate(nids):
             n = neurons[nid]
             lo, hi = n.spikes.searchsorted(trange)
             spikes = n.spikes[lo:hi]
             nspikes = len(spikes)
             if nspikes > 0:
                 x.append(spikes)
-                y.append(np.tile(-n.pos[1], nspikes)) # -ve, distance below top of electrode
+                if norder != None:
+                    ypos = nidi
+                else:
+                    ypos = -n.pos[1]
+                y.append(np.tile(ypos, nspikes)) # -ve, distance below top of electrode
                 color = CLUSTERCOLOURRGBDICT[nid]
                 c.append(np.tile(color, nspikes))
                 # use big points for low rate cells, small points for high rate cells:
@@ -683,7 +692,10 @@ class PopulationRaster(object):
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
         a.set_xlabel("time (%s)" % units)
-        a.set_ylabel("depth (um)")
+        if norder != None:
+            a.set_ylabel("nidi")
+        else:
+            a.set_ylabel("depth (um)")
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
@@ -1037,6 +1049,61 @@ class CodeCorr(object):
                 del n._codes
             except AttributeError:
                 pass
+
+    def sortednids(self, metric=False, n_init=10, max_iter=1000, verbose=0, eps=-np.inf,
+                   n_jobs=-1, init=None):
+        """Return nids of self's recording sorted according to their pairwise correlations.
+        This uses multidimensional scaling (MDS) to take N*(N-1)/2 pairwise values and
+        return a 1D projection in which cells with the greatest similarity are kept as close
+        to each other as possible, with as little "stress" as possible. This might then be
+        useful for sorting raster plots to better reveal ensemble activity.
+
+        Note that so far, this generates orderings that are poorly reproducible across runs,
+        and seem fairly random. There is some confusion in the docs for sklearn.manifold.MDS
+        as to whether to pass it a similarity matrix (high values mean that pair should be
+        kept close together) or a dissimilarity matrix (high values mean that pair should be
+        kep far apart). Also, the eps and max_iter kwargs are a bit deceiving. Usually, the
+        algorithm reaches a minimum stress after only the 2 or 3 iterations, and after that
+        starts increasing again, ie the error becomes -ve and the algorithm exits. If
+        max_iter is anything greater than about 3, it'll never be reached. If you provide a
+        -ve eps however, this forces the algorithm to exit only once it reaches max_iter.
+        The final stress value will be higher than the minimum, but at least it actually
+        becomes stable. You can see this by setting verbose=2. Stable non-minimum stress
+        values seem to provide more consistent neuron sorting across runs ("inits" in
+        sklearn's language) than when simply exiting at minimum stress, but I'm not all that
+        certain.
+        """
+        ## TODO: try Isomap instead
+        from sklearn.manifold import MDS
+        self.calc()
+        sim = copy(self.corrs) # similarities, 1D array of length npairs
+        npairs = len(sim)
+        N = len(self.nids)
+        assert npairs == N * (N-1) / 2 # sanity check
+        # scale, might not be necessary, although -ve values might be bad:
+        sim -= sim.min()
+        sim /= sim.max()
+        dissim = 1 - sim # dissimilarities
+        # maybe keep all values well above 0, MDS ignores 0 values?
+        dissim += 1e-5
+        ui = np.triu_indices(N, 1) # upper triangle indices
+        li = np.tril_indices(N, -1) # lower triangle indices
+        dissimm = np.zeros((N, N)) # dissimilarity matrix, 0s on diagonal
+        dissimm[ui] = dissim # fill upper triangle, which is filled row major, same as corrs
+        dissimm[li] = dissimm.T[li] # make symmetric by filling lower triangle
+        mds = MDS(n_components=1, metric=metric, n_init=n_init, max_iter=max_iter,
+                  verbose=verbose, eps=eps, n_jobs=n_jobs, dissimilarity='precomputed')
+        pos = mds.fit_transform(dissimm, init=init)
+        print('lowest stress: %s' % mds.stress_)
+        #print('pos:')
+        #print(pos.ravel())
+        sortis = pos.ravel().argsort()
+        #print('sortis:')
+        #print(sortis)
+        sortednids = np.asarray(self.nids)[sortis]
+        #print('sorted nids:')
+        #print(sortednids)
+        return sortednids
 
     def laminarity(self, nids, pairis):
         """Color cell pairs according to whether they're superficial, straddle, or deep"""

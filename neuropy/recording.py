@@ -295,9 +295,11 @@ class RecordingRevCorr(BaseRecording):
 
 class RecordingRaster(BaseRecording):
     """Mix-in class that defines the raster related Recording methods"""
-    def raster(self, t0=None, t1=None, neurons=None, units='sec'):
-        """Create a population spike raster plot. neurons can be None, 'quiet', 'all',
-        or a dict"""
+    def raster(self, t0=None, t1=None, neurons=None, norder=None, units='sec'):
+        """Create a population spike raster plot. neurons can be None, 'quiet', 'all', or a
+        dict. norder can be a sequence of nids, designating what order to present them in
+        the raster plot, from bottom to top. If set to True, the order is automatically
+        determined by MDS of pairwise spike correlations. Default order is spatial"""
         if neurons == None:
             neurons = self.n # use active neurons
         elif neurons == 'quiet':
@@ -314,8 +316,10 @@ class RecordingRaster(BaseRecording):
             else:
                 t1 *= tx # convert to us
         trange = np.array([t0, t1])
-        return PopulationRaster(trange=trange, neurons=neurons, units=units, text=self.name)
-    raster.__doc__ += '\n\n'+PopulationRaster.__init__.__doc__
+        if norder == True:
+            norder = self.cc().sortednids()
+        return PopulationRaster(trange=trange, neurons=neurons, norder=norder, units=units,
+                                text=self.name)
 
 
 class RecordingCode(BaseRecording):
