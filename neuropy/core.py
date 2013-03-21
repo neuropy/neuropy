@@ -686,8 +686,15 @@ class PopulationRaster(object):
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         a.scatter(x, y, marker='.', c=c, edgecolor='none', s=s)
-        a.autoscale(enable=True, axis='both', tight=True)
         a.set_xlim(trange/tx)
+        if norder == None: # set y axis limits according to spatial extent of probe
+            # grab first neuron's sort.chanpos, should be the same for all:
+            chanpos = neurons[nids[0]].sort.chanpos
+            ymax = chanpos[:, 1].max() # max chan distance below top of probe
+            ymax = np.ceil(ymax / 50) * 50 # round up to nearest multiple of 100 um
+            a.set_ylim(-ymax, 0)
+        else: # autoscale 'nidi' integer y axis
+            a.autoscale(enable=True, axis='y', tight=True)
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
