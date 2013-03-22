@@ -1625,7 +1625,7 @@ class CodeCorr(object):
         f.tight_layout(pad=0.3) # crop figure to contents
 
     def vs_pratio(self, pairs='weightedmean', chani=-1, ratio='L/(H+L)',
-                  colour=True, lines=False, figsize=(7.5, 6.5)):
+                  prrange=None, colour=True, lines=False, figsize=(7.5, 6.5)):
         """Scatter plot code correlations as a function of time, vs LFP pratio as
         a function of time"""
         ## TODO: plot superficial, deep, and straddle pairs separately
@@ -1653,8 +1653,17 @@ class CodeCorr(object):
             corrs = corrs[cti]
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
+        # keep only those points whose pratio falls within prrange
+        if prrange == None:
+            prrange = (0, 1)
+        prrange = np.asarray(prrange)
+        keepis = (prrange[0] <= r) * (r <= prrange[1]) # boolean index array
+        r = r[keepis]
+        corrs = corrs[keepis]
+
         if colour:
             c = normalize_range(rt) # indices into colormap, as a function of time
+            c = c[keepis]
         else:
             c = 'black'
         if lines:
