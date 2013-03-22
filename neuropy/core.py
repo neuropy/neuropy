@@ -27,6 +27,7 @@ import numpy as np
 np.seterr(all='raise', under='ignore') # raise all except float underflow
 import scipy.signal
 from scipy.special import cbrt # real cube root
+import scipy.stats
 
 import matplotlib as mpl
 import matplotlib.cm
@@ -1651,8 +1652,14 @@ class CodeCorr(object):
             cti = cti[ctii]
             ct = ct[cti]
             corrs = corrs[cti]
+
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
+        ylim = corrs.min(), corrs.max()
+        yrange = ylim[1] - ylim[0]
+        extra = yrange*0.03 # 3 %
+        ylim = ylim[0]-extra, ylim[1]+extra
+
         # keep only those points whose pratio falls within prrange
         if prrange == None:
             prrange = (0, 1)
@@ -1666,18 +1673,30 @@ class CodeCorr(object):
             c = c[keepis]
         else:
             c = 'black'
+        m, b, rval, pval, stderr = scipy.stats.linregress(r, corrs)
+        a.plot(prrange, m*prrange+b, 'k--')
         if lines:
             a.plot(r, corrs, color='black', marker='.', ms=6, mew=0)
         else:
-            a.scatter(r, corrs, c=c, cmap=mpl.cm.jet, marker='.', s=20, edgecolor='none')
-        a.set_xlim(0.0, 1.0)
+            a.scatter(r, corrs, c=c, vmin=0, vmax=1, cmap=mpl.cm.jet,
+                      marker='.', s=20, edgecolor='none')
+        #a.set_xlim(prrange)
+        a.set_xlim(0, 1)
+        a.set_ylim(ylim)
+        #a.autoscale(enable=True, axis='y', tight=True)
         a.set_xlabel("LFP power ratio (%s)" % ratio)
         a.set_ylabel(ylabel)
-        a.autoscale(enable=True, axis='y', tight=True)
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
-        a.text(0.998, 0.99, '%s' % self.r.name, color='k', transform=a.transAxes,
+        a.text(0.998, 0.99,
+               '%s\n'
+               'r = %.3f\n'
+               'p = %.3f\n'
+               'm = %.3f\n'
+               'b = %.3f'
+               % (self.r.name, rval, pval, m, b),
+               color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
 
