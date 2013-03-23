@@ -30,23 +30,24 @@ Dependencies:
 
 neuropy requires recent versions of the following to be installed:
 
-Python (2.7.x, 3.x hasn't been tested)
-IPython 1.0.dev
-numpy
-scipy
-matplotlib
-PyQt4 (PySide will probably work, but is untested)
+* Python (2.7.x, 3.x hasn't been tested)
+* IPython 1.0.dev
+* numpy
+* scipy
+* matplotlib
+* PyQt4 (PySide will probably work, but is untested)
 
-optional:
+Optional:
 
-Cython
-scikit-learn
+* Cython
+* scikit-learn
 
 neuropy is developed in Xubuntu 12.10. It should work in other Linux
 distributions. In principle, it should also work in Windows and OSX.
 
-An older version is described in the paper "Python for large-scale electrophysiology".
-doi: 10.3389/neuro.11.009.2008
+An older version is described in the paper "Python for large-scale electrophysiology":
+
+http://www.frontiersin.org/Neuroinformatics/10.3389/neuro.11.009.2008/abstract
 
 To run:
 
