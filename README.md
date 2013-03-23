@@ -1,10 +1,8 @@
 neuropy is a Python package for interactive analysis of sorted neuronal spike
 data and raw LFP waveforms.
 
-The user-facing object data object hierarchy looks like this:
+The user-facing data object hierarchy looks like this:
 ```
-          object hierarchy:
-
                                 level:
 
                 Animal            1
@@ -17,7 +15,15 @@ The user-facing object data object hierarchy looks like this:
             |           |
       (Cat15Movie)    Neuron      5
 ```
-As for variable scope, this is how things work:
+Once data are loaded, they can be accessed in various ways:
+```
+animal.track.recording
+animal.tr[trackid].r[recordingid]
+recording.n[neuronid]
+```
+Different object types have different analysis methods associated with them.
+
+As for internal variable scope, this is how things work:
 ```
 Main Qt event loop creates a
     NeuropyWindow which runs an
