@@ -32,17 +32,18 @@ Dependencies:
 
 neuropy requires recent versions of the following to be installed:
 
-* Python (2.7.x, 3.x hasn't been tested)
-* IPython 1.0.dev
-* numpy
-* scipy
-* matplotlib
-* PyQt4 (PySide will probably work, but is untested)
+* [Python](http://python.org) (2.7.x, 3.x hasn't been tested)
+* [IPython](http://ipython.org) 1.0.dev
+* [numpy](http://numpy.org)
+* [scipy](http://scipy.org)
+* [matplotlib](http://matplotlib.org)
+* [PyQt4](http://www.riverbankcomputing.co.uk/software/pyqt)
+  ([PySide](http://pyside.org) will probably work too, but is untested)
 
 Optional:
 
-* Cython
-* scikit-learn
+* [Cython](http://cython.org)
+* [scikit-learn](http://scikit-learn.org)
 
 neuropy is developed in Xubuntu 12.10. It should work in other Linux distributions.
 In principle, it should also work in Windows and OSX.
