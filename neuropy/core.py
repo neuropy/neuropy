@@ -1050,7 +1050,7 @@ class CodeCorr(object):
                 # take sum of high code counts of pair. Note that taking the mean wouldn't
                 # change results in self.cct(), because it would end up simply normalizing
                 # by half the value
-                counts.append((nhigh[nii0] + nhigh[nii1])/2)
+                counts.append(nhigh[nii0] + nhigh[nii1])
         return corrs, counts, pairis
 
     def clear_codes(self):
