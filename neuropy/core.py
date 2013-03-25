@@ -1634,8 +1634,12 @@ class CodeCorr(object):
         if colour and lines:
             raise RuntimeError("Sorry, can't plot colour and lines simultaneously")
         # ct are center timepoints of corrs tranges:
+        t0 = time.time()
         corrs, ct, ylabel = self.cct(pairs=pairs)
+        print('cct(t) calc took %.3f sec' % (time.time()-t0))
+        t0 = time.time()
         r, rt = self.r.lfp.pratio(chani=chani, ratio=ratio, plot=False)
+        print('pratio(t) calc took %.3f sec' % (time.time()-t0))
         # get common time resolution, r typically has finer temporal resolution than corrs:
         if len(rt) > len(ct):
             rti = rt.searchsorted(ct)
