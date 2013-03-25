@@ -909,6 +909,8 @@ class CodeCorr(object):
         self.width = width
         self.overlap = overlap
 
+        if weights != None:
+            raise NotImplementedError('weights are currently disabled for speed')
         self.weights = weights
         self.shift = shift # shift spike train of the second of each neuron pair, in ms
         # shift correct spike train of the second of each neuron pair by this much, in ms
@@ -966,9 +968,9 @@ class CodeCorr(object):
         some subset of self.tranges, contrained to torus described by self.R, weighted by
         self.weights"""
         c = codes.c # nneurons x nbins array
+        nneurons, nbins = c.shape
         nids = self.nids
-        nneurons = len(nids)
-
+        '''
         # calculate bin weights:
         binw = 1 # default
         if self.weights != None:
@@ -977,20 +979,19 @@ class CodeCorr(object):
             ## TODO: maybe w needs to be recentered between max and min possible LFP
             ## synch values (say, 1 and 0.15?)
             # get bin times from codes:
-            bint = codes.t
-            nbins = len(bint)
+            t = codes.t
             binw = np.zeros(nbins) # bin weights
             # this might assume that there are fewer weight times than bin times,
             # but that should usually be a safe assumption if weights come from LFP:
             assert len(wt) < nbins
-            tis = bint.searchsorted(wt) # where weight times fit into bin times
+            tis = t.searchsorted(wt) # where weight times fit into bin times
             tis = np.append(tis, nbins)
             for i in range(len(tis)-1):
                 ti0 = tis[i]
                 ti1 = tis[i+1]
                 binw[ti0:ti1] = w[i]
         meanw = np.mean(binw)
-
+        '''
         # precalculate mean and std of each cell's codetrain, rows correspond to nids:
         means = c.mean(axis=1)
         stds = c.std(axis=1)
@@ -1026,8 +1027,9 @@ class CodeCorr(object):
                 #c1 = self.r.n[ni1].code(tranges=tranges, shift=shift).c
                 c0 = c[nii0]
                 c1 = c[nii1]
-                # (mean of product - product of means) / product of stds
-                numer = (c0 * c1 * binw).mean() - means[nii0] * means[nii1] * meanw
+                # (mean of product - product of means) / product of stds:
+                #numer = (c0 * c1 * binw).mean() - means[nii0] * means[nii1] * meanw
+                numer = c0.dot(c1) / nbins - means[nii0] * means[nii1]
                 denom = stds[nii0] * stds[nii1]
                 if numer == 0.0:
                     cc = 0.0 # even if denom is also 0
