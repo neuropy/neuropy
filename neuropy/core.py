@@ -1030,7 +1030,7 @@ class CodeCorr(object):
                 c1 = c[nii1]
                 # (mean of product - product of means) / product of stds:
                 #numer = (c0 * c1 * binw).mean() - means[nii0] * means[nii1] * meanw
-                numer = c0.dot(c1) / nbins - means[nii0] * means[nii1]
+                numer = np.dot(c0, c1) / nbins - means[nii0] * means[nii1]
                 denom = stds[nii0] * stds[nii1]
                 if numer == 0.0:
                     cc = 0.0 # even if denom is also 0
