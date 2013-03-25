@@ -919,8 +919,8 @@ class CodeCorr(object):
 
     def calc(self):
         if self.width != None:
-            self.calc_tranges()
             # compute correlation coefficients separately for each trange:
+            self.calc_tranges()
             corrss = []
             countss = []
             for trange in self.tranges:
@@ -933,16 +933,17 @@ class CodeCorr(object):
                 corrs, counts, pairis = self.calc_single(codes)
                 corrss.append(corrs)
                 countss.append(counts)
-            corrs = np.asarray(corrss) # each row is a timepoint, each column a pair
+            corrs = np.array(corrss) # each row is a timepoint, each column a pair
             corrs = corrs.T # each row is a pair, each column a timepoint
-            counts = np.asarray(countss)
+            counts = np.array(countss)
             counts = counts.T
         else:
             # compute correlation coefficients once across entire set of tranges
             corrs, counts, pairis = self.calc_single(self.codes)
+            corrs, counts = np.array(corrs), np.array(counts)
         self.corrs = corrs
         self.counts = counts
-        self.pairis = pairis
+        self.pairis = np.array(pairis)
         self.npairs = len(pairis)
 
     def calc_tranges(self):
@@ -1047,9 +1048,6 @@ class CodeCorr(object):
                 # change results in self.cct(), because it would end up simply normalizing
                 # by half the value
                 counts.append((nhigh[nii0] + nhigh[nii1])/2)
-        corrs = np.array(corrs)
-        counts = np.array(counts)
-        pairis = np.array(pairis) # indices into nids
         return corrs, counts, pairis
 
     def clear_codes(self):
