@@ -899,6 +899,7 @@ class CodeCorr(object):
                 raise RuntimeError("Recording %s has no active neurons" % self.r.id)
         self.nids = nids
         self.codes = self.r.codes(nids=nids, tranges=tranges) # calculate them once
+        self.codes.c = np.float64(self.codes.c) # prevent int8 overflow
 
         if width != None:
             if overlap == None:
