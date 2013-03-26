@@ -5,3 +5,4 @@ dist
 MANIFEST
 /neuropy/util.c
 /neuropy/util.html
+/neuropy/scripts/PyArray_Mean.c
