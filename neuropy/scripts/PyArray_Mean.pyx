@@ -21,4 +21,6 @@ def mean(np.ndarray[np.float64_t, ndim=2, mode='c'] a, int axis=0):
     cdef np.npy_intp *dims = [nrows]
     #cdef np.ndarray[np.float64_t, ndim=1] out = np.PyArray_EMPTY(1, dims, np.NPY_FLOAT64, 0)
     cdef np.ndarray[np.float64_t, ndim=1] out = np.PyArray_SimpleNew(axis, dims, np.NPY_FLOAT64)
-    return np.PyArray_Mean(a, 1, np.NPY_FLOAT64, out)
+    #return np.PyArray_Mean(a, 1, np.NPY_FLOAT64, out) # this works too
+    np.PyArray_Mean(a, 1, np.NPY_FLOAT64, out)
+    return out
