@@ -9,6 +9,11 @@ cimport cython
 #from cython.parallel import prange#, parallel
 import numpy as np
 cimport numpy as np
+# import_array() is required for access to NumPy's C API, otherwise calls to something
+# like `np.PyArray_EMPTY` segfault. See:
+# http://docs.scipy.org/doc/numpy/reference/c-api.array.html#importing-the-api
+np.import_array()
+
 
 #import time
 '''
