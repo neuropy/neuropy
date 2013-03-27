@@ -33,5 +33,5 @@ print('python stds:')
 print(stds)
 
 #print(c.mean(axis=1))
-
-util.cc_tranges(c, t, nids, tranges)
+highval = 1
+util.cc_tranges(c, t, nids, tranges, highval)

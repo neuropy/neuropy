@@ -96,22 +96,28 @@ def xcorr(np.ndarray[np.int64_t, ndim=1, mode='c'] x,
 def cc_tranges(np.int8_t[:, ::1] c,
                np.int64_t[::1] t,
                np.int64_t[::1] nids,
-               np.int64_t[:, ::1] tranges):
+               np.int64_t[:, ::1] tranges,
+               np.int8_t highval):
     """Calculate all pairwise correlations of codes in 2D array c for every trange
     in tranges. Rows in c are neurons, columns are bins. nids are the row labels
     (neuron ids), t are the column labels (bin times)"""
     cdef int nn = c.shape[0] # number of neurons
     cdef int nt = c.shape[1] # number of time bins
     cdef int ntranges = tranges.shape[0]
-    cdef int i, trangei
+    cdef int i, j, trangei
     cdef double m
     cdef np.int64_t[:, ::1] tis = np.searchsorted(t, tranges) # ntranges x 2 array
     np_tis = np.asarray(tis)
-    # calc max widdth of a slice to save memory:
-    cdef int maxslice = (np_tis[:, 1] - np_tis[:, 0]).max()
+    # calc max and min slice widths
+    cdef np.int64_t maxslice = (np_tis[:, 1] - np_tis[:, 0]).max()
+    cdef np.int64_t minslice = (np_tis[:, 1] - np_tis[:, 0]).min()
+    if maxslice != minslice:
+        raise RuntimeError('maxslice = %d, minslice = %d' % (maxslice, minslice))
+    cdef np.int64_t nst = maxslice # identical number of slice timepoints within each trange
     cdef np.int8_t[:, :, ::1] cslices = np.empty((ntranges, nn, maxslice), dtype=np.int8)
     cdef double[:, ::1] means = np.zeros((ntranges, nn))
     cdef double[:, ::1] stds = np.zeros((ntranges, nn))
+    cdef np.int64_t[:, ::1] nhigh = np.zeros((ntranges, nn), dtype=np.int64)
     cdef np.int64_t lo, hi
 
     for trangei in prange(ntranges, nogil=True, schedule='dynamic'):
@@ -119,10 +125,18 @@ def cc_tranges(np.int8_t[:, ::1] c,
         cslices[trangei, :] = c[:, lo:hi]
         mean_int8_axis1(cslices[trangei], means[trangei])
         std_int8_axis1(cslices[trangei], means[trangei], stds[trangei])
+        # count up number of high states for each neuron in each trange, used later
+        # for weighted average of cc(t) across neurons:
+        for i in range(nn):
+            for j in range(nst):
+                nhigh[trangei, i] += cslices[trangei, i, j]
+                
     print('cython means:')
     print(np.asarray(means))
     print('cython stds:')
     print(np.asarray(stds))
+    print('nhigh:')
+    print(np.asarray(nhigh))
 
     '''
     #with nogil, parallel(): # need for setting up thread local buffers for prange
