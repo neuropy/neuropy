@@ -1,5 +1,5 @@
-# cython: boundscheck=False
-# cython: wraparound=False
+# cython: boundscheck=True
+# cython: wraparound=True
 # cython: cdivision=True
 # cython: profile=False
 
@@ -9,6 +9,7 @@ cimport cython
 from cython.parallel import prange
 import numpy as np
 cimport numpy as np
+from libc.math cimport sqrt
 # import_array() is required for access to NumPy's C API, otherwise calls to something
 # like `np.PyArray_EMPTY` segfault. See:
 # http://docs.scipy.org/doc/numpy/reference/c-api.array.html#importing-the-api
@@ -102,22 +103,26 @@ def cc_tranges(np.int8_t[:, ::1] c,
     cdef int nn = c.shape[0] # number of neurons
     cdef int nt = c.shape[1] # number of time bins
     cdef int ntranges = tranges.shape[0]
-    cdef int trangei
+    cdef int i, trangei
     cdef double m
-    cdef int i
-    cdef int axis = 1
-    #cdef np.npy_intp *dims = [nrows]
-    #cdef np.ndarray[np.float64_t, ndim=1] means
-
-
     cdef np.int64_t[:, ::1] tis = np.searchsorted(t, tranges) # ntranges x 2 array
+    np_tis = np.asarray(tis)
+    # calc max widdth of a slice to save memory:
+    cdef int maxslice = (np_tis[:, 1] - np_tis[:, 0]).max()
+    cdef np.int8_t[:, :, ::1] cslices = np.empty((ntranges, nn, maxslice), dtype=np.int8)
     cdef double[:, ::1] means = np.zeros((ntranges, nn))
+    cdef double[:, ::1] stds = np.zeros((ntranges, nn))
     cdef np.int64_t lo, hi
 
     for trangei in prange(ntranges, nogil=True, schedule='dynamic'):
         lo, hi = tis[trangei, 0], tis[trangei, 1]
-        mean_int8_axis1(c[:, lo:hi], means[trangei])
+        cslices[trangei, :] = c[:, lo:hi]
+        mean_int8_axis1(cslices[trangei], means[trangei])
+        std_int8_axis1(cslices[trangei], means[trangei], stds[trangei])
+    print('cython means:')
     print(np.asarray(means))
+    print('cython stds:')
+    print(np.asarray(stds))
 
     '''
     #with nogil, parallel(): # need for setting up thread local buffers for prange
@@ -220,12 +225,28 @@ cdef double mean_int8(np.int8_t[::1] x) nogil:
         sum += x[i]
     return sum / n
 '''
-cdef void mean_int8_axis1(np.int8_t[:, ::1] x, double[::1] out) nogil:
-    """Store mean of 2D int8 array along axis 1 in out"""
+cdef void mean_int8_axis1(np.int8_t[:, ::1] x, double[::1] means) nogil:
+    """Store in `means` the mean of 2D int8 array x along axis 1.
+    Assume `means` is initialized to zeros"""
     cdef int i, j, m, n
     m, n = x.shape[0], x.shape[1]
     for i in range(m):
-        out[i] = 0.0 # clear
+        #means[i] = 0.0 # shouldn't be any need to clear
         for j in range(n):
-            out[i] += x[i, j]
-        out[i] /= n
+            means[i] += x[i, j]
+        means[i] /= n
+
+cdef void std_int8_axis1(np.int8_t[:, ::1] x, double[::1] means, double[::1] stds) nogil:
+    """Store in `stds` the standard deviation of 2D int8 array x along axis 1.
+    `means` holds mean of each row in x.
+    Assume `means` and `stds` are initialized to zeros"""
+    cdef int i, j, m, n
+    cdef double d
+    m, n = x.shape[0], x.shape[1]
+    for i in range(m):
+        #stds[i] = 0.0 # shouldn't be any need to clear
+        for j in range(n):
+            d = x[i, j] - means[i]
+            stds[i] += d * d
+        stds[i] /= n
+        stds[i] = sqrt(stds[i])
