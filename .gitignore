@@ -7,3 +7,5 @@ MANIFEST
 /neuropy/util.html
 /neuropy/scripts/PyArray_Mean.c
 /neuropy/scripts/PyArray_Mean.html
+/neuropy/scripts/C_types.c
+/neuropy/scripts/C_types.html
