@@ -15,7 +15,7 @@ print(c)
 
 t = np.arange(nt, dtype=np.int64)
 tranges = np.array([[0, 10], [10,20], [20,30], [30,40], [40,50],
-                    [50,60], [60,70], [70,80], [80,90], [90,100]], dtype=np.int64)
+                    [51,60], [60,70], [70,80], [80,90], [90,100]], dtype=np.int64)
 ntranges = len(tranges)
 print('tranges:')
 print(tranges)
