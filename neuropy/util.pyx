@@ -141,9 +141,9 @@ def cc_tranges(int8_t[:, ::1] c,
     cdef int64_t npairs = nn * (nn - 1) / 2
     cdef float64_t[:, ::1] corrs = np.empty((ntranges, npairs))
     cdef int64_t[:, ::1] counts = np.empty((ntranges, npairs), dtype=np.int64)
-    cdef int64_t pairi, cumprod # cumulative product
+    cdef int64_t pairi, sumprod # sum of products
     cdef float64_t numer, denom
-    """pairi and cumprod can't be incremented in place in this prange, because of Cython's
+    """pairi and sumprod can't be incremented in place in this prange, because of Cython's
     automatic inferral of thead-locality and reductions. From the docs: "If you use an
     inplace operator on a variable, it becomes a reduction, meaning that the values from the
     thread-local copies of the variable will be reduced with the operator and assigned to
@@ -162,12 +162,12 @@ def cc_tranges(int8_t[:, ::1] c,
         for i in range(nn):
             for j in range(i+1, nn):
                 # accumulate element-wise product of c[trangei] for this neuron pair:
-                cumprod = 0
+                sumprod = 0
                 for sti in range(0, nst):
-                    #cumprod += cslices[trangei, i, sti] * cslices[trangei, j, sti]
-                    cumprod = cumprod + cslices[trangei, i, sti] * cslices[trangei, j, sti]
+                    #sumprod += cslices[trangei, i, sti] * cslices[trangei, j, sti]
+                    sumprod = sumprod + cslices[trangei, i, sti] * cslices[trangei, j, sti]
                 # (mean of product - product of means) / product of stds:
-                numer = <float64_t>cumprod / nst - means[trangei, i] * means[trangei, j]
+                numer = <float64_t>sumprod / nst - means[trangei, i] * means[trangei, j]
                 denom = stds[trangei, i] * stds[trangei, j]
                 # all codes values for at least one neuron must've been identical,
                 # leading to 0 std, call that 0 code correlation:
