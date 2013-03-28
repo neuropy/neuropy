@@ -105,15 +105,10 @@ def cc_tranges(int8_t[:, ::1] c,
     cdef int64_t i, j, trangei, sti
     cdef int64_t[:, ::1] tis = np.searchsorted(t, tranges) # ntranges x 2 array
     np_tis = np.asarray(tis)
-    # calc max and min slice widths
-    dtis = np_tis[:, 1] - np_tis[:, 0]
-    print('dtis:')
-    print(dtis)
-    cdef int64_t maxslice = dtis.max()
-    cdef int64_t minslice = dtis.min()
-    if maxslice != minslice:
-        raise RuntimeError('maxslice = %d, minslice = %d' % (maxslice, minslice))
-    cdef int64_t nst = maxslice # identical number of slice timepoints within each trange
+    # calc number of slice time bins for each trange:
+    np_nst = np_tis[:, 1] - np_tis[:, 0]
+    cdef int64_t maxslice = np_nst.max()
+    cdef int64_t[::1] nst = np_nst
     cdef int8_t[:, :, ::1] cslices = np.empty((ntranges, nn, maxslice), dtype=np.int8)
     cdef float64_t[:, ::1] means = np.zeros((ntranges, nn))
     cdef float64_t[:, ::1] stds = np.zeros((ntranges, nn))
@@ -123,19 +118,22 @@ def cc_tranges(int8_t[:, ::1] c,
     # pre-calc some arrays for use in main trange loop
     for trangei in prange(ntranges, nogil=True, schedule='dynamic'):
         lo, hi = tis[trangei, 0], tis[trangei, 1]
-        cslices[trangei, :] = c[:, lo:hi]
+        cslices[trangei, :, :nst[trangei]] = c[:, lo:hi]
         mean_int8_axis1(cslices[trangei], means[trangei])
         std_int8_axis1(cslices[trangei], means[trangei], stds[trangei])
         # count up number of high states for each neuron in each trange, used later
         # for weighted average of cc(t) across neurons:
         for i in range(nn):
-            for sti in range(nst):
+            for sti in range(nst[trangei]):
                 if cslices[trangei, i, sti] == highval:
                     nhigh[trangei, i] += 1
     '''
-    print('cython means:')
+    print('cython:')
+    print('nst:')
+    print(np_nst)
+    print('means:')
     print(np.asarray(means))
-    print('cython stds:')
+    print('stds:')
     print(np.asarray(stds))
     print('nhigh:')
     print(np.asarray(nhigh))
@@ -165,11 +163,12 @@ def cc_tranges(int8_t[:, ::1] c,
             for j in range(i+1, nn):
                 # accumulate element-wise product of c[trangei] for this neuron pair:
                 sumprod = 0
-                for sti in range(0, nst):
+                for sti in range(0, nst[trangei]):
                     #sumprod += cslices[trangei, i, sti] * cslices[trangei, j, sti]
                     sumprod = sumprod + cslices[trangei, i, sti] * cslices[trangei, j, sti]
                 # (mean of product - product of means) / product of stds:
-                numer = <float64_t>sumprod / nst - means[trangei, i] * means[trangei, j]
+                numer = (<float64_t>sumprod / nst[trangei]
+                         - means[trangei, i] * means[trangei, j])
                 denom = stds[trangei, i] * stds[trangei, j]
                 # all codes values for at least one neuron must've been identical,
                 # leading to 0 std, call that 0 code correlation:
