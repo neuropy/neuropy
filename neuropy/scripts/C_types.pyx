@@ -16,6 +16,7 @@ def test():
     print('unsigned int: %d bytes' % sizeof(unsigned int))
     print('long: %d bytes' % sizeof(long))
     print('unsigned long: %d bytes' % sizeof(unsigned long))
+    print('long long: %d bytes' % sizeof(long long))
     print('float: %d bytes' % sizeof(float))
     print('double: %d bytes' % sizeof(double))
     print('')
