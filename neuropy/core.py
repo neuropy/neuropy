@@ -35,6 +35,10 @@ import pylab as pl
 from pylab import get_current_fig_manager as gcfm
 from matplotlib.collections import LineCollection
 
+import pyximport
+pyximport.install(build_in_temp=False, inplace=True)
+import util # .pyx file
+
 import filter
 from colour import RED, GREEN, BLUE, hex2floatrgb, CLUSTERCOLOURRGBDICT
 
@@ -899,7 +903,8 @@ class CodeCorr(object):
                 raise RuntimeError("Recording %s has no active neurons" % self.r.id)
         self.nids = nids
         self.codes = self.r.codes(nids=nids, tranges=tranges) # calculate them once
-        self.codes.c = np.float64(self.codes.c) # prevent int8 overflow
+        ## TODO: no longer needed, due to switch to Cython implementation of cc(t)?:
+        #self.codes.c = np.float64(self.codes.c) # prevent int8 overflow
 
         if width != None:
             if overlap == None:
@@ -924,29 +929,19 @@ class CodeCorr(object):
         if self.width != None:
             # compute correlation coefficients separately for each trange:
             self.calc_tranges()
-            corrss = []
-            countss = []
-            for trange in self.tranges:
-                # slice out codes according to trange:
-                t0i, t1i = self.codes.t.searchsorted(trange)
-                codes = copy(self.codes) # this copy is necessary
-                codes.c = codes.c[:, t0i:t1i]
-                codes.t = codes.t[t0i:t1i]
-                # all pairis should be identical for all tranges
-                corrs, counts, pairis = self.calc_single(codes)
-                corrss.append(corrs)
-                countss.append(counts)
-            corrs = np.array(corrss) # each row is a timepoint, each column a pair
-            corrs = corrs.T # each row is a pair, each column a timepoint
-            counts = np.array(countss)
-            counts = counts.T
+            uns = get_ipython().user_ns
+            highval = uns['CODEVALS'][1]
+            c, t = self.codes.c, self.codes.t
+            corrs, counts = util.cc_tranges(c, t, self.tranges, highval)
+            nneurons = len(codes.c)
+            pairis = np.triu_indices(nneurons)
         else:
             # compute correlation coefficients once across entire set of tranges
             corrs, counts, pairis = self.calc_single(self.codes)
             corrs, counts = np.array(corrs), np.array(counts)
         self.corrs = corrs
         self.counts = counts
-        self.pairis = np.array(pairis)
+        self.pairis = np.asarray(pairis)
         self.npairs = len(pairis)
 
     def calc_tranges(self):
@@ -969,6 +964,7 @@ class CodeCorr(object):
         some subset of self.tranges, contrained to torus described by self.R, weighted by
         self.weights"""
         c = codes.c # nneurons x nbins array
+        print('TODO: c is back to being int8. Is this OK, or is float64 still needed?')
         nneurons, nbins = c.shape
         nids = self.nids
         '''
@@ -1601,8 +1597,9 @@ class CodeCorr(object):
         return corrs, t, ylabel
 
     def plot(self, pairs='weightedmean', figsize=(20, 6.5)):
-        """Plot pairwise code correlations as a function of time. pairs can be 'mean',
-        'median', 'max', 'min', or 'all', or a specific set of indices into self.pairis."""
+        """Plot pairwise code correlations as a function of time. pairs can be
+        'weightedmean', 'mean', 'median', 'max', 'min', or 'all', or a specific set of
+        indices into self.pairis."""
         corrs, t, ylabel = self.cct(pairs=pairs)
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
