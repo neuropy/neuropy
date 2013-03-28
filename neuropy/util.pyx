@@ -103,7 +103,7 @@ def cc_tranges(int8_t[:, ::1] c,
     cdef int64_t nn = c.shape[0] # number of neurons
     cdef int64_t nt = c.shape[1] # number of time bins
     cdef int64_t ntranges = tranges.shape[0]
-    cdef int64_t i, j, trangei
+    cdef int64_t i, j, trangei, sti
     cdef int64_t[:, ::1] tis = np.searchsorted(t, tranges) # ntranges x 2 array
     np_tis = np.asarray(tis)
     # calc max and min slice widths
@@ -127,8 +127,8 @@ def cc_tranges(int8_t[:, ::1] c,
         # count up number of high states for each neuron in each trange, used later
         # for weighted average of cc(t) across neurons:
         for i in range(nn):
-            for j in range(nst):
-                if cslices[trangei, i, j] == highval:
+            for sti in range(nst):
+                if cslices[trangei, i, sti] == highval:
                     nhigh[trangei, i] += 1
     '''
     print('cython means:')
