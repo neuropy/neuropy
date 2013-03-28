@@ -6,7 +6,7 @@
 """Some functions written in Cython for max performance"""
 
 cimport cython
-from cython.parallel import prange, parallel
+from cython.parallel import prange
 import numpy as np
 cimport numpy as np
 from numpy cimport int8_t, int64_t, float64_t
@@ -154,9 +154,9 @@ def cc_tranges(int8_t[:, ::1] c,
     Cython doesn't allow reading the variable later within the loop, raising this error:
     "Cannot read reduction variable in loop body". Assigning to it initially in a `with
     parallel()` block doesn't help - that only works for buffers (I think). There are two
-    ways around this currently: don't do in-place operations, or abstract the whole loop out
-    into its own function, where the thread-local and reductions rules don't apply. For now,
-    I've done the former. See:
+    ways around this currently: 1) don't do in-place operations; 2) abstract the whole loop
+    out into its own function, where the thread-local and reductions rules don't apply. For
+    now, I've done the former. See:
     * http://docs.cython.org/src/userguide/parallelism.html
     * https://groups.google.com/forum/?fromgroups=#!topic/cython-users/Ady-DdWu6rE
     """
