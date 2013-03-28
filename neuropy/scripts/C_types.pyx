@@ -1,3 +1,10 @@
+# cython: boundscheck=False
+# cython: wraparound=False
+# cython: cdivision=True
+# cython: profile=False
+
+from libc.stdio cimport printf
+
 def test():
     """Print out some diagnostic info about how various C types are defined
     on this particular machine"""
@@ -19,4 +26,9 @@ def test():
     cdef unsigned char ucx = 127
     ucx += 1
     print(ucx)
-    
+    cdef int i = 5
+    cdef int j = 2
+    printf('5 / 2 = %d\n', (5 / 2))
+    printf('5 / <double>2 = %.3f\n', (5 / <double>2))
+    printf('5.0 / 2 = %.3f\n', (5.0 / 2))
+    printf('<double>5 / 2 = %.3f\n', (<double>5 / 2))
