@@ -26,11 +26,12 @@ stds = np.zeros((ntranges, nn))
 for i, (lo, hi) in enumerate(tis):
     means[i] = c[:, lo:hi].mean(axis=1)
     stds[i] = c[:, lo:hi].std(axis=1)
+'''
 print('python means:')
 print(means)
 print('python stds:')
 print(stds)
-
+'''
 #print(c.mean(axis=1))
 highval = 1
 corrs, counts = util.cc_tranges(c, t, tranges, highval)
