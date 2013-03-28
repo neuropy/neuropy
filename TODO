@@ -1,5 +1,8 @@
 TODO:
 
+- very strange BUG: ptc22.tr1.r07.cc().vs_pratio() messes up output, even though the first time it (usually) comes out correctly. This might be triggered after running ptc22.tr1.r08.cc().vs_pratio(). This seems to have started after completion of Cython cc(t) code. Yet even when vs_pratio is screwing up, cc(t) looks fine.
+    - need to do a copy somewhere, something happening in place that affects the next run? Maybe some kind of a race condition? Might correlate with pratio(t) part taking a longer time to calculate
+
 - rename "straddle" pairs to "cross" pairs?
 
 - NVS: DONE: try calculating cc as a function of time individually for each cell pair, and also average that signal over all cell pairs. Do this by splitting tranges up into chunks of tres = 30 sec or so. Then compare each of these signals (or the average signal) with the LFP pratio signal. How well do they correlate? That would give good indication of just much of the variance in the correlations is a function of cortical state.
