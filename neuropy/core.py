@@ -933,15 +933,14 @@ class CodeCorr(object):
             highval = uns['CODEVALS'][1]
             c, t = self.codes.c, self.codes.t
             corrs, counts = util.cc_tranges(c, t, self.tranges, highval)
-            nneurons = len(codes.c)
-            pairis = np.triu_indices(nneurons)
+            nneurons = len(c)
+            pairis = np.asarray(np.triu_indices(nneurons, k=1)).T
         else:
             # compute correlation coefficients once across entire set of tranges
             corrs, counts, pairis = self.calc_single(self.codes)
-            corrs, counts = np.array(corrs), np.array(counts)
         self.corrs = corrs
         self.counts = counts
-        self.pairis = np.asarray(pairis)
+        self.pairis = pairis
         self.npairs = len(pairis)
 
     def calc_tranges(self):
@@ -1047,6 +1046,9 @@ class CodeCorr(object):
                 # change results in self.cct(), because it would end up simply normalizing
                 # by half the value
                 counts.append(nhigh[nii0] + nhigh[nii1])
+        corrs = np.asarray(corrs)
+        counts = np.asarray(counts)
+        pairis = np.asarray(pairis)
         return corrs, counts, pairis
 
     def clear_codes(self):
