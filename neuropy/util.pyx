@@ -1,14 +1,15 @@
-# cython: boundscheck=True
-# cython: wraparound=True
+# cython: boundscheck=False
+# cython: wraparound=False
 # cython: cdivision=True
 # cython: profile=False
 
 """Some functions written in Cython for max performance"""
 
 cimport cython
-from cython.parallel import prange
+from cython.parallel import prange, parallel
 import numpy as np
 cimport numpy as np
+#from numpy cimport int8_t, int64_t, float64_t
 from libc.math cimport sqrt
 # import_array() is required for access to NumPy's C API, otherwise calls to something
 # like `np.PyArray_EMPTY` segfault. See:
@@ -95,17 +96,14 @@ def xcorr(np.ndarray[np.int64_t, ndim=1, mode='c'] x,
 
 def cc_tranges(np.int8_t[:, ::1] c,
                np.int64_t[::1] t,
-               np.int64_t[::1] nids,
                np.int64_t[:, ::1] tranges,
                np.int8_t highval):
     """Calculate all pairwise correlations of codes in 2D array c for every trange
-    in tranges. Rows in c are neurons, columns are bins. nids are the row labels
-    (neuron ids), t are the column labels (bin times)"""
-    cdef int nn = c.shape[0] # number of neurons
-    cdef int nt = c.shape[1] # number of time bins
-    cdef int ntranges = tranges.shape[0]
-    cdef int i, j, trangei
-    cdef double m
+    in tranges. Rows in c are neurons, columns are time bins. t are the bin times"""
+    cdef np.int64_t nn = c.shape[0] # number of neurons
+    cdef np.int64_t nt = c.shape[1] # number of time bins
+    cdef np.int64_t ntranges = tranges.shape[0]
+    cdef np.int64_t i, j, trangei
     cdef np.int64_t[:, ::1] tis = np.searchsorted(t, tranges) # ntranges x 2 array
     np_tis = np.asarray(tis)
     # calc max and min slice widths
@@ -115,11 +113,12 @@ def cc_tranges(np.int8_t[:, ::1] c,
         raise RuntimeError('maxslice = %d, minslice = %d' % (maxslice, minslice))
     cdef np.int64_t nst = maxslice # identical number of slice timepoints within each trange
     cdef np.int8_t[:, :, ::1] cslices = np.empty((ntranges, nn, maxslice), dtype=np.int8)
-    cdef double[:, ::1] means = np.zeros((ntranges, nn))
-    cdef double[:, ::1] stds = np.zeros((ntranges, nn))
+    cdef np.float64_t[:, ::1] means = np.zeros((ntranges, nn))
+    cdef np.float64_t[:, ::1] stds = np.zeros((ntranges, nn))
     cdef np.int64_t[:, ::1] nhigh = np.zeros((ntranges, nn), dtype=np.int64)
     cdef np.int64_t lo, hi
 
+    # pre-calc some arrays for use in main trange loop
     for trangei in prange(ntranges, nogil=True, schedule='dynamic'):
         lo, hi = tis[trangei, 0], tis[trangei, 1]
         cslices[trangei, :] = c[:, lo:hi]
@@ -129,7 +128,8 @@ def cc_tranges(np.int8_t[:, ::1] c,
         # for weighted average of cc(t) across neurons:
         for i in range(nn):
             for j in range(nst):
-                nhigh[trangei, i] += cslices[trangei, i, j]
+                if cslices[trangei, i, j] == highval:
+                    nhigh[trangei, i] += 1
                 
     print('cython means:')
     print(np.asarray(means))
@@ -138,96 +138,49 @@ def cc_tranges(np.int8_t[:, ::1] c,
     print('nhigh:')
     print(np.asarray(nhigh))
 
-    '''
-    #with nogil, parallel(): # need for setting up thread local buffers for prange
+    cdef np.int64_t npairs = nn * (nn - 1) / 2
+    cdef np.float64_t[:, ::1] corrs = np.empty((ntranges, npairs))
+    cdef np.int64_t[:, ::1] counts = np.empty((ntranges, npairs), dtype=np.int64)
+    cdef np.int64_t pairi, cumprod # cumulative product
+    cdef np.float64_t numer, denom
+    """pairi and cumprod can't be incremented in place in this prange, because of Cython's
+    automatic inferral of thead-locality and reductions. From the docs: "If you use an
+    inplace operator on a variable, it becomes a reduction, meaning that the values from the
+    thread-local copies of the variable will be reduced with the operator and assigned to
+    the original variable after the loop." After incrementing (and causing a reduction),
+    Cython doesn't allow reading the variable later within the loop, raising this error:
+    "Cannot read reduction variable in loop body". Assigning to it initially in a `with
+    parallel()` block doesn't help - that only works for buffers (I think). There are two
+    ways around this currently: don't do in-place operations, or abstract the whole loop out
+    into its own function, where the thread-local and reductions rules don't apply. For now,
+    I've done the former. See:
+    * http://docs.cython.org/src/userguide/parallelism.html
+    * https://groups.google.com/forum/?fromgroups=#!topic/cython-users/Ady-DdWu6rE
+    """
+    for trangei in prange(ntranges, nogil=True, schedule='dynamic'):
+        pairi = 0
+        for i in range(nn):
+            for j in range(i+1, nn):
+                # accumulate element-wise product of c[trangei] for this neuron pair:
+                cumprod = 0
+                for sti in range(0, nst):
+                    #cumprod += cslices[trangei, i, sti] * cslices[trangei, j, sti]
+                    cumprod = cumprod + cslices[trangei, i, sti] * cslices[trangei, j, sti]
+                # (mean of product - product of means) / product of stds:
+                numer = <np.float64_t>cumprod / nst - means[trangei, i] * means[trangei, j]
+                denom = stds[trangei, i] * stds[trangei, j]
+                # all codes values for at least one neuron must've been identical,
+                # leading to 0 std, call that 0 code correlation:
+                if denom == 0.0:
+                    corrs[trangei, pairi] = 0.0
+                else:
+                    corrs[trangei, pairi] = numer / denom
+                # store sum of high code counts of this pair:
+                counts[trangei, pairi] = nhigh[trangei, i] + nhigh[trangei, j]
+                #pairi += 1 # inc for next loop
+                pairi = pairi + 1 # inc for next loop
 
-        means = <double *>calloc(nn, sizeof(double))
-        #cdef np.float64_t[::1] stds
-        #cdef np.int64_t[::1] nhigh
-        #cdef int *dims = <int *>malloc(ndims*sizeof(int)) # dimension sizes
-        #memset(means
-        #means = np.zeros(1000)
-        #stds = np.zeros(1000)
-        #nhigh = np.zeros(1000, dtype=np.int64)
-        for trangei in prange(ntranges, schedule='dynamic'):
-
-            # precalculate mean and std of each cell's codetrain, rows correspond to nids:
-            #means = PyArray_SimpleNew(axis, dims, np.NPY_FLOAT64)
-            #stds = PyArray_SimpleNew(axis, dims, np.NPY_FLOAT64)
-            #PyArray_Mean(c, 1, np.NPY_FLOAT64, means)
-            #PyArray_Mean(c, 1, np.NPY_FLOAT64, stds)
-            lo, hi = tis[trangei, 0], tis[trangei, 1]
-            #lo = tis[trangei, 0]
-            #hi = tis[trangei, 1]
-            mean_int8_axis1(c[lo:hi], means)
-        #if trangei == 9:
-        #for i in range(nn):
-        #    printf('%.3f, ', means[i])
-        #printf('\n')
-        #free(means)
-    '''
-
-
-
-
-
-
-
-            
-    '''
-
-            # precalculate number of high states in each neuron's code:
-            #nhigh = PyArray_SimpleNew(axis, dims, np.NPY_INT64)
-
-            uns = get_ipython().user_ns
-            if uns['CODEVALS'] != [0, 1]:
-                raise RuntimeError("counting of high states assumes CODEVALS = [0, 1]")
-            for nii0 in range(nneurons):
-                nhigh[nii0] = c[nii0].sum()
-            
-            #shift, shiftcorrect = self.shift, self.shiftcorrect
-            #if shift and shiftcorrect:
-            #    raise ValueError("only one of shift or shiftcorrect can be nonzero")
-
-            # iterate over all pairs:
-            n = self.r.n
-            corrs = []
-            counts = []
-            pairis = []
-            for nii0 in range(nneurons):
-                ni0 = nids[nii0]
-                for nii1 in range(nii0+1, nneurons):
-                    ni1 = nids[nii1]
-                    c0 = c[nii0]
-                    c1 = c[nii1]
-                    # (mean of product - product of means) / product of stds:
-                    #numer = (c0 * c1 * binw).mean() - means[nii0] * means[nii1] * meanw
-                    numer = np.dot(c0, c1) / nbins - means[nii0] * means[nii1]
-                    denom = stds[nii0] * stds[nii1]
-                    if numer == 0.0:
-                        cc = 0.0 # even if denom is also 0
-                    elif denom == 0.0: # numer is not 0, but denom is 0, prevent div by 0
-                        print('skipped pair (%d, %d) in r%s' % (ni0, ni1, self.r.id))
-                        continue # skip to next pair
-                    else:
-                        cc = numer / denom
-                    # potentially shift correct using only the second spike train of each pair:
-                    #if shiftcorrect:
-                    #    c1sc = self.r.n[ni1].code(tranges=tranges, shift=shiftcorrect).c
-                    #    ccsc = ((c0 * c1sc).mean() - means[ni0] * means[ni1]) / denom
-                    #    ## TODO: might also want to try subtracting abs(ccsc)?
-                    #    cc -= ccsc
-                    corrs.append(cc)
-                    pairis.append([nii0, nii1])
-                    # take sum of high code counts of pair. Note that taking the mean wouldn't
-                    # change results in self.cct(), because it would end up simply normalizing
-                    # by half the value
-                    counts.append(nhigh[nii0] + nhigh[nii1])
-            return corrs, counts, pairis
-    '''
-    #print('cython mean for last trange:')
-    #print(np.asarray(means))
-    #print(np.asarray(means).dtype)
+    return np.asarray(corrs.T), np.asarray(counts.T) # pairs in rows, tranges in columns
 
 '''
 cdef double mean_int8(np.int8_t[::1] x) nogil:
@@ -239,7 +192,7 @@ cdef double mean_int8(np.int8_t[::1] x) nogil:
         sum += x[i]
     return sum / n
 '''
-cdef void mean_int8_axis1(np.int8_t[:, ::1] x, double[::1] means) nogil:
+cdef void mean_int8_axis1(np.int8_t[:, ::1] x, np.float64_t[::1] means) nogil:
     """Store in `means` the mean of 2D int8 array x along axis 1.
     Assume `means` is initialized to zeros"""
     cdef int i, j, m, n
@@ -250,7 +203,8 @@ cdef void mean_int8_axis1(np.int8_t[:, ::1] x, double[::1] means) nogil:
             means[i] += x[i, j]
         means[i] /= n
 
-cdef void std_int8_axis1(np.int8_t[:, ::1] x, double[::1] means, double[::1] stds) nogil:
+cdef void std_int8_axis1(np.int8_t[:, ::1] x, np.float64_t[::1] means,
+                         np.float64_t[::1] stds) nogil:
     """Store in `stds` the standard deviation of 2D int8 array x along axis 1.
     `means` holds mean of each row in x.
     Assume `means` and `stds` are initialized to zeros"""

@@ -7,13 +7,12 @@ import util # .pyx file
 import numpy as np
 import time
 
-nn = 5 # number of neurons
+nn = 4 # number of neurons
 nt = 100
 c = np.int8(np.random.randint(2, size=(nn, nt)))
 print('c:')
 print(c)
 
-nids = np.arange(nn, dtype=np.int64)
 t = np.arange(nt, dtype=np.int64)
 tranges = np.array([[0, 10], [10,20], [20,30], [30,40], [40,50],
                     [50,60], [60,70], [70,80], [80,90], [90,100]], dtype=np.int64)
@@ -34,4 +33,8 @@ print(stds)
 
 #print(c.mean(axis=1))
 highval = 1
-util.cc_tranges(c, t, nids, tranges, highval)
+corrs, counts = util.cc_tranges(c, t, tranges, highval)
+print('corrs:')
+print(corrs)
+print('counts:')
+print(counts)
