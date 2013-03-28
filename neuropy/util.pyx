@@ -15,13 +15,12 @@ from libc.math cimport sqrt
 # like `np.PyArray_EMPTY` segfault. See:
 # http://docs.scipy.org/doc/numpy/reference/c-api.array.html#importing-the-api
 #np.import_array()
-
+'''
 cdef extern from "string.h" nogil:
     cdef void *memset(void *, int, size_t) # sets n bytes in memory to constant
     cdef void *malloc(size_t) # allocates without clearing to 0
     cdef void *calloc(size_t, size_t) # allocates with clearing to 0
-
-
+'''
 #cdef extern from "Python.h":
 #    ctypedef int Py_intptr_t
 
@@ -51,16 +50,16 @@ def xcorr(np.ndarray[int64_t, ndim=1, mode='c'] x,
     """Calculate cross-correlation of timepoints in x with y, constrained to lower
     and upper bounds in trange. Assume timepoints in x and y are sorted"""
     # should assert contig of x and y, this seems to happen automatically though
-    cdef long long ntx, nty, loti, dtsi, xti, yti, maxxti, maxyti, t, dt
-    cdef long long low = trange[0]
-    cdef long long high = trange[1]
-    cdef long long DTSALLOCSIZE = 1000000
+    cdef int64_t ntx, nty, loti, dtsi, xti, yti, maxxti, maxyti, t, dt
+    cdef int64_t low = trange[0]
+    cdef int64_t high = trange[1]
+    cdef int64_t DTSALLOCSIZE = 1000000
     ntx = x.shape[0]
     nty = y.shape[0]
     maxxti = ntx - 1
     maxyti = nty - 1
     cdef np.ndarray[int64_t, ndim=1] dts = np.zeros(DTSALLOCSIZE, dtype=np.int64)
-    cdef long long maxdtsi = dts.shape[0] - 1
+    cdef int64_t maxdtsi = dts.shape[0] - 1
 
     loti = 0
     dtsi = 0
