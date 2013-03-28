@@ -107,8 +107,11 @@ def cc_tranges(int8_t[:, ::1] c,
     cdef int64_t[:, ::1] tis = np.searchsorted(t, tranges) # ntranges x 2 array
     np_tis = np.asarray(tis)
     # calc max and min slice widths
-    cdef int64_t maxslice = (np_tis[:, 1] - np_tis[:, 0]).max()
-    cdef int64_t minslice = (np_tis[:, 1] - np_tis[:, 0]).min()
+    dtis = np_tis[:, 1] - np_tis[:, 0]
+    print('dtis:')
+    print(dtis)
+    cdef int64_t maxslice = dtis.max()
+    cdef int64_t minslice = dtis.min()
     if maxslice != minslice:
         raise RuntimeError('maxslice = %d, minslice = %d' % (maxslice, minslice))
     cdef int64_t nst = maxslice # identical number of slice timepoints within each trange
