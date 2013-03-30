@@ -208,7 +208,7 @@ cdef void std_int8_axis1(int8_t[:, ::1] x, float64_t[::1] means,
                          float64_t[::1] stds) nogil:
     """Store in `stds` the standard deviation of 2D int8 array x along axis 1.
     `means` holds mean of each row in x.
-    Assume `means` and `stds` are initialized to zeros"""
+    Assume `stds` is initialized to zeros"""
     cdef int i, j, m, n
     cdef double d
     m, n = x.shape[0], x.shape[1]
