@@ -108,7 +108,7 @@ def cc_tranges(int8_t[:, ::1] c,
     # calc number of slice time bins for each trange:
     np_nst = np_tis[:, 1] - np_tis[:, 0]
     cdef int64_t maxslice = np_nst.max()
-    cdef int64_t[::1] nst = np_nst
+    cdef int64_t[::1] nst = np_nst # has length ntranges
     cdef int8_t[:, :, ::1] cslices = np.empty((ntranges, nn, maxslice), dtype=np.int8)
     cdef float64_t[:, ::1] means = np.zeros((ntranges, nn))
     cdef float64_t[:, ::1] stds = np.zeros((ntranges, nn))
@@ -119,8 +119,8 @@ def cc_tranges(int8_t[:, ::1] c,
     for trangei in prange(ntranges, nogil=True, schedule='dynamic'):
         lo, hi = tis[trangei, 0], tis[trangei, 1]
         cslices[trangei, :, :nst[trangei]] = c[:, lo:hi]
-        mean_int8_axis1(cslices[trangei], means[trangei])
-        std_int8_axis1(cslices[trangei], means[trangei], stds[trangei])
+        mean_int8_axis1(cslices[trangei], nst[trangei], means[trangei])
+        std_int8_axis1(cslices[trangei], nst[trangei], means[trangei], stds[trangei])
         # count up number of high states for each neuron in each trange, used later
         # for weighted average of cc(t) across neurons:
         for i in range(nn):
@@ -130,7 +130,9 @@ def cc_tranges(int8_t[:, ::1] c,
     '''
     print('cython:')
     print('nst:')
-    print(np_nst)
+    print(np.asarray(nst))
+    print('cslices:')
+    print(np.asarray(cslices))
     print('means:')
     print(np.asarray(means))
     print('stds:')
@@ -193,25 +195,27 @@ cdef double mean_int8(int8_t[::1] x) nogil:
         sum += x[i]
     return sum / n
 '''
-cdef void mean_int8_axis1(int8_t[:, ::1] x, float64_t[::1] means) nogil:
+cdef void mean_int8_axis1(int8_t[:, ::1] x, int64_t n, float64_t[::1] means) nogil:
     """Store in `means` the mean of 2D int8 array x along axis 1.
+    Consider only the first `n` values of x along axis 1.
     Assume `means` is initialized to zeros"""
-    cdef int i, j, m, n
-    m, n = x.shape[0], x.shape[1]
+    cdef int i, j, m
+    m = x.shape[0]
     for i in range(m):
         #means[i] = 0.0 # shouldn't be any need to clear
         for j in range(n):
             means[i] += x[i, j]
         means[i] /= n
 
-cdef void std_int8_axis1(int8_t[:, ::1] x, float64_t[::1] means,
+cdef void std_int8_axis1(int8_t[:, ::1] x, int64_t n, float64_t[::1] means,
                          float64_t[::1] stds) nogil:
     """Store in `stds` the standard deviation of 2D int8 array x along axis 1.
+    Consider only the first `n` values of x along axis 1.
     `means` holds mean of each row in x.
     Assume `stds` is initialized to zeros"""
-    cdef int i, j, m, n
+    cdef int i, j, m
     cdef double d
-    m, n = x.shape[0], x.shape[1]
+    m = x.shape[0]
     for i in range(m):
         #stds[i] = 0.0 # shouldn't be any need to clear
         for j in range(n):
