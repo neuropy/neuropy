@@ -928,7 +928,7 @@ class CodeCorr(object):
     def calc(self):
         if self.width != None:
             # compute correlation coefficients separately for each trange:
-            self.calc_tranges()
+            self.tranges = split_tranges(self.tranges, self.width, self.overlap)
             uns = get_ipython().user_ns
             highval = uns['CODEVALS'][1]
             c, t = self.codes.c, self.codes.t
@@ -942,21 +942,6 @@ class CodeCorr(object):
         self.counts = counts
         self.pairis = pairis
         self.npairs = len(pairis)
-
-    def calc_tranges(self):
-        """Split up tranges into lots of smaller ones, with self.width and self.overlap"""
-        width = self.width
-        overlap = self.overlap
-        newtranges = []
-        for trange in self.tranges:
-            t0, t1 = trange
-            assert width < (t1 - t0)
-            # calculate left and right edges of subtranges that fall within trange:
-            ledges = np.arange(t0, t1-width, width-overlap)
-            redges = ledges + width
-            subtranges = [ (le, re) for le, re in zip(ledges, redges) ]
-            newtranges.append(subtranges)
-        self.tranges = np.vstack(newtranges) # replace
 
     def calc_single(self, codes):
         """Calculate one code correlation value for each cell pair, given codes spanning
@@ -3072,3 +3057,16 @@ def sample_uquadratic(a=0, b=1, size=None):
     x = np.random.random(size=size) # sample uniform distrib
     x = (b - a) * x + a # scale so that min(x) == a and max(x) == b
     return inverse_uquadratic_cdf(x, a, b)
+
+def split_tranges(tranges, width, overlap):
+    """Split up tranges into lots of smaller ones, with width and overlap"""
+    newtranges = []
+    for trange in tranges:
+        t0, t1 = trange
+        assert width < (t1 - t0)
+        # calculate left and right edges of subtranges that fall within trange:
+        ledges = np.arange(t0, t1-width, width-overlap)
+        redges = ledges + width
+        subtranges = [ (le, re) for le, re in zip(ledges, redges) ]
+        newtranges.append(subtranges)
+    return np.vstack(newtranges)
