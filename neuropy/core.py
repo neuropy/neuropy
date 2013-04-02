@@ -1678,6 +1678,12 @@ class CodeCorr(object):
         else:
             c = 'black'
         m, b, rval, pval, stderr = scipy.stats.linregress(r, corrs)
+        """descriptions of the returned values:
+        rval: correlation coefficient
+        pval: two-sided p-value for a hypothesis test whose null hypothesis is
+              that the slope is zero.
+        stderr: standard error of the estimate
+        """
         a.plot(prrange, m*prrange+b, 'k--')
         if lines:
             a.plot(r, corrs, color='black', marker='.', ms=6, mew=0)
@@ -1695,11 +1701,9 @@ class CodeCorr(object):
         a.set_title(titlestr)
         a.text(0.998, 0.99,
                '%s\n'
-               'r = %.3f\n'
-               'p = %.3f\n'
-               'm = %.3f\n'
-               'b = %.3f'
-               % (self.r.name, rval, pval, m, b),
+               'r = %.3f, $r^2$= %.3f, p = %.3f\n'
+               'm = %.3f, b = %.3f\n'
+               % (self.r.name, rval, rval**2, pval, m, b),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
