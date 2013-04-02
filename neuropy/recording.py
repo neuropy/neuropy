@@ -153,6 +153,38 @@ class BaseRecording(object):
         self.dthour = self.dtmin / 60
         self.calc_meanrates()
 
+    def get_nids(self, tranges=None):
+        """Find cells active in all tranges"""
+        if tranges == None:
+            return sorted(self.n) # return sorted nids of all active neurons
+        # start with all neurons, even those with average rates below MINRATE over the
+        # span of self. Remove them one by one if their average rates fall below MINRATE
+        # in any trange in tranges
+        #print('rid: %s' % self.id)
+        tranges = np.asarray(tranges)
+        assert tranges.ndim == 2 # 2D
+        assert tranges.shape[1] == 2 # two columns
+        uns = get_ipython().user_ns
+        alln = self.alln
+        nids = alln.keys()
+        for trange in tranges:
+            #print('trange: %r' % (trange,))
+            dt = (trange[1] - trange[0]) / 1e6 # trange duration in sec
+            assert dt >= 0
+            nidi = 0
+            while nidi < len(nids):
+                #print('nids: %r' % nids)
+                nid = nids[nidi]
+                lo, hi = alln[nid].spikes.searchsorted(trange)
+                nspikes = hi - lo # nspikes for nid in this trange
+                meanrate = nspikes / dt # Hz
+                if meanrate < uns['MINRATE']:
+                    nids.remove(nid)
+                    # new nid has slid into view, don't inc nidi
+                else: # keep nid (for now), inc nidi
+                    nidi += 1
+        return np.sort(nids) # may as well sort them
+
     def calc_meanrates(self):
         """Calculate mean firing rates of all neurons in this recording"""
         RECNEURONPERIOD = get_ipython().user_ns['RECNEURONPERIOD']
@@ -191,38 +223,6 @@ class BaseRecording(object):
         a.set_xlabel('mean firing rate (Hz)')
         a.set_ylabel('neuron count')
         f.tight_layout(pad=0.3) # crop figure to contents
-
-    def get_nids(self, tranges=None):
-        """Find cells active in all tranges"""
-        if tranges == None:
-            return sorted(self.n) # return sorted nids of all active neurons
-        # start with all neurons, even those with average rates below MINRATE over the
-        # span of self. Remove them one by one if their average rates fall below MINRATE
-        # in any trange in tranges
-        #print('rid: %s' % self.id)
-        tranges = np.asarray(tranges)
-        assert tranges.ndim == 2 # 2D
-        assert tranges.shape[1] == 2 # two columns
-        uns = get_ipython().user_ns
-        alln = self.alln
-        nids = alln.keys()
-        for trange in tranges:
-            #print('trange: %r' % (trange,))
-            dt = (trange[1] - trange[0]) / 1e6 # trange duration in sec
-            assert dt >= 0
-            nidi = 0
-            while nidi < len(nids):
-                #print('nids: %r' % nids)
-                nid = nids[nidi]
-                lo, hi = alln[nid].spikes.searchsorted(trange)
-                nspikes = hi - lo # nspikes for nid in this trange
-                meanrate = nspikes / dt # Hz
-                if meanrate < uns['MINRATE']:
-                    nids.remove(nid)
-                    # new nid has slid into view, don't inc nidi
-                else: # keep nid (for now), inc nidi
-                    nidi += 1
-        return np.sort(nids) # may as well sort them
 
     def pospdf(self, dim='y', nbins=10, a=None, stats=False, figsize=(7.5, 6.5)):
         """Plot PDF of cell positions ('x' or 'y') along the polytrode
