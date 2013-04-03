@@ -34,12 +34,12 @@ CODEPHASE = 0 # deg
 CODEWORDLEN = 10 # in bits
 
 """LFP power ratio overlapping time range windows"""
-PRATIOWIDTH = 32768000 # us (2**15 ms)
-PRATIOOVERLAP = 32000000 # us
+PRATIOWIDTH = 32.768 # sec (2**15 ms)
+PRATIOOVERLAP = 32 # sec
 
 """Code correlation overlapping time range windows"""
-CCWIDTH = PRATIOWIDTH # us
-CCOVERLAP = PRATIOOVERLAP # us
+CCWIDTH = PRATIOWIDTH # sec
+CCOVERLAP = PRATIOOVERLAP # sec
 
 """Multiunit activity overlapping time range windows"""
 MUAWIDTH = 1 # sec

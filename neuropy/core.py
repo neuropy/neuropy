@@ -537,12 +537,12 @@ class LFP(object):
             if overlap == None:
                 overlap = 0
             assert overlap < width
-            width = intround(width * 1000000) # convert from sec to us
-            overlap = intround(overlap * 1000000) # convert from sec to us
         if width == None:
-            width = uns['PRATIOWIDTH'] # us
+            width = uns['PRATIOWIDTH'] # sec
         if overlap == None:
-            overlap = uns['PRATIOOVERLAP'] # us
+            overlap = uns['PRATIOOVERLAP'] # sec
+        width = intround(width * 1000000) # convert from sec to us
+        overlap = intround(overlap * 1000000) # convert from sec to us
         NFFT = intround(width / self.tres) # both are in us
         noverlap = intround(overlap / self.tres) # both are in us
 
@@ -1545,9 +1545,9 @@ class CodeCorr(object):
         indices into self.pairis."""
         uns = get_ipython().user_ns
         if self.width == None:
-            self.width = uns['CCWIDTH'] # us
+            self.width = intround(uns['CCWIDTH'] * 1000000) # convert from sec to us
         if self.overlap == None:
-            self.overlap = uns['CCOVERLAP'] # us
+            self.overlap = intround(uns['CCOVERLAP'] * 1000000) # convert from sec to us
         self.calc()
         corrs = self.corrs
         """Instead of simply masking out 0 corr values, weigh each pairwise corr in each
