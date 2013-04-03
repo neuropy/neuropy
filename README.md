@@ -45,10 +45,10 @@ neuropy requires recent versions of the following to be installed:
 * [matplotlib](http://matplotlib.org)
 * [PyQt4](http://www.riverbankcomputing.co.uk/software/pyqt)
   ([PySide](http://pyside.org) will probably work too, but is untested)
+* [Cython](http://cython.org)
 
 Optional:
 
-* [Cython](http://cython.org)
 * [scikit-learn](http://scikit-learn.org)
 
 neuropy is developed in Xubuntu 12.10. It should work in other Linux distributions.
