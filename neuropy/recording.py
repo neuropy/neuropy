@@ -185,7 +185,7 @@ class BaseRecording(object):
                     nidi += 1
         return np.sort(nids) # may as well sort them
 
-    def mua(self, neurons=None, width=None, overlap=None, plot=True):
+    def mua(self, width=None, overlap=None, neurons=None, plot=True):
         """Calculate multiunit activity as a function of time. neurons can be None, 'quiet',
         'all', or a dict. width and overlap of time bins are in seconds"""
         if neurons == None:
@@ -194,6 +194,7 @@ class BaseRecording(object):
             neurons = self.qn # use quiet neurons
         elif neurons == 'all':
             neurons = self.alln # use all neurons
+        nn = len(neurons)
 
         uns = get_ipython().user_ns
         if width == None:
@@ -212,12 +213,33 @@ class BaseRecording(object):
         spikeis = spikes.searchsorted(tranges)
         counts = spikeis[:, 1] - spikeis[:, 0]
         widths = (tranges[:, 1] - tranges[:, 0]) / 1000000 # width of each trange, in sec
-        rates = counts / widths
+        rates = counts / widths # in spikes/sec (Hz)
         # get midpoint of each trange, convert from us to sec:
         t = tranges.mean(axis=1) / 1000000
-        #if plot:
-        #    plot
-        return rates, t
+        if plot:
+            self.plot_mua(rates, t, nn)
+        return rates, t, nn
+
+    def plot_mua(self, rates, t, nn, figsize=(20, 6.5)):
+        """Plot multiunit activity as a function of time"""
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        a.plot(t, rates)
+        a.set_xlabel("time (sec)")
+        a.set_ylabel("MUA of %d neurons (Hz)" % nn)
+        # limit plot to duration of acquistion, in sec:
+        t0, t1 = np.asarray(self.trange) / 1000000
+        a.set_xlim(t0, t1)
+        #a.autoscale(axis='x', enable=True, tight=True)
+        # turn off annoying "+2.41e3" type offset on x axis:
+        formatter = mpl.ticker.ScalarFormatter(useOffset=False)
+        a.xaxis.set_major_formatter(formatter)
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        a.set_title(titlestr)
+        a.text(0.998, 0.99, '%s' % self.name, color='k', transform=a.transAxes,
+               horizontalalignment='right', verticalalignment='top')
+        f.tight_layout(pad=0.3) # crop figure to contents
 
     def calc_meanrates(self):
         """Calculate mean firing rates of all neurons in this recording"""
