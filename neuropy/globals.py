@@ -41,5 +41,9 @@ PRATIOOVERLAP = 32000000 # us
 CCWIDTH = PRATIOWIDTH # us
 CCOVERLAP = PRATIOOVERLAP # us
 
+"""Multiunit activity overlapping time range windows"""
+MUAWIDTH = 1 # sec
+MUAOVERLAP = 0.5 # sec
+
 """Threshold distance down vertical axis of probe separating superficial from deep cells"""
 YTHRESH = 600 # um

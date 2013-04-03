@@ -185,6 +185,40 @@ class BaseRecording(object):
                     nidi += 1
         return np.sort(nids) # may as well sort them
 
+    def mua(self, neurons=None, width=None, overlap=None, plot=True):
+        """Calculate multiunit activity as a function of time. neurons can be None, 'quiet',
+        'all', or a dict. width and overlap of time bins are in seconds"""
+        if neurons == None:
+            neurons = self.n # use active neurons
+        elif neurons == 'quiet':
+            neurons = self.qn # use quiet neurons
+        elif neurons == 'all':
+            neurons = self.alln # use all neurons
+
+        uns = get_ipython().user_ns
+        if width == None:
+            width = uns['MUAWIDTH'] # sec
+        if overlap == None:
+            overlap = uns['MUAOVERLAP'] # sec
+        assert overlap < width
+        width = intround(width * 1000000) # convert from sec to us
+        overlap = intround(overlap * 1000000) # convert from sec to us
+
+        spikes = np.concatenate([ n.spikes for n in neurons.values() ])
+        spikes.sort() # sorted spikes from all neurons
+
+        tranges = core.split_tranges([self.trange], width, overlap) # in us
+
+        spikeis = spikes.searchsorted(tranges)
+        counts = spikeis[:, 1] - spikeis[:, 0]
+        widths = (tranges[:, 1] - tranges[:, 0]) / 1000000 # width of each trange, in sec
+        rates = counts / widths
+        # get midpoint of each trange, convert from us to sec:
+        t = tranges.mean(axis=1) / 1000000
+        #if plot:
+        #    plot
+        return rates, t
+
     def calc_meanrates(self):
         """Calculate mean firing rates of all neurons in this recording"""
         RECNEURONPERIOD = get_ipython().user_ns['RECNEURONPERIOD']
