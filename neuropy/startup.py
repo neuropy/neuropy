@@ -43,3 +43,4 @@ ip.Completer.greedy = True
 ip.Completer.omit__names = 1 # all 'magic' names (``__foo__``) will be excluded
 rc = get_ipython().user_ns['rcParams']
 rc['mathtext.default'] = 'regular' # use same font for math mode as regular text mode
+rc['lines.markersize'] = 5 # default 6 renders yucky diamond-like points
