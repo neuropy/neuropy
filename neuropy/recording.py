@@ -205,28 +205,54 @@ class BaseRecording(object):
         width = intround(width * 1000000) # convert from sec to us
         overlap = intround(overlap * 1000000) # convert from sec to us
 
-        spikes = np.concatenate([ n.spikes for n in neurons.values() ])
-        spikes.sort() # sorted spikes from all neurons
+        nids = np.sort(neurons.keys())
+        ys = np.array([ neurons[nid].pos[1] for nid in nids ]) # y positions of each neuron
+        ythresh = uns['YTHRESH']
+        supis = ys < ythresh # True values are superficial, False are deep
+        deepis = np.invert(supis) # True values are deep, False are superficial
+        supnids = nids[supis]
+        deepnids = nids[deepis]
+        nsup = len(supnids)
+        ndeep = len(deepnids)
+
+        allspikes = np.concatenate([ neurons[nid].spikes for nid in nids ])
+        supspikes = np.concatenate([ neurons[nid].spikes for nid in supnids ])
+        deepspikes = np.concatenate([ neurons[nid].spikes for nid in deepnids ])
+        allspikes.sort() # sorted spikes from all neurons
+        supspikes.sort() # sorted spikes from superficial neurons
+        deepspikes.sort() # sorted spikes from deep neurons
 
         tranges = core.split_tranges([self.trange], width, overlap) # in us
 
+        allrates = self.get_mean_rates(allspikes, nn, tranges)
+        suprates = self.get_mean_rates(supspikes, nsup, tranges)
+        deeprates = self.get_mean_rates(deepspikes, ndeep, tranges)
+        rates = np.vstack([allrates, suprates, deeprates])
+        # get midpoint of each trange, convert from us to sec:
+        t = tranges.mean(axis=1) / 1000000
+        n = nn, nsup, ndeep
+        if plot:
+            self.plot_mua(rates, t, n)
+        return rates, t, n
+
+    def get_mean_rates(self, spikes, nn, tranges):
+        """Take sorted spike train of nn neurons and set of tranges and return mean
+        spike rate as a function of time"""
         spikeis = spikes.searchsorted(tranges)
         counts = spikeis[:, 1] - spikeis[:, 0]
         widths = (tranges[:, 1] - tranges[:, 0]) / 1000000 # width of each trange, in sec
-        rates = counts / widths # in spikes/sec (Hz)
-        # get midpoint of each trange, convert from us to sec:
-        t = tranges.mean(axis=1) / 1000000
-        if plot:
-            self.plot_mua(rates, t, nn)
-        return rates, t, nn
+        rates = counts / widths / nn # in spikes/sec (Hz) per neuron
+        return rates
 
-    def plot_mua(self, rates, t, nn, figsize=(20, 6.5)):
-        """Plot multiunit activity as a function of time"""
+    def plot_mua(self, rates, t, n, figsize=(20, 6.5)):
+        """Plot multiunit activity (all, sup, and deep firing rates) as a function of time"""
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.plot(t, rates)
+        a.plot(t, rates[0], 'k.-') # all neurons
+        a.plot(t, rates[1], 'r') # sup neurons
+        a.plot(t, rates[2], 'b') # deep neurons
         a.set_xlabel("time (sec)")
-        a.set_ylabel("MUA of %d neurons (Hz)" % nn)
+        a.set_ylabel("mean MUA of %r neurons (Hz)" % (n,))
         # limit plot to duration of acquistion, in sec:
         t0, t1 = np.asarray(self.trange) / 1000000
         a.set_xlim(t0, t1)
