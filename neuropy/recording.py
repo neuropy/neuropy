@@ -224,9 +224,9 @@ class BaseRecording(object):
 
         tranges = core.split_tranges([self.trange], width, overlap) # in us
 
-        allrates = self.get_mean_rates(allspikes, nn, tranges)
-        suprates = self.get_mean_rates(supspikes, nsup, tranges)
-        deeprates = self.get_mean_rates(deepspikes, ndeep, tranges)
+        allrates = self.mean_mua_rates(allspikes, nn, tranges)
+        suprates = self.mean_mua_rates(supspikes, nsup, tranges)
+        deeprates = self.mean_mua_rates(deepspikes, ndeep, tranges)
         rates = np.vstack([allrates, suprates, deeprates])
         # get midpoint of each trange, convert from us to sec:
         t = tranges.mean(axis=1) / 1000000
@@ -235,7 +235,7 @@ class BaseRecording(object):
             self.plot_mua(rates, t, n)
         return rates, t, n
 
-    def get_mean_rates(self, spikes, nn, tranges):
+    def mean_mua_rates(self, spikes, nn, tranges):
         """Take sorted spike train of nn neurons and set of tranges and return mean
         spike rate as a function of time"""
         spikeis = spikes.searchsorted(tranges)
