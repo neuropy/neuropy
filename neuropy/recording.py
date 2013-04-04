@@ -248,9 +248,9 @@ class BaseRecording(object):
         """Plot multiunit activity (all, sup, and deep firing rates) as a function of time"""
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.plot(t, rates[0], 'k.-') # all neurons
-        a.plot(t, rates[1], 'r') # sup neurons
-        a.plot(t, rates[2], 'b') # deep neurons
+        a.plot(t, rates[0], 'k', label='all (%d)' % n[0])
+        a.plot(t, rates[1], 'r', label='superficial (%d)' % n[1])
+        a.plot(t, rates[2], 'b', label='deep (%d)' % n[2])
         a.set_xlabel("time (sec)")
         a.set_ylabel("mean MUA of %r neurons (Hz)" % (n,))
         # limit plot to duration of acquistion, in sec:
@@ -265,6 +265,7 @@ class BaseRecording(object):
         a.set_title(titlestr)
         a.text(0.998, 0.99, '%s' % self.name, color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
+        a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
     def calc_meanrates(self):
