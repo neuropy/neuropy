@@ -4,14 +4,18 @@ TODO:
 
 - rename "pratio" to "synchrony index"?
 
+- add option for more conventional looking population raster plot, with equal vertical spacing (but probably still in order of depth) and maybe also vertical raster lines, to better visualize the possible presence of up/down states
+
 - NVS: DONE: try calculating cc as a function of time individually for each cell pair, and also average that signal over all cell pairs. Do this by splitting tranges up into chunks of tres = 30 sec or so. Then compare each of these signals (or the average signal) with the LFP pratio signal. How well do they correlate? That would give good indication of just much of the variance in the correlations is a function of cortical state.
     - wouldn't this pretty much be the same as calculating MUA with 20ms bins? No, it wouldn't. Because MUA is just a measure of population firing rate. Regardless of the bin size, it doesn't say anything about whether a specific subset of neurons (such as a pair) increase or decrease their rates of coincides. A big change in MUA could simply be due to a single neuron's firing rate changing dramatically, while all the other cells stay silent, which means that cell is completely uncorrelated from all the others.
     - DONE: try overlapping tranges to get smoother signal
     - DONE: weight average cc(t) by the number of ON values for each neuron in each trange
     - DONE: scatter plot cc(t) vs pratio(t) - should see they're quite correlated - the more synchronized the network, according to LFP, the greater the average pairwise correlations
     - scatter plot mua(t) vs pratio(t)
+    - scatter plot mua(t) vs d/dt(pratio(t))
     - scatter plot deep and superficial cc(t) vs pratio(t)
-    - DONE: plot vs log(pratio) or pratio**2
+    - scatter plot deep and superficial MUA(t) vs pratio(t)
+    - DONE: plot cc(t) vs log(pratio) or pratio**2
         - idea is that realtionship between cc(t) seems nonlinear - either quadratic or exponential, but transforming pratio didn't seem to change r value much, though such transforms do expand the working range on the x axis
 
 - cc.scat() doesn't plot points or legend any more, change in MPL?
