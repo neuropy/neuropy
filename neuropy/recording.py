@@ -252,7 +252,7 @@ class BaseRecording(object):
         a.plot(t, rates[1], 'r', label='superficial (%d)' % n[1])
         a.plot(t, rates[2], 'b', label='deep (%d)' % n[2])
         a.set_xlabel("time (sec)")
-        a.set_ylabel("mean MUA of %r neurons (Hz)" % (n,))
+        a.set_ylabel("mean MUA (Hz)")
         # limit plot to duration of acquistion, in sec:
         t0, t1 = np.asarray(self.trange) / 1000000
         a.set_xlim(t0, t1)
