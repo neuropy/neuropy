@@ -2,7 +2,6 @@ TODO:
 
 - rename "straddle" pairs to "cross" or "mixed" or "other" pairs?
 
-- rename "pratio" to "synchrony index"?
 
 - add option for more conventional looking population raster plot, with equal vertical spacing (but probably still in order of depth) and maybe also vertical raster lines, to better visualize the possible presence of up/down states
 
@@ -301,3 +300,4 @@ Tuning curves:
     - need to do a copy somewhere, something happening in place that affects the next run? Maybe some kind of a race condition? Might correlate with pratio(t) part taking a longer time to calculate
     - problem was in cc_tranges: was iterating over all values in cslices when calculating mean and std. Fixed by iterating over only the correct number of values for each trange
 - add a time delta .td attrib to Recording that allows you to easily relate back to the track timepoints (from start of track), so you can easily look up raw spike data from a track-wide sort in spyke
+- rename "pratio" to "synchrony index"

@@ -33,13 +33,13 @@ CODETRES = 20000 # us
 CODEPHASE = 0 # deg
 CODEWORDLEN = 10 # in bits
 
-"""LFP power ratio overlapping time range windows"""
-PRATIOWIDTH = 32.768 # sec (2**15 ms)
-PRATIOOVERLAP = 32 # sec
+"""LFP synchrony index overlapping time range windows"""
+SIWIDTH = 32.768 # sec (2**15 ms)
+SIOVERLAP = 32 # sec
 
 """Code correlation overlapping time range windows"""
-CCWIDTH = PRATIOWIDTH # sec
-CCOVERLAP = PRATIOOVERLAP # sec
+CCWIDTH = SIWIDTH # sec
+CCOVERLAP = SIOVERLAP # sec
 
 """Multiunit activity overlapping time range windows"""
 MUAWIDTH = CCWIDTH # sec

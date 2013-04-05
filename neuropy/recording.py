@@ -435,7 +435,7 @@ class RecordingCode(BaseRecording):
            shiftcorrect=0, experiments=None, nids=None, R=None):
         """Return a CodeCorr object"""
         if weights in ['synch', 'desynch']:
-            r, t = self.lfp.pratio(plot=False)
+            r, t = self.lfp.si(plot=False)
             if weights == 'synch':
                 weights = r, t
             else: # weights == 'desynch'

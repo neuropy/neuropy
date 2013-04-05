@@ -516,12 +516,12 @@ class LFP(object):
         self.data[chanis] = data
         return b, a
 
-    def pratio(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
-               width=None, overlap=None, plot=True):
-        """Return power ratio of low vs high bands as measured by Fourier transform. Use
-        either L/(H+L) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan 2009). Time resolution
-        of this ratio is controlled by width in sec. Smoothness of returned time series is
-        controlled by overlap in sec."""
+    def si(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
+           width=None, overlap=None, plot=True):
+        """Return synchrony index, i.e. power ratio of low vs high bands, as measured by
+        Fourier transform. Use either L/(H+L) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan
+        2009). Time resolution of this ratio is controlled by width in sec. Smoothness of
+        returned time series is controlled by overlap in sec."""
         data = self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
         t0, t1 = ts[0], ts[-1] # full duration
@@ -538,9 +538,9 @@ class LFP(object):
                 overlap = 0
             assert overlap < width
         if width == None:
-            width = uns['PRATIOWIDTH'] # sec
+            width = uns['SIWIDTH'] # sec
         if overlap == None:
-            overlap = uns['PRATIOOVERLAP'] # sec
+            overlap = uns['SIOVERLAP'] # sec
         width = intround(width * 1000000) # convert from sec to us
         overlap = intround(overlap * 1000000) # convert from sec to us
         NFFT = intround(width / self.tres) # both are in us
@@ -569,14 +569,16 @@ class LFP(object):
         else:
             raise ValueError
         if plot:
-            self.powerplot(t, r, t0, t1, ratio, title=lastcmd(), text=self.r.name)
+            ylabel = 'LFP synchrony index (%s)' % ratio
+            self.powerplot(t, r, t0, t1, ylabel, title=lastcmd(), text=self.r.name)
         return r, t
         
-    def pratio_hilbert(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
-                       plot=True):
-        """Return power ratio of low vs high bands as measured by Hilbert transform
-        (Saleem2010). Use either L/(H+L) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan 2009).
-        Smoothness of returned time series can be controlled with noverlap"""
+    def si_hilbert(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
+                   plot=True):
+        """Return synchrony index, i.e. power ratio of low vs high bands, as measured by
+        Hilbert transform (Saleem2010). Use either L/(H+L) ratio (Saleem2010) or L/H ratio
+        (Li, Poo, Dan 2009). Smoothness of returned time series can be controlled with
+        noverlap"""
         data = self.get_data()
         t = self.get_tssec() # full set of timestamps, in sec
         t0, t1 = t[0], t[-1] # full duration
@@ -603,7 +605,8 @@ class LFP(object):
         else:
             raise ValueError
         if plot:
-            self.powerplot(t, r, t0, t1, ratio, title=lastcmd(), text=self.r.name)
+            ylabel = 'LFP synchrony index (%s)' % ratio
+            self.powerplot(t, r, t0, t1, ylabel, title=lastcmd(), text=self.r.name)
         return r, t
 
     def powerplot(self, t, P, t0=None, t1=None, ylabel=None, title=None, text=None,
@@ -1610,9 +1613,9 @@ class CodeCorr(object):
                horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def vs_pratio(self, pairs='weightedmean', chani=-1, ratio='L/(H+L)',
-                  prrange=None, colour=True, lines=False, figsize=(7.5, 6.5)):
-        """Scatter plot code correlations as a function of time, vs LFP pratio as
+    def vs_si(self, pairs='weightedmean', chani=-1, ratio='L/(H+L)',
+              sirange=None, colour=True, lines=False, figsize=(7.5, 6.5)):
+        """Scatter plot code correlations as a function of time, vs LFP synchrony index as
         a function of time"""
         ## TODO: plot superficial, deep, and straddle pairs separately
         if colour and lines:
@@ -1622,8 +1625,8 @@ class CodeCorr(object):
         corrs, ct, ylabel = self.cct(pairs=pairs)
         print('cct(t) calc took %.3f sec' % (time.time()-t0))
         t0 = time.time()
-        r, rt = self.r.lfp.pratio(chani=chani, ratio=ratio, plot=False)
-        print('pratio(t) calc took %.3f sec' % (time.time()-t0))
+        r, rt = self.r.lfp.si(chani=chani, ratio=ratio, plot=False)
+        print('SI(t) calc took %.3f sec' % (time.time()-t0))
         # get common time resolution, r typically has finer temporal resolution than corrs:
         if len(rt) > len(ct):
             rti = rt.searchsorted(ct)
@@ -1649,11 +1652,11 @@ class CodeCorr(object):
         extra = yrange*0.03 # 3 %
         ylim = ylim[0]-extra, ylim[1]+extra
 
-        # keep only those points whose pratio falls within prrange
-        if prrange == None:
-            prrange = (0, 1)
-        prrange = np.asarray(prrange)
-        keepis = (prrange[0] <= r) * (r <= prrange[1]) # boolean index array
+        # keep only those points whose syncrhony index falls within sirange
+        if sirange == None:
+            sirange = (0, 1)
+        sirange = np.asarray(sirange)
+        keepis = (sirange[0] <= r) * (r <= sirange[1]) # boolean index array
         r = r[keepis]
         corrs = corrs[keepis]
 
@@ -1669,17 +1672,17 @@ class CodeCorr(object):
               that the slope is zero.
         stderr: standard error of the estimate
         """
-        a.plot(prrange, m*prrange+b, 'k--')
+        a.plot(sirange, m*sirange+b, 'k--')
         if lines:
             a.plot(r, corrs, color='black', marker='.', ms=6, mew=0)
         else:
             a.scatter(r, corrs, c=c, vmin=0, vmax=1, cmap=mpl.cm.jet,
                       marker='.', s=20, edgecolor='none')
-        #a.set_xlim(prrange)
+        #a.set_xlim(sirange)
         a.set_xlim(0, 1)
         a.set_ylim(ylim)
         #a.autoscale(enable=True, axis='y', tight=True)
-        a.set_xlabel("LFP power ratio (%s)" % ratio)
+        a.set_xlabel("LFP synchrony index (%s)" % ratio)
         a.set_ylabel(ylabel)
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
