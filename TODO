@@ -300,3 +300,4 @@ Tuning curves:
 - very strange BUG: ptc22.tr1.r07.cc().vs_pratio() messes up output, even though the first time it (usually) comes out correctly. This might be triggered after running ptc22.tr1.r08.cc().vs_pratio(). This seems to have started after completion of Cython cc(t) code. Yet even when vs_pratio is screwing up, cc(t) looks fine.
     - need to do a copy somewhere, something happening in place that affects the next run? Maybe some kind of a race condition? Might correlate with pratio(t) part taking a longer time to calculate
     - problem was in cc_tranges: was iterating over all values in cslices when calculating mean and std. Fixed by iterating over only the correct number of values for each trange
+- add a time delta .td attrib to Recording that allows you to easily relate back to the track timepoints (from start of track), so you can easily look up raw spike data from a track-wide sort in spyke

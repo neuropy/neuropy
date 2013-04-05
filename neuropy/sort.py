@@ -152,7 +152,7 @@ class TrackSort(object):
         recs = [ tr.r[rid] for rid in rids ]
         # copy some attribs from first sort, should be the same for all of them:
         sort = recs[0].sort
-        dt0 = sort.datetime # start of acquisition (t=0) of first recording
+        datetime0 = sort.datetime # start of acquisition (t=0) of first recording
         self.datetime = sort.datetime
         self.pttype = sort.pttype
         self.chanpos = sort.chanpos
@@ -163,11 +163,15 @@ class TrackSort(object):
             spikes[nid] = [] # init each value to empty list
         alln = {} # dict of first Neurons encountered across recordings
         for rec in recs:
-            dt = td2usec(rec.sort.datetime - dt0) # in us
+            # store time delta between start of track and start of rec:
+            rec.td = td2usec(rec.sort.datetime - datetime0) # (us)
+            rec.tdsec = rec.td / 1e6
+            rec.tdmin = rec.tdsec / 60
+            rec.tdhour = rec.tdmin / 60
+            # for each neuron in this recording append appropriately offset spikes
+            # array to entry in spikes dict:
             for n in rec.alln.values():
-                # for each neuron in this recordingm append appropriately offset spikes
-                # array to entry in spikes dict:
-                spikes[n.id].append(n.spikes + dt)
+                spikes[n.id].append(n.spikes + rec.td)
                 # for each nid, store the first neuron encountered when iterating over
                 # recordings;
                 if n.id not in alln:
