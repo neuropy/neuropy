@@ -6,14 +6,14 @@ TODO:
 
 - consider modifying SI L/(L+H) to not have a gap in bandwidth between L and H, ie something like P(0-7Hz)/P(0-60Hz), akin to Curto2009. They then split up SI into 5 ranges of size 0.2.
 
-- add most SI calculated from most superficial LFP channel to lfp.si() plot()
+- add SI calculated from most superficial LFP channel to lfp.si() plot()
     - keep deepest chan blue as is, make superficial plot red
 
 - add option for more conventional looking population raster plot, with equal vertical spacing (but probably still in order of depth) and maybe also vertical raster lines, to better visualize the possible presence of up/down states
     - keep them in order of depth, and colour the superficial ones red and the deep ones blue, so it's obvious where the border is. If using a pair of ranges for sup and deep, colour the in between ones black
 
-- NVS: DONE: try calculating cc as a function of time individually for each cell pair, and also average that signal over all cell pairs. Do this by splitting tranges up into chunks of tres = 30 sec or so. Then compare each of these signals (or the average signal) with the LFP SI signal. How well do they correlate? That would give good indication of just much of the variance in the correlations is a function of cortical state.
-    - wouldn't this pretty much be the same as calculating MUA with 20ms bins? No, it wouldn't. Because MUA is just a measure of population firing rate. Regardless of the bin size, it doesn't say anything about whether a specific subset of neurons (such as a pair) increase or decrease their rates of coincides. A big change in MUA could simply be due to a single neuron's firing rate changing dramatically, while all the other cells stay silent, which means that cell is completely uncorrelated from all the others.
+- NVS: DONE: try calculating cc as a function of time individually for each cell pair, and also average that signal over all cell pairs. Do this by splitting tranges up into chunks of tres = 30 sec or so. Then compare each of these signals (or the average signal) with the LFP SI signal. How well do they correlate? That would give good indication of just much of the variance in the correlations is a function of cortical state, at least as predicted by LFP SI signal.
+    - wouldn't this pretty much be the same as calculating MUA with 20ms bins? No, it wouldn't. Because MUA is just a measure of population firing rate. Regardless of the bin size, it doesn't say anything about whether a specific subset of neurons (such as a pair) increase or decrease their rates of coincidence. A big change in MUA could simply be due to a single neuron's firing rate changing dramatically, while all the other cells stay silent, which means that cell is completely uncorrelated from all the others.
     - DONE: try overlapping tranges to get smoother signal
     - DONE: weight average cc(t) by the number of ON values for each neuron in each trange
     - DONE: scatter plot cc(t) vs si(t) - should see they're quite correlated - the more synchronized the network, according to LFP, the greater the average pairwise correlations
