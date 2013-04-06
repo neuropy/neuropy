@@ -1630,7 +1630,7 @@ class CodeCorr(object):
         # get common time resolution, si typically has finer temporal resolution than corrs:
         if len(sit) > len(ct):
             siti = sit.searchsorted(ct)
-            sitii = siti < len(sit) # prevent right side out of bounds indices into r
+            sitii = siti < len(sit) # prevent right side out of bounds indices into si
             ct = ct[sitii]
             corrs = corrs[sitii]
             siti = siti[sitii]
