@@ -336,6 +336,57 @@ class BaseRecording(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
+    def mua_si(self, chani=-1, ratio='L/(H+L)', figsize=(7.5, 6.5)):
+        """Scatter plot multiunit activity vs LFP synchrony index"""
+        mua, muat, n = self.mua(plot=False)
+        mua = mua.T # make time dimension 0 and all/sup/deep dimension 1
+        si, sit = self.lfp.si(chani=chani, ratio=ratio, plot=False)
+        # get common time resolution:
+        if len(sit) > len(muat):
+            siti = sit.searchsorted(muat)
+            sitii = siti < len(sit) # prevent right side out of bounds indices into si
+            muat = muat[sitii]
+            mua = mua[sitii]
+            siti = siti[sitii]
+            sit = sit[siti]
+            si = si[siti]
+        else:
+            muati = muat.searchsorted(sit)
+            muatii = muati < len(muat) # prevent right side out of bounds indices into mua
+            sit = sit[muatii]
+            si = si[muatii]
+            muati = muati[muatii]
+            muat = muat[muati]
+            mua = mua[muati]
+
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        ylim = mua.min(), mua.max()
+        yrange = ylim[1] - ylim[0]
+        extra = yrange*0.03 # 3 %
+        ylim = ylim[0]-extra, ylim[1]+extra
+
+        mua = mua.T # make dim 0 all/sup/deep again
+        #a.plot(si, mua[0], 'k.', label='all (%d)' % n[0])
+        a.plot(si, mua[1], 'r.', label='superficial (%d)' % n[1])
+        a.plot(si, mua[2], 'b.', label='deep (%d)' % n[2])
+
+        a.set_xlim(0, 1)
+        a.set_ylim(ylim)
+        #a.autoscale(enable=True, axis='y', tight=True)
+        a.set_xlabel("LFP synchrony index (%s)" % ratio)
+        a.set_ylabel("mean MUA (Hz)")
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        a.set_title(titlestr)
+        a.text(0.998, 0.99,
+               '%s\n'
+               % (self.name),
+               color='k', transform=a.transAxes,
+               horizontalalignment='right', verticalalignment='top')
+        a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
+        f.tight_layout(pad=0.3) # crop figure to contents
+
     def calc_meanrates(self):
         """Calculate mean firing rates of all neurons in this recording"""
         RECNEURONPERIOD = get_ipython().user_ns['RECNEURONPERIOD']
