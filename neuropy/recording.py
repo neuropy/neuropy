@@ -339,6 +339,7 @@ class BaseRecording(object):
     def mua_si(self, chani=-1, ratio='L/(H+L)', figsize=(7.5, 6.5)):
         """Scatter plot multiunit activity vs LFP synchrony index"""
         mua, muat, n = self.mua(plot=False)
+        #mua, muat, n = self.mua_smooth(plot=False)
         mua = mua.T # make time dimension 0 and all/sup/deep dimension 1
         si, sit = self.lfp.si(chani=chani, ratio=ratio, plot=False)
         # get common time resolution:
