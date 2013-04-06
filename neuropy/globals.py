@@ -44,7 +44,7 @@ CCOVERLAP = SIOVERLAP # sec
 """Multiunit activity overlapping time range windows"""
 MUAWIDTH = CCWIDTH # sec
 MUAOVERLAP = CCOVERLAP # sec
-MUARES = 1 # non-overlapping time resolution used with smoothing window, sec
+MUASMOOTHRES = 1 # non-overlapping time resolution used with smoothing window, sec
 
 """Threshold distance down vertical axis of probe separating superficial from deep cells"""
 YTHRESH = 600 # um

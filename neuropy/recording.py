@@ -260,7 +260,7 @@ class BaseRecording(object):
 
         uns = get_ipython().user_ns
         if tres == None:
-            tres = uns['MUARES'] # time resolution (sec)
+            tres = uns['MUASMOOTHRES'] # time resolution (sec)
         tressec = tres
         tres = intround(tres * 1000000) # us
         if ww == None:
