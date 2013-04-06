@@ -104,13 +104,13 @@ def wavelet(data, wname="db4", maxlevel=6):
     import pywt
 
     data = np.atleast_2d(data)
-    # filter data in place
+    # filter data in place:
     for i in range(len(data)):
-        # decompose the signal
+        # decompose the signal:
         c = pywt.wavedec(data[i], wname, level=maxlevel)
-        # destroy the approximation coefficients
+        # destroy the appropriate approximation coefficients:
         c[0] = None
-        # reconstruct the signal
+        # reconstruct the signal:
         data[i] = pywt.waverec(c, wname)
     
     return data
