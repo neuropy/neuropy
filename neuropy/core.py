@@ -1625,22 +1625,22 @@ class CodeCorr(object):
         corrs, ct, ylabel = self.cct(pairs=pairs)
         print('cct(t) calc took %.3f sec' % (time.time()-t0))
         t0 = time.time()
-        r, rt = self.r.lfp.si(chani=chani, ratio=ratio, plot=False)
+        si, sit = self.r.lfp.si(chani=chani, ratio=ratio, plot=False)
         print('SI(t) calc took %.3f sec' % (time.time()-t0))
-        # get common time resolution, r typically has finer temporal resolution than corrs:
-        if len(rt) > len(ct):
-            rti = rt.searchsorted(ct)
-            rtii = rti < len(rt) # prevent right side out of bounds indices into r
-            ct = ct[rtii]
-            corrs = corrs[rtii]
-            rti = rti[rtii]
-            rt = rt[rti]
-            r = r[rti]
+        # get common time resolution, si typically has finer temporal resolution than corrs:
+        if len(sit) > len(ct):
+            siti = sit.searchsorted(ct)
+            sitii = siti < len(sit) # prevent right side out of bounds indices into r
+            ct = ct[sitii]
+            corrs = corrs[sitii]
+            siti = siti[sitii]
+            sit = sit[siti]
+            si = si[siti]
         else:
-            cti = ct.searchsorted(rt)
+            cti = ct.searchsorted(sit)
             ctii = cti < len(ct) # prevent right side out of bounds indices into corrs
-            rt = rt[ctii]
-            r = r[ctii]
+            sit = sit[ctii]
+            si = si[ctii]
             cti = cti[ctii]
             ct = ct[cti]
             corrs = corrs[cti]
@@ -1652,20 +1652,20 @@ class CodeCorr(object):
         extra = yrange*0.03 # 3 %
         ylim = ylim[0]-extra, ylim[1]+extra
 
-        # keep only those points whose syncrhony index falls within sirange
+        # keep only those points whose synchrony index falls within sirange
         if sirange == None:
             sirange = (0, 1)
         sirange = np.asarray(sirange)
-        keepis = (sirange[0] <= r) * (r <= sirange[1]) # boolean index array
-        r = r[keepis]
+        keepis = (sirange[0] <= si) * (si <= sirange[1]) # boolean index array
+        si = si[keepis]
         corrs = corrs[keepis]
 
         if colour:
-            c = normalize_range(rt) # indices into colormap, as a function of time
+            c = normalize_range(sit) # indices into colormap, as a function of time
             c = c[keepis]
         else:
             c = 'black'
-        m, b, rval, pval, stderr = scipy.stats.linregress(r, corrs)
+        m, b, rval, pval, stderr = scipy.stats.linregress(si, corrs)
         """descriptions of the returned values:
         rval: correlation coefficient
         pval: two-sided p-value for a hypothesis test whose null hypothesis is
@@ -1674,9 +1674,9 @@ class CodeCorr(object):
         """
         a.plot(sirange, m*sirange+b, 'k--')
         if lines:
-            a.plot(r, corrs, color='black', marker='.', ms=6, mew=0)
+            a.plot(si, corrs, color='black', marker='.', ms=6, mew=0)
         else:
-            a.scatter(r, corrs, c=c, vmin=0, vmax=1, cmap=mpl.cm.jet,
+            a.scatter(si, corrs, c=c, vmin=0, vmax=1, cmap=mpl.cm.jet,
                       marker='.', s=20, edgecolor='none')
         #a.set_xlim(sirange)
         a.set_xlim(0, 1)
