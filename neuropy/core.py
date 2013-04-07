@@ -439,7 +439,6 @@ class LFP(object):
             minnzval = P.min() # get minimum nonzero value
             P[zis] = minnzval # replace with min nonzero values
         P = 10. * np.log10(P) # convert power to dB wrt 1 mV^2?
-        P = P[::-1] # flip vertically for compatibility with imshow
         # for better visualization, clip power values to within (p0, p1) dB
         if p0 != None:
             P[P < p0] = p0
@@ -450,8 +449,9 @@ class LFP(object):
         # between these to place the axes ticks. Time limits are
         # set from start of acquisition:
         extent = t0, t1, freqs[0], freqs[-1]
-        print('specgram extent: %r' % (extent,))
-        im = a.imshow(P, extent=extent, cmap=cm)
+        #print('specgram extent: %r' % (extent,))
+        # flip P vertically for compatibility with imshow:
+        im = a.imshow(P[::-1], extent=extent, cmap=cm)
         a.autoscale(enable=True, tight=True)
         a.axis('tight')
         # turn off annoying "+2.41e3" type offset on x axis:
@@ -468,7 +468,7 @@ class LFP(object):
         if colorbar:
             f.colorbar(im, pad=0) # creates big whitespace to the right for some reason
         self.f = f
-        return self
+        return P, freqs
 
     def notch(self, chanis=None, freq=60, bw=0.25, gpass=0.01, gstop=30, ftype='ellip'):
         """Filter out frequencies centered on freq (Hz), of bandwidth +/- bw (Hz) on
