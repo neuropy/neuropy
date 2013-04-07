@@ -1620,7 +1620,8 @@ class CodeCorr(object):
         f.tight_layout(pad=0.3) # crop figure to contents
 
     def si(self, pairs='weightedmean', chani=-1, ratio='L/(H+L)',
-           sirange=None, colour=True, lines=False, figsize=(7.5, 6.5)):
+           lowband=None, highband=None, sirange=None,
+           colour=True, lines=False, figsize=(7.5, 6.5)):
         """Scatter plot code correlations vs LFP synchrony index"""
         ## TODO: plot superficial, deep, and straddle pairs separately
         if colour and lines:
@@ -1630,7 +1631,8 @@ class CodeCorr(object):
         corrs, ct, ylabel = self.cct(pairs=pairs)
         print('cct(t) calc took %.3f sec' % (time.time()-t0))
         t0 = time.time()
-        si, sit = self.r.lfp.si(chani=chani, ratio=ratio, plot=False)
+        si, sit = self.r.lfp.si(chani=chani, lowband=lowband, highband=highband,
+                                ratio=ratio, plot=False)
         print('SI(t) calc took %.3f sec' % (time.time()-t0))
         # get common time resolution, si typically has finer temporal resolution than corrs:
         if len(sit) > len(ct):
