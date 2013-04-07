@@ -36,6 +36,8 @@ CODEWORDLEN = 10 # in bits
 """LFP synchrony index overlapping time range windows"""
 SIWIDTH = 32.768 # sec (2**15 ms)
 SIOVERLAP = 32 # sec
+SILOWBAND = 0.5, 7 # Hz
+SIHIGHBAND = 20, 100 # Hz
 
 """Code correlation overlapping time range windows"""
 CCWIDTH = SIWIDTH # sec

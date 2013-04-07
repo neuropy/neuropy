@@ -516,7 +516,7 @@ class LFP(object):
         self.data[chanis] = data
         return b, a
 
-    def si(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
+    def si(self, chani=-1, lowband=None, highband=None, ratio='L/(H+L)',
            width=None, overlap=None, plot=True):
         """Return synchrony index, i.e. power ratio of low vs high bands, as measured by
         Fourier transform. Use either L/(H+L) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan
@@ -533,6 +533,12 @@ class LFP(object):
             x = filter.notch(x, freq=rr)[0] # remove CRT interference
 
         uns = get_ipython().user_ns
+        if lowband == None:
+            lowband = uns['SILOWBAND']
+        f0, f1 = lowband
+        if highband == None:
+            highband = uns['SIHIGHBAND']
+        f2, f3 = highband
         if width != None:
             if overlap == None:
                 overlap = 0
