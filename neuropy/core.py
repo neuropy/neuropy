@@ -393,21 +393,22 @@ class LFP(object):
         return self
         
     def specgram(self, t0=None, t1=None, f0=0.1, f1=100, p0=-60, p1=None, chanis=-1,
-                 width=4096, overlap=2048, cm=None, colorbar=False, figsize=(20, 6.5)):
-        """Plot a spectrogram from t0 to t1 in sec, from f0 to f1 in Hz, and clip power
-        values from p0 to p1 in dB. based on channel index chani of LFP data. chanis=0 uses
-        most superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, take
-        mean of specified chanis. width and overlap are in ms, assuming LFP sampling
-        frequency is 1 kHz. Best to keep both a power of 2. As an alternative to cm.jet (the
-        default), cm.gray, cm.hsv cm.terrain, and cm.cubehelix_r colormaps seem to bring out
-        the most structure in the spectrogram"""
-        assert width > overlap
+                 width=4.096, tres=1, cm=None, colorbar=False, figsize=(20, 6.5)):
+        """Plot a spectrogram from t0 to t1 in sec, from f0 to f1 in Hz, and clip power values
+        from p0 to p1 in dB, based on channel index chani of LFP data. chanis=0 uses most
+        superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, take mean of
+        specified chanis. width and tres are in sec. Best to keep number of samples in width a
+        power of 2. As an alternative to cm.jet (the default), cm.gray, cm.hsv cm.terrain, and
+        cm.cubehelix_r colormaps seem to bring out the most structure in the spectrogram"""
         self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
         if t0 == None:
             t0, t1 = ts[0], ts[-1] # full duration
         if t1 == None:
             t1 = t0 + 10 # 10 sec window
+        assert tres <= width
+        NFFT = intround(width * self.sampfreq)
+        noverlap = intround(NFFT - tres * self.sampfreq)
         t0i, t1i = ts.searchsorted((t0, t1))
         #ts = ts[t0i:t1i] # constrained set of timestamps, in sec
         data = self.data[:, t0i:t1i] # slice data
@@ -419,8 +420,8 @@ class LFP(object):
             data = data[chanis] # get single row of data at chanis
         # convert data from uV to mV, returned t is midpoints of timebins in sec from
         # start of data. I think P is in mV^2?:
-        P, freqs, t = mpl.mlab.specgram(data/1e3, NFFT=width, Fs=self.sampfreq,
-                                        noverlap=overlap)
+        P, freqs, t = mpl.mlab.specgram(data/1e3, NFFT=NFFT, Fs=self.sampfreq,
+                                        noverlap=noverlap)
         # for completeness, should convert t to time from start of acquisition, although
         # there's no need to because t isn't used anywhere:
         #t += t0
@@ -517,11 +518,10 @@ class LFP(object):
         return b, a
 
     def si(self, chani=-1, lowband=None, highband=None, ratio='L/(H+L)',
-           width=None, overlap=None, plot=True):
+           width=None, tres=None, plot=True):
         """Return synchrony index, i.e. power ratio of low vs high bands, as measured by
         Fourier transform. Use either L/(H+L) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan
-        2009). Time resolution of this ratio is controlled by width in sec. Smoothness of
-        returned time series is controlled by overlap in sec."""
+        2009). width and tres are in sec. A smaller tres smooths the returned time series"""
         data = self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
         t0, t1 = ts[0], ts[-1] # full duration
@@ -540,18 +540,15 @@ class LFP(object):
             highband = uns['SIHIGHBAND']
         f2, f3 = highband
         if width != None:
-            if overlap == None:
-                overlap = 0
-            assert overlap < width
+            if tres == None:
+                tres = width
         if width == None:
             width = uns['SIWIDTH'] # sec
-        if overlap == None:
-            overlap = uns['SIOVERLAP'] # sec
-        width = intround(width * 1000000) # convert from sec to us
-        overlap = intround(overlap * 1000000) # convert from sec to us
-        NFFT = intround(width / self.tres) # both are in us
-        noverlap = intround(overlap / self.tres) # both are in us
-
+        if tres == None:
+            tres = uns['SITRES'] # sec
+        assert tres <= width
+        NFFT = intround(width * self.sampfreq)
+        noverlap = intround(NFFT - tres * self.sampfreq)
         # t is midpoints of timebins in sec from start of data. P is in mV^2?:
         P, freqs, t = mpl.mlab.specgram(x, NFFT=NFFT, Fs=self.sampfreq, noverlap=noverlap)
         # don't convert power to dB, just washes out the signal in the ratio:
@@ -885,14 +882,14 @@ class Codes(object):
     '''
     
 class CodeCorr(object):
-    """Calculate and plot the spike code correlations of all cell pairs from nids (or of
-    all cell pairs within some torus of radii R=(R0, R1) in um) in this Recording, during
-    tranges or experiments. If width is not None, calculate self as a function of time,
-    with bin widths width sec that overlap their immediate neighbours by overlap sec.
-    Weights is a tuple of weight values and times, to weight different parts of the
-    recording differently. For each pair, shift the second spike train by shift ms, or
-    shift it by shiftcorrect ms and subtract the correlation from the unshifted value."""
-    def __init__(self, recording=None, tranges=None, width=None, overlap=None, weights=None,
+    """Calculate and plot the spike code correlations of all cell pairs from nids (or of all
+    cell pairs within some torus of radii R=(R0, R1) in um) in this Recording, during tranges
+    or experiments. If width is not None, calculate self as a function of time, with bin
+    widths width sec and time resolution tres sec. Weights is a tuple of weight values and
+    times, to weight different parts of the recording differently. For each pair, shift the
+    second spike train by shift ms, or shift it by shiftcorrect ms and subtract the
+    correlation from the unshifted value."""
+    def __init__(self, recording=None, tranges=None, width=None, tres=None, weights=None,
                  shift=0, shiftcorrect=0, experiments=None, nids=None, R=None):
         self.r = recording
         if tranges != None:
@@ -916,13 +913,13 @@ class CodeCorr(object):
         #self.codes.c = np.float64(self.codes.c) # prevent int8 overflow
 
         if width != None:
-            if overlap == None:
-                overlap = 0
-            assert overlap < width
+            if tres == None:
+                tres = width
+            assert tres <= width
             width = intround(width * 1000000) # convert from sec to us
-            overlap = intround(overlap * 1000000) # convert from sec to us
+            tres = intround(tres * 1000000) # convert from sec to us
         self.width = width
-        self.overlap = overlap
+        self.tres = tres
 
         if weights != None:
             raise NotImplementedError('weights are currently disabled for speed')
@@ -937,7 +934,7 @@ class CodeCorr(object):
     def calc(self):
         if self.width != None:
             # compute correlation coefficients separately for each trange:
-            self.tranges = split_tranges(self.tranges, self.width, self.overlap)
+            self.tranges = split_tranges(self.tranges, self.width, self.tres)
             uns = get_ipython().user_ns
             highval = uns['CODEVALS'][1]
             c, t = self.codes.c, self.codes.t
@@ -1555,8 +1552,8 @@ class CodeCorr(object):
         uns = get_ipython().user_ns
         if self.width == None:
             self.width = intround(uns['CCWIDTH'] * 1000000) # convert from sec to us
-        if self.overlap == None:
-            self.overlap = intround(uns['CCOVERLAP'] * 1000000) # convert from sec to us
+        if self.tres == None:
+            self.tres = intround(uns['CCTRES'] * 1000000) # convert from sec to us
         self.calc()
         corrs = self.corrs
         """Instead of simply masking out 0 corr values, weigh each pairwise corr in each
@@ -3122,14 +3119,14 @@ def sample_uquadratic(a=0, b=1, size=None):
     x = (b - a) * x + a # scale so that min(x) == a and max(x) == b
     return inverse_uquadratic_cdf(x, a, b)
 
-def split_tranges(tranges, width, overlap):
-    """Split up tranges into lots of smaller ones, with width and overlap"""
+def split_tranges(tranges, width, tres):
+    """Split up tranges into lots of smaller ones, with width and tres"""
     newtranges = []
     for trange in tranges:
         t0, t1 = trange
         assert width < (t1 - t0)
         # calculate left and right edges of subtranges that fall within trange:
-        ledges = np.arange(t0, t1-width, width-overlap)
+        ledges = np.arange(t0, t1-width, tres)
         redges = ledges + width
         subtranges = [ (le, re) for le, re in zip(ledges, redges) ]
         newtranges.append(subtranges)

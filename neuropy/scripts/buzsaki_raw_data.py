@@ -53,8 +53,8 @@ class BZData(LFP):
         self.PLOTGAIN = 20
 
     def specgram(self, t0=None, t1=None, f0=None, f1=2000, p0=None, p1=None, chanis=-1,
-                 width=2**16, overlap=2**15, cm=None, colorbar=False, figsize=(20, 6.5)):
-        LFP.specgram(self, t0, t1, f0, f1, p0, p1, chanis, width, overlap, cm, colorbar,
+                 width=2**16, tres=2**16-2**15, cm=None, colorbar=False, figsize=(20, 6.5)):
+        LFP.specgram(self, t0, t1, f0, f1, p0, p1, chanis, width, tres, cm, colorbar,
                      figsize)
 
     def filter(self, chanis=-1, f0=500, f1=0, fr=100, gpass=0.01, gstop=50, ftype='ellip',

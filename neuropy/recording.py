@@ -188,9 +188,9 @@ class BaseRecording(object):
                     nidi += 1
         return np.sort(nids) # may as well sort them
 
-    def mua(self, width=None, overlap=None, neurons=None, plot=True):
+    def mua(self, width=None, tres=None, neurons=None, plot=True):
         """Calculate multiunit activity as a function of time. neurons can be None, 'quiet',
-        'all', or a dict. width and overlap of time bins are in seconds"""
+        'all', or a dict. width and tres of time bins are in seconds"""
         if neurons == None:
             neurons = self.n # use active neurons
         elif neurons == 'quiet':
@@ -202,11 +202,11 @@ class BaseRecording(object):
         uns = get_ipython().user_ns
         if width == None:
             width = uns['MUAWIDTH'] # sec
-        if overlap == None:
-            overlap = uns['MUAOVERLAP'] # sec
-        assert overlap < width
+        if tres == None:
+            tres = uns['MUATRES'] # sec
+        assert tres <= width
         width = intround(width * 1000000) # convert from sec to us
-        overlap = intround(overlap * 1000000) # convert from sec to us
+        tres = intround(tres * 1000000) # convert from sec to us
 
         nids = np.sort(neurons.keys())
         ys = np.array([ neurons[nid].pos[1] for nid in nids ]) # y positions of each neuron
@@ -225,7 +225,7 @@ class BaseRecording(object):
         supspikes.sort() # sorted spikes from superficial neurons
         deepspikes.sort() # sorted spikes from deep neurons
 
-        tranges = core.split_tranges([self.trange], width, overlap) # in us
+        tranges = core.split_tranges([self.trange], width, tres) # in us
 
         allrates = self.calc_mua(allspikes, nn, tranges)
         suprates = self.calc_mua(supspikes, nsup, tranges)
@@ -548,7 +548,7 @@ class RecordingCode(BaseRecording):
         code2 = self.n[nid2].code(tranges=tranges)
         return corrcoef(code1.c, code2.c)
     '''
-    def cc(self, tranges=None, width=None, overlap=None, weights=None, shift=0,
+    def cc(self, tranges=None, width=None, tres=None, weights=None, shift=0,
            shiftcorrect=0, experiments=None, nids=None, R=None):
         """Return a CodeCorr object"""
         if weights in ['synch', 'desynch']:
@@ -557,7 +557,7 @@ class RecordingCode(BaseRecording):
                 weights = r, t
             else: # weights == 'desynch'
                 weights = 1-r, t
-        cc = CodeCorr(recording=self, tranges=tranges, width=width, overlap=overlap,
+        cc = CodeCorr(recording=self, tranges=tranges, width=width, tres=tres,
                       weights=weights, shift=shift, shiftcorrect=shiftcorrect,
                       experiments=experiments, nids=nids, R=None)
         # run cc.calc() as late as possible, not here

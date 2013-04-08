@@ -309,4 +309,5 @@ Tuning curves:
 - when calculating MUA(t), use a smooth window instead of a rectangular window - this give much smoother MUA, and also reduce preponderance of discretization of values due to discreteness of spikes. This will also prevent very sudden square wave jumps due to bursting. See Curto2009, where they use a half Hanning window with a width of 16 ms, with bin sizes of only 0.8ms (seems very small), ie the half window width was 20 bins wide.
 - DONE: consider modifying SI L/(L+H) to not have a gap in bandwidth between L and H, ie something like P(0-7Hz)/P(0-60Hz), akin to Curto2009. They then split up SI into 5 ranges of size 0.2.
     - this makes a big difference in at least the cc vs si plots, and probably others
+- for clarity, replace "overlap" args with "tres" args, where tres = width - overlap
 

@@ -33,20 +33,21 @@ CODETRES = 20000 # us
 CODEPHASE = 0 # deg
 CODEWORDLEN = 10 # in bits
 
-"""LFP synchrony index overlapping time range windows"""
+"""LFP synchrony index time range windows"""
 SIWIDTH = 32.768 # sec (2**15 ms)
-SIOVERLAP = 32 # sec
+SITRES = 1 # sec
 SILOWBAND = 0.5, 7 # Hz
 SIHIGHBAND = 7, 100 # Hz
 
-"""Code correlation overlapping time range windows"""
 CCWIDTH = SIWIDTH # sec
-CCOVERLAP = SIOVERLAP # sec
+"""Code correlation time range windows"""
+CCTRES = 1 # sec
 
-"""Multiunit activity overlapping time range windows"""
+"""Multiunit activity time range windows"""
 MUAWIDTH = CCWIDTH # sec
-MUAOVERLAP = CCOVERLAP # sec
-MUASMOOTHRES = 1 # non-overlapping time resolution used with smoothing window, sec
+MUATRES = CCTRES # sec
+# time resolution for alternative method of convolving with smoothing window
+MUASMOOTHRES = 1 # sec
 
 """Threshold distance down vertical axis of probe separating superficial from deep cells"""
 YTHRESH = 600 # um
