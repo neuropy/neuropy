@@ -1,12 +1,13 @@
-"""colortable used for displaying rf array obtained by reverse correlation"""
+"""Color table used for displaying RF array obtained by reverse correlation"""
 
 from core import *
 
 def rcLUT(n=256):
-    """n is the number of entries you want in the returned colortable. Defaults to 256"""
-
-    v = array(range(n-1,-1,-1),dtype=float,ndmin=2).transpose()/max(n-1,1) # normal colormap. Red is high value, blue is low, green is medium
-    #v = array(range(0,n,1),ndim=2).transpose()/max(n-1,1); # inverted colormap
+    """n is the number of entries in the returned colortable. Defaults to 256"""
+    # normal colormap. Red is high value, blue is low, green is medium:
+    v = array(range(n-1,-1,-1),dtype=float,ndmin=2).transpose()/max(n-1,1)
+    # inverted colormap:
+    #v = array(range(0,n,1),ndim=2).transpose()/max(n-1,1);
     m = 64.0/255.0
 
     # fast way
