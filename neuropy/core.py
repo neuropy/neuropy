@@ -576,12 +576,17 @@ class LFP(object):
             self.powerplot(t, r, t0, t1, ylabel, title=lastcmd(), text=self.r.name)
         return r, t
         
-    def si_hilbert(self, chani=-1, f0=0.5, f1=7, f2=20, f3=100, ratio='L/(H+L)',
+    def si_hilbert(self, chani=-1, lowband=None, highband=None, ratio='L/(H+L)',
                    plot=True):
         """Return synchrony index, i.e. power ratio of low vs high bands, as measured by
         Hilbert transform (Saleem2010). Use either L/(H+L) ratio (Saleem2010) or L/H ratio
-        (Li, Poo, Dan 2009). Smoothness of returned time series can be controlled with
-        noverlap"""
+        (Li, Poo, Dan 2009)"""
+        if lowband == None:
+            lowband = uns['SILOWBAND']
+        f0, f1 = lowband
+        if highband == None:
+            highband = uns['SIHIGHBAND']
+        f2, f3 = highband
         data = self.get_data()
         t = self.get_tssec() # full set of timestamps, in sec
         t0, t1 = t[0], t[-1] # full duration
