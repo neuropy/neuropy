@@ -40,7 +40,7 @@ pyximport.install(build_in_temp=False, inplace=True)
 import util # .pyx file
 
 import filter
-from colour import RED, GREEN, BLUE, hex2floatrgb, CLUSTERCOLOURRGBDICT
+from colour import RED, BLUE, GREY, hex2floatrgb, CLUSTERCOLOURRGBDICT
 
 TAB = '    ' # 4 spaces
 EPOCH = datetime.datetime(1899, 12, 30, 0, 0, 0) # epoch for datetime stamps in .ptcs
@@ -1111,29 +1111,32 @@ class CodeCorr(object):
         return norder
 
     def laminarity(self, nids, pairis):
-        """Color cell pairs according to whether they're superficial, straddle, or deep"""
+        """Color cell pairs according to whether they're superficial, deep, or mixed"""
         # y positions of all nids:
         ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
         uns = get_ipython().user_ns
-        ythresh = uns['YTHRESH']
-        supis = ys < ythresh # True values are superficial, False are deep
+        sup0, sup1 = uns['SUPRANGE']
+        deep0, deep1 = uns['DEEPRANGE']
+        # boolean neuron indices:
+        supis = (sup0 < ys) * (ys < sup1) # True values are superficial
+        deepis = (deep0 < ys) * (ys < deep1) # True values are deep
+        #mixis = not(supis + deepis) # True values are mixed, not needed
         npairs = len(pairis)
         c = np.empty((npairs, 3), dtype=float) # color RGB array
         REDRGB = hex2floatrgb(RED)
-        GREENRGB = hex2floatrgb(GREEN)
         BLUERGB = hex2floatrgb(BLUE)
-        c[:] = GREENRGB # init to GREEN, pairs that straddle remain GREEN
-        for i, pairi in enumerate(pairis):
-            if supis[pairi[0]] == supis[pairi[1]]:
-                # pairs are on the same side of ythresh
-                if supis[pairi[0]]: # pair are both superficial
-                    c[i] = REDRGB
-                else: # pair are both deep
-                    c[i] = BLUERGB
+        GREYRGB = hex2floatrgb(GREY)
+        c[:] = GREYRGB # init to GREY, mixed pairs remain GREY
+        for i, (ni0, ni1) in enumerate(pairis):
+            if supis[ni0] and supis[ni1]:
+                c[i] = REDRGB # cells are both superficial
+            if deepis[ni0] and deepis[ni1]:
+                c[i] = BLUERGB # cells are both deep
+        # repurpose names as boolean pair indices:
         supis, = np.where((c == REDRGB).all(axis=1))
-        stradis, = np.where((c == GREENRGB).all(axis=1))
         deepis, = np.where((c == BLUERGB).all(axis=1))
-        return c, supis, stradis, deepis
+        mixis, = np.where((c == GREYRGB).all(axis=1))
+        return c, supis, deepis, mixis
 
     def shifts(self, start=-5000, stop=5000, step=50, shiftcorrect=True, figsize=(7.5, 6.5)):
         """Plot shift-corrected, or just shifted, median pairwise code correlations of all
@@ -1145,12 +1148,12 @@ class CodeCorr(object):
         shifts = np.arange(start, stop, step) # shift values, in ms
         uns = get_ipython().user_ns
         self.calc() # run it once here to init self.nids and self.pairis
-        c, supis, stradis, deepis = self.laminarity(self.nids, self.pairis)
-        nsup, nstrad, ndeep = len(supis), len(stradis), len(deepis)
+        c, supis, deepis, mixis = self.laminarity(self.nids, self.pairis)
+        nsup, ndeep, nmix = len(supis), len(deepis), len(mixis)
         allmeds = np.zeros(len(shifts)) # medians of all pairs
         supmeds = np.zeros(len(shifts)) # medians of superficial pairs
         deepmeds = np.zeros(len(shifts)) # medians of deep pairs
-        stradmeds = np.zeros(len(shifts)) # medians of straddle pairs
+        mixmeds = np.zeros(len(shifts)) # medians of mixed pairs
         for shifti, shift in enumerate(shifts):
             # calculate corrs for each shift
             if shiftcorrect:
@@ -1161,8 +1164,8 @@ class CodeCorr(object):
             allmeds[shifti] = np.median(self.corrs)
             # check for empty *is, which raise FloatingPointErrors in np.median:
             if nsup: supmeds[shifti] = np.median(self.corrs[supis])
-            if nstrad: stradmeds[shifti] = np.median(self.corrs[stradis])
             if ndeep: deepmeds[shifti] = np.median(self.corrs[deepis])
+            if nmix: mixmeds[shifti] = np.median(self.corrs[mixis])
             print '%d,' % shift, # no newline
         print # newline
         self.clear_codes() # free memory
@@ -1170,8 +1173,9 @@ class CodeCorr(object):
         a = f.add_subplot(111)
         a.plot(shifts, allmeds, 'k-o', mec='k', ms=3, label='all')
         if nsup: a.plot(shifts, supmeds, 'r-o', mec='r', ms=3, label='superficial')
-        if nstrad: a.plot(shifts, stradmeds, 'g-o', mec='g', ms=3, label='straddle')
         if ndeep: a.plot(shifts, deepmeds, 'b-o', mec='b', ms=3, label='deep')
+        if nmix: a.plot(shifts, mixmeds, c=GREY, ls='-', marker='o', mec=GREY, ms=3,
+                        label='mixed')
         # underplot horizontal line at y=0:
         a.axhline(y=0, c='grey', ls='--', marker=None)
         a.set_xlim(shifts[0], shifts[-1]) # override any MPL smarts
@@ -1199,11 +1203,12 @@ class CodeCorr(object):
                                'minrate = %.2f Hz\n'
                                'nneurons = %d\n'
                                'npairs = %d\n'
-                               'ythresh = %d um\n'
+                               'sup = %r um\n'
+                               'deep = %r um\n'
                                'dt = %d min'
                                % (self.r.name, uns['CODETRES']//1000, uns['CODEPHASE'],
                                   self.R, uns['MINRATE'], len(self.nids), self.npairs,
-                                  uns['YTHRESH'], intround(self.r.dtmin)),
+                                  uns['SUPRANGE'], uns['DEEPRANGE'], intround(self.r.dtmin)),
                                transform=a.transAxes,
                                horizontalalignment='right',
                                verticalalignment=verticalalignment)
@@ -1296,12 +1301,12 @@ class CodeCorr(object):
         pairis = self.pairis[sortis] # pairis in decreasing corrs order
         npairs = len(pairis)
 
-        # color pairs according to whether they're superficial, straddle, or deep
-        c, supis, stradis, deepis = self.laminarity(self.nids, pairis)
+        # color pairs according to whether they're superficial, deep, or mixed:
+        c, supis, deepis, mixis = self.laminarity(self.nids, pairis)
         sup = intround(len(supis) / npairs * 100)
-        strad = intround(len(stradis) / npairs * 100)
         deep = intround(len(deepis) / npairs * 100)
-
+        mix = intround(len(mixis) / npairs * 100)
+        
         a.scatter(np.arange(self.npairs), corrs, marker='o', c=c, edgecolor='none',
                   s=10, zorder=100)
         a.set_xlim(left=-10)
@@ -1328,22 +1333,23 @@ class CodeCorr(object):
                            'minrate = %.2f Hz\n'
                            'nneurons = %d\n'
                            'npairs = %d\n'
-                           'ythresh = %d um\n'
+                           'sup = %r um\n'
+                           'deep = %r um\n'
                            'dt = %d min'
                            % (self.r.name, self.mean, self.median, self.stdev,
                               uns['CODETRES']//1000, uns['CODEPHASE'], self.R,
-                              uns['MINRATE'], len(self.nids), self.npairs, uns['YTHRESH'],
-                              intround(self.r.dtmin)),
+                              uns['MINRATE'], len(self.nids), self.npairs,
+                              uns['SUPRANGE'], uns['DEEPRANGE'], intround(self.r.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='right',
                            verticalalignment='top')
         # make proxy artists for legend:
-        r = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc=RED)
-        g = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc=GREEN)
-        b = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc=BLUE)
+        s = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc=RED)
+        d = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc=BLUE)
+        m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc=GREY)
         # add legend:
-        a.legend([r, g, b],
-                 ['superficial: %d%%' % sup, 'straddle: %d%%' % strad, 'deep: %d%%' % deep],
+        a.legend([s, d, m],
+                 ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'mixed: %d%%' % mix],
                  numpoints=1, loc='upper center',
                  handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
@@ -1402,14 +1408,14 @@ class CodeCorr(object):
         npairs = len(pairis)
         corrs0, corrs1 = cc0.corrs, cc1.corrs
         
-        # color pairs according to whether they're superficial, straddle, or deep
-        c, supis, stradis, deepis = self.laminarity(nids, pairis)
+        # color pairs according to whether they're superficial, deep, or mixed
+        c, supis, deepis, mixis = self.laminarity(nids, pairis)
         sup = intround(len(supis) / npairs * 100)
-        strad = intround(len(stradis) / npairs * 100)
         deep = intround(len(deepis) / npairs * 100)
+        mix = intround(len(mixis) / npairs * 100)
         supcorrs0, supcorrs1 = corrs0[supis], corrs1[supis]
-        stradcorrs0, stradcorrs1 = corrs0[stradis], corrs1[stradis]
         deepcorrs0, deepcorrs1 = corrs0[deepis], corrs1[deepis]
+        mixcorrs0, mixcorrs1 = corrs0[mixis], corrs1[mixis]
         
         # create the scatter plot:
         f = pl.figure(figsize=figsize)
@@ -1429,12 +1435,12 @@ class CodeCorr(object):
         if sup > 0:
             a.errorbar(supcorrs0.mean(), supcorrs1.mean(),
                        xerr=supcorrs0.std(), yerr=supcorrs1.std(), color=RED)
-        if strad > 0:
-            a.errorbar(stradcorrs0.mean(), stradcorrs1.mean(),
-                       xerr=stradcorrs0.std(), yerr=stradcorrs1.std(), color=GREEN)
         if deep > 0:
             a.errorbar(deepcorrs0.mean(), deepcorrs1.mean(),
                        xerr=deepcorrs0.std(), yerr=deepcorrs1.std(), color=BLUE)
+        if mix > 0:
+            a.errorbar(mixcorrs0.mean(), mixcorrs1.mean(),
+                       xerr=mixcorrs0.std(), yerr=mixcorrs1.std(), color=GREY)
         a.scatter(corrs0, corrs1, marker='o', c=c, edgecolor='none', s=10, zorder=100)
         a.set_xlim(lim)
         a.set_ylim(lim)
@@ -1451,22 +1457,23 @@ class CodeCorr(object):
                            'minrate = %.2f Hz\n'
                            'nneurons = %d\n'
                            'npairs = %d\n'
-                           'ythresh = %d um\n'
+                           'sup = %r um\n'
+                           'deep = %r um\n'
                            'r%s.dt = %d min\n'
-                           'r%s.dt = %d min'                           
+                           'r%s.dt = %d min'
                            % (uns['CODETRES']//1000, uns['CODEPHASE'], self.R, uns['MINRATE'],
-                              len(nids), cc0.npairs, uns['YTHRESH'],
+                              len(nids), cc0.npairs, uns['SUPRANGE'], uns['DEEPRANGE'],
                               r0.id, intround(r0.dtmin), r1.id, intround(r1.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='left',
                            verticalalignment='top')
         # make proxy artists for legend:
-        r = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=RED)
-        g = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=GREEN)
-        b = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=BLUE)
+        s = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=RED)
+        d = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=BLUE)
+        m = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=GREY)
         # add legend:
-        a.legend([r, g, b],
-                 ['superficial: %d%%' % sup, 'straddle: %d%%' % strad, 'deep: %d%%' % deep],
+        a.legend([s, d, m],
+                 ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'mixed: %d%%' % mix],
                  numpoints=1, loc='lower right',
                  handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
@@ -1484,14 +1491,14 @@ class CodeCorr(object):
         npairs = len(pairis)
         n = self.r.n
 
-        # color pairs according to whether they're superficial, straddle, or deep
-        c, supis, stradis, deepis = self.laminarity(self.nids, pairis)
+        # color pairs according to whether they're superficial, deep, or mixed:
+        c, supis, deepis, mixis = self.laminarity(self.nids, pairis)
         sup = intround(len(supis) / npairs * 100)
-        strad = intround(len(stradis) / npairs * 100)
         deep = intround(len(deepis) / npairs * 100)
+        mix = intround(len(mixis) / npairs * 100)
         supcorrs = corrs[supis]
-        stradcorrs = corrs[stradis]
         deepcorrs = corrs[deepis]
+        mixcorrs = corrs[mixis]
 
         # pairwise separations:
         seps = np.zeros(npairs)
@@ -1499,18 +1506,18 @@ class CodeCorr(object):
             nid0, nid1 = nids[pairi[0]], nids[pairi[1]]
             seps[i] = dist(n[nid0].pos, n[nid1].pos)
         supseps = seps[supis]
-        stradseps = seps[stradis]
         deepseps = seps[deepis]
+        mixseps = seps[mixis]
 
         if sup > 0:
             a.errorbar(supseps.mean(), supcorrs.mean(),
                        xerr=supseps.std(), yerr=supcorrs.std(), color=RED, ls='--')
-        if strad > 0:
-            a.errorbar(stradseps.mean(), stradcorrs.mean(),
-                       xerr=stradseps.std(), yerr=stradcorrs.std(), color=GREEN, ls='--')
         if deep > 0:
             a.errorbar(deepseps.mean(), deepcorrs.mean(),
                        xerr=deepseps.std(), yerr=deepcorrs.std(), color=BLUE, ls='--')
+        if mix > 0:
+            a.errorbar(mixseps.mean(), mixcorrs.mean(),
+                       xerr=mixseps.std(), yerr=mixcorrs.std(), color=GREY, ls='--')
         a.scatter(seps, corrs, marker='o', c=c, edgecolor='none', s=10, zorder=100)
         a.set_xlim(left=0)
         # underplot horizontal line at y=0:
@@ -1529,21 +1536,22 @@ class CodeCorr(object):
                            'minrate = %.2f Hz\n'
                            'nneurons = %d\n'
                            'npairs = %d\n'
-                           'ythresh = %d um\n'
+                           'sup = %r um\n'
+                           'deep = %r um\n'
                            'dt = %d min'
                            % (self.r.name, uns['CODETRES']//1000, uns['CODEPHASE'], self.R,
-                              uns['MINRATE'], len(self.nids), npairs, uns['YTHRESH'],
-                              intround(self.r.dtmin)),
+                              uns['MINRATE'], len(self.nids), npairs,
+                              uns['SUPRANGE'], uns['DEEPRANGE'], intround(self.r.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='right',
                            verticalalignment='top')
         # make proxy artists for legend:
-        r = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=RED)
-        g = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=GREEN)
-        b = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=BLUE)
+        s = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=RED)
+        d = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=BLUE)
+        m = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=GREY)
         # add legend:
-        a.legend([r, g, b],
-                 ['superficial: %d%%' % sup, 'straddle: %d%%' % strad, 'deep: %d%%' % deep],
+        a.legend([s, d, m],
+                 ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'mixed: %d%%' % mix],
                  numpoints=1, loc='upper center',
                  handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
@@ -1625,7 +1633,7 @@ class CodeCorr(object):
            lowband=None, highband=None, sirange=None,
            colour=True, lines=False, figsize=(7.5, 6.5)):
         """Scatter plot code correlations vs LFP synchrony index"""
-        ## TODO: plot superficial, deep, and straddle pairs separately
+        ## TODO: plot superficial, deep and mixed pairs separately
         if colour and lines:
             raise RuntimeError("Sorry, can't plot colour and lines simultaneously")
         # ct are center timepoints of corrs tranges:

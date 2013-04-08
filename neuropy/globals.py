@@ -49,5 +49,6 @@ MUATRES = CCTRES # sec
 # time resolution for alternative method of convolving with smoothing window
 MUASMOOTHRES = 1 # sec
 
-"""Threshold distance down vertical axis of probe separating superficial from deep cells"""
-YTHRESH = 600 # um
+"""Distance ranges down vertical axis of probe designating superficial and deep cells"""
+SUPRANGE = 0, 600 # um
+DEEPRANGE = 600, 2000 # um

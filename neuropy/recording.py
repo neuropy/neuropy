@@ -210,9 +210,10 @@ class BaseRecording(object):
 
         nids = np.sort(neurons.keys())
         ys = np.array([ neurons[nid].pos[1] for nid in nids ]) # y positions of each neuron
-        ythresh = uns['YTHRESH']
-        supis = ys < ythresh # True values are superficial, False are deep
-        deepis = np.invert(supis) # True values are deep, False are superficial
+        sup0, sup1 = uns['SUPRANGE']
+        deep0, deep1 = uns['DEEPRANGE']
+        supis = (sup0 < ys) * (ys < sup1) # True values are superficial
+        deepis = (deep0 < ys) * (ys < deep1) # True values are deep
         supnids = nids[supis]
         deepnids = nids[deepis]
         nsup = len(supnids)
@@ -269,9 +270,10 @@ class BaseRecording(object):
 
         nids = np.sort(neurons.keys())
         ys = np.array([ neurons[nid].pos[1] for nid in nids ]) # y positions of each neuron
-        ythresh = uns['YTHRESH']
-        supis = ys < ythresh # True values are superficial, False are deep
-        deepis = np.invert(supis) # True values are deep, False are superficial
+        sup0, sup1 = uns['SUPRANGE']
+        deep0, deep1 = uns['DEEPRANGE']
+        supis = (sup0 < ys) * (ys < sup1) # True values are superficial
+        deepis = (deep0 < ys) * (ys < deep1) # True values are deep
         supnids = nids[supis]
         deepnids = nids[deepis]
         nsup = len(supnids)

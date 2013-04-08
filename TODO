@@ -4,9 +4,7 @@ TODO:
     - solution is to make sure all .din are exported from spyke
     - or, could also make each recording trange always be the time between first and last spike, regardless of its experiments?
 
-- rename "straddle" pairs to "cross" or "mixed" or "other" pairs?
-
-- define superficial and deep cells by a pair of depth ranges, instead of a single depth threshold
+- cc().sort() gives different results from what it used to, and cc().shifts() seems broken - due to changes to cc.calc()?
 
 - try narrower tranges for cc, si, and mua, anywhere from 4 sec to 32 sec?
 
@@ -42,6 +40,7 @@ TODO:
 - move cell_type.py script to neuropy
     - plot fwhm (half amplitude duration) ala Bartho2004, instead of neuron trough to peak time (dt), which when measured from templates suffers from quantization, although that could be remedied by using very high interpolation of some kind around the peaks. Anyways, for each neuron, scatterplot some measure of average spike duration against another measure of spike duration, or against spatial spread
     - Also, see figure S6 in Luczak2007
+    - Ly2012, Middleton2012, Bruno and Simons 2002, and Swadlow 2003 are all references to look up for extracellular cell typing
 
 - add File/Run dialog to choose a python file to run interactively with %run -i
 
@@ -323,4 +322,6 @@ Tuning curves:
 - DONE: consider modifying SI L/(L+H) to not have a gap in bandwidth between L and H, ie something like P(0-7Hz)/P(0-60Hz), akin to Curto2009. They then split up SI into 5 ranges of size 0.2.
     - this makes a big difference in at least the cc vs si plots, and probably others
 - for clarity, replace "overlap" args with "tres" args, where tres = width - overlap
+- rename "straddle" pairs to "mixed" pairs
+- define superficial and deep cells by a pair of depth ranges, instead of a single depth threshold
 
