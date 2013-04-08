@@ -627,7 +627,7 @@ class LFP(object):
         else:
             f = pl.figure(figsize=figsize)
             a = f.add_subplot(111)
-        a.plot(t, P, '.')
+        a.plot(t, P, 'k.-')
         a.set_xlabel("time (sec)")
         if ylabel == None:
             ylabel = "power (AU?)"
@@ -1595,13 +1595,13 @@ class CodeCorr(object):
         return corrs, t, ylabel
 
     def plot(self, pairs='weightedmean', figsize=(20, 6.5)):
-        """Plot pairwise code correlations as a function of time. pairs can be
-        'weightedmean', 'mean', 'median', 'max', 'min', or 'all', or a specific set of
-        indices into self.pairis."""
+        """Plot pairwise code correlations as a function of time. pairs can be 'weightedmean',
+        'mean', 'median', 'max', 'min', or 'all', or a specific set of indices into
+        self.pairis."""
         corrs, t, ylabel = self.cct(pairs=pairs)
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.plot(t, corrs)
+        a.plot(t, corrs, 'k.-')
         a.set_xlabel("time (sec)")
         a.set_ylabel(ylabel)
         # limit plot to duration of acquistion, in sec:
