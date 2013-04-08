@@ -1,8 +1,14 @@
 TODO:
 
+- potentially big bug: for multiexperiment recordings, for which spyke currently only exports the first .din, the recording is incorrectly assigned the trange of only the first experiment
+    - solution is to make sure all .din are exported from spyke
+    - or, could also make each recording trange always be the time between first and last spike, regardless of its experiments?
+
 - rename "straddle" pairs to "cross" or "mixed" or "other" pairs?
 
 - define superficial and deep cells by a pair of depth ranges, instead of a single depth threshold
+
+- try narrower tranges for cc, si, and mua, anywhere from 4 sec to 32 sec?
 
 - add SI calculated from most superficial LFP channel to lfp.si() plot()
     - keep deepest chan blue as is, make superficial plot red
@@ -15,14 +21,21 @@ TODO:
     - DONE: try overlapping tranges to get smoother signal
     - DONE: weight average cc(t) by the number of ON values for each neuron in each trange
     - DONE: scatter plot cc(t) vs si(t) - should see they're quite correlated - the more synchronized the network, according to LFP, the greater the average pairwise correlations
-    - scatter plot mua(t) vs si(t)
+    - DONE: scatter plot mua(t) vs si(t)
+    - DONE: scatter plot cc(t) vs mua(t)
     - scatter plot mua(t) vs d/dt(si(t))
     - scatter plot deep and superficial cc(t) vs si(t)
     - scatter plot deep and superficial MUA(t) vs si(t)
     - DONE: plot cc(t) vs log(si) or si**2
         - idea is that realtionship between cc(t) seems nonlinear - either quadratic or exponential, but transforming si didn't seem to change r value much, though such transforms do expand the working range on the x axis
+            - might be worth retrying with new SI highband range of (7, 100) instead of (20, 100)
 
 - cc.scat() doesn't plot points or legend any more, change in MPL?
+
+- show how stable (or not) each particular cell pair is over time within a recording
+    - calculate cc(t) for individual pairs, without averaging them together. To get decent signal, use very big time bins (several minutes each), so only get a few time points per recording (say 5). Then, for each pair, normalize its cc(t) value so it averages to 1. Then, average all cc(t) at the same 5 timepoints, add stdev/sem bars, to show how much individual pairwise cc's change throughout a recording
+    - should I maybe be feeding some time dependent value of each cc when doing maxent pairwise model? Is that even possible? Probably not, probably would have to split up the recording into say 5 pieces, which would make the sampling problem worse. The whole point of doing the above is to hopefully show that it's OK to use a single number to represent the corrs for a given pair within a given recording
+
 
 - check that removing all dt == 0 from autocorr is really an OK thing to do, maybe implement it without that assumption...? Can confirm with matplotlib.pyplot.acorr?
 
