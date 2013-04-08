@@ -39,8 +39,8 @@ SITRES = 1 # sec
 SILOWBAND = 0.5, 7 # Hz
 SIHIGHBAND = 7, 100 # Hz
 
-CCWIDTH = SIWIDTH # sec
 """Code correlation time range windows"""
+CCWIDTH = 16.384 # sec
 CCTRES = 1 # sec
 
 """Multiunit activity time range windows"""
