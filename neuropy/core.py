@@ -573,7 +573,7 @@ class LFP(object):
             raise ValueError
         if plot:
             ylabel = 'LFP synchrony index (%s)' % ratio
-            self.powerplot(t, r, t0, t1, ylabel, title=lastcmd(), text=self.r.name)
+            self.si_plot(t, r, t0, t1, ylabel, title=lastcmd(), text=self.r.name)
         return r, t
         
     def si_hilbert(self, chani=-1, lowband=None, highband=None, ratio='L/(H+L)',
@@ -614,12 +614,12 @@ class LFP(object):
             raise ValueError
         if plot:
             ylabel = 'LFP synchrony index (%s)' % ratio
-            self.powerplot(t, r, t0, t1, ylabel, title=lastcmd(), text=self.r.name)
+            self.si_plot(t, r, t0, t1, ylabel, title=lastcmd(), text=self.r.name)
         return r, t
 
-    def powerplot(self, t, P, t0=None, t1=None, ylabel=None, title=None, text=None,
-                  figsize=(20, 6.5)):
-        """Plot some measure of power as a function of time, with hopefully the same
+    def si_plot(self, t, P, t0=None, t1=None, ylabel=None, title=None, text=None,
+                figsize=(20, 6.5)):
+        """Plot syncrhony index as a function of time, with hopefully the same
         temporal scale as some of the other plots in self"""
         if figsize == None:
             f = pl.gcf()
@@ -634,6 +634,7 @@ class LFP(object):
         elif ylabel in ['L/(H+L)', 'H/(H+L)']:
             a.set_ylim(0, 1)
         a.set_xlim(t0, t1) # low/high limits are unchanged if None
+        a.set_ylim(0, 1) # full SI range
         a.set_ylabel(ylabel)
         #a.autoscale(axis='x', enable=True, tight=True)
         # turn off annoying "+2.41e3" type offset on x axis:
