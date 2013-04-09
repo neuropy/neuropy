@@ -50,5 +50,5 @@ MUATRES = CCTRES # sec
 MUASMOOTHRES = 1 # sec
 
 """Distance ranges down vertical axis of probe designating superficial and deep cells"""
-SUPRANGE = 0, 600 # um
-DEEPRANGE = 600, 2000 # um
+SUPRANGE = 0, 500 # um
+DEEPRANGE = 700, 2000 # um
