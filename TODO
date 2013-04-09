@@ -4,6 +4,8 @@ TODO:
     - solution is to make sure all .din are exported from spyke
     - or, could also make each recording trange always be the time between first and last spike, regardless of its experiments?
 
+- replace H+L with L+H
+
 - cc().shifts() is broken due to being disabled in cc.calc_single()
 
 - try narrower tranges for cc, si, and mua, anywhere from 4 sec to 32 sec?
@@ -328,4 +330,4 @@ Tuning curves:
 - for clarity, replace "overlap" args with "tres" args, where tres = width - overlap
 - rename "straddle" pairs to "mixed" pairs
 - define superficial and deep cells by a pair of depth ranges, instead of a single depth threshold
-
+- add separate linear regression lines to mua_si() for superficial and deep cells

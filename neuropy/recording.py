@@ -7,6 +7,8 @@ import StringIO
 import random
 
 import numpy as np
+import scipy.stats
+
 import pylab as pl
 from pylab import get_current_fig_manager as gcfm
 import matplotlib as mpl
@@ -376,9 +378,17 @@ class BaseRecording(object):
         ylim = max(ylim[0]-extra, 0), ylim[1]+extra # don't go below 0
 
         mua = mua.T # make dim 0 all/sup/deep again
-        #a.plot(si, mua[0], 'k.', label='all (%d)' % n[0])
-        a.plot(si, mua[1], 'r.', label='superficial (%d)' % n[1])
-        a.plot(si, mua[2], 'b.', label='deep (%d)' % n[2])
+        # plot separate regression lines for all, superficial, and deep cells:
+        m0, b0, r0, p0, stderr0 = scipy.stats.linregress(si, mua[0])
+        m1, b1, r1, p1, stderr1 = scipy.stats.linregress(si, mua[1])
+        m2, b2, r2, p2, stderr2 = scipy.stats.linregress(si, mua[2])
+        sirange = np.array([0, 1])
+        a.plot(sirange, m0*sirange+b0, 'e--')
+        a.plot(sirange, m1*sirange+b1, 'r--')
+        a.plot(sirange, m2*sirange+b2, 'b--')
+        a.plot(si, mua[0], 'e.', label='all (%d), m=%.3f, r=%.3f' % (n[0], m0, r0))
+        a.plot(si, mua[1], 'r.', label='sup (%d), m=%.3f, r=%.3f' % (n[1], m1, r1))
+        a.plot(si, mua[2], 'b.', label='deep (%d), m=%.3f, r=%.3f' % (n[2], m2, r2))
 
         a.set_xlim(0, 1)
         a.set_ylim(ylim)
