@@ -938,16 +938,16 @@ class CodeCorr(object):
 
     def calc(self):
         if self.width != None:
-            # compute correlation coefficients separately for each trange:
+            # compute correlation coefficients as a function of time, one value per trange:
             self.tranges = split_tranges(self.tranges, self.width, self.tres)
             uns = get_ipython().user_ns
             highval = uns['CODEVALS'][1]
             c, t = self.codes.c, self.codes.t
-            corrs, counts = util.cc_tranges(c, t, self.tranges, highval)
+            corrs, counts = util.cct(c, t, self.tranges, highval)
             nneurons = len(c)
             pairis = np.asarray(np.triu_indices(nneurons, k=1)).T
         else:
-            # compute correlation coefficients once across entire set of tranges
+            # compute correlation coefficients once across entire set of tranges:
             corrs, counts, pairis = self.calc_single(self.codes)
         self.corrs = corrs
         self.counts = counts
