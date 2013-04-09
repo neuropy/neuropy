@@ -959,7 +959,7 @@ class CodeCorr(object):
         some subset of self.tranges, contrained to torus described by self.R, weighted by
         self.weights"""
         c = codes.c # nneurons x nbins array
-        print('TODO: c is back to being int8. Is this OK, or is float64 still needed?')
+        c = np.float64(c) # this seems to be necessary to prevent overflow somewhere
         nneurons, nbins = c.shape
         nids = self.nids
         '''
