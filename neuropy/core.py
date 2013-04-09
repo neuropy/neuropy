@@ -40,7 +40,7 @@ pyximport.install(build_in_temp=False, inplace=True)
 import util # .pyx file
 
 import filter
-from colour import RED, BLUE, GREY, hex2floatrgb, CLUSTERCOLOURRGBDICT
+from colour import CLUSTERCOLOURRGBDICT
 
 TAB = '    ' # 4 spaces
 EPOCH = datetime.datetime(1899, 12, 30, 0, 0, 0) # epoch for datetime stamps in .ptcs
@@ -1123,10 +1123,11 @@ class CodeCorr(object):
         #mixis = not(supis + deepis) # True values are mixed, not needed
         npairs = len(pairis)
         c = np.empty((npairs, 3), dtype=float) # color RGB array
-        REDRGB = hex2floatrgb(RED)
-        BLUERGB = hex2floatrgb(BLUE)
-        GREYRGB = hex2floatrgb(GREY)
-        c[:] = GREYRGB # init to GREY, mixed pairs remain GREY
+        cc = mpl.colors.colorConverter
+        REDRGB = cc.to_rgb('r')
+        BLUERGB = cc.to_rgb('b')
+        GREYRGB = cc.to_rgb('e')
+        c[:] = GREYRGB # init to grey, mixed pairs remain grey
         for i, (ni0, ni1) in enumerate(pairis):
             if supis[ni0] and supis[ni1]:
                 c[i] = REDRGB # cells are both superficial
@@ -1174,10 +1175,9 @@ class CodeCorr(object):
         a.plot(shifts, allmeds, 'k-o', mec='k', ms=3, label='all')
         if nsup: a.plot(shifts, supmeds, 'r-o', mec='r', ms=3, label='superficial')
         if ndeep: a.plot(shifts, deepmeds, 'b-o', mec='b', ms=3, label='deep')
-        if nmix: a.plot(shifts, mixmeds, c=GREY, ls='-', marker='o', mec=GREY, ms=3,
-                        label='mixed')
+        if nmix: a.plot(shifts, mixmeds, 'e-o', mec='e', ms=3, label='mixed')
         # underplot horizontal line at y=0:
-        a.axhline(y=0, c='grey', ls='--', marker=None)
+        a.axhline(y=0, c='e', ls='--', marker=None)
         a.set_xlim(shifts[0], shifts[-1]) # override any MPL smarts
         if shiftcorrect:
             a.set_xlabel("shift correction (ms)")
@@ -1312,7 +1312,7 @@ class CodeCorr(object):
         a.set_xlim(left=-10)
         a.set_ylim(bottom=-0.05)
         # underplot horizontal line at y=0:
-        a.axhline(y=0, c='grey', ls='--', marker=None)
+        a.axhline(y=0, c='e', ls='--', marker=None)
         a.set_xlabel("pair index")
         a.set_ylabel("correlation coefficient")
         titlestr = lastcmd()
@@ -1344,9 +1344,9 @@ class CodeCorr(object):
                            horizontalalignment='right',
                            verticalalignment='top')
         # make proxy artists for legend:
-        s = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc=RED)
-        d = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc=BLUE)
-        m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc=GREY)
+        s = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='r', mec='r')
+        d = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='b', mec='b')
+        m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='e', mec='e')
         # add legend:
         a.legend([s, d, m],
                  ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'mixed: %d%%' % mix],
@@ -1431,16 +1431,16 @@ class CodeCorr(object):
             maxlim = max(xlim[1], ylim[1])
             lim = minlim, maxlim
 
-        a.plot(lim, lim, c='grey', ls='--', marker=None) # y=x line
+        a.plot(lim, lim, c='e', ls='--', marker=None) # y=x line
         if sup > 0:
             a.errorbar(supcorrs0.mean(), supcorrs1.mean(),
-                       xerr=supcorrs0.std(), yerr=supcorrs1.std(), color=RED)
+                       xerr=supcorrs0.std(), yerr=supcorrs1.std(), color='r')
         if deep > 0:
             a.errorbar(deepcorrs0.mean(), deepcorrs1.mean(),
-                       xerr=deepcorrs0.std(), yerr=deepcorrs1.std(), color=BLUE)
+                       xerr=deepcorrs0.std(), yerr=deepcorrs1.std(), color='b')
         if mix > 0:
             a.errorbar(mixcorrs0.mean(), mixcorrs1.mean(),
-                       xerr=mixcorrs0.std(), yerr=mixcorrs1.std(), color=GREY)
+                       xerr=mixcorrs0.std(), yerr=mixcorrs1.std(), color='e')
         a.scatter(corrs0, corrs1, marker='o', c=c, edgecolor='none', s=10, zorder=100)
         a.set_xlim(lim)
         a.set_ylim(lim)
@@ -1468,9 +1468,9 @@ class CodeCorr(object):
                            horizontalalignment='left',
                            verticalalignment='top')
         # make proxy artists for legend:
-        s = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=RED)
-        d = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=BLUE)
-        m = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=GREY)
+        s = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc='r')
+        d = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc='b')
+        m = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc='e')
         # add legend:
         a.legend([s, d, m],
                  ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'mixed: %d%%' % mix],
@@ -1511,17 +1511,17 @@ class CodeCorr(object):
 
         if sup > 0:
             a.errorbar(supseps.mean(), supcorrs.mean(),
-                       xerr=supseps.std(), yerr=supcorrs.std(), color=RED, ls='--')
+                       xerr=supseps.std(), yerr=supcorrs.std(), color='r', ls='--')
         if deep > 0:
             a.errorbar(deepseps.mean(), deepcorrs.mean(),
-                       xerr=deepseps.std(), yerr=deepcorrs.std(), color=BLUE, ls='--')
+                       xerr=deepseps.std(), yerr=deepcorrs.std(), color='b', ls='--')
         if mix > 0:
             a.errorbar(mixseps.mean(), mixcorrs.mean(),
-                       xerr=mixseps.std(), yerr=mixcorrs.std(), color=GREY, ls='--')
+                       xerr=mixseps.std(), yerr=mixcorrs.std(), color='e', ls='--')
         a.scatter(seps, corrs, marker='o', c=c, edgecolor='none', s=10, zorder=100)
         a.set_xlim(left=0)
         # underplot horizontal line at y=0:
-        a.axhline(y=0, c='grey', ls='--', marker=None)
+        a.axhline(y=0, c='e', ls='--', marker=None)
         a.set_xlabel("pair separation (um)")
         a.set_ylabel("correlation coefficient")
         titlestr = lastcmd()
@@ -1546,9 +1546,9 @@ class CodeCorr(object):
                            horizontalalignment='right',
                            verticalalignment='top')
         # make proxy artists for legend:
-        s = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=RED)
-        d = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=BLUE)
-        m = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc=GREY)
+        s = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc='r')
+        d = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc='b')
+        m = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc='e')
         # add legend:
         a.legend([s, d, m],
                  ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'mixed: %d%%' % mix],

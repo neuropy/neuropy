@@ -11,6 +11,7 @@ ip.push() # push a variable in a dict to user namespace
 from __future__ import division
 import os
 
+import matplotlib as mpl
 import pylab as pl
 
 from animal import Animal
@@ -41,6 +42,13 @@ ip.call_pdb = True
 ip.magic("pylab")
 ip.Completer.greedy = True
 ip.Completer.omit__names = 1 # all 'magic' names (``__foo__``) will be excluded
+
 rc = get_ipython().user_ns['rcParams']
 rc['mathtext.default'] = 'regular' # use same font for math mode as regular text mode
 rc['lines.markersize'] = 5 # default 6 renders yucky diamond-like points
+# override default colour for MPL's 'b' and 'blue':
+mpl.colors.colorConverter.cache.clear() # first clear the colour cache
+mpl.colors.colorConverter.colors['b'] = 0.0, 0.25, 1.0
+mpl.colors.cnames['blue'] = '#0040FF'
+# add shortcut for grey:
+mpl.colors.colorConverter.colors['e'] = 0.5, 0.5, 0.5
