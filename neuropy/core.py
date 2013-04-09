@@ -1360,11 +1360,6 @@ class CodeCorr(object):
         """Scatter plot pairwise code correlations in this recording vs that of
         another recording. If the two recordings are the same, split it in half and scatter
         plot first half against the second half."""
-        ## FIXME: this triggers: ValueError: to_rgba: Invalid rgba arg "None"
-        ##                       to_rgb: Invalid rgb arg "None"
-        ##                       cannot convert argument to rgb sequence
-
-
         ## TODO: add interleave flag which generates a sufficiently interleaved, equally sized,
         ## non-overlapping set of tranges to scatter plot against each other, to eliminate
         ## temporal bias inherent in a simple split in time
@@ -1468,9 +1463,9 @@ class CodeCorr(object):
                            horizontalalignment='left',
                            verticalalignment='top')
         # make proxy artists for legend:
-        s = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc='r')
-        d = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc='b')
-        m = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc='e')
+        s = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='r', mec='r')
+        d = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='b', mec='b')
+        m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='e', mec='e')
         # add legend:
         a.legend([s, d, m],
                  ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'mixed: %d%%' % mix],
@@ -1482,6 +1477,8 @@ class CodeCorr(object):
 
     def sep(self, figsize=(7.5, 6.5)):
         """Plot pairwise code correlations as a f'n of pair separation"""
+        ## TODO: histogram cc values in say 200 um bins, and plot line with stdev errorbars
+        ## vs time, in black
         self.calc()
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -1546,9 +1543,9 @@ class CodeCorr(object):
                            horizontalalignment='right',
                            verticalalignment='top')
         # make proxy artists for legend:
-        s = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc='r')
-        d = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc='b')
-        m = mpl.lines.Line2D([1], [1], color='none', marker='o', mfc='e')
+        s = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='r', mec='r')
+        d = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='b', mec='b')
+        m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='e', mec='e')
         # add legend:
         a.legend([s, d, m],
                  ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'mixed: %d%%' % mix],

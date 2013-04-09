@@ -4,7 +4,7 @@ TODO:
     - solution is to make sure all .din are exported from spyke
     - or, could also make each recording trange always be the time between first and last spike, regardless of its experiments?
 
-- cc().sort() gives different results from what it used to, and cc().shifts() seems broken - due to changes to cc.calc()?
+- cc().shifts() is broken due to being disabled in cc.calc_single()
 
 - try narrower tranges for cc, si, and mua, anywhere from 4 sec to 32 sec?
 
