@@ -189,8 +189,8 @@ class BaseRecording(object):
         return np.sort(nids) # may as well sort them
 
     def mua(self, width=None, tres=None, neurons=None, plot=True):
-        """Calculate multiunit activity as a function of time. neurons can be None, 'quiet',
-        'all', or a dict. width and tres of time bins are in seconds"""
+        """Calculate and optionally plot multiunit activity as a function of time. neurons can
+        be None, 'quiet', 'all', or a dict. width and tres of time bins are in seconds"""
         if neurons == None:
             neurons = self.n # use active neurons
         elif neurons == 'quiet':
@@ -333,7 +333,13 @@ class BaseRecording(object):
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
-        a.text(0.998, 0.99, '%s' % self.name, color='k', transform=a.transAxes,
+        uns = get_ipython().user_ns
+        a.text(0.998, 0.99,
+               '%s\n'
+               'sup = %r um\n'
+               'deep = %r um\n'
+               % (self.name, uns['SUPRANGE'], uns['DEEPRANGE']),
+               color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
@@ -366,8 +372,8 @@ class BaseRecording(object):
         a = f.add_subplot(111)
         ylim = mua.min(), mua.max()
         yrange = ylim[1] - ylim[0]
-        extra = yrange*0.03 # 3 %
-        ylim = ylim[0]-extra, ylim[1]+extra
+        extra = yrange * 0.03 # 3 %
+        ylim = max(ylim[0]-extra, 0), ylim[1]+extra # don't go below 0
 
         mua = mua.T # make dim 0 all/sup/deep again
         #a.plot(si, mua[0], 'k.', label='all (%d)' % n[0])
@@ -382,9 +388,12 @@ class BaseRecording(object):
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
+        uns = get_ipython().user_ns
         a.text(0.998, 0.99,
                '%s\n'
-               % (self.name),
+               'sup = %r um\n'
+               'deep = %r um\n'
+               % (self.name, uns['SUPRANGE'], uns['DEEPRANGE']),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
