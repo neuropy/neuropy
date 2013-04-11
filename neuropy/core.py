@@ -517,10 +517,10 @@ class LFP(object):
         self.data[chanis] = data
         return b, a
 
-    def si(self, chani=-1, lowband=None, highband=None, ratio='L/(H+L)',
+    def si(self, chani=-1, lowband=None, highband=None, ratio='L/(L+H)',
            width=None, tres=None, plot=True):
         """Return synchrony index, i.e. power ratio of low vs high bands, as measured by
-        Fourier transform. Use either L/(H+L) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan
+        Fourier transform. Use either L/(L+H) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan
         2009). width and tres are in sec. A smaller tres smooths the returned time series"""
         data = self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
@@ -565,7 +565,7 @@ class LFP(object):
         hP = P[f2i:f3i]
         lP = lP.sum(axis=0)
         hP = hP.sum(axis=0)
-        if ratio == 'L/(H+L)':
+        if ratio == 'L/(L+H)':
             r = lP/(hP + lP)
         elif ratio == 'L/H':
             r = lP/hP
@@ -576,10 +576,10 @@ class LFP(object):
             self.si_plot(t, r, t0, t1, ylabel, title=lastcmd(), text=self.r.name)
         return r, t
         
-    def si_hilbert(self, chani=-1, lowband=None, highband=None, ratio='L/(H+L)',
+    def si_hilbert(self, chani=-1, lowband=None, highband=None, ratio='L/(L+H)',
                    plot=True):
         """Return synchrony index, i.e. power ratio of low vs high bands, as measured by
-        Hilbert transform (Saleem2010). Use either L/(H+L) ratio (Saleem2010) or L/H ratio
+        Hilbert transform (Saleem2010). Use either L/(L+H) ratio (Saleem2010) or L/H ratio
         (Li, Poo, Dan 2009)"""
         if lowband == None:
             lowband = uns['SILOWBAND']
@@ -606,7 +606,7 @@ class LFP(object):
         lP, lPh, lE, lA = filter.hilbert(l)
         hP, hPh, hE, hA = filter.hilbert(h)
 
-        if ratio == 'L/(H+L)':
+        if ratio == 'L/(L+H)':
             r = lP/(hP + lP)
         elif ratio == 'L/H':
             r = lP/hP
@@ -631,7 +631,7 @@ class LFP(object):
         a.set_xlabel("time (sec)")
         if ylabel == None:
             ylabel = "power (AU?)"
-        elif ylabel in ['L/(H+L)', 'H/(H+L)']:
+        elif ylabel in ['L/(L+H)', 'H/(L+H)']:
             a.set_ylim(0, 1)
         a.set_xlim(t0, t1) # low/high limits are unchanged if None
         a.set_ylim(0, 1) # full SI range
@@ -1627,7 +1627,7 @@ class CodeCorr(object):
                horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def si(self, pairs='weightedmean', chani=-1, ratio='L/(H+L)',
+    def si(self, pairs='weightedmean', chani=-1, ratio='L/(L+H)',
            lowband=None, highband=None, sirange=None,
            colour=True, lines=False, figsize=(7.5, 6.5)):
         """Scatter plot code correlations vs LFP synchrony index"""

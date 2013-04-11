@@ -346,7 +346,7 @@ class BaseRecording(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def mua_si(self, chani=-1, ratio='L/(H+L)', figsize=(7.5, 6.5)):
+    def mua_si(self, chani=-1, ratio='L/(L+H)', figsize=(7.5, 6.5)):
         """Scatter plot multiunit activity vs LFP synchrony index"""
         mua, muat, n = self.mua(plot=False)
         #mua, muat, n = self.mua_smooth(plot=False)

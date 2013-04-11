@@ -4,8 +4,6 @@ TODO:
     - solution is to make sure all .din are exported from spyke
     - or, could also make each recording trange always be the time between first and last spike, regardless of its experiments?
 
-- replace H+L with L+H
-
 - cc().shifts() is broken due to being disabled in cc.calc_single()
 
 - try narrower tranges for cc, si, and mua, anywhere from 4 sec to 32 sec?
@@ -13,7 +11,7 @@ TODO:
 - add SI calculated from most superficial LFP channel to lfp.si() plot()
     - keep deepest chan blue as is, make superficial plot red
 
-- cc.sep: histogram cc values in say 200 um bins, and plot line with stdev errorbars vs time, in black
+- cc.sep: in addition to scatter plotting, histogram cc values in say 200 um bins, and plot line with stdev errorbars vs time, in black
 
 - add option for more conventional looking population raster plot, with equal vertical spacing (but probably still in order of depth) and maybe also vertical raster lines, to better visualize the possible presence of up/down states
     - keep them in order of depth, and colour the superficial ones red and the deep ones blue, so it's obvious where the border is. If using a pair of ranges for sup and deep, colour the in between ones black
@@ -29,7 +27,7 @@ TODO:
     - DONE: scatter plot cc(t) vs mua(t)
     - scatter plot mua(t) vs d/dt(si(t))
     - scatter plot deep and superficial cc(t) vs si(t)
-    - scatter plot deep and superficial MUA(t) vs si(t)
+    - DONE: scatter plot deep and superficial MUA(t) vs si(t)
     - DONE: plot cc(t) vs log(si) or si**2
         - idea is that realtionship between cc(t) seems nonlinear - either quadratic or exponential, but transforming si didn't seem to change r value much, though such transforms do expand the working range on the x axis
             - might be worth retrying with new SI highband range of (7, 100) instead of (20, 100)
@@ -331,3 +329,4 @@ Tuning curves:
 - rename "straddle" pairs to "mixed" pairs
 - define superficial and deep cells by a pair of depth ranges, instead of a single depth threshold
 - add separate linear regression lines to mua_si() for superficial and deep cells
+- replace H+L with L+H
