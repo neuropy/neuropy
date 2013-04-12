@@ -946,14 +946,14 @@ class CodeCorr(object):
             c, t = self.codes.c, self.codes.t
             corrs, counts = util.cct(c, t, self.tranges, highval)
             nneurons = len(c)
-            pairis = np.asarray(np.triu_indices(nneurons, k=1)).T
+            pairs = np.asarray(np.triu_indices(nneurons, k=1)).T
         else:
             # compute correlation coefficients once across entire set of tranges:
-            corrs, counts, pairis = self.calc_single(self.codes)
+            corrs, counts, pairs = self.calc_single(self.codes)
         self.corrs = corrs
         self.counts = counts
-        self.pairis = pairis
-        self.npairs = len(pairis)
+        self.pairs = pairs
+        self.npairs = len(pairs)
 
     def calc_single(self, codes):
         """Calculate one code correlation value for each cell pair, given codes spanning
@@ -1006,7 +1006,7 @@ class CodeCorr(object):
         R = self.R
         corrs = []
         counts = []
-        pairis = []
+        pairs = []
         for nii0 in range(nneurons):
             ni0 = nids[nii0]
             for nii1 in range(nii0+1, nneurons):
@@ -1038,15 +1038,15 @@ class CodeCorr(object):
                 #    ## TODO: might also want to try subtracting abs(ccsc)?
                 #    cc -= ccsc
                 corrs.append(cc)
-                pairis.append([nii0, nii1])
+                pairs.append([nii0, nii1])
                 # take sum of high code counts of pair. Note that taking the mean wouldn't
                 # change results in self.cct(), because it would end up simply normalizing
                 # by half the value
                 counts.append(nhigh[nii0] + nhigh[nii1])
         corrs = np.asarray(corrs)
         counts = np.asarray(counts)
-        pairis = np.asarray(pairis)
-        return corrs, counts, pairis
+        pairs = np.asarray(pairs)
+        return corrs, counts, pairs
 
     def clear_codes(self):
         """Delete all of recording's cached codes"""
@@ -1111,7 +1111,7 @@ class CodeCorr(object):
         #print(norder)
         return norder
 
-    def laminarity(self, nids, pairis):
+    def laminarity(self, nids, pairs):
         """Color cell pairs according to whether they're superficial, deep, or mixed"""
         # y positions of all nids:
         ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
@@ -1122,14 +1122,14 @@ class CodeCorr(object):
         supis = (sup0 < ys) * (ys < sup1) # True values are superficial
         deepis = (deep0 < ys) * (ys < deep1) # True values are deep
         #mixis = not(supis + deepis) # True values are mixed, not needed
-        npairs = len(pairis)
+        npairs = len(pairs)
         c = np.empty((npairs, 3), dtype=float) # color RGB array
         cc = mpl.colors.colorConverter
         REDRGB = cc.to_rgb('r')
         BLUERGB = cc.to_rgb('b')
         GREYRGB = cc.to_rgb('e')
         c[:] = GREYRGB # init to grey, mixed pairs remain grey
-        for i, (ni0, ni1) in enumerate(pairis):
+        for i, (ni0, ni1) in enumerate(pairs):
             if supis[ni0] and supis[ni1]:
                 c[i] = REDRGB # cells are both superficial
             if deepis[ni0] and deepis[ni1]:
@@ -1149,8 +1149,8 @@ class CodeCorr(object):
         assert start < stop
         shifts = np.arange(start, stop, step) # shift values, in ms
         uns = get_ipython().user_ns
-        self.calc() # run it once here to init self.nids and self.pairis
-        c, supis, deepis, mixis = self.laminarity(self.nids, self.pairis)
+        self.calc() # run it once here to init self.nids and self.pairs
+        c, supis, deepis, mixis = self.laminarity(self.nids, self.pairs)
         nsup, ndeep, nmix = len(supis), len(deepis), len(mixis)
         allmeds = np.zeros(len(shifts)) # medians of all pairs
         supmeds = np.zeros(len(shifts)) # medians of superficial pairs
@@ -1299,11 +1299,11 @@ class CodeCorr(object):
         corrs = self.corrs
         sortis = corrs.argsort()[::-1] # indices to get corrs in decreasing order
         corrs = corrs[sortis] # corrs in decreasing order
-        pairis = self.pairis[sortis] # pairis in decreasing corrs order
-        npairs = len(pairis)
+        pairs = self.pairs[sortis] # pairs in decreasing corrs order
+        npairs = len(pairs)
 
         # color pairs according to whether they're superficial, deep, or mixed:
-        c, supis, deepis, mixis = self.laminarity(self.nids, pairis)
+        c, supis, deepis, mixis = self.laminarity(self.nids, pairs)
         sup = intround(len(supis) / npairs * 100)
         deep = intround(len(deepis) / npairs * 100)
         mix = intround(len(mixis) / npairs * 100)
@@ -1397,15 +1397,15 @@ class CodeCorr(object):
         cc0.calc()
         cc1.calc()
         # just to be sure:
-        if not (cc0.npairs == cc1.npairs and (cc0.pairis == cc1.pairis).all()):
+        if cc0.npairs != cc1.npairs or (cc0.pairs != cc1.pairs).any():
             import pdb; pdb.set_trace()
             raise RuntimeError("cc0 and cc1 pairs don't match")
-        pairis = cc0.pairis
-        npairs = len(pairis)
+        pairs = cc0.pairs
+        npairs = len(pairs)
         corrs0, corrs1 = cc0.corrs, cc1.corrs
         
         # color pairs according to whether they're superficial, deep, or mixed
-        c, supis, deepis, mixis = self.laminarity(nids, pairis)
+        c, supis, deepis, mixis = self.laminarity(nids, pairs)
         sup = intround(len(supis) / npairs * 100)
         deep = intround(len(deepis) / npairs * 100)
         mix = intround(len(mixis) / npairs * 100)
@@ -1485,12 +1485,12 @@ class CodeCorr(object):
         a = f.add_subplot(111)
         nids = self.nids
         corrs = self.corrs
-        pairis = self.pairis
-        npairs = len(pairis)
+        pairs = self.pairs
+        npairs = len(pairs)
         n = self.r.n
 
         # color pairs according to whether they're superficial, deep, or mixed:
-        c, supis, deepis, mixis = self.laminarity(self.nids, pairis)
+        c, supis, deepis, mixis = self.laminarity(self.nids, pairs)
         sup = intround(len(supis) / npairs * 100)
         deep = intround(len(deepis) / npairs * 100)
         mix = intround(len(mixis) / npairs * 100)
@@ -1500,8 +1500,8 @@ class CodeCorr(object):
 
         # pairwise separations:
         seps = np.zeros(npairs)
-        for i, pairi in enumerate(pairis):
-            nid0, nid1 = nids[pairi[0]], nids[pairi[1]]
+        for i, pair in enumerate(pairs):
+            nid0, nid1 = nids[pair[0]], nids[pair[1]]
             seps[i] = dist(n[nid0].pos, n[nid1].pos)
         supseps = seps[supis]
         deepseps = seps[deepis]
@@ -1559,7 +1559,7 @@ class CodeCorr(object):
     def cct(self, pairs='weightedmean'):
         """Calculate pairwise code correlations as a function of time. pairs can be
         'weightedmean', 'mean', 'median', 'max', 'min', or 'all', or a specific set of
-        indices into self.pairis."""
+        indices into self.corrs"""
         uns = get_ipython().user_ns
         if self.width == None:
             self.width = intround(uns['CCWIDTH'] * 1000000) # convert from sec to us
@@ -1603,7 +1603,7 @@ class CodeCorr(object):
     def plot(self, pairs='weightedmean', figsize=(20, 6.5)):
         """Plot pairwise code correlations as a function of time. pairs can be 'weightedmean',
         'mean', 'median', 'max', 'min', or 'all', or a specific set of indices into
-        self.pairis."""
+        self.corrs"""
         corrs, t, ylabel = self.cct(pairs=pairs)
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
