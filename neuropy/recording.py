@@ -320,7 +320,7 @@ class BaseRecording(object):
         """Plot multiunit activity (all, sup, and deep firing rates) as a function of time"""
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.plot(t, rates[0], 'k', label='all (%d)' % n[0])
+        a.plot(t, rates[0], 'e', label='all (%d)' % n[0])
         a.plot(t, rates[1], 'r', label='superficial (%d)' % n[1])
         a.plot(t, rates[2], 'b', label='deep (%d)' % n[2])
         a.set_xlabel("time (sec)")
