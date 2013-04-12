@@ -4,6 +4,10 @@ TODO:
     - solution is to make sure all .din are exported from spyke
     - or, could also make each recording trange always be the time between first and last spike, regardless of its experiments?
 
+- when splitting up pairs into superficial and deep, consider including mixed pairs into both groups, ie, include a pair in the superficial group if *either* member is superifical, not both. Same for deep. Could call this "inclusive pairs" as opposed to the "exclusive pairs" I've been calculating so far. This would increase npairs per group, and who's to say whether inclusive or exclusive is more valid. Add 'inclusive=False' kwarg to self.cct()
+
+- rename CodeCorr to SpikeCorr, and all instances of 'cc' to 'sc'? Would be a bit clearer.
+
 - cc().shifts() is broken due to being disabled in cc.calc_single()
 
 - try narrower tranges for cc, si, and mua, anywhere from 4 sec to 32 sec?

@@ -888,7 +888,7 @@ class Codes(object):
     '''
     
 class CodeCorr(object):
-    """Calculate and plot the spike code correlations of all cell pairs from nids (or of all
+    """Calculate and plot spike code correlations of all cell pairs from nids (or of all
     cell pairs within some torus of radii R=(R0, R1) in um) in this Recording, during tranges
     or experiments. If width is not None, calculate self as a function of time, with bin
     widths width sec and time resolution tres sec. Weights is a tuple of weight values and
@@ -915,8 +915,6 @@ class CodeCorr(object):
                 raise RuntimeError("Recording %s has no active neurons" % self.r.id)
         self.nids = nids
         self.codes = self.r.codes(nids=nids, tranges=tranges) # calculate them once
-        ## TODO: no longer needed, due to switch to Cython implementation of cc(t)?:
-        #self.codes.c = np.float64(self.codes.c) # prevent int8 overflow
 
         if width != None:
             if tres == None:
@@ -936,6 +934,7 @@ class CodeCorr(object):
         if R != None:
             assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
         self.R = R
+        self.corrs = None # use to flag that self.calc() needs to be recalculated
 
     def calc(self):
         if self.width != None:
@@ -960,7 +959,7 @@ class CodeCorr(object):
         some subset of self.tranges, contrained to torus described by self.R, weighted by
         self.weights"""
         c = codes.c # nneurons x nbins array
-        c = np.float64(c) # this seems to be necessary to prevent overflow somewhere
+        c = np.float64(c) # prevent int8 overflow somewhere
         nneurons, nbins = c.shape
         nids = self.nids
         '''
@@ -1112,7 +1111,8 @@ class CodeCorr(object):
         return norder
 
     def laminarity(self, nids, pairs):
-        """Color cell pairs according to whether they're superficial, deep, or mixed"""
+        """Color cell pairs according to whether they're superficial, deep, or mixed.
+        Return indices into self.pairs"""
         # y positions of all nids:
         ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
         uns = get_ipython().user_ns
@@ -1563,56 +1563,76 @@ class CodeCorr(object):
         uns = get_ipython().user_ns
         if self.width == None:
             self.width = intround(uns['CCWIDTH'] * 1000000) # convert from sec to us
+            self.corrs = None # needs (re)calc
         if self.tres == None:
             self.tres = intround(uns['CCTRES'] * 1000000) # convert from sec to us
-        self.calc()
-        if pairis == None:
+            self.corrs = None # needs (re)calc
+        if self.corrs == None:
+            self.calc() # (re)calc
+        if pairis == None: # use all pairs
             pairis = np.arange(self.npairs)
-        corrs = self.corrs[pairis]
-        counts = self.counts[pairis]
         npairs = len(pairis)
+        corrs = self.corrs[pairis] # npairs * ntranges
+        counts = self.counts[pairis] # npairs * ntranges
         if method == 'weightedmean':
-            # weight each pair and trange by its normalized ON count in each trange
-            corrs = corrs * counts / counts.sum(axis=0)
+            # weight each pair by its normalized ON count per trange
+            totalcounts = counts.sum(axis=0) # len(ntranges)
+            # avoid div by 0, counts at such timepoints will be 0 anyway:
+            zcountis = totalcounts == 0 # trange indices where totalcounts are 0
+            totalcounts[zcountis] = 1
+            weights = counts / totalcounts # npairs * ntranges
+            # where totalcounts are zero, set weights to be uniform across pairs:
+            weights[:, zcountis] = 1 / npairs
+            corrs = corrs * weights # npairs * ntranges
             # sum over all pairs:
             corrs = corrs.sum(axis=0)
-            ylabel = 'weighted mean correlation (%d pairs)' % npairs
+            ylabel = 'weighted mean correlation'
         elif method == 'mean':
             corrs = corrs.mean(axis=0)
-            ylabel = 'mean correlation (%d pairs)' % npairs
+            ylabel = 'mean correlation'
         elif method == 'median':
             corrs = np.median(corrs, axis=0)
-            ylabel = 'median correlation (%d pairs)' % npairs
+            ylabel = 'median correlation'
         elif method == 'max':
             corrs = corrs.max(axis=0)
-            ylabel = 'max correlation (%d pairs)' % npairs
+            ylabel = 'max correlation'
         elif method == 'min':
             corrs = corrs.min(axis=0)
-            ylabel = 'min correlation (%d pairs)' % npairs
+            ylabel = 'min correlation'
         elif method == 'all':
             corrs = corrs.T # need transpose for some reason when plotting multiple traces
-            ylabel = 'correlation (%d pairs)' % npairs
+            ylabel = 'correlation'
         # get midpoint of each trange, convert from us to sec:
         t = self.tranges.mean(axis=1) / 1000000
         return corrs, t, ylabel
 
     def plot(self, method='weightedmean', figsize=(20, 6.5)):
-        """Plot pairwise code correlations as a function of time. pairs can be 'weightedmean',
-        'mean', 'median', 'max', 'min', or 'all', or a specific set of indices into
-        self.corrs"""
-        corrs, t, ylabel = self.cct(method=method)
+        """Plot pairwise code correlations as a function of time. method can be 'weightedmean',
+        'mean', 'median', 'max' or 'min'"""
+        self.calc() # self.laminarity needs self.pairs to exist
+        c, supis, deepis, mixis = self.laminarity(self.nids, self.pairs)
+        allcorrs, t, ylabel = self.cct(method=method)
+        supcorrs, t, ylabel = self.cct(pairis=supis, method=method)
+        deepcorrs, t, ylabel = self.cct(pairis=deepis, method=method)
+        #mixcorrs, t, ylabel = self.cct(pairis=mixis, method=method)
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        if corrs.ndim == 2:
-            a.plot(t, corrs) # auto colours
-        else:
-            a.plot(t, corrs, 'k.-') # single black line
+        # underplot horizontal line at y=0:
+        a.axhline(y=0, c='e', ls='--', marker=None)
+        #if corrs.ndim == 2:
+        #    a.plot(t, corrs) # auto colours
+        # plot according to laminarity:
+        a.plot(t, allcorrs, 'e.-', label='all (%d)' % self.npairs)
+        a.plot(t, supcorrs, 'r.-', label='superficial (%d)' % len(supis))
+        a.plot(t, deepcorrs, 'b.-', label='deep (%d)' % len(deepis))
+        #a.plot(t, mixcorrs, 'e.-', label='mixed (%d)' % len(mixis))
         a.set_xlabel("time (sec)")
+        ylabel = ylabel + " (%d pairs)" % self.npairs
         a.set_ylabel(ylabel)
         # limit plot to duration of acquistion, in sec:
         t0, t1 = np.asarray(self.r.trange) / 1000000
-        ymax = max(0.1, corrs.max())
-        ymin = min(0, corrs.min())
+        ymax = max([0.1, allcorrs.max(), supcorrs.max(), deepcorrs.max()])
+        ymin = min([0.0, allcorrs.min(), supcorrs.min(), deepcorrs.min()])
         a.set_ylim(ymin, ymax)
         a.set_xlim(t0, t1)
         #a.autoscale(axis='x', enable=True, tight=True)
@@ -1624,6 +1644,7 @@ class CodeCorr(object):
         a.set_title(titlestr)
         a.text(0.998, 0.99, '%s' % self.r.name, color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
+        a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
     def si(self, method='weightedmean', chani=-1, ratio='L/(L+H)',
@@ -1697,6 +1718,7 @@ class CodeCorr(object):
         a.set_ylim(ylim)
         #a.autoscale(enable=True, axis='y', tight=True)
         a.set_xlabel("LFP synchrony index (%s)" % ratio)
+        ylabel = ylabel + " (%d pairs)" % self.npairs
         a.set_ylabel(ylabel)
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
@@ -1752,6 +1774,7 @@ class CodeCorr(object):
         a.set_ylim(ylim)
         #a.autoscale(enable=True, axis='y', tight=True)
         a.set_xlabel("mean MUA (Hz)")
+        ylabel = ylabel + " (%d pairs)" % self.npairs
         a.set_ylabel(ylabel)
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
