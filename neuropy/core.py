@@ -574,7 +574,7 @@ class LFP(object):
         if plot:
             ylabel = 'LFP synchrony index (%s)' % ratio
             self.si_plot(t, r, t0, t1, ylabel, title=lastcmd(), text=self.r.name)
-        return r, t
+        return r, t # t are midpoints of bins, from start of acquisition
         
     def si_hilbert(self, chani=-1, lowband=None, highband=None, ratio='L/(L+H)',
                    plot=True):
@@ -1645,26 +1645,21 @@ class CodeCorr(object):
         f.tight_layout(pad=0.3) # crop figure to contents
 
     def si(self, method='weightedmean', chani=-1, ratio='L/(L+H)',
-           lowband=None, highband=None, sirange=None,
-           colour=True, lines=False, figsize=(7.5, 6.5)):
+           lowband=None, highband=None, sirange=None, figsize=(7.5, 6.5)):
         """Scatter plot code correlations vs LFP synchrony index"""
-        ## TODO: plot superficial, deep and mixed pairs separately
-        if colour and lines:
-            raise RuntimeError("Sorry, can't plot colour and lines simultaneously")
-        # ct are center timepoints of corrs tranges:
         t0 = time.time()
-        corrs, npairs, ct, ylabel = self.cct(method=method)
+        corrs, npairs, ct, ylabel = self.cct(method=method) # ct are center timepoints
         print('cct(t) calc took %.3f sec' % (time.time()-t0))
         t0 = time.time()
         si, sit = self.r.lfp.si(chani=chani, lowband=lowband, highband=highband,
-                                ratio=ratio, plot=False)
+                                ratio=ratio, plot=False) # sit are also center timepoints
         print('SI(t) calc took %.3f sec' % (time.time()-t0))
         # get common time resolution, si typically has finer temporal resolution than corrs:
         if len(sit) > len(ct):
             siti = sit.searchsorted(ct)
             sitii = siti < len(sit) # prevent right side out of bounds indices into si
             ct = ct[sitii]
-            corrs = corrs[sitii]
+            corrs = corrs[:, sitii]
             siti = siti[sitii]
             sit = sit[siti]
             si = si[siti]
@@ -1675,7 +1670,7 @@ class CodeCorr(object):
             si = si[ctii]
             cti = cti[ctii]
             ct = ct[cti]
-            corrs = corrs[cti]
+            corrs = corrs[:, cti]
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -1684,32 +1679,30 @@ class CodeCorr(object):
         extra = yrange*0.03 # 3 %
         ylim = ylim[0]-extra, ylim[1]+extra
 
-        # keep only those points whose synchrony index falls within sirange
+        # keep only those points whose synchrony index falls within sirange:
         if sirange == None:
             sirange = (0, 1)
         sirange = np.asarray(sirange)
         keepis = (sirange[0] <= si) * (si <= sirange[1]) # boolean index array
         si = si[keepis]
-        corrs = corrs[keepis]
+        corrs = corrs[:, keepis]
 
-        if colour:
-            c = normalize_range(sit) # indices into colormap, as a function of time
-            c = c[keepis]
-        else:
-            c = 'black'
-        m, b, rval, pval, stderr = scipy.stats.linregress(si, corrs)
-        """descriptions of the returned values:
-        rval: correlation coefficient
-        pval: two-sided p-value for a hypothesis test whose null hypothesis is
-              that the slope is zero.
-        stderr: standard error of the estimate
-        """
-        a.plot(sirange, m*sirange+b, 'k--')
-        if lines:
-            a.plot(si, corrs, color='black', marker='.', ms=6, mew=0)
-        else:
-            a.scatter(si, corrs, c=c, vmin=0, vmax=1, cmap=mpl.cm.jet,
-                      marker='.', s=20, edgecolor='none')
+        # plot linear regressions:
+        m0, b0, r0, p0, stderr0 = scipy.stats.linregress(si, corrs[0])
+        m1, b1, r1, p1, stderr1 = scipy.stats.linregress(si, corrs[1])
+        m2, b2, r2, p2, stderr2 = scipy.stats.linregress(si, corrs[2])
+        #m3, b3, r3, p3, stderr3 = scipy.stats.linregress(si, corrs[3])
+        a.plot(sirange, m0*sirange+b0, 'e--')
+        a.plot(sirange, m1*sirange+b1, 'r--')
+        a.plot(sirange, m2*sirange+b2, 'b--')
+        #a.plot(sirange, m3*sirange+b3, 'y--', zorder=0)
+        # scatter plot corrs vs si, one colour per laminarity:
+        a.plot(si, corrs[0], 'e.', label='all (%d), m=%.3f, r=%.3f' % (npairs[0], m0, r0))
+        a.plot(si, corrs[1], 'r.', label='superficial (%d), m=%.3f, r=%.3f'
+                                         % (npairs[1], m1, r1))
+        a.plot(si, corrs[2], 'b.', label='deep (%d), m=%.3f, r=%.3f' % (npairs[2], m2, r2))
+        #a.plot(si, corrs[3], 'y.', label='mixed (%d), m=%.3f, r=%.3f'
+        #                                 % (npairs[3], m3, r3), zorder=0)
         #a.set_xlim(sirange)
         a.set_xlim(0, 1)
         a.set_ylim(ylim)
@@ -1721,12 +1714,11 @@ class CodeCorr(object):
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         a.text(0.998, 0.99,
-               '%s\n'
-               'r = %.3f, $r^2$= %.3f, p = %.3f\n'
-               'm = %.3f, b = %.3f\n'
-               % (self.r.name, rval, rval**2, pval, m, b),
+               '%s'
+               % (self.r.name),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
+        a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
     def mua(self, method='weightedmean', figsize=(7.5, 6.5)):

@@ -34,7 +34,7 @@ TODO:
     - DONE: scatter plot mua(t) vs si(t)
     - DONE: scatter plot cc(t) vs mua(t)
     - scatter plot mua(t) vs d/dt(si(t))
-    - scatter plot deep and superficial cc(t) vs si(t)
+    - DONE: scatter plot deep and superficial cc(t) vs si(t)
     - DONE: scatter plot deep and superficial MUA(t) vs si(t)
     - DONE: plot cc(t) vs log(si) or si**2
         - idea is that realtionship between cc(t) seems nonlinear - either quadratic or exponential, but transforming si didn't seem to change r value much, though such transforms do expand the working range on the x axis
