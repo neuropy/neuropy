@@ -934,7 +934,6 @@ class CodeCorr(object):
         if R != None:
             assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
         self.R = R
-        self.corrs = None # use to flag that self.calc() needs to be recalculated
 
     def calc(self):
         if self.width != None:
@@ -1556,65 +1555,63 @@ class CodeCorr(object):
         self.f = f
         return self
 
-    def cct(self, pairis=None, method='weightedmean'):
-        """Calculate pairwise code correlations as a function of time. pairis are indices
-        into self.corrs. method can be 'weightedmean', 'mean', 'median', 'max', 'min'
-        or 'all'"""
+    def cct(self, method='weightedmean'):
+        """Calculate pairwise code correlations as a function of time. method can be
+        'weightedmean', 'mean', 'median', 'max', 'min' or 'all'"""
         uns = get_ipython().user_ns
         if self.width == None:
             self.width = intround(uns['CCWIDTH'] * 1000000) # convert from sec to us
-            self.corrs = None # needs (re)calc
         if self.tres == None:
             self.tres = intround(uns['CCTRES'] * 1000000) # convert from sec to us
-            self.corrs = None # needs (re)calc
-        if self.corrs == None:
-            self.calc() # (re)calc
-        if pairis == None: # use all pairs
-            pairis = np.arange(self.npairs)
-        npairs = len(pairis)
-        corrs = self.corrs[pairis] # npairs * ntranges
-        counts = self.counts[pairis] # npairs * ntranges
-        if method == 'weightedmean':
-            # weight each pair by its normalized ON count per trange
-            totalcounts = counts.sum(axis=0) # len(ntranges)
-            # avoid div by 0, counts at such timepoints will be 0 anyway:
-            zcountis = totalcounts == 0 # trange indices where totalcounts are 0
-            totalcounts[zcountis] = 1
-            weights = counts / totalcounts # npairs * ntranges
-            # where totalcounts are zero, set weights to be uniform across pairs:
-            weights[:, zcountis] = 1 / npairs
-            corrs = corrs * weights # npairs * ntranges
-            # sum over all pairs:
-            corrs = corrs.sum(axis=0)
-            ylabel = 'weighted mean correlation'
-        elif method == 'mean':
-            corrs = corrs.mean(axis=0)
-            ylabel = 'mean correlation'
-        elif method == 'median':
-            corrs = np.median(corrs, axis=0)
-            ylabel = 'median correlation'
-        elif method == 'max':
-            corrs = corrs.max(axis=0)
-            ylabel = 'max correlation'
-        elif method == 'min':
-            corrs = corrs.min(axis=0)
-            ylabel = 'min correlation'
-        elif method == 'all':
-            corrs = corrs.T # need transpose for some reason when plotting multiple traces
-            ylabel = 'correlation'
+        self.calc()
+        allis = np.arange(self.npairs) # all indices into self.pairs
+        c, supis, deepis, mixis = self.laminarity(self.nids, self.pairs)
+        laminarcorrs = []
+        laminarnpairs = []
+        for pairis in (allis, supis, deepis, mixis):
+            npairs = len(pairis)
+            corrs = self.corrs[pairis]
+            counts = self.counts[pairis]
+            if method == 'weightedmean':
+                # weight each pair by its normalized ON count per trange
+                totalcounts = counts.sum(axis=0) # len(ntranges)
+                # avoid div by 0, counts at such timepoints will be 0 anyway:
+                zcountis = totalcounts == 0 # trange indices where totalcounts are 0
+                totalcounts[zcountis] = 1
+                weights = counts / totalcounts # npairs * ntranges
+                # where totalcounts are zero, set weights to be uniform across pairs:
+                weights[:, zcountis] = 1 / npairs
+                corrs = corrs * weights # npairs * ntranges
+                # sum over all pairs:
+                corrs = corrs.sum(axis=0)
+                ylabel = 'weighted mean correlation'
+            elif method == 'mean':
+                corrs = corrs.mean(axis=0)
+                ylabel = 'mean correlation'
+            elif method == 'median':
+                corrs = np.median(corrs, axis=0)
+                ylabel = 'median correlation'
+            elif method == 'max':
+                corrs = corrs.max(axis=0)
+                ylabel = 'max correlation'
+            elif method == 'min':
+                corrs = corrs.min(axis=0)
+                ylabel = 'min correlation'
+            elif method == 'all':
+                corrs = corrs.T # need transpose for some reason when plotting multiple traces
+                ylabel = 'correlation'
+            laminarcorrs.append(corrs)
+            laminarnpairs.append(npairs)
+        laminarcorrs = np.vstack(laminarcorrs)
+        laminarnpairs = np.array(laminarnpairs)
         # get midpoint of each trange, convert from us to sec:
         t = self.tranges.mean(axis=1) / 1000000
-        return corrs, t, ylabel
+        return laminarcorrs, laminarnpairs, t, ylabel
 
     def plot(self, method='weightedmean', figsize=(20, 6.5)):
         """Plot pairwise code correlations as a function of time. method can be 'weightedmean',
         'mean', 'median', 'max' or 'min'"""
-        self.calc() # self.laminarity needs self.pairs to exist
-        c, supis, deepis, mixis = self.laminarity(self.nids, self.pairs)
-        allcorrs, t, ylabel = self.cct(method=method)
-        supcorrs, t, ylabel = self.cct(pairis=supis, method=method)
-        deepcorrs, t, ylabel = self.cct(pairis=deepis, method=method)
-        #mixcorrs, t, ylabel = self.cct(pairis=mixis, method=method)
+        corrs, npairs, t, ylabel = self.cct(method=method)
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         # underplot horizontal line at y=0:
@@ -1622,17 +1619,17 @@ class CodeCorr(object):
         #if corrs.ndim == 2:
         #    a.plot(t, corrs) # auto colours
         # plot according to laminarity:
-        a.plot(t, allcorrs, 'e.-', label='all (%d)' % self.npairs)
-        a.plot(t, supcorrs, 'r.-', label='superficial (%d)' % len(supis))
-        a.plot(t, deepcorrs, 'b.-', label='deep (%d)' % len(deepis))
-        #a.plot(t, mixcorrs, 'e.-', label='mixed (%d)' % len(mixis))
+        a.plot(t, corrs[0], 'e.-', label='all (%d)' % npairs[0])
+        a.plot(t, corrs[1], 'r.-', label='superficial (%d)' % npairs[1])
+        a.plot(t, corrs[2], 'b.-', label='deep (%d)' % npairs[2])
+        #a.plot(t, corrs[3], 'e.-', label='mixed (%d)' % npairs[3])
         a.set_xlabel("time (sec)")
         ylabel = ylabel + " (%d pairs)" % self.npairs
         a.set_ylabel(ylabel)
         # limit plot to duration of acquistion, in sec:
         t0, t1 = np.asarray(self.r.trange) / 1000000
-        ymax = max([0.1, allcorrs.max(), supcorrs.max(), deepcorrs.max()])
-        ymin = min([0.0, allcorrs.min(), supcorrs.min(), deepcorrs.min()])
+        ymax = max([0.1, corrs[[0,1,2]].max()])
+        ymin = min([0.0, corrs[[0,1,2]].min()])
         a.set_ylim(ymin, ymax)
         a.set_xlim(t0, t1)
         #a.autoscale(axis='x', enable=True, tight=True)
@@ -1656,7 +1653,7 @@ class CodeCorr(object):
             raise RuntimeError("Sorry, can't plot colour and lines simultaneously")
         # ct are center timepoints of corrs tranges:
         t0 = time.time()
-        corrs, ct, ylabel = self.cct(method=method)
+        corrs, npairs, ct, ylabel = self.cct(method=method)
         print('cct(t) calc took %.3f sec' % (time.time()-t0))
         t0 = time.time()
         si, sit = self.r.lfp.si(chani=chani, lowband=lowband, highband=highband,
@@ -1736,7 +1733,7 @@ class CodeCorr(object):
         """Scatter plot code correlations vs multiunit activity"""
         ## TODO: make corrs a 4 x nt array, with 'all', 'sup', 'deep', 'mix' pairs,
         ## and scatter plot against appropriate cells in MUA
-        corrs, ct, ylabel = self.cct(method=method)
+        corrs, npairs, ct, ylabel = self.cct(method=method)
         mua, muat, n = self.r.mua(plot=False)
         #mua, muat, n = self.r.mua_smooth(plot=False)
         mua = mua.T # make time dimension 0 and all/sup/deep dimension 1
