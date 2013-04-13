@@ -338,3 +338,4 @@ Tuning curves:
 - define superficial and deep cells by a pair of depth ranges, instead of a single depth threshold
 - add separate linear regression lines to mua_si() for superficial and deep cells
 - replace H+L with L+H
+- rename mixed pairs to other, since it's possible, now that there's a distance gap between superficial and deep, to have pairs that include neither superficial nor deep cells

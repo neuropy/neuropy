@@ -1109,9 +1109,11 @@ class CodeCorr(object):
         #print(norder)
         return norder
 
-    def laminarity(self, nids, pairs):
-        """Color cell pairs according to whether they're superficial, deep, or mixed.
-        Return indices into self.pairs"""
+    def laminarity(self, nids, pairs, inclusive=False):
+        """Color cell pairs according to whether they're superficial, deep, or other. If
+        inclusive, label a pair as superficial if *either* of the cells are superficial. Ditto
+        for deep. This means many pairs will be counted as both superficial and deep.
+        Return RGB colours and indices into self.pairs"""
         # y positions of all nids:
         ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
         uns = get_ipython().user_ns
@@ -1120,24 +1122,31 @@ class CodeCorr(object):
         # boolean neuron indices:
         supis = (sup0 < ys) * (ys < sup1) # True values are superficial
         deepis = (deep0 < ys) * (ys < deep1) # True values are deep
-        #mixis = not(supis + deepis) # True values are mixed, not needed
+        #otheris = not(supis + deepis) # True values are other, not needed
         npairs = len(pairs)
         c = np.empty((npairs, 3), dtype=float) # color RGB array
         cc = mpl.colors.colorConverter
         REDRGB = cc.to_rgb('r')
         BLUERGB = cc.to_rgb('b')
         YELLOWRGB = cc.to_rgb('y')
-        c[:] = YELLOWRGB # init to yellow, mixed pairs remain yellow
-        for i, (ni0, ni1) in enumerate(pairs):
-            if supis[ni0] and supis[ni1]:
-                c[i] = REDRGB # cells are both superficial
-            if deepis[ni0] and deepis[ni1]:
-                c[i] = BLUERGB # cells are both deep
-        # repurpose names as boolean pair indices:
+        c[:] = YELLOWRGB # init to yellow, other pairs remain yellow
+        if inclusive:
+            for i, (ni0, ni1) in enumerate(pairs):
+                if supis[ni0] or supis[ni1]:
+                    c[i] = REDRGB # at least one cell is superficial
+                if deepis[ni0] or deepis[ni1]:
+                    c[i] = BLUERGB # at least one cell is deep
+        else:
+            for i, (ni0, ni1) in enumerate(pairs):
+                if supis[ni0] and supis[ni1]:
+                    c[i] = REDRGB # cells are both superficial
+                if deepis[ni0] and deepis[ni1]:
+                    c[i] = BLUERGB # cells are both deep
+        # overwrite boolean neuron indices with boolean pair indices:
         supis, = np.where((c == REDRGB).all(axis=1))
         deepis, = np.where((c == BLUERGB).all(axis=1))
-        mixis, = np.where((c == YELLOWRGB).all(axis=1))
-        return c, supis, deepis, mixis
+        otheris, = np.where((c == YELLOWRGB).all(axis=1))
+        return c, supis, deepis, otheris
 
     def shifts(self, start=-5000, stop=5000, step=50, shiftcorrect=True, figsize=(7.5, 6.5)):
         """Plot shift-corrected, or just shifted, median pairwise code correlations of all
@@ -1149,12 +1158,12 @@ class CodeCorr(object):
         shifts = np.arange(start, stop, step) # shift values, in ms
         uns = get_ipython().user_ns
         self.calc() # run it once here to init self.nids and self.pairs
-        c, supis, deepis, mixis = self.laminarity(self.nids, self.pairs)
-        nsup, ndeep, nmix = len(supis), len(deepis), len(mixis)
+        c, supis, deepis, otheris = self.laminarity(self.nids, self.pairs)
+        nsup, ndeep, nother = len(supis), len(deepis), len(otheris)
         allmeds = np.zeros(len(shifts)) # medians of all pairs
         supmeds = np.zeros(len(shifts)) # medians of superficial pairs
         deepmeds = np.zeros(len(shifts)) # medians of deep pairs
-        mixmeds = np.zeros(len(shifts)) # medians of mixed pairs
+        othermeds = np.zeros(len(shifts)) # medians of other pairs
         for shifti, shift in enumerate(shifts):
             # calculate corrs for each shift
             if shiftcorrect:
@@ -1166,7 +1175,7 @@ class CodeCorr(object):
             # check for empty *is, which raise FloatingPointErrors in np.median:
             if nsup: supmeds[shifti] = np.median(self.corrs[supis])
             if ndeep: deepmeds[shifti] = np.median(self.corrs[deepis])
-            if nmix: mixmeds[shifti] = np.median(self.corrs[mixis])
+            if nother: othermeds[shifti] = np.median(self.corrs[otheris])
             print '%d,' % shift, # no newline
         print # newline
         self.clear_codes() # free memory
@@ -1175,7 +1184,7 @@ class CodeCorr(object):
         a.plot(shifts, allmeds, 'e-o', mec='e', ms=3, label='all')
         if nsup: a.plot(shifts, supmeds, 'r-o', mec='r', ms=3, label='superficial')
         if ndeep: a.plot(shifts, deepmeds, 'b-o', mec='b', ms=3, label='deep')
-        if nmix: a.plot(shifts, mixmeds, 'y-o', mec='y', ms=3, label='mixed')
+        if nother: a.plot(shifts, othermeds, 'y-o', mec='y', ms=3, label='other')
         # underplot horizontal line at y=0:
         a.axhline(y=0, c='e', ls='--', marker=None)
         a.set_xlim(shifts[0], shifts[-1]) # override any MPL smarts
@@ -1301,11 +1310,11 @@ class CodeCorr(object):
         pairs = self.pairs[sortis] # pairs in decreasing corrs order
         npairs = len(pairs)
 
-        # color pairs according to whether they're superficial, deep, or mixed:
-        c, supis, deepis, mixis = self.laminarity(self.nids, pairs)
+        # color pairs according to whether they're superficial, deep, or other:
+        c, supis, deepis, otheris = self.laminarity(self.nids, pairs)
         sup = intround(len(supis) / npairs * 100)
         deep = intround(len(deepis) / npairs * 100)
-        mix = intround(len(mixis) / npairs * 100)
+        other = intround(len(otheris) / npairs * 100)
         
         a.scatter(np.arange(self.npairs), corrs, marker='o', c=c, edgecolor='none',
                   s=10, zorder=100)
@@ -1349,7 +1358,7 @@ class CodeCorr(object):
         m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='y', mec='y')
         # add legend:
         a.legend([s, d, m],
-                 ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'mixed: %d%%' % mix],
+                 ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'other: %d%%' % other],
                  numpoints=1, loc='upper center',
                  handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
@@ -1403,14 +1412,14 @@ class CodeCorr(object):
         npairs = len(pairs)
         corrs0, corrs1 = cc0.corrs, cc1.corrs
         
-        # color pairs according to whether they're superficial, deep, or mixed
-        c, supis, deepis, mixis = self.laminarity(nids, pairs)
+        # color pairs according to whether they're superficial, deep, or other
+        c, supis, deepis, otheris = self.laminarity(nids, pairs)
         sup = intround(len(supis) / npairs * 100)
         deep = intround(len(deepis) / npairs * 100)
-        mix = intround(len(mixis) / npairs * 100)
+        other = intround(len(otheris) / npairs * 100)
         supcorrs0, supcorrs1 = corrs0[supis], corrs1[supis]
         deepcorrs0, deepcorrs1 = corrs0[deepis], corrs1[deepis]
-        mixcorrs0, mixcorrs1 = corrs0[mixis], corrs1[mixis]
+        othercorrs0, othercorrs1 = corrs0[otheris], corrs1[otheris]
         
         # create the scatter plot:
         f = pl.figure(figsize=figsize)
@@ -1433,9 +1442,9 @@ class CodeCorr(object):
         if deep > 0:
             a.errorbar(deepcorrs0.mean(), deepcorrs1.mean(),
                        xerr=deepcorrs0.std(), yerr=deepcorrs1.std(), color='b')
-        if mix > 0:
-            a.errorbar(mixcorrs0.mean(), mixcorrs1.mean(),
-                       xerr=mixcorrs0.std(), yerr=mixcorrs1.std(), color='y')
+        if other > 0:
+            a.errorbar(othercorrs0.mean(), othercorrs1.mean(),
+                       xerr=othercorrs0.std(), yerr=othercorrs1.std(), color='y')
         a.scatter(corrs0, corrs1, marker='o', c=c, edgecolor='none', s=10, zorder=100)
         a.set_xlim(lim)
         a.set_ylim(lim)
@@ -1468,7 +1477,7 @@ class CodeCorr(object):
         m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='y', mec='y')
         # add legend:
         a.legend([s, d, m],
-                 ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'mixed: %d%%' % mix],
+                 ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'other: %d%%' % other],
                  numpoints=1, loc='lower right',
                  handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
@@ -1488,14 +1497,14 @@ class CodeCorr(object):
         npairs = len(pairs)
         n = self.r.n
 
-        # color pairs according to whether they're superficial, deep, or mixed:
-        c, supis, deepis, mixis = self.laminarity(self.nids, pairs)
+        # color pairs according to whether they're superficial, deep, or other:
+        c, supis, deepis, otheris = self.laminarity(self.nids, pairs)
         sup = intround(len(supis) / npairs * 100)
         deep = intround(len(deepis) / npairs * 100)
-        mix = intround(len(mixis) / npairs * 100)
+        other = intround(len(otheris) / npairs * 100)
         supcorrs = corrs[supis]
         deepcorrs = corrs[deepis]
-        mixcorrs = corrs[mixis]
+        othercorrs = corrs[otheris]
 
         # pairwise separations:
         seps = np.zeros(npairs)
@@ -1504,7 +1513,7 @@ class CodeCorr(object):
             seps[i] = dist(n[nid0].pos, n[nid1].pos)
         supseps = seps[supis]
         deepseps = seps[deepis]
-        mixseps = seps[mixis]
+        otherseps = seps[otheris]
 
         if sup > 0:
             a.errorbar(supseps.mean(), supcorrs.mean(),
@@ -1512,9 +1521,9 @@ class CodeCorr(object):
         if deep > 0:
             a.errorbar(deepseps.mean(), deepcorrs.mean(),
                        xerr=deepseps.std(), yerr=deepcorrs.std(), color='b', ls='--')
-        if mix > 0:
-            a.errorbar(mixseps.mean(), mixcorrs.mean(),
-                       xerr=mixseps.std(), yerr=mixcorrs.std(), color='y', ls='--')
+        if other > 0:
+            a.errorbar(otherseps.mean(), othercorrs.mean(),
+                       xerr=otherseps.std(), yerr=othercorrs.std(), color='y', ls='--')
         a.scatter(seps, corrs, marker='o', c=c, edgecolor='none', s=10, zorder=100)
         a.set_xlim(left=0)
         # underplot horizontal line at y=0:
@@ -1548,14 +1557,14 @@ class CodeCorr(object):
         m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='y', mec='y')
         # add legend:
         a.legend([s, d, m],
-                 ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'mixed: %d%%' % mix],
+                 ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'other: %d%%' % other],
                  numpoints=1, loc='upper center',
                  handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
 
-    def cct(self, method='weightedmean'):
+    def cct(self, method='weightedmean', inclusive=False):
         """Calculate pairwise code correlations as a function of time. method can be
         'weightedmean', 'mean', 'median', 'max', 'min' or 'all'"""
         uns = get_ipython().user_ns
@@ -1565,10 +1574,10 @@ class CodeCorr(object):
             self.tres = intround(uns['CCTRES'] * 1000000) # convert from sec to us
         self.calc()
         allis = np.arange(self.npairs) # all indices into self.pairs
-        c, supis, deepis, mixis = self.laminarity(self.nids, self.pairs)
+        c, supis, deepis, otheris = self.laminarity(self.nids, self.pairs, inclusive=inclusive)
         laminarcorrs = []
         laminarnpairs = []
-        for pairis in (allis, supis, deepis, mixis):
+        for pairis in (allis, supis, deepis, otheris):
             npairs = len(pairis)
             corrs = self.corrs[pairis]
             counts = self.counts[pairis]
@@ -1608,10 +1617,10 @@ class CodeCorr(object):
         t = self.tranges.mean(axis=1) / 1000000
         return laminarcorrs, laminarnpairs, t, ylabel
 
-    def plot(self, method='weightedmean', figsize=(20, 6.5)):
+    def plot(self, method='weightedmean', inclusive=False, figsize=(20, 6.5)):
         """Plot pairwise code correlations as a function of time. method can be 'weightedmean',
         'mean', 'median', 'max' or 'min'"""
-        corrs, npairs, t, ylabel = self.cct(method=method)
+        corrs, npairs, t, ylabel = self.cct(method=method, inclusive=inclusive)
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         # underplot horizontal line at y=0:
@@ -1622,7 +1631,7 @@ class CodeCorr(object):
         a.plot(t, corrs[0], 'e.-', label='all (%d)' % npairs[0])
         a.plot(t, corrs[1], 'r.-', label='superficial (%d)' % npairs[1])
         a.plot(t, corrs[2], 'b.-', label='deep (%d)' % npairs[2])
-        a.plot(t, corrs[3], 'y.-', label='mixed (%d)' % npairs[3], zorder=0)
+        a.plot(t, corrs[3], 'y.-', label='other (%d)' % npairs[3], zorder=0)
         a.set_xlabel("time (sec)")
         ylabel = ylabel + " (%d pairs)" % self.npairs
         a.set_ylabel(ylabel)
@@ -1644,11 +1653,12 @@ class CodeCorr(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def si(self, method='weightedmean', chani=-1, ratio='L/(L+H)',
+    def si(self, method='weightedmean', inclusive=False, chani=-1, ratio='L/(L+H)',
            lowband=None, highband=None, sirange=None, figsize=(7.5, 6.5)):
         """Scatter plot code correlations vs LFP synchrony index"""
         t0 = time.time()
-        corrs, npairs, ct, ylabel = self.cct(method=method) # ct are center timepoints
+        # ct are center timepoints:
+        corrs, npairs, ct, ylabel = self.cct(method=method, inclusive=inclusive)
         print('cct(t) calc took %.3f sec' % (time.time()-t0))
         t0 = time.time()
         si, sit = self.r.lfp.si(chani=chani, lowband=lowband, highband=highband,
@@ -1701,7 +1711,7 @@ class CodeCorr(object):
         a.plot(si, corrs[1], 'r.', label='superficial (%d), m=%.3f, r=%.3f'
                                          % (npairs[1], m1, r1))
         a.plot(si, corrs[2], 'b.', label='deep (%d), m=%.3f, r=%.3f' % (npairs[2], m2, r2))
-        #a.plot(si, corrs[3], 'y.', label='mixed (%d), m=%.3f, r=%.3f'
+        #a.plot(si, corrs[3], 'y.', label='other (%d), m=%.3f, r=%.3f'
         #                                 % (npairs[3], m3, r3), zorder=0)
         #a.set_xlim(sirange)
         a.set_xlim(0, 1)
@@ -1723,7 +1733,7 @@ class CodeCorr(object):
 
     def mua(self, method='weightedmean', figsize=(7.5, 6.5)):
         """Scatter plot code correlations vs multiunit activity"""
-        ## TODO: make corrs a 4 x nt array, with 'all', 'sup', 'deep', 'mix' pairs,
+        ## TODO: make corrs a 4 x nt array, with 'all', 'sup', 'deep', 'other' pairs,
         ## and scatter plot against appropriate cells in MUA
         corrs, npairs, ct, ylabel = self.cct(method=method)
         mua, muat, n = self.r.mua(plot=False)
