@@ -619,7 +619,7 @@ class LFP(object):
 
     def si_plot(self, t, P, t0=None, t1=None, ylabel=None, title=None, text=None,
                 figsize=(20, 6.5)):
-        """Plot syncrhony index as a function of time, with hopefully the same
+        """Plot synchrony index as a function of time, with hopefully the same
         temporal scale as some of the other plots in self"""
         if figsize == None:
             f = pl.gcf()
@@ -1126,8 +1126,8 @@ class CodeCorr(object):
         cc = mpl.colors.colorConverter
         REDRGB = cc.to_rgb('r')
         BLUERGB = cc.to_rgb('b')
-        GREYRGB = cc.to_rgb('e')
-        c[:] = GREYRGB # init to grey, mixed pairs remain grey
+        YELLOWRGB = cc.to_rgb('y')
+        c[:] = YELLOWRGB # init to yellow, mixed pairs remain yellow
         for i, (ni0, ni1) in enumerate(pairs):
             if supis[ni0] and supis[ni1]:
                 c[i] = REDRGB # cells are both superficial
@@ -1136,7 +1136,7 @@ class CodeCorr(object):
         # repurpose names as boolean pair indices:
         supis, = np.where((c == REDRGB).all(axis=1))
         deepis, = np.where((c == BLUERGB).all(axis=1))
-        mixis, = np.where((c == GREYRGB).all(axis=1))
+        mixis, = np.where((c == YELLOWRGB).all(axis=1))
         return c, supis, deepis, mixis
 
     def shifts(self, start=-5000, stop=5000, step=50, shiftcorrect=True, figsize=(7.5, 6.5)):
@@ -1172,10 +1172,10 @@ class CodeCorr(object):
         self.clear_codes() # free memory
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.plot(shifts, allmeds, 'k-o', mec='k', ms=3, label='all')
+        a.plot(shifts, allmeds, 'e-o', mec='e', ms=3, label='all')
         if nsup: a.plot(shifts, supmeds, 'r-o', mec='r', ms=3, label='superficial')
         if ndeep: a.plot(shifts, deepmeds, 'b-o', mec='b', ms=3, label='deep')
-        if nmix: a.plot(shifts, mixmeds, 'e-o', mec='e', ms=3, label='mixed')
+        if nmix: a.plot(shifts, mixmeds, 'y-o', mec='y', ms=3, label='mixed')
         # underplot horizontal line at y=0:
         a.axhline(y=0, c='e', ls='--', marker=None)
         a.set_xlim(shifts[0], shifts[-1]) # override any MPL smarts
@@ -1346,7 +1346,7 @@ class CodeCorr(object):
         # make proxy artists for legend:
         s = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='r', mec='r')
         d = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='b', mec='b')
-        m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='e', mec='e')
+        m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='y', mec='y')
         # add legend:
         a.legend([s, d, m],
                  ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'mixed: %d%%' % mix],
@@ -1435,7 +1435,7 @@ class CodeCorr(object):
                        xerr=deepcorrs0.std(), yerr=deepcorrs1.std(), color='b')
         if mix > 0:
             a.errorbar(mixcorrs0.mean(), mixcorrs1.mean(),
-                       xerr=mixcorrs0.std(), yerr=mixcorrs1.std(), color='e')
+                       xerr=mixcorrs0.std(), yerr=mixcorrs1.std(), color='y')
         a.scatter(corrs0, corrs1, marker='o', c=c, edgecolor='none', s=10, zorder=100)
         a.set_xlim(lim)
         a.set_ylim(lim)
@@ -1465,7 +1465,7 @@ class CodeCorr(object):
         # make proxy artists for legend:
         s = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='r', mec='r')
         d = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='b', mec='b')
-        m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='e', mec='e')
+        m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='y', mec='y')
         # add legend:
         a.legend([s, d, m],
                  ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'mixed: %d%%' % mix],
@@ -1514,7 +1514,7 @@ class CodeCorr(object):
                        xerr=deepseps.std(), yerr=deepcorrs.std(), color='b', ls='--')
         if mix > 0:
             a.errorbar(mixseps.mean(), mixcorrs.mean(),
-                       xerr=mixseps.std(), yerr=mixcorrs.std(), color='e', ls='--')
+                       xerr=mixseps.std(), yerr=mixcorrs.std(), color='y', ls='--')
         a.scatter(seps, corrs, marker='o', c=c, edgecolor='none', s=10, zorder=100)
         a.set_xlim(left=0)
         # underplot horizontal line at y=0:
@@ -1545,7 +1545,7 @@ class CodeCorr(object):
         # make proxy artists for legend:
         s = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='r', mec='r')
         d = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='b', mec='b')
-        m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='e', mec='e')
+        m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='y', mec='y')
         # add legend:
         a.legend([s, d, m],
                  ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'mixed: %d%%' % mix],
@@ -1622,14 +1622,14 @@ class CodeCorr(object):
         a.plot(t, corrs[0], 'e.-', label='all (%d)' % npairs[0])
         a.plot(t, corrs[1], 'r.-', label='superficial (%d)' % npairs[1])
         a.plot(t, corrs[2], 'b.-', label='deep (%d)' % npairs[2])
-        #a.plot(t, corrs[3], 'e.-', label='mixed (%d)' % npairs[3])
+        a.plot(t, corrs[3], 'y.-', label='mixed (%d)' % npairs[3], zorder=0)
         a.set_xlabel("time (sec)")
         ylabel = ylabel + " (%d pairs)" % self.npairs
         a.set_ylabel(ylabel)
         # limit plot to duration of acquistion, in sec:
         t0, t1 = np.asarray(self.r.trange) / 1000000
-        ymax = max([0.1, corrs[[0,1,2]].max()])
-        ymin = min([0.0, corrs[[0,1,2]].min()])
+        ymax = max([0.1, corrs[[0,1,2,3]].max()])
+        ymin = min([0.0, corrs[[0,1,2,3]].min()])
         a.set_ylim(ymin, ymax)
         a.set_xlim(t0, t1)
         #a.autoscale(axis='x', enable=True, tight=True)
