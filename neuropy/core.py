@@ -1648,7 +1648,13 @@ class CodeCorr(object):
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
-        a.text(0.998, 0.99, '%s' % self.r.name, color='k', transform=a.transAxes,
+        uns = get_ipython().user_ns
+        a.text(0.998, 0.99,
+               '%s\n'
+               'sup = %r um\n'
+               'deep = %r um'
+               % (self.r.name, uns['SUPRANGE'], uns['DEEPRANGE']),
+               color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
@@ -1723,9 +1729,12 @@ class CodeCorr(object):
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
+        uns = get_ipython().user_ns
         a.text(0.998, 0.99,
-               '%s'
-               % (self.r.name),
+               '%s\n'
+               'sup = %r um\n'
+               'deep = %r um'
+               % (self.r.name, uns['SUPRANGE'], uns['DEEPRANGE']),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
@@ -1778,9 +1787,12 @@ class CodeCorr(object):
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
+        uns = get_ipython().user_ns
         a.text(0.998, 0.99,
                '%s\n'
-               % (self.r.name),
+               'sup = %r um\n'
+               'deep = %r um'
+               % (self.r.name, uns['SUPRANGE'], uns['DEEPRANGE']),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
