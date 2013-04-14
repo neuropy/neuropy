@@ -1579,20 +1579,18 @@ class CodeCorr(object):
         laminarnpairs = []
         for pairis in (allis, supis, deepis, otheris):
             npairs = len(pairis)
-            corrs = self.corrs[pairis]
-            counts = self.counts[pairis]
+            corrs = self.corrs[pairis] # npairs * ntranges
+            counts = self.counts[pairis] # npairs * ntranges
             if method == 'weightedmean':
                 # weight each pair by its normalized ON count per trange
                 totalcounts = counts.sum(axis=0) # len(ntranges)
-                # avoid div by 0, counts at such timepoints will be 0 anyway:
+                # avoid div by 0, counts at such timepoints will be uniformly 0 anyway:
                 zcountis = totalcounts == 0 # trange indices where totalcounts are 0
                 totalcounts[zcountis] = 1
                 weights = counts / totalcounts # npairs * ntranges
-                # where totalcounts are zero, set weights to be uniform across pairs:
-                weights[:, zcountis] = 1 / npairs
                 corrs = corrs * weights # npairs * ntranges
-                # sum over all pairs:
-                corrs = corrs.sum(axis=0)
+                # sum over all weighted pairs:
+                corrs = corrs.sum(axis=0) # len(ntranges)
                 ylabel = 'weighted mean correlation'
             elif method == 'mean':
                 corrs = corrs.mean(axis=0)
