@@ -1688,7 +1688,7 @@ class CodeCorr(object):
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        ylim = corrs.min(), corrs.max()
+        ylim = corrs[:4].min(), corrs[:4].max()
         yrange = ylim[1] - ylim[0]
         extra = yrange*0.03 # 3 %
         ylim = ylim[0]-extra, ylim[1]+extra
@@ -1705,18 +1705,19 @@ class CodeCorr(object):
         m0, b0, r0, p0, stderr0 = scipy.stats.linregress(si, corrs[0])
         m1, b1, r1, p1, stderr1 = scipy.stats.linregress(si, corrs[1])
         m2, b2, r2, p2, stderr2 = scipy.stats.linregress(si, corrs[2])
-        #m3, b3, r3, p3, stderr3 = scipy.stats.linregress(si, corrs[3])
+        m3, b3, r3, p3, stderr3 = scipy.stats.linregress(si, corrs[3])
         a.plot(sirange, m0*sirange+b0, 'e--')
         a.plot(sirange, m1*sirange+b1, 'r--')
         a.plot(sirange, m2*sirange+b2, 'b--')
-        #a.plot(sirange, m3*sirange+b3, 'y--', zorder=0)
+        a.plot(sirange, m3*sirange+b3, 'y--', zorder=0)
+
         # scatter plot corrs vs si, one colour per laminarity:
         a.plot(si, corrs[0], 'e.', label='all (%d), m=%.3f, r=%.3f' % (npairs[0], m0, r0))
         a.plot(si, corrs[1], 'r.', label='superficial (%d), m=%.3f, r=%.3f'
                                          % (npairs[1], m1, r1))
         a.plot(si, corrs[2], 'b.', label='deep (%d), m=%.3f, r=%.3f' % (npairs[2], m2, r2))
-        #a.plot(si, corrs[3], 'y.', label='other (%d), m=%.3f, r=%.3f'
-        #                                 % (npairs[3], m3, r3), zorder=0)
+        a.plot(si, corrs[3], 'y.', label='other (%d), m=%.3f, r=%.3f'
+                                         % (npairs[3], m3, r3), zorder=0)
         #a.set_xlim(sirange)
         a.set_xlim(0, 1)
         a.set_ylim(ylim)
@@ -1738,20 +1739,19 @@ class CodeCorr(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def mua(self, method='weightedmean', figsize=(7.5, 6.5)):
+    def mua(self, method='weightedmean', inclusive=False, figsize=(7.5, 6.5)):
         """Scatter plot code correlations vs multiunit activity"""
-        ## TODO: make corrs a 4 x nt array, with 'all', 'sup', 'deep', 'other' pairs,
-        ## and scatter plot against appropriate cells in MUA
-        corrs, npairs, ct, ylabel = self.cct(method=method)
+        corrs, npairs, ct, ylabel = self.cct(method=method, inclusive=inclusive)
         mua, muat, n = self.r.mua(plot=False)
         #mua, muat, n = self.r.mua_smooth(plot=False)
-        mua = mua.T # make time dimension 0 and all/sup/deep dimension 1
+        # keep only MUA of all neurons, throw away laminar MUA information (for now at least):
+        mua = mua[0] # 1D array
         # get common time resolution:
         if len(muat) > len(ct):
             muati = muat.searchsorted(ct)
             muatii = muati < len(muat) # prevent right side out of bounds indices into mua
             ct = ct[muatii]
-            corrs = corrs[muatii]
+            corrs = corrs[:, muatii]
             muati = muati[muatii]
             muat = muat[muati]
             mua = mua[muati]
@@ -1762,24 +1762,36 @@ class CodeCorr(object):
             mua = mua[ctii]
             cti = cti[ctii]
             ct = ct[cti]
-            corrs = corrs[cti]
+            corrs = corrs[:, cti]
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        ylim = corrs.min(), corrs.max()
+        ylim = corrs[:4].min(), corrs[:4].max()
         yrange = ylim[1] - ylim[0]
         extra = yrange*0.03 # 3 %
         ylim = ylim[0]-extra, ylim[1]+extra
+        muarange = np.array([mua.min(), mua.max()])
 
-        mua = mua.T # make dim 0 all/sup/deep again
-        a.plot(mua[0], corrs, 'k.', label='all (%d)' % n[0])
-        #a.plot(mua[1], corrs, 'r.', label='superficial (%d)' % n[1])
-        #a.plot(mua[2], corrs, 'b.', label='deep (%d)' % n[2])
+        # plot linear regressions:
+        m0, b0, r0, p0, stderr0 = scipy.stats.linregress(mua, corrs[0])
+        m1, b1, r1, p1, stderr1 = scipy.stats.linregress(mua, corrs[1])
+        m2, b2, r2, p2, stderr2 = scipy.stats.linregress(mua, corrs[2])
+        m3, b3, r3, p3, stderr3 = scipy.stats.linregress(mua, corrs[3])
+        a.plot(muarange, m0*muarange+b0, 'e--')
+        a.plot(muarange, m1*muarange+b1, 'r--')
+        a.plot(muarange, m2*muarange+b2, 'b--')
+        a.plot(muarange, m3*muarange+b3, 'y--', zorder=0)
 
-        #a.set_xlim(0, 1)
+        # scatter plot corrs vs mua, one colour per laminarity:
+        a.plot(mua, corrs[0], 'e.', label='all (%d), m=%.3f, r=%.3f' % (npairs[0], m0, r0))
+        a.plot(mua, corrs[1], 'r.', label='superficial (%d), m=%.3f, r=%.3f'
+                                          % (npairs[1], m1, r1))
+        a.plot(mua, corrs[2], 'b.', label='deep (%d), m=%.3f, r=%.3f' % (npairs[2], m2, r2))
+        a.plot(mua, corrs[3], 'y.', label='other (%d), m=%.3f, r=%.3f'
+                                          % (npairs[3], m3, r3), zorder=0)
         a.set_ylim(ylim)
         #a.autoscale(enable=True, axis='y', tight=True)
-        a.set_xlabel("mean MUA (Hz)")
+        a.set_xlabel("mean MUA (Hz), %d neurons" % n[0])
         ylabel = ylabel + " (%d pairs)" % self.npairs
         a.set_ylabel(ylabel)
         titlestr = lastcmd()
