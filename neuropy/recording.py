@@ -48,13 +48,13 @@ class BaseRecording(object):
 
     def get_name(self):
         return os.path.split(self.path)[-1]
-    
+
     name = property(get_name)
 
     def get_id(self):
         # return the first word in the name, using - or whitespace as separators
         return self.name.split('-')[0].split(' ')[0]
-        
+
     id = property(get_id)
 
     # shortcuts to various attribs and properties in default sort:
@@ -138,7 +138,7 @@ class BaseRecording(object):
         else:
             raise RuntimeError("%d .lfp.zip files in %s, don't know which one to load"
                                % (nlfpfiles, self.path))
-        
+
         if len(self.e) > 0:
             firstexp = min(list(self.e))
             lastexp = max(list(self.e))
@@ -491,7 +491,7 @@ class BaseRecording(object):
         else: # add to existing axes
             a.hold(True)
             f = pl.gcf()
-            
+
         # use CLUSTERCOLOURDICT for familiarity with len 10 1-based id to colour mapping
         color = core.CLUSTERCOLOURDICT[int(self.id)]
 
@@ -523,7 +523,7 @@ class BaseRecording(object):
         f.tight_layout(pad=0.3) # crop figure to contents
         f.canvas.draw() # this is needed if a != None when passed as arg
         return a
-    
+
 
 class RecordingRevCorr(BaseRecording):
     """Mix-in class that defines reverse correlation related Recording methods"""
@@ -974,7 +974,7 @@ class NetstateScatter(BaseNetstate):
         ## TODO: make tooltips work again, old wx code disabled for now:
         # create a long tooltip with newline to get around bug where newlines aren't
         # recognized on subsequent self.tooltip.SetTip() calls
-        #self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100)) 
+        #self.tooltip = wx.ToolTip(tip='tip with a long %s line and a newline\n' % (' '*100))
         #self.tooltip.Enable(False) # leave disabled for now
         #self.tooltip.SetDelay(0) # set popup delay in ms
         #gcfm().canvas.SetToolTip(self.tooltip) # connect the tooltip to the canvas
