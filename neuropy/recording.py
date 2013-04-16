@@ -226,10 +226,14 @@ class BaseRecording(object):
         nmid = len(midnids)
         ndeep = len(deepnids)
 
-        allspikes = np.concatenate([ neurons[nid].spikes for nid in nids ])
-        supspikes = np.concatenate([ neurons[nid].spikes for nid in supnids ])
-        midspikes = np.concatenate([ neurons[nid].spikes for nid in midnids ])
-        deepspikes = np.concatenate([ neurons[nid].spikes for nid in deepnids ])
+        if nn == 0: allspikes = np.array([])
+        else: allspikes = np.concatenate([ neurons[nid].spikes for nid in nids ])
+        if nsup == 0: supspikes = np.array([])
+        else: supspikes = np.concatenate([ neurons[nid].spikes for nid in supnids ])
+        if nmid == 0: midspikes = np.array([])
+        else: midspikes = np.concatenate([ neurons[nid].spikes for nid in midnids ])
+        if ndeep == 0: deepspikes = np.array([])
+        else: deepspikes = np.concatenate([ neurons[nid].spikes for nid in deepnids ])
         allspikes.sort() # sorted spikes from all neurons
         supspikes.sort() # sorted spikes from superficial neurons
         midspikes.sort() # sorted spikes from middle neurons
@@ -270,6 +274,8 @@ class BaseRecording(object):
         spikeis = spikes.searchsorted(tranges)
         counts = spikeis[:, 1] - spikeis[:, 0]
         widths = (tranges[:, 1] - tranges[:, 0]) / 1000000 # width of each trange, in sec
+        if nn == 0:
+            nn = 1 # prevent div by 0, 0 neurons result in 0 rates anyway
         return counts / widths / nn # in spikes/sec (Hz) per neuron
 
     def calc_mua_smooth(self, spikes, nn, edges, width):
@@ -280,6 +286,8 @@ class BaseRecording(object):
         tressec = tres / 1000000
         nw = width / tres # window width, in number of bins
         window = np.hanning(nw)[nw/2:] # half a hanning window, causal (convolve flips it)
+        if nn == 0:
+            nn = 1 # prevent div by 0, 0 neurons result in 0 rates anyway
         # normalize by bin width and window area and nn to get spikes/sec (Hz) per neuron:
         return np.convolve(spikehist, window, mode='same') / tressec / window.sum() / nn
         # might be faster:
