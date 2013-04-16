@@ -46,8 +46,6 @@ CCTRES = 1 # sec
 """Multiunit activity time range windows"""
 MUAWIDTH = CCWIDTH # sec
 MUATRES = CCTRES # sec
-# time resolution for alternative method of convolving with smoothing window
-MUASMOOTHRES = 1 # sec
 
 """Distance ranges down vertical axis of probe designating superficial, middle and
 deep cells"""
