@@ -213,30 +213,37 @@ class BaseRecording(object):
         nids = np.sort(neurons.keys())
         ys = np.array([ neurons[nid].pos[1] for nid in nids ]) # y positions of each neuron
         sup0, sup1 = uns['SUPRANGE']
+        mid0, mid1 = uns['MIDRANGE']
         deep0, deep1 = uns['DEEPRANGE']
         supis = (sup0 < ys) * (ys < sup1) # True values are superficial
+        midis = (mid0 < ys) * (ys < mid1) # True values are middle
         deepis = (deep0 < ys) * (ys < deep1) # True values are deep
         supnids = nids[supis]
+        midnids = nids[midis]
         deepnids = nids[deepis]
         nsup = len(supnids)
+        nmid = len(midnids)
         ndeep = len(deepnids)
 
         allspikes = np.concatenate([ neurons[nid].spikes for nid in nids ])
         supspikes = np.concatenate([ neurons[nid].spikes for nid in supnids ])
+        midspikes = np.concatenate([ neurons[nid].spikes for nid in midnids ])
         deepspikes = np.concatenate([ neurons[nid].spikes for nid in deepnids ])
         allspikes.sort() # sorted spikes from all neurons
         supspikes.sort() # sorted spikes from superficial neurons
+        midspikes.sort() # sorted spikes from middle neurons
         deepspikes.sort() # sorted spikes from deep neurons
 
         tranges = core.split_tranges([self.trange], width, tres) # in us
 
         allrates = self.calc_mua(allspikes, nn, tranges)
         suprates = self.calc_mua(supspikes, nsup, tranges)
+        midrates = self.calc_mua(midspikes, nmid, tranges)
         deeprates = self.calc_mua(deepspikes, ndeep, tranges)
-        rates = np.vstack([allrates, suprates, deeprates])
+        rates = np.vstack([allrates, suprates, midrates, deeprates])
         # get midpoint of each trange, convert from us to sec:
         t = tranges.mean(axis=1) / 1000000
-        n = nn, nsup, ndeep
+        n = nn, nsup, nmid, ndeep
         if plot:
             self.plot_mua(rates, t, n)
         return rates, t, n
@@ -273,19 +280,25 @@ class BaseRecording(object):
         nids = np.sort(neurons.keys())
         ys = np.array([ neurons[nid].pos[1] for nid in nids ]) # y positions of each neuron
         sup0, sup1 = uns['SUPRANGE']
+        mid0, mid1 = uns['MIDRANGE']
         deep0, deep1 = uns['DEEPRANGE']
         supis = (sup0 < ys) * (ys < sup1) # True values are superficial
+        midis = (mid0 < ys) * (ys < mid1) # True values are middle
         deepis = (deep0 < ys) * (ys < deep1) # True values are deep
         supnids = nids[supis]
+        midnids = nids[midis]
         deepnids = nids[deepis]
         nsup = len(supnids)
+        nmid = len(midnids)
         ndeep = len(deepnids)
 
         allspikes = np.concatenate([ neurons[nid].spikes for nid in nids ])
         supspikes = np.concatenate([ neurons[nid].spikes for nid in supnids ])
+        midspikes = np.concatenate([ neurons[nid].spikes for nid in midnids ])
         deepspikes = np.concatenate([ neurons[nid].spikes for nid in deepnids ])
         allspikes.sort() # sorted spikes from all neurons
         supspikes.sort() # sorted spikes from superficial neurons
+        midspikes.sort() # sorted spikes from middle neurons
         deepspikes.sort() # sorted spikes from deep neurons
 
         t0, t1 = self.trange
@@ -296,9 +309,10 @@ class BaseRecording(object):
         # in spikes/sec (Hz) per neuron:
         allrates = self.calc_mua_smooth(allspikes, edges, ww) / nn
         suprates = self.calc_mua_smooth(supspikes, edges, ww) / nsup
+        midrates = self.calc_mua_smooth(midspikes, edges, ww) / nmid
         deeprates = self.calc_mua_smooth(deepspikes, edges, ww) / ndeep
-        rates = np.vstack([allrates, suprates, deeprates])
-        n = nn, nsup, ndeep
+        rates = np.vstack([allrates, suprates, midrates, deeprates])
+        n = nn, nsup, nmid, ndeep
         if plot:
             self.plot_mua(rates, t, n)
         return rates, t, n
@@ -317,12 +331,14 @@ class BaseRecording(object):
         #scipy.signal.fftconvolve(spikehist, window, mode='same') / window.sum()
 
     def plot_mua(self, rates, t, n, figsize=(20, 6.5)):
-        """Plot multiunit activity (all, sup, and deep firing rates) as a function of time"""
+        """Plot multiunit activity (all, sup, mid and deep firing rates) as a function of
+        time"""
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         a.plot(t, rates[0], 'e', label='all (%d)' % n[0])
         a.plot(t, rates[1], 'r', label='superficial (%d)' % n[1])
-        a.plot(t, rates[2], 'b', label='deep (%d)' % n[2])
+        a.plot(t, rates[2], 'g', label='middle (%d)' % n[2])
+        a.plot(t, rates[3], 'b', label='deep (%d)' % n[3])
         a.set_xlabel("time (sec)")
         a.set_ylabel("mean MUA (Hz)")
         # limit plot to duration of acquistion, in sec:
@@ -339,8 +355,9 @@ class BaseRecording(object):
         a.text(0.998, 0.99,
                '%s\n'
                'sup = %r um\n'
+               'mid = %r um\n'
                'deep = %r um\n'
-               % (self.name, uns['SUPRANGE'], uns['DEEPRANGE']),
+               % (self.name, uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE']),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
@@ -350,14 +367,13 @@ class BaseRecording(object):
         """Scatter plot multiunit activity vs LFP synchrony index"""
         mua, muat, n = self.mua(plot=False)
         #mua, muat, n = self.mua_smooth(plot=False)
-        mua = mua.T # make time dimension 0 and all/sup/deep dimension 1
         si, sit = self.lfp.si(chani=chani, ratio=ratio, plot=False)
         # get common time resolution:
         if len(sit) > len(muat):
             siti = sit.searchsorted(muat)
             sitii = siti < len(sit) # prevent right side out of bounds indices into si
             muat = muat[sitii]
-            mua = mua[sitii]
+            mua = mua[:, sitii]
             siti = siti[sitii]
             sit = sit[siti]
             si = si[siti]
@@ -368,7 +384,7 @@ class BaseRecording(object):
             si = si[muatii]
             muati = muati[muatii]
             muat = muat[muati]
-            mua = mua[muati]
+            mua = mua[:, muati]
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -376,19 +392,23 @@ class BaseRecording(object):
         yrange = ylim[1] - ylim[0]
         extra = yrange * 0.03 # 3 %
         ylim = max(ylim[0]-extra, 0), ylim[1]+extra # don't go below 0
+        sirange = np.array([0, 1])
 
-        mua = mua.T # make dim 0 all/sup/deep again
-        # plot separate regression lines for all, superficial, and deep cells:
+        # plot separate regression lines for all, superficial, middle and deep cells:
         m0, b0, r0, p0, stderr0 = scipy.stats.linregress(si, mua[0])
         m1, b1, r1, p1, stderr1 = scipy.stats.linregress(si, mua[1])
         m2, b2, r2, p2, stderr2 = scipy.stats.linregress(si, mua[2])
-        sirange = np.array([0, 1])
+        m3, b3, r3, p3, stderr3 = scipy.stats.linregress(si, mua[3])
         a.plot(sirange, m0*sirange+b0, 'e--')
         a.plot(sirange, m1*sirange+b1, 'r--')
-        a.plot(sirange, m2*sirange+b2, 'b--')
+        a.plot(sirange, m2*sirange+b2, 'g--')
+        a.plot(sirange, m3*sirange+b3, 'b--')
+
+        # scatter plot MUA vs SI:
         a.plot(si, mua[0], 'e.', label='all (%d), m=%.3f, r=%.3f' % (n[0], m0, r0))
         a.plot(si, mua[1], 'r.', label='sup (%d), m=%.3f, r=%.3f' % (n[1], m1, r1))
-        a.plot(si, mua[2], 'b.', label='deep (%d), m=%.3f, r=%.3f' % (n[2], m2, r2))
+        a.plot(si, mua[2], 'g.', label='mid (%d), m=%.3f, r=%.3f' % (n[2], m2, r2))
+        a.plot(si, mua[3], 'b.', label='deep (%d), m=%.3f, r=%.3f' % (n[3], m3, r3))
 
         a.set_xlim(0, 1)
         a.set_ylim(ylim)
@@ -402,8 +422,9 @@ class BaseRecording(object):
         a.text(0.998, 0.99,
                '%s\n'
                'sup = %r um\n'
+               'mid = %r um\n'
                'deep = %r um\n'
-               % (self.name, uns['SUPRANGE'], uns['DEEPRANGE']),
+               % (self.name, uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE']),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)

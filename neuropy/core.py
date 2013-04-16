@@ -1118,15 +1118,18 @@ class CodeCorr(object):
         ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
         uns = get_ipython().user_ns
         sup0, sup1 = uns['SUPRANGE']
+        mid0, mid1 = uns['MIDRANGE']
         deep0, deep1 = uns['DEEPRANGE']
         # boolean neuron indices:
         supis = (sup0 < ys) * (ys < sup1) # True values are superficial
+        midis = (mid0 < ys) * (ys < mid1) # True values are middle
         deepis = (deep0 < ys) * (ys < deep1) # True values are deep
         #otheris = not(supis + deepis) # True values are other, not needed
         npairs = len(pairs)
         c = np.empty((npairs, 3), dtype=float) # color RGB array
         cc = mpl.colors.colorConverter
         REDRGB = cc.to_rgb('r')
+        GREENRGB = cc.to_rgb('g')
         BLUERGB = cc.to_rgb('b')
         YELLOWRGB = cc.to_rgb('y')
         c[:] = YELLOWRGB # init to yellow, other pairs remain yellow
@@ -1134,19 +1137,24 @@ class CodeCorr(object):
             for i, (ni0, ni1) in enumerate(pairs):
                 if supis[ni0] or supis[ni1]:
                     c[i] = REDRGB # at least one cell is superficial
+                if midis[ni0] or midis[ni1]:
+                    c[i] = GREENRGB # at least one cell is middle
                 if deepis[ni0] or deepis[ni1]:
                     c[i] = BLUERGB # at least one cell is deep
         else:
             for i, (ni0, ni1) in enumerate(pairs):
                 if supis[ni0] and supis[ni1]:
-                    c[i] = REDRGB # cells are both superficial
+                    c[i] = REDRGB # both cells are superficial
+                if midis[ni0] and midis[ni1]:
+                    c[i] = GREENRGB # both cells are middle
                 if deepis[ni0] and deepis[ni1]:
-                    c[i] = BLUERGB # cells are both deep
+                    c[i] = BLUERGB # both cells are deep
         # overwrite boolean neuron indices with boolean pair indices:
         supis, = np.where((c == REDRGB).all(axis=1))
+        midis, = np.where((c == GREENRGB).all(axis=1))
         deepis, = np.where((c == BLUERGB).all(axis=1))
         otheris, = np.where((c == YELLOWRGB).all(axis=1))
-        return c, supis, deepis, otheris
+        return c, supis, midis, deepis, otheris
 
     def shifts(self, start=-5000, stop=5000, step=50, shiftcorrect=True, figsize=(7.5, 6.5)):
         """Plot shift-corrected, or just shifted, median pairwise code correlations of all
@@ -1158,10 +1166,11 @@ class CodeCorr(object):
         shifts = np.arange(start, stop, step) # shift values, in ms
         uns = get_ipython().user_ns
         self.calc() # run it once here to init self.nids and self.pairs
-        c, supis, deepis, otheris = self.laminarity(self.nids, self.pairs)
-        nsup, ndeep, nother = len(supis), len(deepis), len(otheris)
+        c, supis, midis, deepis, otheris = self.laminarity(self.nids, self.pairs)
+        nsup, nmid, ndeep, nother = len(supis), len(midis), len(deepis), len(otheris)
         allmeds = np.zeros(len(shifts)) # medians of all pairs
         supmeds = np.zeros(len(shifts)) # medians of superficial pairs
+        midmeds = np.zeros(len(shifts)) # medians of middle pairs
         deepmeds = np.zeros(len(shifts)) # medians of deep pairs
         othermeds = np.zeros(len(shifts)) # medians of other pairs
         for shifti, shift in enumerate(shifts):
@@ -1174,6 +1183,7 @@ class CodeCorr(object):
             allmeds[shifti] = np.median(self.corrs)
             # check for empty *is, which raise FloatingPointErrors in np.median:
             if nsup: supmeds[shifti] = np.median(self.corrs[supis])
+            if nmid: midmeds[shifti] = np.median(self.corrs[midis])
             if ndeep: deepmeds[shifti] = np.median(self.corrs[deepis])
             if nother: othermeds[shifti] = np.median(self.corrs[otheris])
             print '%d,' % shift, # no newline
@@ -1183,6 +1193,7 @@ class CodeCorr(object):
         a = f.add_subplot(111)
         a.plot(shifts, allmeds, 'e-o', mec='e', ms=3, label='all')
         if nsup: a.plot(shifts, supmeds, 'r-o', mec='r', ms=3, label='superficial')
+        if nmid: a.plot(shifts, midmeds, 'g-o', mec='g', ms=3, label='middle')
         if ndeep: a.plot(shifts, deepmeds, 'b-o', mec='b', ms=3, label='deep')
         if nother: a.plot(shifts, othermeds, 'y-o', mec='y', ms=3, label='other')
         # underplot horizontal line at y=0:
@@ -1213,11 +1224,13 @@ class CodeCorr(object):
                                'nneurons = %d\n'
                                'npairs = %d\n'
                                'sup = %r um\n'
+                               'mid = %r um\n'
                                'deep = %r um\n'
                                'dt = %d min'
                                % (self.r.name, uns['CODETRES']//1000, uns['CODEPHASE'],
                                   self.R, uns['MINRATE'], len(self.nids), self.npairs,
-                                  uns['SUPRANGE'], uns['DEEPRANGE'], intround(self.r.dtmin)),
+                                  uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE'],
+                                  intround(self.r.dtmin)),
                                transform=a.transAxes,
                                horizontalalignment='right',
                                verticalalignment=verticalalignment)
@@ -1311,10 +1324,12 @@ class CodeCorr(object):
         npairs = len(pairs)
 
         # color pairs according to whether they're superficial, deep, or other:
-        c, supis, deepis, otheris = self.laminarity(self.nids, pairs)
-        sup = intround(len(supis) / npairs * 100)
-        deep = intround(len(deepis) / npairs * 100)
-        other = intround(len(otheris) / npairs * 100)
+        c, supis, midis, deepis, otheris = self.laminarity(self.nids, pairs)
+        # get percentages of each:
+        psup = intround(len(supis) / npairs * 100)
+        pmid = intround(len(midis) / npairs * 100)
+        pdeep = intround(len(deepis) / npairs * 100)
+        pother = intround(len(otheris) / npairs * 100)
         
         a.scatter(np.arange(self.npairs), corrs, marker='o', c=c, edgecolor='none',
                   s=10, zorder=100)
@@ -1343,22 +1358,26 @@ class CodeCorr(object):
                            'nneurons = %d\n'
                            'npairs = %d\n'
                            'sup = %r um\n'
+                           'mid = %r um\n'
                            'deep = %r um\n'
                            'dt = %d min'
                            % (self.r.name, self.mean, self.median, self.stdev,
                               uns['CODETRES']//1000, uns['CODEPHASE'], self.R,
                               uns['MINRATE'], len(self.nids), self.npairs,
-                              uns['SUPRANGE'], uns['DEEPRANGE'], intround(self.r.dtmin)),
+                              uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE'],
+                              intround(self.r.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='right',
                            verticalalignment='top')
-        # make proxy artists for legend:
-        s = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='r', mec='r')
-        d = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='b', mec='b')
-        m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='y', mec='y')
+        # make proxy line artists for legend:
+        sl = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='r', mec='r')
+        ml = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='g', mec='g')
+        dl = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='b', mec='b')
+        ol = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='y', mec='y')
         # add legend:
-        a.legend([s, d, m],
-                 ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'other: %d%%' % other],
+        a.legend([sl, ml, dl, ol],
+                 ['superficial: %d%%' % psup, 'middle: %d%%' % pmid, 'deep: %d%%' % pdeep,
+                  'other: %d%%' % pother],
                  numpoints=1, loc='upper center',
                  handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
@@ -1412,12 +1431,15 @@ class CodeCorr(object):
         npairs = len(pairs)
         corrs0, corrs1 = cc0.corrs, cc1.corrs
         
-        # color pairs according to whether they're superficial, deep, or other
-        c, supis, deepis, otheris = self.laminarity(nids, pairs)
-        sup = intround(len(supis) / npairs * 100)
-        deep = intround(len(deepis) / npairs * 100)
-        other = intround(len(otheris) / npairs * 100)
+        # color pairs according to whether they're superficial, middle, deep, or other
+        c, supis, midis, deepis, otheris = self.laminarity(nids, pairs)
+        # get percentages of each:
+        psup = intround(len(supis) / npairs * 100)
+        pmid = intround(len(midis) / npairs * 100)
+        pdeep = intround(len(deepis) / npairs * 100)
+        pother = intround(len(otheris) / npairs * 100)
         supcorrs0, supcorrs1 = corrs0[supis], corrs1[supis]
+        midcorrs0, midcorrs1 = corrs0[midis], corrs1[midis]
         deepcorrs0, deepcorrs1 = corrs0[deepis], corrs1[deepis]
         othercorrs0, othercorrs1 = corrs0[otheris], corrs1[otheris]
         
@@ -1436,13 +1458,16 @@ class CodeCorr(object):
             lim = minlim, maxlim
 
         a.plot(lim, lim, c='e', ls='--', marker=None) # y=x line
-        if sup > 0:
+        if psup > 0:
             a.errorbar(supcorrs0.mean(), supcorrs1.mean(),
                        xerr=supcorrs0.std(), yerr=supcorrs1.std(), color='r')
-        if deep > 0:
+        if pmid > 0:
+            a.errorbar(midcorrs0.mean(), midcorrs1.mean(),
+                       xerr=midcorrs0.std(), yerr=midcorrs1.std(), color='g')
+        if pdeep > 0:
             a.errorbar(deepcorrs0.mean(), deepcorrs1.mean(),
                        xerr=deepcorrs0.std(), yerr=deepcorrs1.std(), color='b')
-        if other > 0:
+        if pother > 0:
             a.errorbar(othercorrs0.mean(), othercorrs1.mean(),
                        xerr=othercorrs0.std(), yerr=othercorrs1.std(), color='y')
         a.scatter(corrs0, corrs1, marker='o', c=c, edgecolor='none', s=10, zorder=100)
@@ -1462,22 +1487,26 @@ class CodeCorr(object):
                            'nneurons = %d\n'
                            'npairs = %d\n'
                            'sup = %r um\n'
+                           'mid = %r um\n'
                            'deep = %r um\n'
                            'r%s.dt = %d min\n'
                            'r%s.dt = %d min'
                            % (uns['CODETRES']//1000, uns['CODEPHASE'], self.R, uns['MINRATE'],
-                              len(nids), cc0.npairs, uns['SUPRANGE'], uns['DEEPRANGE'],
+                              len(nids), cc0.npairs,
+                              uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE'],
                               r0.id, intround(r0.dtmin), r1.id, intround(r1.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='left',
                            verticalalignment='top')
         # make proxy artists for legend:
-        s = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='r', mec='r')
-        d = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='b', mec='b')
-        m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='y', mec='y')
+        sl = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='r', mec='r')
+        ml = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='g', mec='g')
+        dl = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='b', mec='b')
+        ol = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='y', mec='y')
         # add legend:
-        a.legend([s, d, m],
-                 ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'other: %d%%' % other],
+        a.legend([sl, ml, dl, ol],
+                 ['superficial: %d%%' % psup, 'middle: %d%%' % pmid, 'deep: %d%%' % pdeep,
+                  'other: %d%%' % pother],
                  numpoints=1, loc='lower right',
                  handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
@@ -1497,12 +1526,15 @@ class CodeCorr(object):
         npairs = len(pairs)
         n = self.r.n
 
-        # color pairs according to whether they're superficial, deep, or other:
-        c, supis, deepis, otheris = self.laminarity(self.nids, pairs)
-        sup = intround(len(supis) / npairs * 100)
-        deep = intround(len(deepis) / npairs * 100)
-        other = intround(len(otheris) / npairs * 100)
+        # color pairs according to whether they're superficial, middle, deep, or other:
+        c, supis, midis, deepis, otheris = self.laminarity(self.nids, pairs)
+        # get percentages of each:
+        psup = intround(len(supis) / npairs * 100)
+        pmid = intround(len(midis) / npairs * 100)
+        pdeep = intround(len(deepis) / npairs * 100)
+        pother = intround(len(otheris) / npairs * 100)
         supcorrs = corrs[supis]
+        midcorrs = corrs[midis]
         deepcorrs = corrs[deepis]
         othercorrs = corrs[otheris]
 
@@ -1512,16 +1544,20 @@ class CodeCorr(object):
             nid0, nid1 = nids[pair[0]], nids[pair[1]]
             seps[i] = dist(n[nid0].pos, n[nid1].pos)
         supseps = seps[supis]
+        midseps = seps[midis]
         deepseps = seps[deepis]
         otherseps = seps[otheris]
 
-        if sup > 0:
+        if psup > 0:
             a.errorbar(supseps.mean(), supcorrs.mean(),
                        xerr=supseps.std(), yerr=supcorrs.std(), color='r', ls='--')
-        if deep > 0:
+        if pmid > 0:
+            a.errorbar(midseps.mean(), midcorrs.mean(),
+                       xerr=midseps.std(), yerr=midcorrs.std(), color='g', ls='--')
+        if pdeep > 0:
             a.errorbar(deepseps.mean(), deepcorrs.mean(),
                        xerr=deepseps.std(), yerr=deepcorrs.std(), color='b', ls='--')
-        if other > 0:
+        if pother > 0:
             a.errorbar(otherseps.mean(), othercorrs.mean(),
                        xerr=otherseps.std(), yerr=othercorrs.std(), color='y', ls='--')
         a.scatter(seps, corrs, marker='o', c=c, edgecolor='none', s=10, zorder=100)
@@ -1543,21 +1579,25 @@ class CodeCorr(object):
                            'nneurons = %d\n'
                            'npairs = %d\n'
                            'sup = %r um\n'
+                           'mid = %r um\n'
                            'deep = %r um\n'
                            'dt = %d min'
                            % (self.r.name, uns['CODETRES']//1000, uns['CODEPHASE'], self.R,
                               uns['MINRATE'], len(self.nids), npairs,
-                              uns['SUPRANGE'], uns['DEEPRANGE'], intround(self.r.dtmin)),
+                              uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE'],
+                              intround(self.r.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='right',
                            verticalalignment='top')
         # make proxy artists for legend:
-        s = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='r', mec='r')
-        d = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='b', mec='b')
-        m = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='y', mec='y')
+        sl = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='r', mec='r')
+        ml = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='g', mec='g')
+        dl = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='b', mec='b')
+        ol = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='y', mec='y')
         # add legend:
-        a.legend([s, d, m],
-                 ['superficial: %d%%' % sup, 'deep: %d%%' % deep, 'other: %d%%' % other],
+        a.legend([sl, ml, dl, ol],
+                 ['superficial: %d%%' % psup, 'middle: %d%%' % pmid, 'deep: %d%%' % pdeep,
+                  'other: %d%%' % pother],
                  numpoints=1, loc='upper center',
                  handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
@@ -1565,8 +1605,8 @@ class CodeCorr(object):
         return self
 
     def cct(self, method='weightedmean', inclusive=False):
-        """Calculate pairwise code correlations as a function of time. method can be
-        'weightedmean', 'mean', 'median', 'max', 'min' or 'all'"""
+        """Calculate pairwise code correlations for each type of laminarity as a function of
+        time. method can be 'weightedmean', 'mean', 'median', 'max', 'min' or 'all'"""
         uns = get_ipython().user_ns
         if self.width == None:
             self.width = intround(uns['CCWIDTH'] * 1000000) # convert from sec to us
@@ -1574,10 +1614,11 @@ class CodeCorr(object):
             self.tres = intround(uns['CCTRES'] * 1000000) # convert from sec to us
         self.calc()
         allis = np.arange(self.npairs) # all indices into self.pairs
-        c, supis, deepis, otheris = self.laminarity(self.nids, self.pairs, inclusive=inclusive)
+        c, supis, midis, deepis, otheris = self.laminarity(self.nids, self.pairs,
+                                                           inclusive=inclusive)
         laminarcorrs = []
         laminarnpairs = []
-        for pairis in (allis, supis, deepis, otheris):
+        for pairis in (allis, supis, midis, deepis, otheris):
             npairs = len(pairis)
             corrs = self.corrs[pairis] # npairs * ntranges
             counts = self.counts[pairis] # npairs * ntranges
@@ -1628,8 +1669,9 @@ class CodeCorr(object):
         # plot according to laminarity:
         a.plot(t, corrs[0], 'e.-', label='all (%d)' % npairs[0])
         a.plot(t, corrs[1], 'r.-', label='superficial (%d)' % npairs[1])
-        a.plot(t, corrs[2], 'b.-', label='deep (%d)' % npairs[2])
-        a.plot(t, corrs[3], 'y.-', label='other (%d)' % npairs[3], zorder=0)
+        a.plot(t, corrs[2], 'g.-', label='middle (%d)' % npairs[2])
+        a.plot(t, corrs[3], 'b.-', label='deep (%d)' % npairs[3])
+        a.plot(t, corrs[4], 'y.-', label='other (%d)' % npairs[4], zorder=0)
         a.set_xlabel("time (sec)")
         ylabel = ylabel + " (%d pairs)" % self.npairs
         a.set_ylabel(ylabel)
@@ -1650,8 +1692,9 @@ class CodeCorr(object):
         a.text(0.998, 0.99,
                '%s\n'
                'sup = %r um\n'
+               'mid = %r um\n'
                'deep = %r um'
-               % (self.r.name, uns['SUPRANGE'], uns['DEEPRANGE']),
+               % (self.r.name, uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE']),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
@@ -1688,7 +1731,7 @@ class CodeCorr(object):
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        ylim = corrs[:4].min(), corrs[:4].max()
+        ylim = corrs[:5].min(), corrs[:5].max()
         yrange = ylim[1] - ylim[0]
         extra = yrange*0.03 # 3 %
         ylim = ylim[0]-extra, ylim[1]+extra
@@ -1706,18 +1749,21 @@ class CodeCorr(object):
         m1, b1, r1, p1, stderr1 = scipy.stats.linregress(si, corrs[1])
         m2, b2, r2, p2, stderr2 = scipy.stats.linregress(si, corrs[2])
         m3, b3, r3, p3, stderr3 = scipy.stats.linregress(si, corrs[3])
+        m4, b4, r4, p4, stderr4 = scipy.stats.linregress(si, corrs[4])
         a.plot(sirange, m0*sirange+b0, 'e--')
         a.plot(sirange, m1*sirange+b1, 'r--')
-        a.plot(sirange, m2*sirange+b2, 'b--')
-        a.plot(sirange, m3*sirange+b3, 'y--', zorder=0)
+        a.plot(sirange, m2*sirange+b2, 'g--')
+        a.plot(sirange, m3*sirange+b3, 'b--')
+        a.plot(sirange, m4*sirange+b4, 'y--', zorder=0)
 
         # scatter plot corrs vs si, one colour per laminarity:
         a.plot(si, corrs[0], 'e.', label='all (%d), m=%.3f, r=%.3f' % (npairs[0], m0, r0))
         a.plot(si, corrs[1], 'r.', label='superficial (%d), m=%.3f, r=%.3f'
                                          % (npairs[1], m1, r1))
-        a.plot(si, corrs[2], 'b.', label='deep (%d), m=%.3f, r=%.3f' % (npairs[2], m2, r2))
-        a.plot(si, corrs[3], 'y.', label='other (%d), m=%.3f, r=%.3f'
-                                         % (npairs[3], m3, r3), zorder=0)
+        a.plot(si, corrs[2], 'g.', label='middle (%d), m=%.3f, r=%.3f' % (npairs[2], m2, r2))
+        a.plot(si, corrs[3], 'b.', label='deep (%d), m=%.3f, r=%.3f' % (npairs[3], m3, r3))
+        a.plot(si, corrs[4], 'y.', label='other (%d), m=%.3f, r=%.3f'
+                                         % (npairs[4], m4, r4), zorder=0)
         #a.set_xlim(sirange)
         a.set_xlim(0, 1)
         a.set_ylim(ylim)
@@ -1732,8 +1778,9 @@ class CodeCorr(object):
         a.text(0.998, 0.99,
                '%s\n'
                'sup = %r um\n'
+               'mid = %r um\n'
                'deep = %r um'
-               % (self.r.name, uns['SUPRANGE'], uns['DEEPRANGE']),
+               % (self.r.name, uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE']),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
@@ -1766,7 +1813,7 @@ class CodeCorr(object):
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        ylim = corrs[:4].min(), corrs[:4].max()
+        ylim = corrs[:5].min(), corrs[:5].max()
         yrange = ylim[1] - ylim[0]
         extra = yrange*0.03 # 3 %
         ylim = ylim[0]-extra, ylim[1]+extra
@@ -1777,18 +1824,21 @@ class CodeCorr(object):
         m1, b1, r1, p1, stderr1 = scipy.stats.linregress(mua, corrs[1])
         m2, b2, r2, p2, stderr2 = scipy.stats.linregress(mua, corrs[2])
         m3, b3, r3, p3, stderr3 = scipy.stats.linregress(mua, corrs[3])
+        m4, b4, r4, p4, stderr4 = scipy.stats.linregress(mua, corrs[4])
         a.plot(muarange, m0*muarange+b0, 'e--')
         a.plot(muarange, m1*muarange+b1, 'r--')
-        a.plot(muarange, m2*muarange+b2, 'b--')
-        a.plot(muarange, m3*muarange+b3, 'y--', zorder=0)
+        a.plot(muarange, m2*muarange+b2, 'g--')
+        a.plot(muarange, m3*muarange+b3, 'b--')
+        a.plot(muarange, m4*muarange+b4, 'y--', zorder=0)
 
         # scatter plot corrs vs mua, one colour per laminarity:
         a.plot(mua, corrs[0], 'e.', label='all (%d), m=%.3f, r=%.3f' % (npairs[0], m0, r0))
         a.plot(mua, corrs[1], 'r.', label='superficial (%d), m=%.3f, r=%.3f'
                                           % (npairs[1], m1, r1))
-        a.plot(mua, corrs[2], 'b.', label='deep (%d), m=%.3f, r=%.3f' % (npairs[2], m2, r2))
-        a.plot(mua, corrs[3], 'y.', label='other (%d), m=%.3f, r=%.3f'
-                                          % (npairs[3], m3, r3), zorder=0)
+        a.plot(mua, corrs[2], 'g.', label='middle (%d), m=%.3f, r=%.3f' % (npairs[2], m2, r2))
+        a.plot(mua, corrs[3], 'b.', label='deep (%d), m=%.3f, r=%.3f' % (npairs[3], m3, r3))
+        a.plot(mua, corrs[4], 'y.', label='other (%d), m=%.3f, r=%.3f'
+                                          % (npairs[4], m4, r4), zorder=0)
         a.set_ylim(ylim)
         #a.autoscale(enable=True, axis='y', tight=True)
         a.set_xlabel("mean MUA (Hz), %d neurons" % n[0])
@@ -1801,8 +1851,9 @@ class CodeCorr(object):
         a.text(0.998, 0.99,
                '%s\n'
                'sup = %r um\n'
+               'middle = %r um\n'
                'deep = %r um'
-               % (self.r.name, uns['SUPRANGE'], uns['DEEPRANGE']),
+               % (self.r.name, uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE']),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
