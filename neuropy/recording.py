@@ -105,7 +105,7 @@ class BaseRecording(object):
         sortfdnames.sort()
         dinfnames.sort()
         lfpfnames.sort()
-        
+
         # load all Sorts, or just the most recent one:
         uns = get_ipython().user_ns
         if not uns['LOADALLSORTS']:
@@ -256,9 +256,9 @@ class BaseRecording(object):
         widths = (tranges[:, 1] - tranges[:, 0]) / 1000000 # width of each trange, in sec
         return counts / widths / nn # in spikes/sec (Hz) per neuron
 
-    def mua_smooth(self, tres=None, ww=None, neurons=None, plot=True):
+    def mua_smooth(self, width=None, tres=None, neurons=None, plot=True):
         """Return multiunit activity as a function of time, using a smoothing window. neurons
-        can be None, 'quiet', 'all', or a dict. tres and smoothing window width ww are in
+        can be None, 'quiet', 'all', or a dict. Smoothing window width and tres are in
         seconds"""
         if neurons == None:
             neurons = self.n # use active neurons
@@ -269,13 +269,12 @@ class BaseRecording(object):
         nn = len(neurons)
 
         uns = get_ipython().user_ns
+        if width == None:
+            width = uns['MUAWIDTH'] # smoothing window width (sec)
         if tres == None:
             tres = uns['MUASMOOTHRES'] # time resolution (sec)
-        tressec = tres
+        width = intround(width * 1000000) # us
         tres = intround(tres * 1000000) # us
-        if ww == None:
-            ww = uns['MUAWIDTH'] # smoothing window width (sec)
-        ww = intround(ww * 1000000) # us
 
         nids = np.sort(neurons.keys())
         ys = np.array([ neurons[nid].pos[1] for nid in nids ]) # y positions of each neuron
@@ -303,30 +302,30 @@ class BaseRecording(object):
 
         t0, t1 = self.trange
         edges = np.arange(t0, t1+tres, tres) # bin edges (us), including rightmost bin
-        #t = edges[:-1] / 1000000 # left bin edge timepoints (sec)
-        t = (edges[:-1] + tres/2) / 1000000 # mid bin timepoints (sec)
-        
+
         # in spikes/sec (Hz) per neuron:
-        allrates = self.calc_mua_smooth(allspikes, edges, ww) / nn
-        suprates = self.calc_mua_smooth(supspikes, edges, ww) / nsup
-        midrates = self.calc_mua_smooth(midspikes, edges, ww) / nmid
-        deeprates = self.calc_mua_smooth(deepspikes, edges, ww) / ndeep
+        allrates = self.calc_mua_smooth(allspikes, nn, edges, width)
+        suprates = self.calc_mua_smooth(supspikes, nsup, edges, width)
+        midrates = self.calc_mua_smooth(midspikes, nmid, edges, width)
+        deeprates = self.calc_mua_smooth(deepspikes, ndeep, edges, width)
         rates = np.vstack([allrates, suprates, midrates, deeprates])
+        # get midpoint of each trange, convert from us to sec:
+        t = (edges[:-1] + tres/2) / 1000000
         n = nn, nsup, nmid, ndeep
         if plot:
             self.plot_mua(rates, t, n)
         return rates, t, n
 
-    def calc_mua_smooth(self, spikes, edges, ww):
+    def calc_mua_smooth(self, spikes, nn, edges, width):
         """Take sorted multiunit spike train, bin it, and return mean smoothed multiunit
         firing rate signal, in spikes/sec (Hz)"""
         spikehist = np.histogram(spikes, bins=edges)[0]
         tres = edges[1] - edges[0] # bin width (us)
         tressec = tres / 1000000
-        nw = ww / tres # window width, in number of bins
+        nw = width / tres # window width, in number of bins
         window = np.hanning(nw)[nw/2:] # half a hanning window, causal (convolve flips it)
-        # normalize by bin width and window area to get Hz:
-        return np.convolve(spikehist, window, mode='same') / tressec / window.sum()
+        # normalize by bin width and window area and nn to get spikes/sec (Hz) per neuron:
+        return np.convolve(spikehist, window, mode='same') / tressec / window.sum() / nn
         # might be faster:
         #scipy.signal.fftconvolve(spikehist, window, mode='same') / window.sum()
 
