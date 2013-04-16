@@ -1110,22 +1110,14 @@ class CodeCorr(object):
         #print(norder)
         return norder
 
-    def laminarity(self, nids, pairs, inclusive=False):
+    def pair_laminarity(self, nids, pairs, inclusive=False):
         """Color cell pairs according to whether they're superficial, deep, or other. If
         inclusive, label a pair as superficial if *either* of the cells are superficial. Ditto
         for deep. This means many pairs will be counted as both superficial and deep.
         Return RGB colours and indices into self.pairs"""
         # y positions of all nids:
         ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
-        uns = get_ipython().user_ns
-        sup0, sup1 = uns['SUPRANGE']
-        mid0, mid1 = uns['MIDRANGE']
-        deep0, deep1 = uns['DEEPRANGE']
-        # boolean neuron indices:
-        supis = (sup0 <= ys) * (ys < sup1) # True values are superficial
-        midis = (mid0 <= ys) * (ys < mid1) # True values are middle
-        deepis = (deep0 <= ys) * (ys < deep1) # True values are deep
-        #otheris = not(supis + deepis) # True values are other, not needed
+        supis, midis, deepis = laminarity(ys)
         npairs = len(pairs)
         c = np.empty((npairs, 3), dtype=float) # color RGB array
         cc = mpl.colors.colorConverter
@@ -1167,7 +1159,7 @@ class CodeCorr(object):
         shifts = np.arange(start, stop, step) # shift values, in ms
         uns = get_ipython().user_ns
         self.calc() # run it once here to init self.nids and self.pairs
-        c, supis, midis, deepis, otheris = self.laminarity(self.nids, self.pairs)
+        c, supis, midis, deepis, otheris = self.pair_laminarity(self.nids, self.pairs)
         nsup, nmid, ndeep, nother = len(supis), len(midis), len(deepis), len(otheris)
         allmeds = np.zeros(len(shifts)) # medians of all pairs
         supmeds = np.zeros(len(shifts)) # medians of superficial pairs
@@ -1325,7 +1317,7 @@ class CodeCorr(object):
         npairs = len(pairs)
 
         # color pairs according to whether they're superficial, deep, or other:
-        c, supis, midis, deepis, otheris = self.laminarity(self.nids, pairs)
+        c, supis, midis, deepis, otheris = self.pair_laminarity(self.nids, pairs)
         # get percentages of each:
         psup = intround(len(supis) / npairs * 100)
         pmid = intround(len(midis) / npairs * 100)
@@ -1433,7 +1425,7 @@ class CodeCorr(object):
         corrs0, corrs1 = cc0.corrs, cc1.corrs
         
         # color pairs according to whether they're superficial, middle, deep, or other
-        c, supis, midis, deepis, otheris = self.laminarity(nids, pairs)
+        c, supis, midis, deepis, otheris = self.pair_laminarity(nids, pairs)
         # get percentages of each:
         psup = intround(len(supis) / npairs * 100)
         pmid = intround(len(midis) / npairs * 100)
@@ -1528,7 +1520,7 @@ class CodeCorr(object):
         n = self.r.n
 
         # color pairs according to whether they're superficial, middle, deep, or other:
-        c, supis, midis, deepis, otheris = self.laminarity(self.nids, pairs)
+        c, supis, midis, deepis, otheris = self.pair_laminarity(self.nids, pairs)
         # get percentages of each:
         psup = intround(len(supis) / npairs * 100)
         pmid = intround(len(midis) / npairs * 100)
@@ -1615,8 +1607,8 @@ class CodeCorr(object):
             self.tres = intround(uns['CCTRES'] * 1000000) # convert from sec to us
         self.calc()
         allis = np.arange(self.npairs) # all indices into self.pairs
-        c, supis, midis, deepis, otheris = self.laminarity(self.nids, self.pairs,
-                                                           inclusive=inclusive)
+        c, supis, midis, deepis, otheris = self.pair_laminarity(self.nids, self.pairs,
+                                                                inclusive=inclusive)
         laminarcorrs = []
         laminarnpairs = []
         for pairis in (allis, supis, midis, deepis, otheris):
@@ -3236,3 +3228,17 @@ def split_tranges(tranges, width, tres):
         subtranges = [ (le, re) for le, re in zip(ledges, redges) ]
         newtranges.append(subtranges)
     return np.vstack(newtranges)
+
+def laminarity(ys):
+    """Return boolean arrays indicating whether a given depth is superficial, middle,
+    or deep layer (or none of the above)"""
+    uns = get_ipython().user_ns
+    sup0, sup1 = uns['SUPRANGE']
+    mid0, mid1 = uns['MIDRANGE']
+    deep0, deep1 = uns['DEEPRANGE']
+    # boolean neuron indices:
+    supis = (sup0 <= ys) * (ys < sup1) # True values are superficial
+    midis = (mid0 <= ys) * (ys < mid1) # True values are middle
+    deepis = (deep0 <= ys) * (ys < deep1) # True values are deep
+    #otheris = not(supis + deepis) # True values are other, not needed
+    return supis, midis, deepis

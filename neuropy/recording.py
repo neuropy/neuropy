@@ -213,12 +213,7 @@ class BaseRecording(object):
 
         nids = np.sort(neurons.keys())
         ys = np.array([ neurons[nid].pos[1] for nid in nids ]) # y positions of each neuron
-        sup0, sup1 = uns['SUPRANGE']
-        mid0, mid1 = uns['MIDRANGE']
-        deep0, deep1 = uns['DEEPRANGE']
-        supis = (sup0 <= ys) * (ys < sup1) # True values are superficial
-        midis = (mid0 <= ys) * (ys < mid1) # True values are middle
-        deepis = (deep0 <= ys) * (ys < deep1) # True values are deep
+        supis, midis, deepis = core.laminarity(ys)
         supnids = nids[supis]
         midnids = nids[midis]
         deepnids = nids[deepis]
