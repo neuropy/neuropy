@@ -659,6 +659,72 @@ class LFP(object):
         self.data[chanis] = data
 
 
+class DensePopulationRaster(object):
+    """Population spike raster plot, with gapless vertical spacing according to neuron depth
+    rank, and colour proportional to neuron depth"""
+    def __init__(self, trange=None, neurons=None, norder=None, units='sec', text=None,
+                 figsize=(20, 6.5)):
+        """neurons is a dict, trange is time range in us to raster plot over. Raster plot
+        is displayed in time units of units"""
+        assert len(trange) == 2
+        trange = np.asarray(trange)
+        if norder != None:
+            nids = norder
+        else: # sort neurons by their depth rank:
+            nids = np.sort(neurons.keys())
+            # depth from top of electrode:
+            unsorted_ypos = np.array([ neurons[nid].pos[1] for nid in nids ])
+            nids = nids[unsorted_ypos.argsort()]
+            print(nids)
+            print(unsorted_ypos[unsorted_ypos.argsort()])
+        # depth of nids from top of electrode
+        ypos = np.array([ neurons[nid].pos[1] for nid in nids ])
+        supis, midis, deepis = laminarity(ypos)
+        nneurons = len(nids)
+        t, y, c = [], [], []
+        for nidi, nid in enumerate(nids):
+            n = neurons[nid]
+            lo, hi = n.spikes.searchsorted(trange)
+            spikes = n.spikes[lo:hi]
+            nspikes = len(spikes)
+            if nspikes > 0:
+                t.append(spikes)
+                y.append(np.tile(nidi, nspikes)) # depth rank below top of electrode
+                if supis[nidi]: color = 'r'
+                elif midis[nidi]: color = 'g'
+                elif deepis[nidi]: color = 'b'
+                else: color = 'y'
+                c.append(np.tile(color, nspikes))
+
+        t = np.hstack(t)
+        # spike time multiplier to use for raster labels:
+        tx = {'us': 1, 'ms': 1000, 'sec': 1000000}[units]
+        if tx != 1:
+            t = t / tx # don't do in-place, allow conversion to float
+        y = np.hstack(y)
+        c = np.hstack(c)
+
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        a.scatter(t, y, marker='|', c=c, s=50)
+        a.set_xlim(trange/tx)
+        a.invert_yaxis()
+        a.autoscale(enable=True, axis='y', tight=True)
+        # turn off annoying "+2.41e3" type offset on x axis:
+        formatter = mpl.ticker.ScalarFormatter(useOffset=False)
+        a.xaxis.set_major_formatter(formatter)
+        a.set_xlabel("time (%s)" % units)
+        a.set_ylabel("neuron depth rank")
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        a.set_title(titlestr)
+        if text:
+            a.text(0.998, 0.99, '%s' % text, transform=a.transAxes,
+                   horizontalalignment='right', verticalalignment='top')
+        f.tight_layout(pad=0.3) # crop figure to contents
+        self.f = f
+
+
 class PopulationRaster(object):
     """Population spike raster plot, with vertical spacing proportional to neuron depth,
     colour representing neuron id, and point size inversely proportional to spike rate."""
