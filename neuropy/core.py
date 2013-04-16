@@ -1121,9 +1121,9 @@ class CodeCorr(object):
         mid0, mid1 = uns['MIDRANGE']
         deep0, deep1 = uns['DEEPRANGE']
         # boolean neuron indices:
-        supis = (sup0 < ys) * (ys < sup1) # True values are superficial
-        midis = (mid0 < ys) * (ys < mid1) # True values are middle
-        deepis = (deep0 < ys) * (ys < deep1) # True values are deep
+        supis = (sup0 <= ys) * (ys < sup1) # True values are superficial
+        midis = (mid0 <= ys) * (ys < mid1) # True values are middle
+        deepis = (deep0 <= ys) * (ys < deep1) # True values are deep
         #otheris = not(supis + deepis) # True values are other, not needed
         npairs = len(pairs)
         c = np.empty((npairs, 3), dtype=float) # color RGB array

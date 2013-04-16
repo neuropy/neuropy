@@ -215,9 +215,9 @@ class BaseRecording(object):
         sup0, sup1 = uns['SUPRANGE']
         mid0, mid1 = uns['MIDRANGE']
         deep0, deep1 = uns['DEEPRANGE']
-        supis = (sup0 < ys) * (ys < sup1) # True values are superficial
-        midis = (mid0 < ys) * (ys < mid1) # True values are middle
-        deepis = (deep0 < ys) * (ys < deep1) # True values are deep
+        supis = (sup0 <= ys) * (ys < sup1) # True values are superficial
+        midis = (mid0 <= ys) * (ys < mid1) # True values are middle
+        deepis = (deep0 <= ys) * (ys < deep1) # True values are deep
         supnids = nids[supis]
         midnids = nids[midis]
         deepnids = nids[deepis]
@@ -282,9 +282,9 @@ class BaseRecording(object):
         sup0, sup1 = uns['SUPRANGE']
         mid0, mid1 = uns['MIDRANGE']
         deep0, deep1 = uns['DEEPRANGE']
-        supis = (sup0 < ys) * (ys < sup1) # True values are superficial
-        midis = (mid0 < ys) * (ys < mid1) # True values are middle
-        deepis = (deep0 < ys) * (ys < deep1) # True values are deep
+        supis = (sup0 <= ys) * (ys < sup1) # True values are superficial
+        midis = (mid0 <= ys) * (ys < mid1) # True values are middle
+        deepis = (deep0 <= ys) * (ys < deep1) # True values are deep
         supnids = nids[supis]
         midnids = nids[midis]
         deepnids = nids[deepis]
