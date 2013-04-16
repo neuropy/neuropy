@@ -4,8 +4,6 @@ TODO:
     - solution is to make sure all .din are exported from spyke
     - or, could also make each recording trange always be the time between first and last spike, regardless of its experiments?
 
-- explicitly label mid-layers in addition to sup and deep, for both inclusive and exclusive cases
-
 - add cc.trials: cc(t) averaged over trials, timelocked to start of each trial, include laminarity
 - add mua_trials
 - add si_trials
@@ -340,3 +338,4 @@ Tuning curves:
 - replace H+L with L+H
 - rename mixed pairs to other, since it's possible, now that there's a distance gap between superficial and deep, to have pairs that include neither superficial nor deep cells
 - when splitting up pairs into superficial and deep, consider including mixed pairs into both groups, ie, include a pair in the superficial group if *either* member is superifical, not both. Same for deep. Could call this "inclusive pairs" as opposed to the "exclusive pairs" I've been calculating so far. This would increase npairs per group, and who's to say whether inclusive or exclusive is more valid. Add 'inclusive=False' kwarg to self.cct()
+- explicitly label mid-layers in addition to sup and deep, for both inclusive and exclusive cases

@@ -660,7 +660,8 @@ class LFP(object):
 
 
 class PopulationRaster(object):
-    """Population spike raster plot"""
+    """Population spike raster plot, with vertical spacing proportional to neuron depth,
+    colour representing neuron id, and point size inversely proportional to spike rate."""
     def __init__(self, trange=None, neurons=None, norder=None, units='sec', text=None,
                  figsize=(20, 6.5)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
@@ -672,14 +673,14 @@ class PopulationRaster(object):
         else:
             nids = sorted(neurons.keys())
         nneurons = len(nids)
-        x, y, c, s = [], [], [], []
+        t, y, c, s = [], [], [], []
         for nidi, nid in enumerate(nids):
             n = neurons[nid]
             lo, hi = n.spikes.searchsorted(trange)
             spikes = n.spikes[lo:hi]
             nspikes = len(spikes)
             if nspikes > 0:
-                x.append(spikes)
+                t.append(spikes)
                 if norder != None:
                     ypos = nidi
                 else:
@@ -690,11 +691,11 @@ class PopulationRaster(object):
                 # use big points for low rate cells, small points for high rate cells:
                 ms = max(min(10000/nspikes, 50), 5)
                 s.append(np.tile(ms, nspikes))
-        x = np.hstack(x)
+        t = np.hstack(t)
         # spike time multiplier to use for raster labels:
         tx = {'us': 1, 'ms': 1000, 'sec': 1000000}[units]
         if tx != 1:
-            x = x / tx # don't do in-place, in order to allow conversion to float
+            t = t / tx # don't do in-place, allow conversion to float
         y = np.hstack(y)
         c = np.hstack(c)
         c.shape = -1, 3
@@ -702,7 +703,7 @@ class PopulationRaster(object):
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.scatter(x, y, marker='.', c=c, edgecolor='none', s=s)
+        a.scatter(t, y, marker='.', c=c, edgecolor='none', s=s)
         a.set_xlim(trange/tx)
         if norder == None: # set y axis limits according to spatial extent of probe
             # grab first neuron's sort.chanpos, should be the same for all:
