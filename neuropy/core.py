@@ -663,7 +663,7 @@ class DensePopulationRaster(object):
     """Population spike raster plot, with gapless vertical spacing according to neuron depth
     rank, and colour proportional to neuron depth"""
     def __init__(self, trange=None, neurons=None, norder=None, units='sec', text=None,
-                 figsize=(20, 6.5)):
+                 figsize=(20, None)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
         is displayed in time units of units"""
         assert len(trange) == 2
@@ -675,8 +675,8 @@ class DensePopulationRaster(object):
             # depth from top of electrode:
             unsorted_ypos = np.array([ neurons[nid].pos[1] for nid in nids ])
             nids = nids[unsorted_ypos.argsort()]
-            print(nids)
-            print(unsorted_ypos[unsorted_ypos.argsort()])
+        self.nids = nids
+        print(nids)
         # depth of nids from top of electrode
         ypos = np.array([ neurons[nid].pos[1] for nid in nids ])
         supis, midis, deepis = laminarity(ypos)
@@ -704,12 +704,13 @@ class DensePopulationRaster(object):
         y = np.hstack(y)
         c = np.hstack(c)
 
+        if figsize[1] == None:
+            figsize = figsize[0], 1 + nneurons / 7 # ~1/7th vertical inch per neuron
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         a.scatter(t, y, marker='|', c=c, s=50)
         a.set_xlim(trange/tx)
-        a.invert_yaxis()
-        a.autoscale(enable=True, axis='y', tight=True)
+        a.set_ylim(nneurons, -1) # this inverts the y axis
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
@@ -717,10 +718,13 @@ class DensePopulationRaster(object):
         a.set_ylabel("neuron depth rank")
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
+        if text: # add text to titlestr, to keep axes completely free of text
+            titlestr += ' (%s)' % text
         a.set_title(titlestr)
-        if text:
-            a.text(0.998, 0.99, '%s' % text, transform=a.transAxes,
-                   horizontalalignment='right', verticalalignment='top')
+        # add pseudo legend of coloured text, horizontal and vertical alignment
+        # kwargs don't work, so the (x, y) coords are a bit of a hack:
+        tmax = a.get_xlim()[1]
+        rainbow_text(a, 0.905*tmax, -1.5, ['superficial', 'middle', 'deep'], ['r', 'g', 'b'])
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
 
@@ -736,6 +740,8 @@ class PopulationRaster(object):
         trange = np.asarray(trange)
         if norder != None:
             nids = norder
+            self.norder = norder
+            print(norder)
         else:
             nids = sorted(neurons.keys())
         nneurons = len(nids)
@@ -789,10 +795,9 @@ class PopulationRaster(object):
             a.set_ylabel("depth (um)")
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
+        if text: # add text to titlestr, to keep axes completely free of text
+            titlestr += ' (%s)' % text
         a.set_title(titlestr)
-        if text:
-            a.text(0.998, 0.99, '%s' % text, transform=a.transAxes,
-                   horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
     '''
@@ -3308,3 +3313,24 @@ def laminarity(ys):
     deepis = (deep0 <= ys) * (ys < deep1) # True values are deep
     #otheris = not(supis + deepis) # True values are other, not needed
     return supis, midis, deepis
+
+def rainbow_text(a, x, y, words, colors, **kwargs):
+    """
+    Take a list of ``words`` and ``colors`` and place them next to each other, with
+    words[i] being shown in colors[i]. All keyword arguments are passed to plt.text, so you
+    can set the font size, family, etc. Note that horizontal and vertical alignment
+    kwargs don't seem to work very well.
+
+    Adapted from Paul Ivanov:
+    https://github.com/matplotlib/matplotlib/issues/697#issuecomment-3859591
+    """
+    f = a.figure
+    t = a.transData
+    #t = a.transAxes
+
+    # draw horizontal text:
+    for w, c in zip(words, colors):
+        text = a.text(x, y, " "+w+" ", color=c, transform=t, **kwargs)
+        text.draw(f.canvas.get_renderer())
+        ex = text.get_window_extent()
+        t = mpl.transforms.offset_copy(text._transform, x=ex.width, units='dots')
