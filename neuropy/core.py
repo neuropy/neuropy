@@ -721,10 +721,12 @@ class DensePopulationRaster(object):
         if text: # add text to titlestr, to keep axes completely free of text
             titlestr += ' (%s)' % text
         a.set_title(titlestr)
-        # add pseudo legend of coloured text, horizontal and vertical alignment
-        # kwargs don't work, so the (x, y) coords are a bit of a hack:
+        # add pseudo legend of coloured text:
         tmax = a.get_xlim()[1]
-        rainbow_text(a, 0.905*tmax, -1.5, ['superficial', 'middle', 'deep'], ['r', 'g', 'b'])
+        #rainbow_text(a, 0.905*tmax, -1.5, ['superficial', 'middle', 'deep'], ['r', 'g', 'b'])
+        a.text(0.908*tmax, -1.5, 'superficial', color='r')
+        a.text(0.952*tmax, -1.5, 'middle', color='g')
+        a.text(0.980*tmax, -1.5, 'deep', color='b')
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
 
@@ -3319,7 +3321,9 @@ def rainbow_text(a, x, y, words, colors, **kwargs):
     Take a list of ``words`` and ``colors`` and place them next to each other, with
     words[i] being shown in colors[i]. All keyword arguments are passed to plt.text, so you
     can set the font size, family, etc. Note that horizontal and vertical alignment
-    kwargs don't seem to work very well.
+    kwargs don't seem to work very well. Also note that although it looks pretty good in the
+    QtAgg backend, in some of the important backends, like PNG and PDF, this doesn't space the
+    words properly.
 
     Adapted from Paul Ivanov:
     https://github.com/matplotlib/matplotlib/issues/697#issuecomment-3859591
