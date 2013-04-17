@@ -11,7 +11,7 @@ import matplotlib as mpl
 import core
 from core import getargstr, TAB, warn, rstrip, dictattr, intround, toiter
 from core import joinpath, lastcmd
-from core import PopulationRaster, Codes, RevCorrWindow
+from core import Codes, RevCorrWindow
 import neuron
 
 # many of these are required when eval'ing the textheader:

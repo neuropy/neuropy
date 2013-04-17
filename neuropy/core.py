@@ -660,7 +660,7 @@ class LFP(object):
 
 
 class DensePopulationRaster(object):
-    """Population spike raster plot, with gapless vertical spacing according to neuron depth
+    """Population spike raster plot, with dense vertical spacing according to neuron depth
     rank, and colour proportional to neuron depth"""
     def __init__(self, trange=None, neurons=None, norder=None, units='sec', text=None,
                  figsize=(20, None)):
@@ -729,7 +729,7 @@ class DensePopulationRaster(object):
         self.f = f
 
 
-class PopulationRaster(object):
+class SpatialPopulationRaster(object):
     """Population spike raster plot, with vertical spacing proportional to neuron depth,
     colour representing neuron id, and point size inversely proportional to spike rate."""
     def __init__(self, trange=None, neurons=None, norder=None, units='sec', text=None,

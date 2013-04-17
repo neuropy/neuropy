@@ -14,9 +14,9 @@ from pylab import get_current_fig_manager as gcfm
 import matplotlib as mpl
 
 import core
-from core import (LFP, PopulationRaster, DensePopulationRaster, Codes, CodeCorr, binarray2int,
-                  nCrsamples, iterable, entropy_no_sing, lastcmd, intround, rstrip, dictattr,
-                  warn, pmf, TAB)
+from core import (LFP, SpatialPopulationRaster, DensePopulationRaster, Codes, CodeCorr,
+                  binarray2int, nCrsamples, iterable, entropy_no_sing, lastcmd, intround,
+                  rstrip, dictattr, warn, pmf, TAB)
 from experiment import Experiment
 from sort import Sort
 '''
@@ -498,7 +498,7 @@ class RecordingRevCorr(BaseRecording):
 
 class RecordingRaster(BaseRecording):
     """Mix-in class that defines the raster related Recording methods"""
-    def raster(self, t0=None, t1=None, neurons=None, norder=None, dense=False, units='sec'):
+    def raster(self, t0=None, t1=None, neurons=None, norder=None, dense=True, units='sec'):
         """Create a population spike raster plot. neurons can be None, 'quiet', 'all', or a
         dict. norder can be a sequence of nids, designating what order to present them in
         the raster plot, from bottom to top. If set to True, the order is automatically
@@ -525,8 +525,8 @@ class RecordingRaster(BaseRecording):
             return DensePopulationRaster(trange=trange, neurons=neurons, norder=norder,
                                          units=units, text=self.name)
         else:
-            return PopulationRaster(trange=trange, neurons=neurons, norder=norder, units=units,
-                                    text=self.name)
+            return SpatialPopulationRaster(trange=trange, neurons=neurons, norder=norder,
+                                           units=units, text=self.name)
 
 
 class RecordingCode(BaseRecording):
