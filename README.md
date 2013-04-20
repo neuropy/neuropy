@@ -12,8 +12,8 @@ The user-facing data object hierarchy looks like this:
               Recording           3           TrackSort
              /         \                          |
        Experiment      Sort       4          TrackNeuron
-            |           |
-      (Cat15Movie)    Neuron      5
+                        |
+                      Neuron      5
 ```
 Once data are loaded, they can be accessed in various ways:
 ```

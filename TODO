@@ -19,9 +19,6 @@ TODO:
 
 - cc.sep: in addition to scatter plotting, histogram cc values in say 200 um bins, and plot line with stdev errorbars vs time, in black
 
-- add option for more conventional looking population raster plot, with equal vertical spacing (but probably still in order of depth) and maybe also vertical raster lines, to better visualize the possible presence of up/down states
-    - keep them in order of depth, and colour the superficial ones red and the deep ones blue, so it's obvious where the border is. If using a pair of ranges for sup and deep, colour the in between ones black
-
 - optionally split up cc().pdf() into superficial and deep PDFs, colored red and blue
 
 - NVS: DONE: try calculating cc as a function of time individually for each cell pair, and also average that signal over all cell pairs. Do this by splitting tranges up into chunks of tres = 30 sec or so. Then compare each of these signals (or the average signal) with the LFP SI signal. How well do they correlate? That would give good indication of just much of the variance in the correlations is a function of cortical state, at least as predicted by LFP SI signal.
@@ -339,3 +336,5 @@ Tuning curves:
 - rename mixed pairs to other, since it's possible, now that there's a distance gap between superficial and deep, to have pairs that include neither superficial nor deep cells
 - when splitting up pairs into superficial and deep, consider including mixed pairs into both groups, ie, include a pair in the superficial group if *either* member is superifical, not both. Same for deep. Could call this "inclusive pairs" as opposed to the "exclusive pairs" I've been calculating so far. This would increase npairs per group, and who's to say whether inclusive or exclusive is more valid. Add 'inclusive=False' kwarg to self.cct()
 - explicitly label mid-layers in addition to sup and deep, for both inclusive and exclusive cases
+- add option for more conventional looking population raster plot, with equal vertical spacing (but probably still in order of depth) and maybe also vertical raster lines, to better visualize the possible presence of up/down states
+    - keep them in order of depth, and colour the superficial ones red and the deep ones blue, so it's obvious where the border is. If using a pair of ranges for sup and deep, colour the in between ones black
