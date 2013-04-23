@@ -48,7 +48,8 @@ def xcorr(np.ndarray[int64_t, ndim=1, mode='c'] x,
           np.ndarray[int64_t, ndim=1, mode='c'] y,
           np.ndarray[int64_t, ndim=1, mode='c'] trange):
     """Calculate cross-correlation of timepoints in x with y, constrained to lower
-    and upper bounds in trange. Assume timepoints in x and y are sorted"""
+    and upper bounds in trange. Assume timepoints in x and y are sorted. Return spike times
+    of y relative to x."""
     # should assert contig of x and y, this seems to happen automatically though
     cdef int64_t ntx, nty, loti, dtsi, xti, yti, maxxti, maxyti, t, dt
     cdef int64_t low = trange[0]
@@ -74,7 +75,7 @@ def xcorr(np.ndarray[int64_t, ndim=1, mode='c'] x,
         if loti > maxyti: # no y timepoints fall within trange of t
             continue # to next xti
         yti = loti
-        dt = y[yti] - t
+        dt = y[yti] - t # dt is y relative to x
         while dt < high: # keep checking upper trange bound
             if dtsi > maxdtsi:
                 # when growing an array, pretty much need to allocate a new one,

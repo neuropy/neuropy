@@ -13,6 +13,10 @@ import pylab as pl
 from pylab import get_current_fig_manager as gcfm
 import matplotlib as mpl
 
+import pyximport
+pyximport.install(build_in_temp=False, inplace=True)
+import util # .pyx file
+
 import core
 from core import (LFP, SpatialPopulationRaster, DensePopulationRaster, Codes, CodeCorr,
                   binarray2int, nCrsamples, iterable, entropy_no_sing, lastcmd, intround,
@@ -426,6 +430,85 @@ class BaseRecording(object):
         a.set_xlabel('mean firing rate (Hz)')
         a.set_ylabel('neuron count')
         f.tight_layout(pad=0.3) # crop figure to contents
+
+    def collectcchs(self, nids, trange, bins, normalize=False):
+        """Collect cross-correlogram histograms for all pairs in nids. trange and bins
+        are in us"""
+        n = self.n
+        nn = len(nids)
+        hists = []
+        for nii0 in range(nn):
+            for nii1 in range(nii0+1, nn):
+                spikes0 = n[nids[nii0]].spikes
+                spikes1 = n[nids[nii1]].spikes
+                dts = util.xcorr(spikes0, spikes1, trange) # spike time differences in us
+                hist = np.histogram(dts, bins=bins)[0]
+                # if we don't normalize, we treat our confidence in the CCH of a cell pair
+                # proportionally to the firing rates of that pair, which may be the
+                # optimal thing to do. Otherwise, if we do normalize, we treat the CCH
+                # of each pair equally, and therefore imply equal confidence in the
+                # CCH of all pairs.
+                if normalize:
+                    hist = hist / hist.sum() # pmf: normalize so that sum of each hist is 1
+                else:
+                    hists.append(hist)
+        hists = np.vstack(hists) # return array, with one row per CCH
+        return hists
+
+    def meancch(self, trange=(-100, 100), binw=2, shufflenids=False, subtract=False,
+                figsize=(7.5, 6.5)):
+        """Calculate mean cross-correlation histogram for all possible pairs of spike trains
+        in self. trange and binw are in ms. If subtract, take the mean CCH from shuffling
+        nids and subtract it from the mean CCH from unshuffled nids, and plot a histogram
+        of their difference"""
+        ## TODO: add some kind of shuffle-correction, not over trials but by simply adding a
+        ## random delay (greater than max(trange)) to one of each pair of spike trains
+        trange = np.asarray(trange) * 1000 # us
+        binw = binw * 1000 # us
+        n = self.n
+        nids = np.sort(n.keys())
+        """
+        If shufflenids is nonzero, do that many runs, shuffling the nids on each run. nids by
+        default are sorted by depth. shufflenids therefore allows examination of whether
+        assymmetry in the resulting mean CCH is a result of some kind of causal regularity as
+        a function of cell depth. To do this properly, when shuffling, should do this super
+        averaging over a large number of runs, which would guarantee no assymmetry in the
+        super averaged CCH:
+        """
+        nruns = 1
+        if shufflenids:
+            nruns = int(shufflenids)
+        nn = len(nids)
+        bins = np.arange(trange[0], trange[1]+binw, binw)
+        hists = []
+        for runi in range(nruns):
+            if shufflenids:
+                np.random.shuffle(nids) # in place
+            hists.append(self.collectcchs(nids, trange, bins, normalize=False))
+        #hists = np.vstack(hists).sum(axis=0)
+        hists = np.vstack(hists).mean(axis=0)
+
+        if subtract: # call collectcchs one more time, without shuffling
+            nids = np.sort(n.keys())
+            unshuffledhists = self.collectcchs(nids, trange, bins, normalize=False)
+            unshuffledhists = unshuffledhists.mean(axis=0)
+            hists = unshuffledhists - hists # unshuffled minus (potentially) shuffled
+
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        a.bar(bins[:-1]/1000, hists, width=binw/1000)
+        a.set_xlim(trange/1000)
+        if not subtract:
+            ymin = np.floor(hists.min())
+            a.set_ylim(ymin=ymin)
+        a.set_xlabel('time (ms)')
+        a.set_ylabel('mean bin count')
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        a.set_title(titlestr)
+        a.text(0.998, 0.99, '%s' % self.name, color='k', transform=a.transAxes,
+               horizontalalignment='right', verticalalignment='top')
+        f.tight_layout(pad=0.3)
 
     def pospdf(self, dim='y', nbins=10, a=None, stats=False, figsize=(7.5, 6.5)):
         """Plot PDF of cell positions ('x' or 'y') along the polytrode
