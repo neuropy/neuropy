@@ -163,8 +163,16 @@ class BaseRecording(object):
 
         self.calc_meanrates()
 
+    def get_ordnids(self):
+        """Return nids of active neurons in vertical spatial order, superficial to deep"""
+        # numerical order, isn't necessarily the same as spatial order:
+        nids = np.sort(self.n.keys())
+        ypos = [ self.n[nid].pos[1] for nid in nids ]
+        sortis = np.argsort(ypos) # superficial to deep
+        return nids[sortis]
+
     def get_nids(self, tranges=None):
-        """Find cells active in all tranges"""
+        """Find nids of neurons that are active in all tranges"""
         if tranges == None:
             return sorted(self.n) # return sorted nids of all active neurons
         # start with all neurons, even those with average rates below MINRATE over the
