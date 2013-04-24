@@ -2856,6 +2856,13 @@ def randomize(seq):
     else:
         return list(np.asarray(seq)[i]) # return as a list
 
+def randsign(size=1):
+    """Return random array of -1 and 1 integers"""
+    rand = np.random.random(size)
+    signs = np.ones(size, dtype=np.int)
+    signs[rand < 0.5] = -1
+    return signs
+
 def fact(n):
     """Factorial!"""
     assert n.__class__ == int
