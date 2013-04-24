@@ -42,7 +42,41 @@ cdef extern from "stdio.h" nogil:
 '''
 cdef extern from "string.h":
     cdef void *memset(void *, int, size_t) nogil # sets n bytes in memory to constant
+
+cdef float64_t listmean(x):
+    """This demonstrates that you can't access a Python object within a prange
+    without gil"""
+    cdef int i, n = len(x)
+    cdef float64_t mean = 0.0
+    for i in prange(n, nogil=True, schedule='dynamic'):
+        mean += x[i] # Cythonization error
+    return mean
 '''
+def list_int_arrs(arrs):
+    """This demonstrates how to deal with a (ragged) list of arrays without gil by
+    concatenating them into a single big one, and then indexing into that big one
+    appropriately from within a prange loop"""
+    cdef int64_t i, start, narrs = len(arrs)
+    cdef int64_t result = 0
+    cdef int64_t[::1] flat = np.concatenate(arrs) # all arrays flattened into one long one
+    cdef int64_t[::1] n = np.int64([ len(arr) for arr in arrs ])
+    cdef int64_t[::1] offsets = np.concatenate([[0], np.cumsum(n)[:-1]])
+    for i in prange(narrs, nogil=True, schedule='dynamic'):
+        start = offsets[i]
+        result += int_sum(flat[start:start+n[i]])
+    return result
+
+cdef int64_t int_sum(int64_t[::1] x) nogil:
+    """Sum an int array"""
+    cdef int64_t i, result = 0
+    # note that calling np.anything within a nogil block doesn't work:
+    #cdef int64_t[::1] test = np.zeros(10)
+    #test = np.resize(test, (20,))
+    for i in range(x.shape[0]):
+        result += x[i]
+    return result
+
+
 ## TODO: try memoryviews instead of eventually deprecated ndarray buffers
 def xcorr(np.ndarray[int64_t, ndim=1, mode='c'] x,
           np.ndarray[int64_t, ndim=1, mode='c'] y,
