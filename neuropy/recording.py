@@ -529,8 +529,7 @@ class BaseRecording(object):
         a.bar(bins[:-1]/1000, hists, width=binw/1000)
         a.set_xlim(trange/1000)
         if not subtract:
-            ymin = np.floor(hists.min())
-            a.set_ylim(ymin=ymin)
+            a.set_ylim(ymin=0)
         a.set_xlabel('time (ms)')
         a.set_ylabel('mean bin count')
         titlestr = lastcmd()
