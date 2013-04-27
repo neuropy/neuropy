@@ -450,7 +450,7 @@ class BaseRecording(object):
         if shiftcorrect:
             nshifts = int(shiftcorrect)
             # make sure no part of the shift corrector overlaps with trange:
-            minshift = sum(abs(trange))
+            width = trange[1] - trange[0]
         for nii0 in range(nn):
             for nii1 in range(nii0+1, nn):
                 spikes0 = n[nids[nii0]].spikes
@@ -458,14 +458,13 @@ class BaseRecording(object):
                 dts = util.xcorr(spikes0, spikes1, trange) # spike time differences in us
                 hist = np.histogram(dts, bins=bins)[0]
                 if shiftcorrect:
-                    # randomize amplitude of shifts, shifting by anywhere from minshift
-                    # to 2*minshift:
-                    tshifts = intround(minshift + minshift*np.random.random(nshifts))
-                    # randomize sign of shifts:
+                    # randomize amplitude and sign of shifts, shifting by anywhere from
+                    # +/- width to 2*width
+                    tshifts = intround(width + width*np.random.random(nshifts))
                     tshifts *= core.randsign(nshifts)
                     shifthist = []
                     for shifti in range(nshifts):
-                        shiftdts = util.xcorr(spikes0+tshifts[shifti], spikes1, trange)
+                        shiftdts = util.xcorr(spikes0, spikes1+tshifts[shifti], trange)
                         shifthist.append(np.histogram(shiftdts, bins=bins)[0])
                     shifthist = np.vstack(shifthist).mean(axis=0) # average shift predictor
                     hist -= shifthist # subtract average shift predictor
@@ -491,8 +490,7 @@ class BaseRecording(object):
         ## TODO: add some kind of shuffle-correction, not over trials but by simply adding a
         ## random delay (greater than 2*max(trange)) to one of each pair of spike trains
         trange = np.asarray(trange) * 1000 # us
-        if not (trange[0] <= 0 and trange[1] > 0):
-                raise ValueError('require trange to straddle 0')
+        assert trange[0] < trange[1]
         binw = binw * 1000 # us
         nids = self.get_ordnids() # in vertical spatial order
         """
