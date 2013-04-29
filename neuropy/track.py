@@ -11,7 +11,7 @@ import pylab as pl
 from pylab import get_current_fig_manager as gcfm
 
 import core
-from core import dictattr, TAB, td2usec, lastcmd
+from core import dictattr, TAB, td2usec, lastcmd, intround
 from recording import Recording
 from sort import TrackSort
 
@@ -200,6 +200,67 @@ class Track(object):
             rids.sort()
         for rid in rids:
             r = self.r[rid]
-            r.pospdf(dim=dim, nbins=nbins, a=a, stats=False, figsize=figsize)
+            r.pospdf(neurons=neurons, dim=dim, nbins=nbins, a=a, stats=False, figsize=figsize)
 
+        return a
+
+    def pospdf(self, neurons=None, dim='y', nbins=10, a=None, stats=False, figsize=(7.5, 6.5)):
+        """Plot PDF of cell positions ('x' or 'y') along the polytrode
+        to get an idea of how cells are distributed in space"""
+        if neurons == 'all':
+            neurons = self.alln.values()
+        elif neurons == 'quiet':
+            neurons = self.qn.values()
+        else:
+            neurons = self.n.values()
+        dimi = {'x':0, 'y':1}[dim]
+        p = [ n.pos[dimi] for n in neurons ] # all position values
+        nbins = max(nbins, 2*intround(np.sqrt(self.nneurons)))
+        n, p = np.histogram(p, bins=nbins) # p includes rightmost bin edge
+        binwidth = p[1] - p[0] # take width of first bin in p
+
+        if stats:
+            mean = np.mean(p)
+            median = np.median(p)
+            argmode = n.argmax()
+            mode = p[argmode] + binwidth / 2 # middle of tallest bin
+            stdev = np.std(p)
+
+        if a == None:
+            f = pl.figure(figsize=figsize)
+            a = f.add_subplot(111)
+        else: # add to existing axes
+            a.hold(True)
+            f = pl.gcf()
+
+        # use CLUSTERCOLOURDICT for familiarity with len 10 1-based id to colour mapping
+        #color = CLUSTERCOLOURDICT[int(self.id)]
+        color = 'k'
+
+        # exclude rightmost bin edge in p
+        a.bar(left=p[:-1], height=n, width=binwidth, bottom=0, color=color, ec=color,
+              yerr=None, xerr=None, capsize=3)
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        a.set_title(titlestr)
+        a.set_xlabel('neuron %s position (um)' % dim)
+        a.set_ylabel('neuron count')
+
+        if stats:
+            # add stuff to top right of plot:
+            uns = get_ipython().user_ns
+            a.text(0.99, 0.99, 'mean = %.3f\n'
+                               'median = %.3f\n'
+                               'mode = %.3f\n'
+                               'stdev = %.3f\n'
+                               'minrate = %.2f Hz\n'
+                               'nneurons = %d\n'
+                               'dt = %d min'
+                               % (mean, median, mode, stdev,
+                                  uns['MINRATE'], self.nneurons, intround(self.dtmin)),
+                               transform = a.transAxes,
+                               horizontalalignment='right',
+                               verticalalignment='top')
+        f.tight_layout(pad=0.3) # crop figure to contents
+        f.canvas.draw() # this is needed if a != None when passed as arg
         return a
