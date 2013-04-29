@@ -68,26 +68,34 @@ class Track(object):
                    if os.path.isdir(os.path.join(self.path, name))
                    and name[0].isdigit() ]
         rnames.sort() # alphabetical order
+        dt = 0 # calculate total track duration by summing durations of all recordings
         for rname in rnames:
             path = os.path.join(self.path, rname)
             recording = Recording(path, track=self)
             recording.load()
             self.r[recording.id] = recording
             self.__setattr__('r' + str(recording.id), recording) # add shortcut attrib
+            dt += recording.dt
         self.rnames = rnames # easy way to print out all recording names
+        self.dt = dt
+        self.dtsec = self.dt / 1e6
+        self.dtmin = self.dtsec / 60
+        self.dthour = self.dtmin / 60
 
+        # create a TrackSort with TrackNeurons:
+        self.sort = TrackSort(self)
+        self.sort.load()
+        # one way of calculating self.trange:
+        #tranges = np.asarray([ n.trange for n in self.alln.values() ])
+        #self.trange = min(tranges[:, 0]), max(tranges[:, 1])
+        # better way of calculating self.trange:
         rids = sorted(self.r.keys()) # all recording ids in self
-        if len(rids) > 0:
-            # calculate total track duration, this is slightly different from what you get
-            # from the source .srf files, because exact recording duration is not exported,
-            # only experiment din and spike times, which are used to generate rec.trange
-            r0 = self.r[rids[0]]
-            r1 = self.r[rids[-1]]
-            if hasattr(r0, 'datetime') and hasattr(r1, 'datetime'):
-                self.dt = td2usec(r1.datetime - r0.datetime) - r0.trange[0] + r1.trange[1]
-                self.dtsec = self.dt / 1e6
-                self.dtmin = self.dtsec / 60
-                self.dthour = self.dtmin / 60
+        r0 = self.r[rids[0]]
+        r1 = self.r[rids[-1]]
+        assert r0.datetime == self.datetime
+        self.trange = r0.td+r0.trange[0], r1.td+r1.trange[1]
+
+        self.calc_meanrates()
 
         # pttype better be the same for all member recordings:
         pttype = self.r[rids[0]].pttype # init to pttype of first recording
@@ -98,17 +106,6 @@ class Track(object):
             if hasattr(r, 'pttype') and pttype != r.pttype:
                 raise ValueError("inconsistent polytrode types %r and %r in track %s"
                                  % (pttype, r.pttype, self.id))
-
-        # create a TrackSort with TrackNeurons:
-        self.sort = TrackSort(self)
-        self.sort.load()
-        tranges = np.asarray([ n.trange for n in self.alln.values() ])
-        self.trange = min(tranges[:, 0]), max(tranges[:, 1])
-        self.dt = self.trange[1] - self.trange[0] # static, no need for a property
-        self.dtsec = self.dt / 1e6
-        self.dtmin = self.dtsec / 60
-        self.dthour = self.dtmin / 60
-        self.calc_meanrates()
 
     def calc_meanrates(self):
         """Calculate mean firing rates of all TrackNeurons in this track"""
