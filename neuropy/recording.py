@@ -21,6 +21,7 @@ import core
 from core import (LFP, SpatialPopulationRaster, DensePopulationRaster, Codes, CodeCorr,
                   binarray2int, nCrsamples, iterable, entropy_no_sing, lastcmd, intround,
                   rstrip, dictattr, warn, pmf, TAB)
+from colour import CLUSTERCOLOURDICT
 from experiment import Experiment
 from sort import Sort
 '''
@@ -563,7 +564,7 @@ class BaseRecording(object):
             f = pl.gcf()
 
         # use CLUSTERCOLOURDICT for familiarity with len 10 1-based id to colour mapping
-        color = core.CLUSTERCOLOURDICT[int(self.id)]
+        color = CLUSTERCOLOURDICT[int(self.id)]
 
         # exclude rightmost bin edge in p
         a.bar(left=p[:-1], height=n, width=binwidth, bottom=0, color=color, ec=color,
