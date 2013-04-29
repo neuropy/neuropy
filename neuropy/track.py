@@ -63,18 +63,18 @@ class Track(object):
         # print string to tree hierarchy and screen
         self.writetree(treestr + '\n')
         print(treestr)
-        # collect recording names: 1st char in dirname must be a digit, that's all:
-        dirnames = [ dirname for dirname in os.listdir(self.path)
-                     if os.path.isdir(os.path.join(self.path, dirname))
-                     and dirname[0].isdigit() ]
-        dirnames.sort() # alphabetical order
-        for dirname in dirnames:
-            path = os.path.join(self.path, dirname)
+        # collect recording names: 1st char of each name must be a digit, that's all:
+        rnames = [ name for name in os.listdir(self.path)
+                   if os.path.isdir(os.path.join(self.path, name))
+                   and name[0].isdigit() ]
+        rnames.sort() # alphabetical order
+        for rname in rnames:
+            path = os.path.join(self.path, rname)
             recording = Recording(path, track=self)
             recording.load()
             self.r[recording.id] = recording
             self.__setattr__('r' + str(recording.id), recording) # add shortcut attrib
-        self.rnames = dirnames # easy way to print out all recording names
+        self.rnames = rnames # easy way to print out all recording names
 
         rids = sorted(self.r.keys()) # all recording ids in self
         if len(rids) > 0:

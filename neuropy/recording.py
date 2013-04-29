@@ -146,10 +146,10 @@ class BaseRecording(object):
                                % (nlfpfiles, self.path))
 
         if len(self.e) > 0:
-            firstexp = min(list(self.e))
-            lastexp = max(list(self.e))
+            eids = list(self.e)
+            e0, e1 = self.e[min(eids)], self.e[max(eids)]
             # start of the first experiment to end of the last one
-            self.trange = self.e[firstexp].trange[0], self.e[lastexp].trange[1]
+            self.trange = e0.trange[0], e1.trange[1]
         else:
             # self.e is empty, no experiments in this recording, use first and last
             # spike across all neurons

@@ -153,7 +153,7 @@ class TrackSort(object):
         # copy some attribs from first sort, should be the same for all of them:
         sort = recs[0].sort
         datetime0 = sort.datetime # start of acquisition (t=0) of first recording
-        self.datetime = sort.datetime
+        self.datetime = datetime0
         self.pttype = sort.pttype
         self.chanpos = sort.chanpos
         # get the union of all nids in recs:
