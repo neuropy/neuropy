@@ -540,11 +540,17 @@ class BaseRecording(object):
                horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3)
 
-    def pospdf(self, dim='y', nbins=10, a=None, stats=False, figsize=(7.5, 6.5)):
+    def pospdf(self, neurons=None, dim='y', nbins=10, a=None, stats=False, figsize=(7.5, 6.5)):
         """Plot PDF of cell positions ('x' or 'y') along the polytrode
         to get an idea of how cells are distributed in space"""
+        if neurons == 'all':
+            neurons = self.alln.values()
+        elif neurons == 'quiet':
+            neurons = self.qn.values()
+        else:
+            neurons = self.n.values()
         dimi = {'x':0, 'y':1}[dim]
-        p = [ n.pos[dimi] for n in self.n.values() ] # all y values
+        p = [ n.pos[dimi] for n in neurons ] # all position values
         nbins = max(nbins, 2*intround(np.sqrt(self.nneurons)))
         n, p = np.histogram(p, bins=nbins) # p includes rightmost bin edge
         binwidth = p[1] - p[0] # take width of first bin in p
