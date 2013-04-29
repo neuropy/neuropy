@@ -424,7 +424,7 @@ class BaseRecording(object):
 
     meanrates = property(get_meanrates)
 
-    def meanratehist(self, bins=None, figsize=(7.5, 6.5)):
+    def meanratepdf(self, bins=None, figsize=(7.5, 6.5)):
         """Plot histogram of mean firing rates"""
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
