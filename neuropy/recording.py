@@ -569,8 +569,9 @@ class BaseRecording(object):
             a.hold(True)
             f = pl.gcf()
 
-        # use CLUSTERCOLOURDICT for familiarity with len 10 1-based id to colour mapping
-        color = CLUSTERCOLOURDICT[int(self.id)]
+        # use CLUSTERCOLOURDICT for familiarity with len 10 1-based id to colour mapping,
+        # remove any trailing alphas form id:
+        color = CLUSTERCOLOURDICT[int(self.id.rstrip('bc'))]
 
         # exclude rightmost bin edge in p
         a.bar(left=p[:-1], height=n, width=binwidth, bottom=0, color=color, ec=color,
@@ -579,7 +580,7 @@ class BaseRecording(object):
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         a.set_xlabel('neuron %s position (um)' % dim)
-        a.set_ylabel('count')
+        a.set_ylabel('neuron count')
 
         if stats:
             # add stuff to top right of plot:
