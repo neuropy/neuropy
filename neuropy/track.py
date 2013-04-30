@@ -99,7 +99,7 @@ class Track(object):
 
         # pttype better be the same for all member recordings:
         pttype = self.r[rids[0]].pttype # init to pttype of first recording
-        for rid in rids:
+        for rid in rids[1:]:
             r = self.r[rid]
             # if recording doesn't have a pttype, it's probably from an old .spk file,
             # so don't bother doing this test:
