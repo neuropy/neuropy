@@ -32,7 +32,7 @@ from animal import Animal
 from track import Track
 from recording import Recording
 
-DATAPATH = os.path.expanduser('~/data')
+from globals import DATAPATH
 INPROCESS = False # use inprocess kernel? otherwise, use 2 process zmq kernel
 
 

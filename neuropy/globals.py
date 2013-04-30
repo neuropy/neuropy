@@ -6,6 +6,7 @@ get_ipython().user_ns['VARNAME']
 
 import os
 
+DATAPATH = os.path.expanduser('~/data')
 MOVIEPATH = os.path.expanduser('~/data/mov')
 
 # for each recording, load all Sorts, or just the most recent one?
