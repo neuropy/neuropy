@@ -961,8 +961,8 @@ class Codes(object):
         self.calc() # recalculate this code with its new set of tranges
     '''
     
-class CodeCorr(object):
-    """Calculate and plot spike code correlations of all cell pairs from nids (or of all
+class SpikeCorr(object):
+    """Calculate and plot spike correlations of all cell pairs from nids (or of all
     cell pairs within some torus of radii R=(R0, R1) in um) in this Recording, during tranges
     or experiments. If width is not None, calculate self as a function of time, with bin
     widths width sec and time resolution tres sec. Weights is a tuple of weight values and
@@ -1016,7 +1016,7 @@ class CodeCorr(object):
             uns = get_ipython().user_ns
             highval = uns['CODEVALS'][1]
             c, t = self.codes.c, self.codes.t
-            corrs, counts = util.cct(c, t, self.tranges, highval)
+            corrs, counts = util.sct(c, t, self.tranges, highval)
             nneurons = len(c)
             pairs = np.asarray(np.triu_indices(nneurons, k=1)).T
         else:
@@ -1028,7 +1028,7 @@ class CodeCorr(object):
         self.npairs = len(pairs)
 
     def calc_single(self, codes):
-        """Calculate one code correlation value for each cell pair, given codes spanning
+        """Calculate one spike correlation value for each cell pair, given codes spanning
         some subset of self.tranges, contrained to torus described by self.R, weighted by
         self.weights"""
         c = codes.c # nneurons x nbins array
@@ -1083,7 +1083,7 @@ class CodeCorr(object):
             ni0 = nids[nii0]
             for nii1 in range(nii0+1, nneurons):
                 ni1 = nids[nii1]
-                # skip the pair's code correlation if a torus is specified and if
+                # skip the pair's if a torus is specified and if
                 # the pair's separation falls outside bounds of specified torus:
                 if R != None and not (R[0] < dist(n[ni0].pos, n[ni1].pos) < R[1]):
                     continue # to next pair
@@ -1097,22 +1097,22 @@ class CodeCorr(object):
                 numer = np.dot(c0, c1) / nbins - means[nii0] * means[nii1]
                 denom = stds[nii0] * stds[nii1]
                 if numer == 0.0:
-                    cc = 0.0 # even if denom is also 0
+                    sc = 0.0 # even if denom is also 0
                 elif denom == 0.0: # numer is not 0, but denom is 0, prevent div by 0
                     print('skipped pair (%d, %d) in r%s' % (ni0, ni1, self.r.id))
                     continue # skip to next pair
                 else:
-                    cc = numer / denom
+                    sc = numer / denom
                 # potentially shift correct using only the second spike train of each pair:
                 #if shiftcorrect:
                 #    c1sc = self.r.n[ni1].code(tranges=tranges, shift=shiftcorrect).c
-                #    ccsc = ((c0 * c1sc).mean() - means[ni0] * means[ni1]) / denom
-                #    ## TODO: might also want to try subtracting abs(ccsc)?
-                #    cc -= ccsc
-                corrs.append(cc)
+                #    scsc = ((c0 * c1sc).mean() - means[ni0] * means[ni1]) / denom
+                #    ## TODO: might also want to try subtracting abs(scsc)?
+                #    sc -= scsc
+                corrs.append(sc)
                 pairs.append([nii0, nii1])
                 # take sum of high code counts of pair. Note that taking the mean wouldn't
-                # change results in self.cct(), because it would end up simply normalizing
+                # change results in self.sct(), because it would end up simply normalizing
                 # by half the value
                 counts.append(nhigh[nii0] + nhigh[nii1])
         corrs = np.asarray(corrs)
@@ -1223,7 +1223,7 @@ class CodeCorr(object):
         return c, supis, midis, deepis, otheris
 
     def shifts(self, start=-5000, stop=5000, step=50, shiftcorrect=True, figsize=(7.5, 6.5)):
-        """Plot shift-corrected, or just shifted, median pairwise code correlations of all
+        """Plot shift-corrected, or just shifted, median pairwise spike correlations of all
         cell pairs as a function of shifts, from start to stop in steps of step ms"""
         assert step > 0
         if stop % step == 0:
@@ -1308,7 +1308,7 @@ class CodeCorr(object):
 
     def pdf(self, crange=[-0.05, 0.25], figsize=(7.5, 6.5), limitstats=True,
             nbins=30, density=True):
-        """Plot PDF of pairwise code correlations. If limitstats, the stats displayed
+        """Plot PDF of pairwise spike correlations. If limitstats, the stats displayed
         exclude any corr values that fall outside of crange"""
         self.calc()
         nbins = max(nbins, 2*intround(np.sqrt(self.npairs)))
@@ -1379,7 +1379,7 @@ class CodeCorr(object):
         return self
 
     def sort(self, figsize=(7.5, 6.5)):
-        """Plot pairwise code correlations in decreasing order"""
+        """Plot pairwise spike correlations in decreasing order"""
         self.calc()
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -1451,7 +1451,7 @@ class CodeCorr(object):
         return self
 
     def scat(self, otherrid, nids=None, crange=[-0.05, 0.25], figsize=(7.5, 6.5)):
-        """Scatter plot pairwise code correlations in this recording vs that of
+        """Scatter plot pairwise spike correlations in this recording vs that of
         another recording. If the two recordings are the same, split it in half and scatter
         plot first half against the second half."""
         ## TODO: add interleave flag which generates a sufficiently interleaved, equally sized,
@@ -1485,17 +1485,17 @@ class CodeCorr(object):
 
         # given the same nids, calculate corrs for both, constrained to tranges0
         # and tranges1 respectively, and to the torus described by R:
-        cc0 = CodeCorr(recording=r0, tranges=tranges0, nids=nids, R=self.R)
-        cc1 = CodeCorr(recording=r1, tranges=tranges1, nids=nids, R=self.R)
-        cc0.calc()
-        cc1.calc()
+        sc0 = SpikeCorr(recording=r0, tranges=tranges0, nids=nids, R=self.R)
+        sc1 = SpikeCorr(recording=r1, tranges=tranges1, nids=nids, R=self.R)
+        sc0.calc()
+        sc1.calc()
         # just to be sure:
-        if cc0.npairs != cc1.npairs or (cc0.pairs != cc1.pairs).any():
+        if sc0.npairs != sc1.npairs or (sc0.pairs != sc1.pairs).any():
             import pdb; pdb.set_trace()
-            raise RuntimeError("cc0 and cc1 pairs don't match")
-        pairs = cc0.pairs
+            raise RuntimeError("sc0 and sc1 pairs don't match")
+        pairs = sc0.pairs
         npairs = len(pairs)
-        corrs0, corrs1 = cc0.corrs, cc1.corrs
+        corrs0, corrs1 = sc0.corrs, sc1.corrs
         
         # color pairs according to whether they're superficial, middle, deep, or other
         c, supis, midis, deepis, otheris = self.pair_laminarity(nids, pairs)
@@ -1558,7 +1558,7 @@ class CodeCorr(object):
                            'r%s.dt = %d min\n'
                            'r%s.dt = %d min'
                            % (uns['CODETRES']//1000, uns['CODEPHASE'], self.R, uns['MINRATE'],
-                              len(nids), cc0.npairs,
+                              len(nids), sc0.npairs,
                               uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE'],
                               r0.id, intround(r0.dtmin), r1.id, intround(r1.dtmin)),
                            transform = a.transAxes,
@@ -1580,8 +1580,8 @@ class CodeCorr(object):
         return self
 
     def sep(self, figsize=(7.5, 6.5)):
-        """Plot pairwise code correlations as a f'n of pair separation"""
-        ## TODO: histogram cc values in say 200 um bins, and plot line with stdev errorbars
+        """Plot pairwise spike correlations as a f'n of pair separation"""
+        ## TODO: histogram sc values in say 200 um bins, and plot line with stdev errorbars
         ## vs time, in black
         self.calc()
         f = pl.figure(figsize=figsize)
@@ -1670,14 +1670,14 @@ class CodeCorr(object):
         self.f = f
         return self
 
-    def cct(self, method='weightedmean', inclusive=False):
-        """Calculate pairwise code correlations for each type of laminarity as a function of
+    def sct(self, method='weightedmean', inclusive=False):
+        """Calculate pairwise spike correlations for each type of laminarity as a function of
         time. method can be 'weightedmean', 'mean', 'median', 'max', 'min' or 'all'"""
         uns = get_ipython().user_ns
         if self.width == None:
-            self.width = intround(uns['CCWIDTH'] * 1000000) # convert from sec to us
+            self.width = intround(uns['SCWIDTH'] * 1000000) # convert from sec to us
         if self.tres == None:
-            self.tres = intround(uns['CCTRES'] * 1000000) # convert from sec to us
+            self.tres = intround(uns['SCTRES'] * 1000000) # convert from sec to us
         self.calc()
         allis = np.arange(self.npairs) # all indices into self.pairs
         c, supis, midis, deepis, otheris = self.pair_laminarity(self.nids, self.pairs,
@@ -1723,9 +1723,9 @@ class CodeCorr(object):
         return laminarcorrs, laminarnpairs, t, ylabel
 
     def plot(self, method='weightedmean', inclusive=False, figsize=(20, 6.5)):
-        """Plot pairwise code correlations as a function of time. method can be 'weightedmean',
-        'mean', 'median', 'max' or 'min'"""
-        corrs, npairs, t, ylabel = self.cct(method=method, inclusive=inclusive)
+        """Plot pairwise spike correlations as a function of time. method can be
+        'weightedmean', 'mean', 'median', 'max' or 'min'"""
+        corrs, npairs, t, ylabel = self.sct(method=method, inclusive=inclusive)
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         # underplot horizontal line at y=0:
@@ -1768,11 +1768,11 @@ class CodeCorr(object):
 
     def si(self, method='weightedmean', inclusive=False, chani=-1, ratio='L/(L+H)',
            lowband=None, highband=None, sirange=None, figsize=(7.5, 6.5)):
-        """Scatter plot code correlations vs LFP synchrony index"""
+        """Scatter plot spike correlations vs LFP synchrony index"""
         t0 = time.time()
         # ct are center timepoints:
-        corrs, npairs, ct, ylabel = self.cct(method=method, inclusive=inclusive)
-        print('cct(t) calc took %.3f sec' % (time.time()-t0))
+        corrs, npairs, ct, ylabel = self.sct(method=method, inclusive=inclusive)
+        print('sct(t) calc took %.3f sec' % (time.time()-t0))
         t0 = time.time()
         si, sit = self.r.lfp.si(chani=chani, lowband=lowband, highband=highband,
                                 ratio=ratio, plot=False) # sit are also center timepoints
@@ -1853,8 +1853,8 @@ class CodeCorr(object):
         f.tight_layout(pad=0.3) # crop figure to contents
 
     def mua(self, method='weightedmean', inclusive=False, smooth=False, figsize=(7.5, 6.5)):
-        """Scatter plot code correlations vs multiunit activity"""
-        corrs, npairs, ct, ylabel = self.cct(method=method, inclusive=inclusive)
+        """Scatter plot spike correlations vs multiunit activity"""
+        corrs, npairs, ct, ylabel = self.sct(method=method, inclusive=inclusive)
         mua, muat, n = self.r.mua(smooth=smooth, plot=False)
         # keep only MUA of all neurons, throw away laminar MUA information (for now at least):
         mua = mua[0] # 1D array

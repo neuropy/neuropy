@@ -4,42 +4,42 @@ TODO:
     - solution is to make sure all .din are exported from spyke
     - or, could also make each recording trange always be the time between first and last spike, regardless of its experiments?
 
-- add cc.trials: cc(t) averaged over trials, timelocked to start of each trial, include laminarity
+- add sc.trials: sc(t) averaged over trials, timelocked to start of each trial, include laminarity
 - add mua_trials
 - add si_trials
 
 - rename CodeCorr to SpikeCorr, and all instances of 'cc' to 'sc'? Would be a bit clearer.
 
-- cc().shifts() is broken due to being disabled in cc.calc_single()
+- sc().shifts() is broken due to being disabled in sc.calc_single()
 
-- try narrower tranges for cc, si, and mua, anywhere from 4 sec to 32 sec?
+- try narrower tranges for sc, si, and mua, anywhere from 4 sec to 32 sec?
 
 - add SI calculated from most superficial LFP channel to lfp.si() plot()
     - keep deepest chan blue as is, make superficial plot red
 
-- cc.sep: in addition to scatter plotting, histogram cc values in say 200 um bins, and plot line with stdev errorbars vs time, in black
+- sc.sep: in addition to scatter plotting, histogram sc values in say 200 um bins, and plot line with stdev errorbars vs time, in black
 
-- optionally split up cc().pdf() into superficial and deep PDFs, colored red and blue
+- optionally split up sc().pdf() into superficial and deep PDFs, colored red and blue
 
-- NVS: DONE: try calculating cc as a function of time individually for each cell pair, and also average that signal over all cell pairs. Do this by splitting tranges up into chunks of tres = 30 sec or so. Then compare each of these signals (or the average signal) with the LFP SI signal. How well do they correlate? That would give good indication of just much of the variance in the correlations is a function of cortical state, at least as predicted by LFP SI signal.
+- NVS: DONE: try calculating sc as a function of time individually for each cell pair, and also average that signal over all cell pairs. Do this by splitting tranges up into chunks of tres = 30 sec or so. Then compare each of these signals (or the average signal) with the LFP SI signal. How well do they correlate? That would give good indication of just much of the variance in the correlations is a function of cortical state, at least as predicted by LFP SI signal.
     - wouldn't this pretty much be the same as calculating MUA with 20ms bins? No, it wouldn't. Because MUA is just a measure of population firing rate. Regardless of the bin size, it doesn't say anything about whether a specific subset of neurons (such as a pair) increase or decrease their rates of coincidence. A big change in MUA could simply be due to a single neuron's firing rate changing dramatically, while all the other cells stay silent, which means that cell is completely uncorrelated from all the others.
     - DONE: try overlapping tranges to get smoother signal
-    - DONE: weight average cc(t) by the number of ON values for each neuron in each trange
-    - DONE: scatter plot cc(t) vs si(t) - should see they're quite correlated - the more synchronized the network, according to LFP, the greater the average pairwise correlations
+    - DONE: weight average sc(t) by the number of ON values for each neuron in each trange
+    - DONE: scatter plot sc(t) vs si(t) - should see they're quite correlated - the more synchronized the network, according to LFP, the greater the average pairwise correlations
     - DONE: scatter plot mua(t) vs si(t)
-    - DONE: scatter plot cc(t) vs mua(t)
+    - DONE: scatter plot sc(t) vs mua(t)
     - scatter plot mua(t) vs d/dt(si(t))
-    - DONE: scatter plot deep and superficial cc(t) vs si(t)
+    - DONE: scatter plot deep and superficial sc(t) vs si(t)
     - DONE: scatter plot deep and superficial MUA(t) vs si(t)
-    - DONE: plot cc(t) vs log(si) or si**2
-        - idea is that realtionship between cc(t) seems nonlinear - either quadratic or exponential, but transforming si didn't seem to change r value much, though such transforms do expand the working range on the x axis
+    - DONE: plot sc(t) vs log(si) or si**2
+        - idea is that realtionship between sc(t) and si seems nonlinear - either quadratic or exponential, but transforming si didn't seem to change r value much, though such transforms do expand the working range on the x axis
             - might be worth retrying with new SI highband range of (7, 100) instead of (20, 100)
 
-- cc.scat() doesn't plot points or legend any more, change in MPL?
+- sc.scat() doesn't plot points or legend any more, change in MPL?
 
 - show how stable (or not) each particular cell pair is over time within a recording
-    - calculate cc(t) for individual pairs, without averaging them together. To get decent signal, use very big time bins (several minutes each), so only get a few time points per recording (say 5). Then, for each pair, normalize its cc(t) value so it averages to 1. Then, average all cc(t) at the same 5 timepoints, add stdev/sem bars, to show how much individual pairwise cc's change throughout a recording
-    - should I maybe be feeding some time dependent value of each cc when doing maxent pairwise model? Is that even possible? Probably not, probably would have to split up the recording into say 5 pieces, which would make the sampling problem worse. The whole point of doing the above is to hopefully show that it's OK to use a single number to represent the corrs for a given pair within a given recording
+    - calculate sc(t) for individual pairs, without averaging them together. To get decent signal, use very big time bins (several minutes each), so only get a few time points per recording (say 5). Then, for each pair, normalize its sc(t) value so it averages to 1. Then, average all sc(t) at the same 5 timepoints, add stdev/sem bars, to show how much individual pairwise sc's change throughout a recording
+    - should I maybe be feeding some time dependent value of each sc when doing maxent pairwise model? Is that even possible? Probably not, probably would have to split up the recording into say 5 pieces, which would make the sampling problem worse. The whole point of doing the above is to hopefully show that it's OK to use a single number to represent the corrs for a given pair within a given recording
 
 
 - check that removing all dt == 0 from autocorr is really an OK thing to do, maybe implement it without that assumption...? Can confirm with matplotlib.pyplot.acorr?
@@ -55,7 +55,7 @@ TODO:
 
 - plot log firing rate distributions in meanratehist() plots
 
-- add ability to report nids of pairs for a given point in any of the cc() plots - tooltip? replace or augment the status bar printout on hover? Will presumably need to deal with MPL hover events, or at a lower level, with qt4 hover events
+- add ability to report nids of pairs for a given point in any of the sc() plots - tooltip? replace or augment the status bar printout on hover? Will presumably need to deal with MPL hover events, or at a lower level, with qt4 hover events
 
 - calculate average xcorr for sets of pairs
 
@@ -313,28 +313,28 @@ Tuning curves:
 
 - call figure.tight_layout(pad=0.3) on all generated figures to reduce whitespace around edges, better to be nice and cropped when importing into latex docs
 - move CODEKIND, CODETRES, CODEPHASE, and CODEWORDLEN to globals, remove them as keywords everywhere else
-- add pair depth to cc.shifts plots
+- add pair depth to sc.shifts plots
 - copy xcorr code from spyke to neuropy
 - use new Ipython's new InProcessKernel to improve IPython integration - hopefully this will finally allow dropping into the ipython debugger in the qt widget on any error while running neuropy?
     - https://github.com/ipython/ipython/pull/2724
 - to auto activate pdb, set get_ipython().call_pdb = True
 - BUG: first command in new single inprocess IPython widget doesn't print results, subsequent ones work fine
     - this seems to be limited to inprocess kernel (not zmq), and has something to do with calling ipythonqtwidget.execute('blah', hidden=True). It's the hidden kwarg that seems to cause this problem.
-- very strange BUG: ptc22.tr1.r07.cc().vs_pratio() messes up output, even though the first time it (usually) comes out correctly. This might be triggered after running ptc22.tr1.r08.cc().vs_pratio(). This seems to have started after completion of Cython cc(t) code. Yet even when vs_pratio is screwing up, cc(t) looks fine.
+- very strange BUG: ptc22.tr1.r07.sc().vs_pratio() messes up output, even though the first time it (usually) comes out correctly. This might be triggered after running ptc22.tr1.r08.sc().vs_pratio(). This seems to have started after completion of Cython sc(t) code. Yet even when vs_pratio is screwing up, sc(t) looks fine.
     - need to do a copy somewhere, something happening in place that affects the next run? Maybe some kind of a race condition? Might correlate with pratio(t) part taking a longer time to calculate
-    - problem was in cc_tranges: was iterating over all values in cslices when calculating mean and std. Fixed by iterating over only the correct number of values for each trange
+    - problem was in sc_tranges: was iterating over all values in cslices when calculating mean and std. Fixed by iterating over only the correct number of values for each trange
 - add a time delta .td attrib to Recording that allows you to easily relate back to the track timepoints (from start of track), so you can easily look up raw spike data from a track-wide sort in spyke
 - rename "pratio" to "synchrony index"
 - when calculating MUA(t), use a smooth window instead of a rectangular window - this give much smoother MUA, and also reduce preponderance of discretization of values due to discreteness of spikes. This will also prevent very sudden square wave jumps due to bursting. See Curto2009, where they use a half Hanning window with a width of 16 ms, with bin sizes of only 0.8ms (seems very small), ie the half window width was 20 bins wide.
 - DONE: consider modifying SI L/(L+H) to not have a gap in bandwidth between L and H, ie something like P(0-7Hz)/P(0-60Hz), akin to Curto2009. They then split up SI into 5 ranges of size 0.2.
-    - this makes a big difference in at least the cc vs si plots, and probably others
+    - this makes a big difference in at least the sc vs si plots, and probably others
 - for clarity, replace "overlap" args with "tres" args, where tres = width - overlap
 - rename "straddle" pairs to "mixed" pairs
 - define superficial and deep cells by a pair of depth ranges, instead of a single depth threshold
 - add separate linear regression lines to mua_si() for superficial and deep cells
 - replace H+L with L+H
 - rename mixed pairs to other, since it's possible, now that there's a distance gap between superficial and deep, to have pairs that include neither superficial nor deep cells
-- when splitting up pairs into superficial and deep, consider including mixed pairs into both groups, ie, include a pair in the superficial group if *either* member is superifical, not both. Same for deep. Could call this "inclusive pairs" as opposed to the "exclusive pairs" I've been calculating so far. This would increase npairs per group, and who's to say whether inclusive or exclusive is more valid. Add 'inclusive=False' kwarg to self.cct()
+- when splitting up pairs into superficial and deep, consider including mixed pairs into both groups, ie, include a pair in the superficial group if *either* member is superifical, not both. Same for deep. Could call this "inclusive pairs" as opposed to the "exclusive pairs" I've been calculating so far. This would increase npairs per group, and who's to say whether inclusive or exclusive is more valid. Add 'inclusive=False' kwarg to self.sct()
 - explicitly label mid-layers in addition to sup and deep, for both inclusive and exclusive cases
 - add option for more conventional looking population raster plot, with equal vertical spacing (but probably still in order of depth) and maybe also vertical raster lines, to better visualize the possible presence of up/down states
     - keep them in order of depth, and colour the superficial ones red and the deep ones blue, so it's obvious where the border is. If using a pair of ranges for sup and deep, colour the in between ones black

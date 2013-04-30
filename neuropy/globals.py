@@ -40,12 +40,12 @@ SILOWBAND = 0.5, 7 # Hz
 SIHIGHBAND = 7, 100 # Hz
 
 """Code correlation time range windows"""
-CCWIDTH = 16.384 # sec
-CCTRES = 1 # sec
+SCWIDTH = 16.384 # sec
+SCTRES = 1 # sec
 
 """Multiunit activity time range windows"""
-MUAWIDTH = CCWIDTH # sec
-MUATRES = CCTRES # sec
+MUAWIDTH = SCWIDTH # sec
+MUATRES = SCTRES # sec
 
 """Distance ranges down vertical axis of probe designating superficial, middle and
 deep cells"""

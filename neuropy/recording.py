@@ -18,7 +18,7 @@ pyximport.install(build_in_temp=False, inplace=True)
 import util # .pyx file
 
 import core
-from core import (LFP, SpatialPopulationRaster, DensePopulationRaster, Codes, CodeCorr,
+from core import (LFP, SpatialPopulationRaster, DensePopulationRaster, Codes, SpikeCorr,
                   binarray2int, nCrsamples, iterable, entropy_no_sing, lastcmd, intround,
                   rstrip, dictattr, warn, pmf, TAB)
 from colour import CLUSTERCOLOURDICT
@@ -666,24 +666,24 @@ class RecordingCode(BaseRecording):
         return codes
     '''
     # unused
-    def codecorr(self, nid1, nid2, tranges=None):
+    def spikecorr(self, nid1, nid2, tranges=None):
         """Calculate the correlation coefficient of the codes of two neurons"""
         code1 = self.n[nid1].code(tranges=tranges)
         code2 = self.n[nid2].code(tranges=tranges)
         return corrcoef(code1.c, code2.c)
     '''
-    def cc(self, tranges=None, width=None, tres=None, weights=None, shift=0,
+    def sc(self, tranges=None, width=None, tres=None, weights=None, shift=0,
            shiftcorrect=0, experiments=None, nids=None, R=None):
-        """Return a CodeCorr object"""
+        """Return a SpikeCorr object"""
         if weights in ['synch', 'desynch']:
             r, t = self.lfp.si(plot=False)
             if weights == 'synch':
                 weights = r, t
             else: # weights == 'desynch'
                 weights = 1-r, t
-        cc = CodeCorr(recording=self, tranges=tranges, width=width, tres=tres,
-                      weights=weights, shift=shift, shiftcorrect=shiftcorrect,
-                      experiments=experiments, nids=nids, R=None)
+        cc = SpikeCorr(recording=self, tranges=tranges, width=width, tres=tres,
+                       weights=weights, shift=shift, shiftcorrect=shiftcorrect,
+                       experiments=experiments, nids=nids, R=None)
         # run cc.calc() as late as possible, not here
         return cc
 
@@ -692,8 +692,8 @@ class BaseNetstate(object):
     """Base class of Network state analyses.
     Implements a lot of the analyses on network states found in the 2006 Schneidman paper
 
-    WARNING!!!!!! not sure if self.tranges, which derives from self.experiments, is being
-    used at all yet!!!!!!!!!!!!! See codes() method below.
+    WARNING: not sure if self.tranges, which derives from self.experiments, is being
+    used at all yet. See codes() method below.
     """
     def __init__(self, recording, experiments=None, nids=None):
         self.r = recording

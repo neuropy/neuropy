@@ -128,11 +128,11 @@ def xcorr(np.ndarray[int64_t, ndim=1, mode='c'] x,
     return dts
 
 
-def cct(int8_t[:, ::1] c,
+def sct(int8_t[:, ::1] c,
         int64_t[::1] t,
         int64_t[:, ::1] tranges,
         int8_t highval):
-    """Calculate all pairwise correlations of codes in 2D array c for every trange
+    """Calculate all pairwise spike correlations of codes in 2D array c for every trange
     in tranges. Rows in c are neurons, columns are time bins. t are the bin times"""
     cdef int64_t nn = c.shape[0] # number of neurons
     cdef int64_t nt = c.shape[1] # number of time bins
@@ -157,7 +157,7 @@ def cct(int8_t[:, ::1] c,
         mean_int8_axis1(cslices[trangei], nst[trangei], means[trangei])
         std_int8_axis1(cslices[trangei], nst[trangei], means[trangei], stds[trangei])
         # count up number of high states for each neuron in each trange, used later
-        # for weighted average of cc(t) across neurons:
+        # for weighted average of sc(t) across neurons:
         for i in range(nn):
             for sti in range(nst[trangei]):
                 if cslices[trangei, i, sti] == highval:

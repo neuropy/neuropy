@@ -575,14 +575,14 @@ class ExperimentCode(BaseExperiment):
     codes.__doc__ += '\nNeuron.code: '+getargstr(neuron.Neuron.code)
     codes.__doc__ += '\nbinary: '+getargstr(neuron.BinaryCode.__init__)
 
-    def codecorr(self, neuron1, neuron2, **kwargs):
-        """Calculates the correlation of two Neuron.Code objects"""
+    def spikecorr(self, neuron1, neuron2, **kwargs):
+        """Calculate spike correlation of two neurons"""
         code1 = self.code(neuron1, **kwargs)
         code2 = self.code(neuron2, **kwargs)
         return corrcoef(code1.c, code2.c)
-    codecorr.__doc__ += '\n\n**kwargs:'
-    codecorr.__doc__ += '\nNeuron.code: '+getargstr(neuron.Neuron.code)
-    codecorr.__doc__ += '\nbinary: '+getargstr(neuron.BinaryCode.__init__)
+    spikecorr.__doc__ += '\n\n**kwargs:'
+    spikecorr.__doc__ += '\nNeuron.code: '+getargstr(neuron.Neuron.code)
+    spikecorr.__doc__ += '\nbinary: '+getargstr(neuron.BinaryCode.__init__)
     '''
     def netstate(self):
         """Returns a Netstate object"""
