@@ -1,5 +1,7 @@
 """Create a SpikeCorr.shifts() plot for lots of recordings.
-Run by calling `%run -i /path/to/shifts.py` within neuropy"""
+
+Run by calling `%run -i scripts/shifts.py` within neuropy"""
+
 from pylab import get_current_fig_manager as gcfm
 
 from animal import Animal
