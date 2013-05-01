@@ -4,11 +4,10 @@ TODO:
     - solution is to make sure all .din are exported from spyke
     - or, could also make each recording trange always be the time between first and last spike, regardless of its experiments?
 
+- add experiment.rastertrials, make recording.rastertrials call rec.e[0].rastertrials
 - add sc.trials: sc(t) averaged over trials, timelocked to start of each trial, include laminarity
 - add mua_trials
 - add si_trials
-
-- rename CodeCorr to SpikeCorr, and all instances of 'cc' to 'sc'? Would be a bit clearer.
 
 - sc().shifts() is broken due to being disabled in sc.calc_single()
 
@@ -338,3 +337,4 @@ Tuning curves:
 - explicitly label mid-layers in addition to sup and deep, for both inclusive and exclusive cases
 - add option for more conventional looking population raster plot, with equal vertical spacing (but probably still in order of depth) and maybe also vertical raster lines, to better visualize the possible presence of up/down states
     - keep them in order of depth, and colour the superficial ones red and the deep ones blue, so it's obvious where the border is. If using a pair of ranges for sup and deep, colour the in between ones black
+- rename CodeCorr to SpikeCorr, and all instances of 'cc' to 'sc'? Would be a bit clearer.

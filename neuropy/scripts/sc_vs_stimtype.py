@@ -1,40 +1,44 @@
 """Scatter plot some summary statistic of spike correlations of each recording vs what
 stimulus group each recording falls into.
 
-Run by calling `%run -i scripts/sc_vs_stimtype.py` within neuropy"""
+Run by calling `%run -i scripts/sc_vs_stimtype.py track_absname` within neuropy"""
 
 ## TODO: weight corrs summary statistic by the number of spikes and/or cell pairs in
-## each recording
+## each recording. Or, split recordings up into pieces of x min long, and then plot
+## corr of all pieces of one stim type vs those of the other
 
 ## TODO: for each pair of recordings, find common subset of active neurons and calculate
 ## pairwise corrs for each recording in that pair using just those neurons
 
 ## TODO: designate recording type by colour, plot median corrs on x axis vs something else,
-## like median SI or MUA on y axis 
+## like median SI or MUA on y axis
+
+## TODO: maybe limit to visually responsive cells
 
 #import os
 #import numpy as np
-
 #from animal import Animal
 #from globals import DATAPATH
-from pylab import get_current_fig_manager as gcfm
-figsize = (7.5, 6.5)
-'''
-try:
-    ptc22.tr1;
-except NameError:
-    ptc22 = Animal(os.path.join(DATAPATH, 'ptc22'))
-    ptc22.load('tr1')
-'''
 
-tr = ptc22.tr1
-blank_mseq_rids = ['04', '07', '09', '11', '17', '21']
-mov_drift_rids = ['03', '05', '06', '08', '10', '18', '19', '20']
-'''
-tr = ptc22.tr2
-blank_mseq_rids = ['26', '27', '32', '34', '36']
-mov_drift_rids = ['25', '28', '31', '33']
-'''
+import argparse
+from pylab import get_current_fig_manager as gcfm
+
+figsize = (7.5, 6.5)
+
+parser = argparse.ArgumentParser()
+parser.add_argument('track')
+track_absname = parser.parse_args().track
+
+if track_absname == 'ptc22.tr1':
+    tr = ptc22.tr1
+    blank_mseq_rids = ['04', '07', '09', '11', '17', '21']
+    mov_drift_rids = ['03', '05', '06', '08', '10', '18', '19', '20']
+elif track_absname == 'ptc22.tr2':
+    tr = ptc22.tr2
+    blank_mseq_rids = ['26', '27', '32', '34', '36']
+    mov_drift_rids = ['25', '28', '31', '33']
+else:
+    raise ValueError("can't handle track %r" % track_absname)
 
 corrs = {}
 for rid in (blank_mseq_rids + mov_drift_rids):
