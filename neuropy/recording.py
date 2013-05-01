@@ -57,6 +57,13 @@ class BaseRecording(object):
 
     name = property(get_name)
 
+    def get_absname(self):
+        """Absolute name including parent animal and track, kind of like absolute path, but
+        more abbreviated, as one would enter it at the IPython prompt"""
+        return '.'.join((self.tr.absname, 'r'+self.id))
+
+    absname = property(get_absname)
+
     def get_id(self):
         # return the first word in the name, using - or whitespace as separators
         return self.name.split('-')[0].split(' ')[0]

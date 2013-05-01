@@ -33,6 +33,13 @@ class Track(object):
     
     name = property(get_name)
 
+    def get_absname(self):
+        """Absolute name including parent Animal, kind of like absolute path, but more
+        abbreviated, as one would enter it at the IPython prompt"""
+        return '.'.join((self.animal.name, self.name))
+
+    absname = property(get_absname)
+
     def get_id(self):
         # replace first occurrence of 'tr' with nothing, keep the rest:
         id = self.name.lower().replace('tr', '', 1)
