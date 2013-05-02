@@ -3,10 +3,6 @@ stimulus group each recording falls into.
 
 Run by calling `%run -i scripts/sc_vs_stimtype.py track_absname` within neuropy"""
 
-## TODO: weight corrs summary statistic by the number of spikes and/or cell pairs in
-## each recording. Or, split recordings up into pieces of x min long, and then plot
-## corr of all pieces of one stim type vs those of the other
-
 ## TODO: for each pair of recordings, find common subset of active neurons and calculate
 ## pairwise corrs for each recording in that pair using just those neurons
 
@@ -24,8 +20,8 @@ import argparse
 from pylab import get_current_fig_manager as gcfm
 
 method = 'weighted mean' # 'median', 'weighted median', 'weighted mean'
-width = None #60 # sec
-tres = None #60 # sec
+width = 60 # sec, or None
+tres = 60 # sec, or None
 figsize = (7.5, 6.5)
 
 parser = argparse.ArgumentParser()
@@ -43,37 +39,39 @@ elif track_absname == 'ptc22.tr2':
 else:
     raise ValueError("can't handle track %r" % track_absname)
 
-corrs = {}
+blank_mseq_corrs = []
+mov_drift_corrs = []
 for rid in (blank_mseq_rids + mov_drift_rids):
     r = tr.r[rid]
     sc = r.sc(width=width, tres=tres)
     sc.calc()
     totalcounts = sc.counts.sum(axis=0) # len(ntranges)
     if method == 'median':
-        corrs[rid] = np.median(sc.corrs, axis=0)
+        corrs = np.median(sc.corrs, axis=0)
     elif method == 'weighted median': # not entirely sure this is right:
-        corrs[rid] = np.median(sc.corrs * sc.counts / totalcounts, axis=0) * sc.npairs
+        corrs = np.median(sc.corrs * sc.counts / totalcounts, axis=0) * sc.npairs
     elif method == 'weighted mean':
-        corrs[rid] = (sc.corrs * sc.counts / totalcounts).sum(axis=0)
+        corrs = (sc.corrs * sc.counts / totalcounts).sum(axis=0)
     else:
         raise ValueError("unknown method %r" % method)
+    if rid in blank_mseq_rids:
+        blank_mseq_corrs.append(corrs)
+    else:
+        mov_drift_corrs.append(corrs)
+    #print('rid: %s, ntranges: %d, len(corrs): %d' % (rid, len(totalcounts), len(corrs)))
 
-data = []
-rpairs = []
-for rid0 in blank_mseq_rids:
-    for rid1 in mov_drift_rids:
-        data.append((corrs[rid0], corrs[rid1]))
-        rpairs.append((rid0, rid1))
-data = np.asarray(data)
-rpairs = np.asarray(rpairs)
-print(data)
-print(rpairs)
+blank_mseq_corrs = np.hstack(blank_mseq_corrs)
+mov_drift_corrs = np.hstack(mov_drift_corrs)
+# repeat each element in blank_mseq_corrs len(mov_drift_corrs) times:
+x = np.repeat(blank_mseq_corrs, len(mov_drift_corrs))
+# tile mov_drift_corrs len(blank_mseq_corrs) times:
+y = np.tile(mov_drift_corrs, len(blank_mseq_corrs))
 
 f = pl.figure(figsize=figsize)
 a = f.add_subplot(111)
-lim = min(data.min(), 0), data.max()
+lim = min([x.min(), y.min(), 0]), max([x.max(), y.max()])
 a.plot(lim, lim, c='e', ls='--', marker=None) # y=x line
-a.plot(data[:, 0], data[:, 1], 'k.')
+a.plot(x, y, 'k.')
 #a.set_xlim(lim)
 #a.set_ylim(lim)
 a.set_xlabel('%s spike correlations: blankscreen and mseq' % method)
