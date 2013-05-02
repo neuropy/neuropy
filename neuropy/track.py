@@ -268,3 +268,62 @@ class Track(object):
         f.tight_layout(pad=0.3) # crop figure to contents
         f.canvas.draw() # this is needed if a != None when passed as arg
         return a
+
+    def scstim(self, method='weighted mean', width=None, tres=None, figsize=(7.5, 6.5)):
+        """Scatter plot some summary statistic of spike correlations of each recording vs what
+        stimulus group each recording falls into. width and tres dictate tranges to split
+        recordings up into, if any"""
+
+        ## TODO: for each pair of recordings, find common subset of active neurons and calculate
+        ## pairwise corrs for each recording in that pair using just those neurons
+
+        ## TODO: designate recording type by colour, plot median corrs on x axis vs something
+        ## else, like median SI or MUA on y axis
+
+        ## TODO: maybe limit to visually responsive cells
+
+        uns = get_ipython().user_ns
+        blankmseqrids = uns['BLANKMSEQRIDS'][self.absname]
+        movdriftrids = uns['MOVDRIFTRIDS'][self.absname]
+
+        blankmseqcorrs = []
+        movdriftcorrs = []
+        for rid in (blankmseqrids + movdriftrids):
+            r = self.r[rid]
+            sc = r.sc(width=width, tres=tres)
+            sc.calc()
+            totalcounts = sc.counts.sum(axis=0) # len(ntranges)
+            if method == 'median':
+                corrs = np.median(sc.corrs, axis=0)
+            elif method == 'weighted median': # not entirely sure this is right:
+                corrs = np.median(sc.corrs * sc.counts / totalcounts, axis=0) * sc.npairs
+            elif method == 'weighted mean':
+                corrs = (sc.corrs * sc.counts / totalcounts).sum(axis=0)
+            else:
+                raise ValueError("unknown method %r" % method)
+            if rid in blankmseqrids:
+                blankmseqcorrs.append(corrs)
+            else:
+                movdriftcorrs.append(corrs)
+
+        blankmseqcorrs = np.hstack(blankmseqcorrs)
+        movdriftcorrs = np.hstack(movdriftcorrs)
+        # repeat each element in blankmseqcorrs len(movdriftcorrs) times:
+        x = np.repeat(blankmseqcorrs, len(movdriftcorrs))
+        # tile movdriftcorrs len(blankmseqcorrs) times:
+        y = np.tile(movdriftcorrs, len(blankmseqcorrs))
+
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        lim = min([x.min(), y.min(), 0]), max([x.max(), y.max()])
+        a.plot(lim, lim, c='e', ls='--', marker=None) # y=x line
+        a.plot(x, y, 'k.')
+        #a.set_xlim(lim)
+        #a.set_ylim(lim)
+        a.set_xlabel('%s spike correlations: blankscreen and mseq' % method)
+        a.set_ylabel('%s spike correlations: movie and drift bar' % method)
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        a.set_title(titlestr)
+        f.tight_layout(pad=0.3) # crop figure to contents
+        f.show()
