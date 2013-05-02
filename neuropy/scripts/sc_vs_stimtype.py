@@ -23,6 +23,9 @@ Run by calling `%run -i scripts/sc_vs_stimtype.py track_absname` within neuropy"
 import argparse
 from pylab import get_current_fig_manager as gcfm
 
+method = 'weighted mean' # 'median', 'weighted median', 'weighted mean'
+width = None #60 # sec
+tres = None #60 # sec
 figsize = (7.5, 6.5)
 
 parser = argparse.ArgumentParser()
@@ -43,9 +46,17 @@ else:
 corrs = {}
 for rid in (blank_mseq_rids + mov_drift_rids):
     r = tr.r[rid]
-    sc = r.sc()
+    sc = r.sc(width=width, tres=tres)
     sc.calc()
-    corrs[rid] = np.median(sc.corrs)
+    totalcounts = sc.counts.sum(axis=0) # len(ntranges)
+    if method == 'median':
+        corrs[rid] = np.median(sc.corrs, axis=0)
+    elif method == 'weighted median': # not entirely sure this is right:
+        corrs[rid] = np.median(sc.corrs * sc.counts / totalcounts, axis=0) * sc.npairs
+    elif method == 'weighted mean':
+        corrs[rid] = (sc.corrs * sc.counts / totalcounts).sum(axis=0)
+    else:
+        raise ValueError("unknown method %r" % method)
 
 data = []
 rpairs = []
@@ -65,8 +76,8 @@ a.plot(lim, lim, c='e', ls='--', marker=None) # y=x line
 a.plot(data[:, 0], data[:, 1], 'k.')
 #a.set_xlim(lim)
 #a.set_ylim(lim)
-a.set_xlabel('median spike correlations: blankscreen and mseq')
-a.set_ylabel('median spike correlations: movie and drift bar')
+a.set_xlabel('%s spike correlations: blankscreen and mseq' % method)
+a.set_ylabel('%s spike correlations: movie and drift bar' % method)
 winstr = 'sc_vs_stimtype.py_%s' % tr.absname
 gcfm().window.setWindowTitle(winstr)
 titlestr = 'sc_vs_stimtype.py: %s' % tr.absname
