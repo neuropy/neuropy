@@ -54,9 +54,11 @@ SUPRANGE = 0, 500 # um
 MIDRANGE = 500, 700 # um
 DEEPRANGE = 700, 2000 # um
 
+"""IDs of blankscreen and msequence recordings"""
 BLANKMSEQRIDS = {'ptc22.tr1': ['04', '07', '09', '11', '17', '21'],
                  'ptc22.tr2': ['26', '27', '32', '34', '36'],
                 }
+"""IDs of movie and drift bar recordings"""
 MOVDRIFTRIDS = {'ptc22.tr1': ['03', '05', '06', '08', '10', '18', '19', '20'],
                 'ptc22.tr2': ['25', '28', '31', '33'],
                }

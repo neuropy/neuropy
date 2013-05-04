@@ -269,61 +269,53 @@ class Track(object):
         f.canvas.draw() # this is needed if a != None when passed as arg
         return a
 
-    def scstim(self, method='weighted mean', width=None, tres=None, figsize=(7.5, 6.5)):
-        """Scatter plot some summary statistic of spike correlations of each recording vs what
-        stimulus group each recording falls into. width and tres dictate tranges to split
-        recordings up into, if any"""
+    def scsistim(self, method='weighted mean', width=None, tres=None, figsize=(7.5, 6.5)):
+        """Scatter plot some summary statistic of spike correlations of each recording vs
+        synchrony index SI. Colour each point according to stimulus type. width and tres
+        dictate tranges to split recordings up into, if any"""
 
         ## TODO: for each pair of recordings, find common subset of active neurons and calculate
         ## pairwise corrs for each recording in that pair using just those neurons
 
-        ## TODO: designate recording type by colour, plot median corrs on x axis vs something
-        ## else, like median SI or MUA on y axis
-
         ## TODO: maybe limit to visually responsive cells
 
         uns = get_ipython().user_ns
+        if width == None:
+            width = uns['SIWIDTH'] # want powers of two for efficient FFT
+        if tres == None:
+            tres = width
         blankmseqrids = uns['BLANKMSEQRIDS'][self.absname]
         movdriftrids = uns['MOVDRIFTRIDS'][self.absname]
 
-        blankmseqcorrs = []
-        movdriftcorrs = []
+        blankmseq_scs, blankmseq_sis = [], []
+        movdrift_scs, movdrift_sis = [], []
         for rid in (blankmseqrids + movdriftrids):
             r = self.r[rid]
-            sc = r.sc(width=width, tres=tres)
-            sc.calc()
-            totalcounts = sc.counts.sum(axis=0) # len(ntranges)
-            if method == 'median':
-                corrs = np.median(sc.corrs, axis=0)
-            elif method == 'weighted median': # not entirely sure this is right:
-                corrs = np.median(sc.corrs * sc.counts / totalcounts, axis=0) * sc.npairs
-            elif method == 'weighted mean':
-                corrs = (sc.corrs * sc.counts / totalcounts).sum(axis=0)
-            else:
-                raise ValueError("unknown method %r" % method)
+            print('%s: %s' % (r.absname, r.name))
+            spikecorr = r.sc(width=width, tres=tres)
+            sc, si = spikecorr.si(method=method, plot=False) # calls sc.calc() and sc.si()
+            sc = sc[0] # pull the spike correlation values that span all laminae
+            totalcounts = spikecorr.counts.sum(axis=0) # len(ntranges)
             if rid in blankmseqrids:
-                blankmseqcorrs.append(corrs)
+                blankmseq_scs.append(sc)
+                blankmseq_sis.append(si)
             else:
-                movdriftcorrs.append(corrs)
+                movdrift_scs.append(sc)
+                movdrift_sis.append(si)
 
-        blankmseqcorrs = np.hstack(blankmseqcorrs)
-        movdriftcorrs = np.hstack(movdriftcorrs)
-        # repeat each element in blankmseqcorrs len(movdriftcorrs) times:
-        x = np.repeat(blankmseqcorrs, len(movdriftcorrs))
-        # tile movdriftcorrs len(blankmseqcorrs) times:
-        y = np.tile(movdriftcorrs, len(blankmseqcorrs))
-
+        blankmseq_scs = np.hstack(blankmseq_scs)
+        blankmseq_sis = np.hstack(blankmseq_sis)
+        movdrift_scs = np.hstack(movdrift_scs)
+        movdrift_sis = np.hstack(movdrift_sis)
+        
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        lim = min([x.min(), y.min(), 0]), max([x.max(), y.max()])
-        a.plot(lim, lim, c='e', ls='--', marker=None) # y=x line
-        a.plot(x, y, 'k.')
-        #a.set_xlim(lim)
-        #a.set_ylim(lim)
-        a.set_xlabel('%s spike correlations: blankscreen and mseq' % method)
-        a.set_ylabel('%s spike correlations: movie and drift bar' % method)
+        a.plot(blankmseq_scs, blankmseq_sis, 'k.')
+        a.plot(movdrift_scs, movdrift_sis, 'r.')
+        a.set_ylim(0, 1)
+        a.set_xlabel('%s spike correlations' % method)
+        a.set_ylabel('synchrony index')
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         f.tight_layout(pad=0.3) # crop figure to contents
-        f.show()

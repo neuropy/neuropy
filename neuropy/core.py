@@ -1631,7 +1631,7 @@ class SpikeCorr(object):
         # underplot horizontal line at y=0:
         a.axhline(y=0, c='e', ls='--', marker=None)
         a.set_xlabel("pair separation (um)")
-        a.set_ylabel("correlation coefficient")
+        a.set_ylabel("spike correlation")
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
@@ -1652,7 +1652,7 @@ class SpikeCorr(object):
                               uns['MINRATE'], len(self.nids), npairs,
                               uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE'],
                               intround(self.r.dtmin)),
-                           transform = a.transAxes,
+                           transform=a.transAxes,
                            horizontalalignment='right',
                            verticalalignment='top')
         # make proxy artists for legend:
@@ -1775,6 +1775,7 @@ class SpikeCorr(object):
         print('sct(t) calc took %.3f sec' % (time.time()-t0))
         t0 = time.time()
         si, sit = self.r.lfp.si(chani=chani, lowband=lowband, highband=highband,
+                                width=self.width/1e6, tres=self.tres/1e6,
                                 ratio=ratio, plot=False) # sit are also center timepoints
         print('SI(t) calc took %.3f sec' % (time.time()-t0))
         # get common time resolution, si typically has finer temporal resolution than corrs:
@@ -1794,6 +1795,9 @@ class SpikeCorr(object):
             cti = cti[ctii]
             ct = ct[cti]
             corrs = corrs[:, cti]
+
+        if not plot:
+            return corrs, si # return corrs of all laminarities
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
