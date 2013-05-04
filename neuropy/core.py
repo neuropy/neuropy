@@ -1670,7 +1670,7 @@ class SpikeCorr(object):
         self.f = f
         return self
 
-    def sct(self, method='weightedmean', inclusive=False):
+    def sct(self, method='weighted mean', inclusive=False):
         """Calculate pairwise spike correlations for each type of laminarity as a function of
         time. method can be 'weightedmean', 'mean', 'median', 'max', 'min' or 'all'"""
         uns = get_ipython().user_ns
@@ -1686,43 +1686,46 @@ class SpikeCorr(object):
         laminarnpairs = []
         for pairis in (allis, supis, midis, deepis, otheris):
             npairs = len(pairis)
-            corrs = self.corrs[pairis] # npairs * ntranges
-            counts = self.counts[pairis] # npairs * ntranges
-            if method == 'weightedmean':
+            if npairs == 0:
+                laminarcorrs.append(np.zeros(len(self.tranges)))
+                laminarnpairs.append(npairs)
+                continue
+            corrs = self.corrs[pairis] # npairs x ntranges
+            if method.startswith('weighted'):
                 # weight each pair by its normalized ON count per trange
+                counts = self.counts[pairis] # npairs * ntranges
                 totalcounts = counts.sum(axis=0) # len(ntranges)
                 # avoid div by 0, counts at such timepoints will be uniformly 0 anyway:
                 zcountis = totalcounts == 0 # trange indices where totalcounts are 0
                 totalcounts[zcountis] = 1
-                weights = counts / totalcounts # npairs * ntranges
-                corrs = corrs * weights # npairs * ntranges
+                weights = counts / totalcounts # npairs x ntranges
+            if method == 'weighted mean':
                 # sum over all weighted pairs:
-                corrs = corrs.sum(axis=0) # len(ntranges)
-                ylabel = 'weighted mean correlation'
+                corrs = (corrs * weights).sum(axis=0) # len(ntranges)
+            elif method == 'weighted median': # not entirely sure this is right:
+                print(corrs)
+                print(weights)
+                corrs = np.median(corrs * weights, axis=0) * self.npairs
             elif method == 'mean':
                 corrs = corrs.mean(axis=0)
-                ylabel = 'mean correlation'
             elif method == 'median':
                 corrs = np.median(corrs, axis=0)
-                ylabel = 'median correlation'
             elif method == 'max':
                 corrs = corrs.max(axis=0)
-                ylabel = 'max correlation'
             elif method == 'min':
                 corrs = corrs.min(axis=0)
-                ylabel = 'min correlation'
             elif method == 'all':
                 corrs = corrs.T # need transpose for some reason when plotting multiple traces
-                ylabel = 'correlation'
             laminarcorrs.append(corrs)
             laminarnpairs.append(npairs)
         laminarcorrs = np.vstack(laminarcorrs)
         laminarnpairs = np.array(laminarnpairs)
         # get midpoint of each trange, convert from us to sec:
         t = self.tranges.mean(axis=1) / 1000000
+        ylabel = method + ' spike correlations'
         return laminarcorrs, laminarnpairs, t, ylabel
 
-    def plot(self, method='weightedmean', inclusive=False, figsize=(20, 6.5)):
+    def plot(self, method='weighted mean', inclusive=False, figsize=(20, 6.5)):
         """Plot pairwise spike correlations as a function of time. method can be
         'weightedmean', 'mean', 'median', 'max' or 'min'"""
         corrs, npairs, t, ylabel = self.sct(method=method, inclusive=inclusive)
@@ -1766,8 +1769,8 @@ class SpikeCorr(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def si(self, method='weightedmean', inclusive=False, chani=-1, ratio='L/(L+H)',
-           lowband=None, highband=None, sirange=None, figsize=(7.5, 6.5)):
+    def si(self, method='weighted mean', inclusive=False, chani=-1, ratio='L/(L+H)',
+           lowband=None, highband=None, sirange=None, figsize=(7.5, 6.5), plot=True):
         """Scatter plot spike correlations vs LFP synchrony index"""
         t0 = time.time()
         # ct are center timepoints:
@@ -1856,7 +1859,7 @@ class SpikeCorr(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def mua(self, method='weightedmean', inclusive=False, smooth=False, figsize=(7.5, 6.5)):
+    def mua(self, method='weighted mean', inclusive=False, smooth=False, figsize=(7.5, 6.5)):
         """Scatter plot spike correlations vs multiunit activity"""
         corrs, npairs, ct, ylabel = self.sct(method=method, inclusive=inclusive)
         mua, muat, n = self.r.mua(smooth=smooth, plot=False)
