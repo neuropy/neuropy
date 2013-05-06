@@ -269,6 +269,54 @@ class Track(object):
         f.canvas.draw() # this is needed if a != None when passed as arg
         return a
 
+    def scstim(self, method='weighted mean', width=None, tres=None, figsize=(7.5, 6.5)):
+        """Scatter plot some summary statistic of spike correlations of each recording vs what
+        stimulus group each recording falls into. width and tres dictate tranges to split
+        recordings up into, if any"""
+
+        ## TODO: for each pair of recordings, find common subset of active neurons and calculate
+        ## pairwise corrs for each recording in that pair using just those neurons
+
+        ## TODO: maybe limit to visually responsive cells
+
+        uns = get_ipython().user_ns
+        blankmseqrids = uns['BLANKMSEQRIDS'][self.absname]
+        movdriftrids = uns['MOVDRIFTRIDS'][self.absname]
+
+        blankmseqcorrs = []
+        movdriftcorrs = []
+        for rid in (blankmseqrids + movdriftrids):
+            r = self.r[rid]
+            print('%s: %s' % (r.absname, r.name))
+            spikecorr = r.sc(width=width, tres=tres)
+            sc = spikecorr.sct(method=method)[0]
+            sc = sc[0] # pull out the spike correlation values that span all laminae
+            if rid in blankmseqrids:
+                blankmseqcorrs.append(sc)
+            else:
+                movdriftcorrs.append(sc)
+        blankmseqcorrs = np.hstack(blankmseqcorrs)
+        movdriftcorrs = np.hstack(movdriftcorrs)
+        # repeat each element in blankmseqcorrs len(movdriftcorrs) times:
+        x = np.repeat(blankmseqcorrs, len(movdriftcorrs))
+        # tile movdriftcorrs len(blankmseqcorrs) times:
+        y = np.tile(movdriftcorrs, len(blankmseqcorrs))
+
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        lim = min([x.min(), y.min(), 0]), max([x.max(), y.max()])
+        a.plot(lim, lim, c='e', ls='--', marker=None) # y=x line
+        a.plot(x, y, 'k.')
+        #a.set_xlim(lim)
+        #a.set_ylim(lim)
+        a.set_xlabel('%s spike correlations: blankscreen and mseq' % method)
+        a.set_ylabel('%s spike correlations: movie and drift bar' % method)
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        a.set_title(titlestr)
+        f.tight_layout(pad=0.3) # crop figure to contents
+        f.show()
+
     def scsistim(self, method='weighted mean', width=None, tres=None, figsize=(7.5, 6.5)):
         """Scatter plot some summary statistic of spike correlations of each recording vs
         synchrony index SI. Colour each point according to stimulus type. width and tres
@@ -294,8 +342,7 @@ class Track(object):
             print('%s: %s' % (r.absname, r.name))
             spikecorr = r.sc(width=width, tres=tres)
             sc, si = spikecorr.si(method=method, plot=False) # calls sc.calc() and sc.si()
-            sc = sc[0] # pull the spike correlation values that span all laminae
-            totalcounts = spikecorr.counts.sum(axis=0) # len(ntranges)
+            sc = sc[0] # pull out the spike correlation values that span all laminae
             if rid in blankmseqrids:
                 blankmseq_scs.append(sc)
                 blankmseq_sis.append(si)
