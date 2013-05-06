@@ -1703,8 +1703,6 @@ class SpikeCorr(object):
                 # sum over all weighted pairs:
                 corrs = (corrs * weights).sum(axis=0) # len(ntranges)
             elif method == 'weighted median': # not entirely sure this is right:
-                print(corrs)
-                print(weights)
                 corrs = np.median(corrs * weights, axis=0) * self.npairs
             elif method == 'mean':
                 corrs = corrs.mean(axis=0)
