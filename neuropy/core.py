@@ -549,6 +549,7 @@ class LFP(object):
         assert tres <= width
         NFFT = intround(width * self.sampfreq)
         noverlap = intround(NFFT - tres * self.sampfreq)
+        #print('len(x), NFFT, noverlap: %d, %d, %d' % (len(x), NFFT, noverlap))
         # t is midpoints of timebins in sec from start of data. P is in mV^2?:
         P, freqs, t = mpl.mlab.specgram(x, NFFT=NFFT, Fs=self.sampfreq, noverlap=noverlap)
         # don't convert power to dB, just washes out the signal in the ratio:

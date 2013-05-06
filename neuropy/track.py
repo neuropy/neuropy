@@ -317,10 +317,12 @@ class Track(object):
         f.tight_layout(pad=0.3) # crop figure to contents
         f.show()
 
-    def scsistim(self, method='weighted mean', width=None, tres=None, figsize=(7.5, 6.5)):
+    def scsistim(self, method='weighted mean', width=None, tres=None, timeaverage=False,
+                 plottime=False, figsize=(7.5, 6.5)):
         """Scatter plot some summary statistic of spike correlations of each recording vs
         synchrony index SI. Colour each point according to stimulus type. width and tres
-        dictate tranges to split recordings up into, if any"""
+        dictate tranges to split recordings up into. timeaverage means average across time
+        values of both sc and si for each recording"""
 
         ## TODO: for each pair of recordings, find common subset of active neurons and calculate
         ## pairwise corrs for each recording in that pair using just those neurons
@@ -336,14 +338,22 @@ class Track(object):
         movdriftrids = uns['MOVDRIFTRIDS'][self.absname]
         rids = sorted(blankmseqrids + movdriftrids) # iterate through them in recording order
 
+        scs, sis = [], []
         blankmseq_scs, blankmseq_sis = [], []
         movdrift_scs, movdrift_sis = [], []
         for rid in rids:
             r = self.r[rid]
             print('%s: %s' % (r.absname, r.name))
             spikecorr = r.sc(width=width, tres=tres)
-            sc, si = spikecorr.si(method=method, plot=False) # calls sc.calc() and sc.si()
+            sc, si = spikecorr.si(method=method, plot=False) # calls sc.sct() and sc.si()
             sc = sc[0] # pull out the spike correlation values that span all laminae
+            if timeaverage:
+                # average across all time values of sc and si to get a single coordinate
+                # per recording
+                sc = sc.mean()
+                si = si.mean()
+            scs.append(sc)
+            sis.append(si)
             if rid in blankmseqrids:
                 blankmseq_scs.append(sc)
                 blankmseq_sis.append(si)
@@ -351,6 +361,8 @@ class Track(object):
                 movdrift_scs.append(sc)
                 movdrift_sis.append(si)
 
+        scs = np.hstack(scs)
+        sis = np.hstack(sis)
         blankmseq_scs = np.hstack(blankmseq_scs)
         blankmseq_sis = np.hstack(blankmseq_sis)
         movdrift_scs = np.hstack(movdrift_scs)
@@ -358,6 +370,8 @@ class Track(object):
         
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
+        if plottime: # underplot lines connecting points adjacent in time
+            a.plot(scs, sis, 'e--')
         a.plot(blankmseq_scs, blankmseq_sis, 'k.')
         a.plot(movdrift_scs, movdrift_sis, 'r.')
         a.set_ylim(0, 1)
