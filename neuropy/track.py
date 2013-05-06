@@ -334,10 +334,11 @@ class Track(object):
             tres = width
         blankmseqrids = uns['BLANKMSEQRIDS'][self.absname]
         movdriftrids = uns['MOVDRIFTRIDS'][self.absname]
+        rids = sorted(blankmseqrids + movdriftrids) # iterate through them in recording order
 
         blankmseq_scs, blankmseq_sis = [], []
         movdrift_scs, movdrift_sis = [], []
-        for rid in (blankmseqrids + movdriftrids):
+        for rid in rids:
             r = self.r[rid]
             print('%s: %s' % (r.absname, r.name))
             spikecorr = r.sc(width=width, tres=tres)
