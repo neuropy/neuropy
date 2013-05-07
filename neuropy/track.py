@@ -7,6 +7,7 @@ import StringIO
 
 import numpy as np
 
+import matplotlib as mpl
 import pylab as pl
 from pylab import get_current_fig_manager as gcfm
 
@@ -323,10 +324,6 @@ class Track(object):
         synchrony index SI. Colour each point according to stimulus type. width and tres
         dictate tranges to split recordings up into. timeaverage means average across time
         values of both sc and si for each recording"""
-
-        ## TODO: for each pair of recordings, find common subset of active neurons and calculate
-        ## pairwise corrs for each recording in that pair using just those neurons
-
         ## TODO: maybe limit to visually responsive cells
 
         uns = get_ipython().user_ns
@@ -334,13 +331,31 @@ class Track(object):
             width = uns['SIWIDTH'] # want powers of two for efficient FFT
         if tres == None:
             tres = width
-        blankmseqrids = uns['BLANKMSEQRIDS'][self.absname]
-        movdriftrids = uns['MOVDRIFTRIDS'][self.absname]
-        rids = sorted(blankmseqrids + movdriftrids) # iterate through them in recording order
+        rids = sorted(self.r) # do everything in rid order
+        recs = [ self.r[rid] for rid in rids ]
+        msrids, bsrids, mvrids, dbrids = [], [], [], []
+        for rid in rids:
+            r = self.r[rid]
+            rname = r.name
+            if 'mseq' in rname:
+                msrids.append(rid)
+            elif 'blank' in rname or 'spont' in rname:
+                bsrids.append(rid)
+            elif 'MVI' in rname:
+                mvrids.append(rid)
+            elif 'driftbar' in rname:
+                dbrids.append(rid)
 
-        scs, sis = [], []
-        blankmseq_scs, blankmseq_sis = [], []
-        movdrift_scs, movdrift_sis = [], []
+        print('mseq: %r' % [self.r[rid].name for rid in msrids])
+        print('blankscreen: %r' % [self.r[rid].name for rid in bsrids])
+        print('movie: %r' % [self.r[rid].name for rid in mvrids])
+        print('driftbar: %r' % [self.r[rid].name for rid in dbrids])
+        isect = core.intersect1d([msrids, bsrids, mvrids, dbrids])
+        if len(isect) != 0:
+            raise RuntimeError("some rids were classified into more than one type: %r" % isect)
+        rids = np.unique(np.hstack([msrids, bsrids, mvrids, dbrids]))
+
+        scs, sis, c = [], [], []
         for rid in rids:
             r = self.r[rid]
             print('%s: %s' % (r.absname, r.name))
@@ -354,30 +369,36 @@ class Track(object):
                 si = si.mean()
             scs.append(sc)
             sis.append(si)
-            if rid in blankmseqrids:
-                blankmseq_scs.append(sc)
-                blankmseq_sis.append(si)
-            else:
-                movdrift_scs.append(sc)
-                movdrift_sis.append(si)
-
+            if rid in msrids: color = 'k'
+            elif rid in bsrids: color = 'e'
+            elif rid in mvrids: color = 'r'
+            elif rid in dbrids: color = 'b'
+            else: raise ValueError("unclassified recording: %r" % r.name)
+            c.append(np.tile(color, len(sc)))
         scs = np.hstack(scs)
         sis = np.hstack(sis)
-        blankmseq_scs = np.hstack(blankmseq_scs)
-        blankmseq_sis = np.hstack(blankmseq_sis)
-        movdrift_scs = np.hstack(movdrift_scs)
-        movdrift_sis = np.hstack(movdrift_sis)
+        c = np.hstack(c)
         
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         if plottime: # underplot lines connecting points adjacent in time
             a.plot(scs, sis, 'e--')
-        a.plot(blankmseq_scs, blankmseq_sis, 'k.')
-        a.plot(movdrift_scs, movdrift_sis, 'r.')
+        a.scatter(scs, sis, c=c, edgecolors='none', s=5)
         a.set_ylim(0, 1)
         a.set_xlabel('%s spike correlations' % method)
         a.set_ylabel('synchrony index')
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
+        # make proxy line artists for legend:
+        ms = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='k', mec='k')
+        bs = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='e', mec='e')
+        mv = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='r', mec='r')
+        db = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='b', mec='b')
+        # add legend:
+        a.legend([ms, bs, mv, db],
+                 ['mseq', 'blank screen', 'movie', 'drift bar'],
+                 numpoints=1, loc='lower right',
+                 handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
+        return scs, sis, c
