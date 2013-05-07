@@ -319,12 +319,13 @@ class Track(object):
         f.show()
 
     def scsistim(self, method='weighted mean', width=None, tres=None, timeaverage=False,
-                 plottime=False, figsize=(7.5, 6.5)):
+                 plottime=False, s=5, figsize=(7.5, 6.5)):
         """Scatter plot some summary statistic of spike correlations of each recording vs
         synchrony index SI. Colour each point according to stimulus type. width and tres
         dictate tranges to split recordings up into. timeaverage means average across time
         values of both sc and si for each recording"""
         ## TODO: maybe limit to visually responsive cells
+        ## TODO: add linear regression of si vs log(sc)
 
         uns = get_ipython().user_ns
         if width == None:
@@ -383,7 +384,7 @@ class Track(object):
         a = f.add_subplot(111)
         if plottime: # underplot lines connecting points adjacent in time
             a.plot(scs, sis, 'e--')
-        a.scatter(scs, sis, c=c, edgecolors='none', s=5)
+        a.scatter(scs, sis, c=c, edgecolors='none', s=s)
         a.set_ylim(0, 1)
         a.set_xlabel('%s spike correlations' % method)
         a.set_ylabel('synchrony index')
