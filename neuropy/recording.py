@@ -625,7 +625,7 @@ class RecordingRevCorr(BaseRecording):
 
 class RecordingRaster(BaseRecording):
     """Mix-in class that defines the raster related Recording methods"""
-    def raster(self, t0=None, t1=None, neurons=None, norder=None, dense=True, units='sec'):
+    def praster(self, t0=None, t1=None, neurons=None, norder=None, dense=True, units='sec'):
         """Create a population spike raster plot. neurons can be None, 'quiet', 'all', or a
         dict. norder can be a sequence of nids, designating what order to present them in
         the raster plot, from bottom to top. If set to True, the order is automatically
