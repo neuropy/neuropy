@@ -681,7 +681,7 @@ class DensePopulationRaster(object):
         # depth of nids from top of electrode
         ypos = np.array([ neurons[nid].pos[1] for nid in nids ])
         supis, midis, deepis = laminarity(ypos)
-        nneurons = len(nids)
+        nn = len(nids)
         t, y, c = [], [], []
         for nidi, nid in enumerate(nids):
             n = neurons[nid]
@@ -706,12 +706,12 @@ class DensePopulationRaster(object):
         c = np.hstack(c)
 
         if figsize[1] == None:
-            figsize = figsize[0], 1 + nneurons / 7 # ~1/7th vertical inch per neuron
+            figsize = figsize[0], 1 + nn / 7 # ~1/7th vertical inch per neuron
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         a.scatter(t, y, marker='|', c=c, s=50)
         a.set_xlim(trange/tx)
-        a.set_ylim(nneurons, -1) # this inverts the y axis
+        a.set_ylim(nn, -1) # this inverts the y axis
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
@@ -747,7 +747,6 @@ class SpatialPopulationRaster(object):
             print(norder)
         else:
             nids = sorted(neurons.keys())
-        nneurons = len(nids)
         t, y, c, s = [], [], [], []
         for nidi, nid in enumerate(nids):
             n = neurons[nid]
