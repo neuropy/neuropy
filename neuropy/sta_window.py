@@ -1,9 +1,4 @@
-"""STA window in Qt. I think what's necessary to make this work in
-ipython-qtconsole is to have neuropy (via ipython kernel somehow) send
-a zmq message (display_data) back to the frontend telling it to create
-an STA window, as well as the results of the STA calc in the message payload
-or something. mpl must be doing this every time you make a plot, 
-but have to verify"""
+"""STA (spike-triggered average) window in Qt4"""
 
 from __future__ import division
 
