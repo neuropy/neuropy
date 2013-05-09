@@ -20,7 +20,7 @@ import util # .pyx file
 import core
 from core import (LFP, SpatialPopulationRaster, DensePopulationRaster, Codes, SpikeCorr,
                   binarray2int, nCrsamples, iterable, entropy_no_sing, lastcmd, intround,
-                  rstrip, dictattr, warn, pmf, TAB)
+                  tolist, rstrip, dictattr, warn, pmf, TAB)
 from colour import CLUSTERCOLOURDICT
 from experiment import Experiment
 from sort import Sort
@@ -654,6 +654,152 @@ class RecordingRaster(BaseRecording):
         else:
             return SpatialPopulationRaster(trange=trange, neurons=neurons, norder=norder,
                                            units=units, text=self.name)
+
+    def traster(self, nids=None, eid=0, t0=None, dt=None, blank=True, s=20,
+                figsize=(7.5, None)):
+        """Create a trial spike raster plot for given neurons, based on stimulus info
+        in experiment eid. blank designates whether to include blank frames for trials in
+        movie type stimuli"""
+        if nids == None:
+            nids = sorted(self.n.keys()) # use active neurons
+        elif nids == 'quiet':
+            nids = sorted(self.qn.keys()) # use quiet neurons
+        elif nids == 'all':
+            nids = sorted(self.alln.keys()) # use all neurons
+        else:
+            nids = tolist(nids) # use specified neurons
+        e = self.e[0]
+        if 'framei' in e.vs: # movie type of stimulus, where each frame is a sweep
+            trialtype = 'dinrange' # one trial for every cycle of din values
+        else:
+            trialtype = 'dinval' # one trial per din value
+        din = e.din
+        times = din[:, 0] # sweep times
+        sweepis = din[:, 1] # sweep indices
+        uns = get_ipython().user_ns
+        NULLDIN = uns['NULLDIN']
+        # find unique sweep indices, excluding NULLDIN
+        usweepis = np.unique(sweepis)
+        usweepis = usweepis[usweepis != NULLDIN]
+        # find tranges of all trials, either manually based on t0 & dt, or automatically
+        # based on trialtype:
+        if dt != None:
+            # assume all trials of equal length dt, starting from t0
+            dt *= 1000000 # convert from sec to us
+            if t0 == None:
+                t0i = np.where(sweepis != NULLDIN)[0][0] # first non-NULL sweepi in din
+                t0 = time[t0i] # in us
+            else:
+                t0 *= 1000000 # convert from sec to us
+            tlast = times[-1]
+            t0s = np.arange(t0, tlast-dt, dt)
+            t1s = np.arange(t0+dt, tlast, dt)
+            assert (t0s - t1s == dt).all()
+            tranges = np.column_stack((t0s, t1s))
+        elif trialtype == 'dinrange':
+            sw0, sw1 = usweepis[0], usweepis[-1] # first and last sweep index in each trial
+            i0s, = np.where(sweepis == sw0) # screen refresh indices for sw0
+            # indices into i0s of start of each trange,  prepend i0s with a value (-2)
+            # guaranteed to be non-consecutive with the first value in i0s:
+            i0is, = np.where(np.diff(np.hstack(([-2], i0s))) != 1)
+            i0s = i0s[i0is]
+            t0s = times[i0s]
+            if not blank:
+                i1s, = np.where(sweepis == sw1) # screen refresh indices for sw1
+                # indices into i1s of end of each trange, append i1s with a value (-2)
+                # guaranteed to be non-consecutive with the last value in i1s:
+                i1is, = np.where(np.diff(np.hstack((i1s, [-2]))) != 1)
+                i1s = i1s[i1is]
+            else: # include blank frames
+                # alternate method: only use sw0 to designate start and end of each trial,
+                # and therefore include any blank periods at the end of each trial as a
+                # part of that trial:
+                i1s = i0s[1:] # missing one more at end at this point
+                di1s = np.diff(i1s)
+                maxdi1 = max(di1s)
+                #print('di1s:')
+                #print(di1s)
+                #print('maxdi1: %d' % maxdi1)
+                # append one more index interval to end of i1s
+                i1s = np.hstack((i1s, [i1s[-1]+maxdi1]))
+            t1s = times[i1s]
+            tranges = np.column_stack((t0s, t1s))
+        elif trialtype == 'dinval':
+            raise NotImplementedError
+            '''
+            for sweepi in sweepis:
+                dinis = np.where(din[:, 1] == sweepi)[0] # screen refresh indices
+                deltaiis = np.where(np.diff(dinis) != 1)[0] # look for non-consecutive values
+                startiis = np.insert(deltaiis+1, 0, 0) # prepend with 0
+                endiis = np.append(deltaiis, len(dinis)-1)
+                rangeiis = np.vstack([startiis, endiis]).T
+                rangeis = dinis[rangeiis]
+                rangeis[:, 1] += 1 # end inclusive
+                rangeis[-1, 1] = min(rangeis[-1, 1], ndin-1) # except for very end
+                tranges = din[rangeis, 0] + tdelay
+                self.tranges[sweepi] = tranges
+            '''
+        dts = t1s - t0s
+        maxdt = max(dts) # max trial duration
+        # depth of nids from top of electrode
+        ypos = np.array([ self.alln[nid].pos[1] for nid in nids ])
+        supis, midis, deepis = core.laminarity(ypos)
+        nn = len(nids)
+        ntrials = len(tranges)
+        figsize = figsize[0], 1 + ntrials / 36 # ~1/36th vertical inch per trial
+        for nidi, nid in enumerate(nids):
+            spikes = self.alln[nid].spikes
+            trials = []
+            trialis = []
+            # there should be a way to vectorize this:
+            '''
+            # each row is a trial:
+            trialspikeis = spikes.searchsorted(tranges)
+            # unsurprisingly, this doesn't quite work:
+            trials = spikes[trialspikeis[:, 0]:trialspikeis[:, 1]]
+            # np.split would work by flattening trialspikeis, using it as a 1D vector
+            # of indices, and then picking out every other subarray in the list returned
+            # by np.split, by np.split uses a Python for loop internally anyway, so
+            # there's nothing to be gained doing so
+            trials -= tranges[:, 0] # times are now relative to start of each trial
+            '''
+            for triali, trange in enumerate(tranges):
+                si0, si1 = spikes.searchsorted(trange)
+                # slice out spikes that fall within trials, make them relative to start of
+                # each trial, convert from us to sec
+                ts = (spikes[si0:si1] - trange[0]) / 1e6
+                nspikes = len(ts)
+                if nspikes == 0:
+                    continue
+                trials.append(ts) # x values for this trial
+                trialis.append(np.tile(triali+1, nspikes)) # 1-based y values for this trial
+            trials = np.hstack(trials)
+            trialis = np.hstack(trialis)
+            #print('nid %d' % nid)
+            #print(trials)
+            #print('dts')
+            #print(dts)
+            #print('maxdt %f' % (maxdt/1e6))
+            if supis[nidi]: c = 'r'
+            elif midis[nidi]: c = 'g'
+            elif deepis[nidi]: c = 'b'
+            else: c = 'y'
+
+            f = pl.figure(figsize=figsize)
+            a = f.add_subplot(111)
+            a.scatter(trials, trialis, marker='|', c=c, s=s)
+            a.set_xlim(0, maxdt / 1e6) # sec
+            a.set_ylim(ntrials, -1) # this inverts the y axis
+            # turn off annoying "+2.41e3" type offset on x axis:
+            formatter = mpl.ticker.ScalarFormatter(useOffset=False)
+            a.xaxis.set_major_formatter(formatter)
+            a.set_xlabel("time (sec)")
+            a.set_ylabel("trial")
+            titlestr = lastcmd() + " nid%d nidi%d" % (nid, nidi)
+            gcfm().window.setWindowTitle(titlestr)
+            a.set_title(titlestr)
+            f.tight_layout(pad=0.3) # crop figure to contents
+            self.f = f
 
 
 class RecordingCode(BaseRecording):

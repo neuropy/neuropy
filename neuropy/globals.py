@@ -62,3 +62,5 @@ BLANKMSEQRIDS = {'ptc22.tr1': ['04', '07', '09', '11', '17', '21'],
 MOVDRIFTRIDS = {'ptc22.tr1': ['03', '05', '06', '08', '10', '18', '19', '20'],
                 'ptc22.tr2': ['25', '28', '31', '33'],
                }
+
+NULLDIN = 65535 # integer value in stimulus .din files used as NULL (stimulus off)
