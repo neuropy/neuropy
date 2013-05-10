@@ -672,7 +672,7 @@ class RecordingRaster(BaseRecording):
         if 'framei' in e.vs: # movie type of stimulus, where each frame is a sweep
             trialtype = 'dinrange' # one trial for every cycle of din values
         else:
-            trialtype = 'dinval' # one trial per din value
+            trialtype = 'dinval' # one trial per block of identical din values
         din = e.din
         times = din[:, 0] # sweep times
         sweepis = din[:, 1] # sweep indices
@@ -699,7 +699,7 @@ class RecordingRaster(BaseRecording):
         elif trialtype == 'dinrange':
             sw0, sw1 = usweepis[0], usweepis[-1] # first and last sweep index in each trial
             i0s, = np.where(sweepis == sw0) # screen refresh indices for sw0
-            # indices into i0s of start of each trange,  prepend i0s with a value (-2)
+            # indices into i0s of start of each trange, prepend i0s with a value (-2)
             # guaranteed to be non-consecutive with the first value in i0s:
             i0is, = np.where(np.diff(np.hstack(([-2], i0s))) != 1)
             i0s = i0s[i0is]
@@ -722,20 +722,24 @@ class RecordingRaster(BaseRecording):
             t1s = times[i1s]
             tranges = np.column_stack((t0s, t1s))
         elif trialtype == 'dinval':
-            raise NotImplementedError
-            '''
-            for sweepi in sweepis:
-                dinis = np.where(din[:, 1] == sweepi)[0] # screen refresh indices
-                deltaiis = np.where(np.diff(dinis) != 1)[0] # look for non-consecutive values
-                startiis = np.insert(deltaiis+1, 0, 0) # prepend with 0
-                endiis = np.append(deltaiis, len(dinis)-1)
-                rangeiis = np.vstack([startiis, endiis]).T
-                rangeis = dinis[rangeiis]
-                rangeis[:, 1] += 1 # end inclusive
-                rangeis[-1, 1] = min(rangeis[-1, 1], ndin-1) # except for very end
-                tranges = din[rangeis, 0] + tdelay
-                self.tranges[sweepi] = tranges
-            '''
+            t0s, t1s = [], []
+            for sweepi in usweepis: # ordered by sweepi
+                i, = np.where(sweepis == sweepi) # screen refresh indices
+                # indices into i of start of each trange, prepend i with a value (-2)
+                # guaranteed to be non-consecutive with the first value in i:
+                i0is, = np.where(np.diff(np.hstack(([-2], i))) != 1)
+                # indices into i of end of each trange, append i with a value (-2)
+                # guaranteed to be non-consecutive with the last value in i:
+                i1is, = np.where(np.diff(np.hstack((i, [-2]))) != 1)
+                i0s = i[i0is]
+                i1s = i[i1is]
+                t0s.append(times[i0s])
+                t1s.append(times[i1s])
+                # each sweepi's tranges could also be saved into a dict, indexed by sweepi,
+                # as in the tuning curve code
+            t0s = np.hstack(t0s)
+            t1s = np.hstack(t1s)
+            tranges = np.column_stack((t0s, t1s))
         dts = t1s - t0s
         maxdt = max(dts) # max trial duration
         # depth of nids from top of electrode
