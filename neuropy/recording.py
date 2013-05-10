@@ -801,6 +801,21 @@ class RecordingRaster(BaseRecording):
             f.tight_layout(pad=0.3) # crop figure to contents
             self.f = f
 
+    def tune(self, nids=None, eid=0, var='ori', fixed=None, tdelay=None):
+        """Plot tuning curves for given neurons, based on stimulus info in experiment eid"""
+        if nids == None:
+            nids = sorted(self.n.keys()) # use active neurons
+        elif nids == 'quiet':
+            nids = sorted(self.qn.keys()) # use quiet neurons
+        elif nids == 'all':
+            nids = sorted(self.alln.keys()) # use all neurons
+        else:
+            nids = tolist(nids) # use specified neurons
+        for nid in nids:
+            n = self.alln[nid]
+            t = n.tune(eid=eid, tdelay=tdelay)
+            t.plot(var=var, fixed=fixed)
+        
 
 class RecordingCode(BaseRecording):
     """Mix-in class that defines spike code related methods"""
