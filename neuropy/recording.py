@@ -717,9 +717,6 @@ class RecordingRaster(BaseRecording):
                 i1s = i0s[1:] # missing one more at end at this point
                 di1s = np.diff(i1s)
                 maxdi1 = max(di1s)
-                #print('di1s:')
-                #print(di1s)
-                #print('maxdi1: %d' % maxdi1)
                 # append one more index interval to end of i1s
                 i1s = np.hstack((i1s, [i1s[-1]+maxdi1]))
             t1s = times[i1s]
@@ -751,18 +748,6 @@ class RecordingRaster(BaseRecording):
             spikes = self.alln[nid].spikes
             trials = []
             trialis = []
-            # there should be a way to vectorize this:
-            '''
-            # each row is a trial:
-            trialspikeis = spikes.searchsorted(tranges)
-            # unsurprisingly, this doesn't quite work:
-            trials = spikes[trialspikeis[:, 0]:trialspikeis[:, 1]]
-            # np.split would work by flattening trialspikeis, using it as a 1D vector
-            # of indices, and then picking out every other subarray in the list returned
-            # by np.split, by np.split uses a Python for loop internally anyway, so
-            # there's nothing to be gained doing so
-            trials -= tranges[:, 0] # times are now relative to start of each trial
-            '''
             for triali, trange in enumerate(tranges):
                 si0, si1 = spikes.searchsorted(trange)
                 # slice out spikes that fall within trials, make them relative to start of
@@ -775,11 +760,6 @@ class RecordingRaster(BaseRecording):
                 trialis.append(np.tile(triali+1, nspikes)) # 1-based y values for this trial
             trials = np.hstack(trials)
             trialis = np.hstack(trialis)
-            #print('nid %d' % nid)
-            #print(trials)
-            #print('dts')
-            #print(dts)
-            #print('maxdt %f' % (maxdt/1e6))
             if supis[nidi]: c = 'r'
             elif midis[nidi]: c = 'g'
             elif deepis[nidi]: c = 'b'
