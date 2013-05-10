@@ -688,13 +688,13 @@ class RecordingRaster(BaseRecording):
             dt *= 1000000 # convert from sec to us
             if t0 == None:
                 t0i = np.where(sweepis != NULLDIN)[0][0] # first non-NULL sweepi in din
-                t0 = time[t0i] # in us
+                t0 = times[t0i] # in us
             else:
                 t0 *= 1000000 # convert from sec to us
             tlast = times[-1]
             t0s = np.arange(t0, tlast-dt, dt)
             t1s = np.arange(t0+dt, tlast, dt)
-            assert (t0s - t1s == dt).all()
+            assert (t1s - t0s == dt).all()
             tranges = np.column_stack((t0s, t1s))
         elif trialtype == 'dinrange':
             sw0, sw1 = usweepis[0], usweepis[-1] # first and last sweep index in each trial
