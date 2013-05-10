@@ -915,18 +915,15 @@ class Tune(object):
             self.counts[sweepi] = np.diff(spikes.searchsorted(tranges), axis=1).flatten()
         self.done = True
         
-    def plot(self, var='ori', fixed=None, tdelay=None):
+    def plot(self, var='ori', fixed=None):
         """var: string name of variable you want to plot a tuning curve for
         fixed: dict with keys containing names of vars to keep fixed when building tuning
         curve, and values containing each var's value(s) to fix at
-        tdelay: time delay in us to use between stimulus and response
         
         Ex: r71.n[1].tune().plot('phase0', fixed={'ori':138, 'sfreqCycDeg':[0.4, 0.8]})
         """
-        if tdelay != None and tdelay != self.tdelay:
-            self.calc(tdelay=tdelay) # trigger a re-calc
         if not self.done:
-            self.calc(tdelay=tdelay)
+            self.calc(tdelay=self.tdelay)
         if fixed != None:
             fixedsweepis = []
             for fixedvar, fixedvals in fixed.items():
@@ -959,7 +956,6 @@ class Tune(object):
             vals %= maxori
         x = np.unique(vals) # x axis
         y = np.zeros(len(x), dtype=int) # spike counts for each variable value
-        print # CR for proper display in IPython
         for vali, val in enumerate(x):
             sweepis = np.where(vals == val)[0]
             if fixed != None:
@@ -967,25 +963,20 @@ class Tune(object):
                 print sweepis
             for sweepi in sweepis:
                 y[vali] += self.counts[sweepi].sum()
-        # reuse existing figures, to reduce figure clutter:
-        #f = pl.gcf()
-        #f.clear()
-        #a = pl.gca()
         # create a new figure:
         f = pl.figure()
         a = f.add_subplot(111)
         a.plot(x, y, 'k.-')
         a.set_xlabel(var)
         a.set_ylabel('spike count')
-        #titlestr = 'n%d, ' % self.neuron.id
-        #if fixed != None:
-        #    titlestr += 'fixed=%r, ' % fixed
-        #titlestr += 'tdelay=%dms, peak=(%s, %s)' %
-        #            (self.tdelay // 1000, x[y.argmax()], y.max())
         titlestr = lastcmd()
-        titlestr += ', peak=(%s, %s)' % (x[y.argmax()], y.max())
+        titlestr += ' nid%d' % self.neuron.id
         a.set_title(titlestr)
-        f.canvas.window().setWindowTitle(lastcmd())
+        f.canvas.window().setWindowTitle(titlestr)
+        a.text(0.99, 0.99, 'peak=(%s, %s)' % (x[y.argmax()], y.max()),
+               transform=a.transAxes,
+               horizontalalignment='right',
+               verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         self.x, self.y = x, y
@@ -994,11 +985,9 @@ class Tune(object):
 
 class NeuronTune(object):
     """Mix-in class that defines stimulus tuning analysis method"""
-    def tune(self, experiment=None, tdelay=None):
+    def tune(self, eid=0, tdelay=None):
         """Return stimulus tuning analysis object"""
-        if experiment == None:
-            experiment = self.sort.r.e[0] # first experiment from parent recording
-        self.experiment = experiment
+        experiment = self.sort.r.e[eid] # get experiment from parent recording
         tuneo = Tune(self, experiment)
         tuneo.calc(tdelay)
         return tuneo
