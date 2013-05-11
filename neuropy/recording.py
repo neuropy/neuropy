@@ -773,7 +773,8 @@ class RecordingRaster(BaseRecording):
             a = f.add_subplot(111)
             a.scatter(trials, trialis, marker='|', c=c, s=s)
             a.set_xlim(0, maxdt / 1e6) # sec
-            a.set_ylim(ntrials, -1) # this inverts the y axis
+            # -1 inverts the y axis, +1 ensures last trial is fully visible:
+            a.set_ylim(ntrials+1, -1)
             # turn off annoying "+2.41e3" type offset on x axis:
             formatter = mpl.ticker.ScalarFormatter(useOffset=False)
             a.xaxis.set_major_formatter(formatter)
