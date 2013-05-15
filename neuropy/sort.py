@@ -189,6 +189,7 @@ class TrackSort(object):
             tn.descr = n.descr
             tn.pos = n.pos
             tn.nchans = n.nchans
+            tn.chans = n.chans
             tn.maxchan = n.maxchan
             tn.wavedata = n.wavedata
             tn.wavestd = n.wavestd
