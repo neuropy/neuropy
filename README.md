@@ -1,5 +1,5 @@
-neuropy is a Python package for interactive analysis of sorted neuronal spike
-data and raw LFP waveforms.
+[neuropy](http://neuropy.github.io) is a Python package for interactive analysis
+of sorted neuronal spike data and raw LFP waveforms.
 
 The user-facing data object hierarchy looks like this:
 ```
@@ -21,7 +21,15 @@ animal.track.recording
 animal.tr[trackid].r[recordingid]
 recording.n[neuronid]
 ```
+For example, to plot a population raster plot of all active cells in
+recording 5 of track 1 of animal example1, you can type:
+```
+example1.tr1.r05.praster()
+```
 Different object types have different analysis methods associated with them.
+Thanks to [IPython](http://ipython.org), tab completion should help you discover
+analysis methods, and typing `?` after the method name or simply typing the opening
+parenthesis should give you a docstring.
 
 As for internal variable scope, this is how things work:
 ```
