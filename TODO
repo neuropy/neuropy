@@ -123,8 +123,15 @@ TODO:
 
 - why bother with the digitization of spike trains? Why not leave the number of spikes in each bin instead of truncing it at 1? You'll end up with a signal that's like 0 0 0 0 0 1 0 0 0 2 0 0 1 0 1 0 3 0, ie mostly 0s anyway. And, it saves more information about each spike train, which should then allow for more accurate correlation calculations between pairs. Seems to me the only really important thing is binning, not digitization. Or am I forgetting something? Ah, it prevents from forming meaningful digital words across neurons (space). So, you could digitize for doing netstate stuff, but leave undigitized for simply calculating pairwise corrs? Not really, cuz you need to feed the pairwise corrs into the maxent model, and those would have to correspond to the word probabilities, ie the pairwise corrs would have to be calculated off the binary signals. But, at least it would be nice to show that pairwise corr distributions for binned and digitized spike trains are the same as those for purely binned spike trains.
 
-- consider switching over from the deprecated scipy.maxentropy to the maxent library:
+- consider switching over from the deprecated scipy.maxentropy to the sklearn's Logistic Regression, or to the maxent library:
+
+    https://github.com/scipy/scipy/blob/master/doc/release/0.11.0-notes.rst#backwards-incompatible-changes
+    http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
     http://homepages.inf.ed.ac.uk/lzhang10/maxent_toolkit.html
+
+    http://stackoverflow.com/questions/10020682/python-nltk-maximum-entropy-classifier-error
+    https://github.com/nltk/nltk/issues/307
+    https://github.com/nltk/nltk/pull/317
 
 ----------------------------------------------
 OLD:
