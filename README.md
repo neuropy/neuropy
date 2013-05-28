@@ -1,4 +1,4 @@
-[neuropy](http://neuropy.github.io) is a Python package for interactive analysis
+[neuropy](http://neuropy.github.io) is a Python application for interactive analysis
 of sorted neuronal spike data and raw LFP waveforms.
 
 The user-facing data object hierarchy looks like this:
