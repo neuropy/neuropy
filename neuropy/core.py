@@ -94,7 +94,8 @@ class dictattr(dict):
 class PTCSHeader(object):
     """Polytrode clustered spikes file header"""
     def __init__(self):
-        self.VER2FUNC = {1: self.read_ver_1, 2: self.read_ver_2} # call the appropriate method
+        # call the appropriate method:
+        self.VER2FUNC = {1: self.read_ver_1, 2: self.read_ver_2, 3: self.read_ver_3}
 
     def read(self, f):
         """Read in format version, followed by rest according to verison
@@ -160,15 +161,20 @@ class PTCSHeader(object):
         self.datetimestr = f.read(self.ndatetimestrbytes).rstrip('\0 ') # datetimestr
 
     def read_ver_2(self, f):
-        """Same as version 1. NVS created some version 1 files incorrectly, and
+        """Same header as version 1. NVS created some version 1 files incorrectly, and
         incremented to version 2 for the correctly exported ones"""
+        return self.read_ver_1(f)
+
+    def read_ver_3(self, f):
+        """Same header as version 2, only difference is in PTCSNeuronRecord"""
         return self.read_ver_1(f)
 
 
 class PTCSNeuronRecord(object):
     """Polytrode clustered spikes file neuron record"""
     def __init__(self, header):
-        self.VER2FUNC = {1: self.read_ver_1, 2:self.read_ver_2} # call the appropriate method
+        # call the appropriate method:
+        self.VER2FUNC = {1: self.read_ver_1, 2:self.read_ver_2, 3:self.read_ver_3}
         self.header = header
         nsamplebytes = self.header.nsamplebytes
         self.wavedtype = {2: np.float16, 4: np.float32, 8: np.float64}[nsamplebytes]
@@ -241,6 +247,56 @@ class PTCSNeuronRecord(object):
         """Same as version 1. NVS created some version 1 files incorrectly, and
         incremented to version 2 for the correctly exported ones"""
         return self.read_ver_1(f)
+
+    def read_ver_3(self, f):
+        """Read in neuron record of .ptcs file version 3. 'zpos' field was replaced
+        by 'sigma' field.
+
+        nid: int64 (signed neuron id, could be -ve, could be non-contiguous with previous)
+        ndescrbytes: uint64 (nbytes, keep as multiple of 8 for nice alignment, defaults to 0)
+        descr: ndescrbytes of ASCII text
+            (padded with null bytes if needed for 8 byte alignment)
+        clusterscore: float64
+        xpos: float64 (um)
+        ypos: float64 (um)
+        sigma: float64 (um) (Gaussian spatial sigma)
+        nchans: uint64 (num chans in template waveforms)
+        chanids: nchans * uint64 (0 based IDs of channels in template waveforms)
+        maxchanid: uint64 (0 based ID of max channel in template waveforms)
+        nt: uint64 (num timepoints per template waveform channel)
+        nwavedatabytes: uint64 (nbytes, keep as multiple of 8 for nice alignment)
+        wavedata: nwavedatabytes of nsamplebytes sized floats
+            (template waveform data, laid out as nchans * nt, in uV,
+             padded with null bytes if needed for 8 byte alignment)
+        nwavestdbytes: uint64 (nbytes, keep as multiple of 8 for nice alignment)
+        wavestd: nwavestdbytes of nsamplebytes sized floats
+            (template waveform standard deviation, laid out as nchans * nt, in uV,
+             padded with null bytes if needed for 8 byte alignment)
+        nspikes: uint64 (number of spikes in this neuron)
+        spike timestamps: nspikes * uint64 (us, should be sorted)
+        """
+        self.nid = int(np.fromfile(f, dtype=np.int64, count=1)) # nid
+        self.ndescrbytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # ndescrbytes
+        self.descr = f.read(self.ndescrbytes).rstrip('\0 ') # descr
+        if self.descr:
+            try:
+                self.descr = eval(self.descr) # might be a dict
+            except: pass
+        self.clusterscore = float(np.fromfile(f, dtype=np.float64, count=1)) # clusterscore
+        self.xpos = float(np.fromfile(f, dtype=np.float64, count=1)) # xpos (um)
+        self.ypos = float(np.fromfile(f, dtype=np.float64, count=1)) # ypos (um)
+        self.sigma = float(np.fromfile(f, dtype=np.float64, count=1)) # sigma (um)
+        self.nchans = int(np.fromfile(f, dtype=np.uint64, count=1)) # nchans
+        self.chans = np.fromfile(f, dtype=np.uint64, count=self.nchans) # chanids
+        self.maxchan = int(np.fromfile(f, dtype=np.uint64, count=1)) # maxchanid
+        self.nt = int(np.fromfile(f, dtype=np.uint64, count=1)) # nt
+        self.nwavedatabytes, self.wavedata = self.read_wave(f)
+        self.nwavestdbytes, self.wavestd = self.read_wave(f)
+        self.nspikes = int(np.fromfile(f, dtype=np.uint64, count=1)) # nspikes
+        # spike timestamps (us):
+        self.spikes = np.fromfile(f, dtype=np.uint64, count=self.nspikes)
+        # convert from unsigned to signed int for calculating intervals:
+        self.spikes = np.asarray(self.spikes, dtype=np.int64)
 
 
 class SPKHeader(object):

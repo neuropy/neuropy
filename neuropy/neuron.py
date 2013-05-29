@@ -44,6 +44,7 @@ class BaseNeuron(object):
     descr = property(lambda self: self.record.descr)
     #clusterscore = property(lambda self: self.record.clusterscore)
     pos = property(lambda self: (self.record.xpos, self.record.ypos))
+    sigma = property(lambda self: self.record.sigma)
     nchans = property(lambda self: self.record.nchans)
     chans = property(lambda self: self.record.chans)
     maxchan = property(lambda self: self.record.maxchan)
