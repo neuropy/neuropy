@@ -188,6 +188,9 @@ class TrackSort(object):
             tn.id = nid
             tn.descr = n.descr
             tn.pos = n.pos
+            # ptcs version 3 added sigma:
+            try: tn.sigma = n.sigma
+            except AttributeError: pass
             tn.nchans = n.nchans
             tn.chans = n.chans
             tn.maxchan = n.maxchan
