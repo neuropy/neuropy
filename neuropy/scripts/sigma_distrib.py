@@ -7,4 +7,4 @@ for track in tracks:
     for n in track.alln.values():
         sigmas.append(n.sigma)
 
-hist(sigmas, bins=20)
+hist(sigmas, bins=20) # bins=40 looks a little more tantalizing
