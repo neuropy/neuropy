@@ -165,6 +165,8 @@ class Track(object):
     datetime = property(lambda self: self.sort.datetime)
     pttype = property(lambda self: self.sort.pttype)
     chanpos = property(lambda self: self.sort.chanpos)
+    samplerate = property(lambda self: self.sort.samplerate)
+    tres = property(lambda self: self.sort.tres)
 
     def get_nids(self, rids=None):
         """Return nids of active neurons common to all recordings specified in rids.

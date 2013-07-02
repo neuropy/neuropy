@@ -9,7 +9,7 @@ import datetime
 import numpy as np
 
 import core
-from core import dictattr, rstrip, eof, TAB, PTCSHeader, SPKHeader, EPOCH, td2usec
+from core import dictattr, rstrip, eof, TAB, PTCSHeader, SPKHeader, EPOCH, td2usec, intround
 from neuron import Neuron, TrackNeuron
 
 
@@ -57,6 +57,8 @@ class Sort(object):
     datetime = property(lambda self: EPOCH + datetime.timedelta(days=self.header.datetime))
     pttype = property(lambda self: self.header.pttype)
     chanpos = property(lambda self: self.header.chanpos)
+    samplerate = property(lambda self: self.header.samplerate)
+    tres = property(lambda self: intround(1 / self.samplerate * 1e6)) # us
 
     def tree(self):
         """Print tree hierarchy"""
@@ -118,6 +120,8 @@ class TrackSort(object):
         self.datetime = None
         self.pttype = None
         self.chanpos = None
+        self.samplerate = None
+        self.tres = None
 
     def get_n(self):
         """Return dict of neurons that meet MINRATE"""
@@ -156,6 +160,8 @@ class TrackSort(object):
         self.datetime = datetime0
         self.pttype = sort.pttype
         self.chanpos = sort.chanpos
+        self.samplerate = sort.samplerate
+        self.tres = sort.tres
         # get the union of all nids in recs:
         nids = tr.get_allnids()
         spikes = {}
