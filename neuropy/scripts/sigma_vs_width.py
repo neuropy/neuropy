@@ -15,14 +15,17 @@ def argextrema(a):
     Taken from http://stackoverflow.com/a/9667121/2020363"""
     return np.diff(np.sign(np.diff(a))).nonzero()[0] + 1
 
-def argfwhm(a, exti):
-    """Find timepoints of full width half max around extremum exti in 1D array a"""
+def argfwhm(a, exti, fraction=0.5):
+    """Find timepoints of full width half max (or whatever fraction is) around extremum exti
+    in 1D array a"""
     a = abs(a)
-    hm = a[exti] / 2 # half max
-    d = a - hm
-    # some of these +1s might be wrong, but for long enough a, that shouldn't matter:
-    lis = np.diff(np.sign(d[:exti])).nonzero()[0] + 1
+    fm = a[exti] * fraction # fraction of max
+    d = a - fm
+    lis = np.diff(np.sign(d[:exti])).nonzero()[0]
     ris = np.diff(np.sign(d[exti:])).nonzero()[0] + exti + 1
+    assert len(lis) > 0
+    assert len(ris) > 0
+    # return rightmost of left indices, and leftmost of right indices:
     return lis[-1], ris[0]
 
 # fractional position along waveform to assume characteristic peak is roughly aligned to:
@@ -59,7 +62,8 @@ for track in tracks:
         dts.append(dt) # dt between biggest max and min peaks
         extis = argextrema(wave) # indices of all local extrema
         exti = extis[abs(extis - aligni).argmin()] # extremum closest to aligni
-        fwhm = abs(np.diff(argfwhm(wave, exti))[0]) * newtres
+        li, ri = argfwhm(wave, exti, fraction=0.5)
+        fwhm = abs(li - ri) * newtres
         fwhms.append(fwhm)
 
 # label the wave plots
