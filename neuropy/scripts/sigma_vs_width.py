@@ -1,6 +1,7 @@
 """Scatter plot spatial sigma vs inter-peak interval, or FWHM of template characteristic peak"""
 
 import scipy
+from pylab import get_current_fig_manager as gcfm
 from core import intround
 
 def calc_t(nt, tres):
@@ -70,6 +71,7 @@ for track in tracks:
 xlabel('t (us)')
 ylabel('voltage (uV)')
 title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('waveforms')
 tight_layout(pad=0.3)
 
 # scatter plot sigma vs dt
@@ -78,6 +80,7 @@ plot(dts, sigmas, '.')
 xlabel('dt (us)')
 ylabel('sigma (um)')
 title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('sigma vs dt')
 tight_layout(pad=0.3)
 
 # scatter plot sigma vs fwhm
@@ -86,6 +89,16 @@ plot(fwhms, sigmas, '.')
 xlabel('FWHM (us)')
 ylabel('sigma (um)')
 title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('sigma vs fwhm')
+tight_layout(pad=0.3)
+
+# scatter plot fwhm vs dt
+figure()
+plot(dts, fwhms, '.')
+xlabel('dt (us)')
+ylabel('FWHM (us)')
+title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('fwhm vs dt')
 tight_layout(pad=0.3)
 
 # plot sigma distribution
@@ -93,6 +106,7 @@ figure()
 hist(sigmas, bins=30) # bins=40 looks a little more tantalizing
 xlabel('sigma (um)')
 title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('sigma distrib')
 tight_layout(pad=0.3)
 
 # plot dt distribution
@@ -100,6 +114,7 @@ figure()
 hist(dts, bins=30)
 xlabel('dt (us)')
 title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('dt distrib')
 tight_layout(pad=0.3)
 
 # plot fwhm distribution
@@ -107,4 +122,5 @@ figure()
 hist(fwhms, bins=30)
 xlabel('FWHM (us)')
 title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('fwhm distrib')
 tight_layout(pad=0.3)
