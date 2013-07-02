@@ -133,8 +133,8 @@ class NeuropyWindow(QtGui.QMainWindow):
     def open_track(self, path):
         tr = Track(path) # init it just to parse its id
         exec_lines = (
-        "tr%d = Track(%r)\n"
-        "tr%d.load()" % (tr.id, path, tr.id)
+        "tr%s = Track(%r)\n"
+        "tr%s.load()" % (tr.id, path, tr.id)
         )
         self.ipw.execute(exec_lines)
 
