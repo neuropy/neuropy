@@ -48,6 +48,7 @@ class BaseNeuron(object):
     nchans = property(lambda self: self.record.nchans)
     chans = property(lambda self: self.record.chans)
     maxchan = property(lambda self: self.record.maxchan)
+    nt = property(lambda self: self.record.nt)
     wavedata = property(lambda self: self.record.wavedata)
     wavestd = property(lambda self: self.record.wavestd)
     nspikes = property(lambda self: self.record.nspikes)

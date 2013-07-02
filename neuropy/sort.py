@@ -200,6 +200,7 @@ class TrackSort(object):
             tn.nchans = n.nchans
             tn.chans = n.chans
             tn.maxchan = n.maxchan
+            tn.nt = n.nt
             tn.wavedata = n.wavedata
             tn.wavestd = n.wavestd
             # assign spikes and calc static attribs:
