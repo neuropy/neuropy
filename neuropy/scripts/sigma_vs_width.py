@@ -32,6 +32,7 @@ def argfwhm(a, exti, fraction=0.5):
 # fractional position along waveform to assume characteristic peak is roughly aligned to:
 alignf = 0.4
 newtres = 1 # tres to interpolate to, in us
+absslopethresh = 0.4 # uV/us
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2] # need to be loaded ahead of time
 tracknames = [ track.absname for track in tracks ]
 
@@ -39,9 +40,11 @@ nt = 50
 tres = 20
 t0, t1, aligni = calc_t(nt, tres) # initial guess, for speed
 sigmas = []
+waves = []
 dts = []
 fwhms = []
 slopes = []
+durations = []
 figure() # init fig for waveform plots
 for track in tracks:
     if tres != track.tres: # recalculate timepoints
@@ -58,7 +61,8 @@ for track in tracks:
         wave = n.wavedata[maxchani]
         # interpolate waveforms for higher rez dt:
         wave = scipy.interpolate.spline(t0, wave, t1)
-        plot(wave, '-', lw=1) # overplot all waveforms
+        waves.append(wave)
+        plot(t1, wave, '-', lw=1) # overplot all waveforms
         t0i, t1i = wave.argmax(), wave.argmin()
         dt = abs(t0i - t1i) * newtres
         dts.append(dt) # dt between biggest max and min peaks
@@ -67,11 +71,23 @@ for track in tracks:
         li, ri = argfwhm(wave, exti, fraction=0.5)
         fwhm = abs(li - ri) * newtres
         fwhms.append(fwhm)
-        slopes.append(abs(np.diff(wave)).max())
+        absslope = abs(np.diff(wave)) / newtres # uV/us
+        maxabsslope = max(absslope)
+        slopes.append(maxabsslope)
         # another way to measure waveform duration is to see over what duration the abs(slope)
         # is greater than something close to 0. Starting from each end, at what timepoint does
         # the slope exceed this minimum threshold? Difference between timepoints is duration
         # of waveform
+        flatis = np.where(absslope > absslopethresh)[0]
+        if len(flatis) < 2:
+            # exclude cells whose slope isn't above threshold for at least two timepoints:
+            duration = 0
+        else:
+            duration = (flatis[-1] - flatis[0]) * newtres
+        durations.append(duration)        
+        # or as an alternative to using absslopethresh, measure the fwhm of the last
+        # extremum in each waveform. Looking at the overplotted waveforms, that, strangely,
+        # is where I see the most dichotomy. Not so much in the first peak.
 
 # label the wave plots
 xlabel('t (us)')
@@ -98,6 +114,24 @@ title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma vs fwhm')
 tight_layout(pad=0.3)
 
+# scatter plot sigma vs slope
+figure()
+plot(slopes, sigmas, '.')
+xlabel('slope (uv/us)')
+ylabel('sigma (um)')
+title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('sigma vs slope')
+tight_layout(pad=0.3)
+
+# scatter plot sigma vs duration
+figure()
+plot(durations, sigmas, '.')
+xlabel('duration (us)')
+ylabel('sigma (um)')
+title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('sigma vs duration')
+tight_layout(pad=0.3)
+
 # scatter plot fwhm vs dt
 figure()
 plot(dts, fwhms, '.')
@@ -116,6 +150,24 @@ title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('slope vs dt')
 tight_layout(pad=0.3)
 
+# scatter plot duration vs dt
+figure()
+plot(dts, durations, '.')
+xlabel('dt (us)')
+ylabel('duration (us)')
+title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('duration vs dt')
+tight_layout(pad=0.3)
+
+# scatter plot duration vs slope
+figure()
+plot(slopes, durations, '.')
+xlabel('slope (uV/us)')
+ylabel('duration (us)')
+title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('duration vs slope')
+tight_layout(pad=0.3)
+
 # scatter plot slope vs fwhm
 figure()
 plot(fwhms, slopes, '.')
@@ -125,18 +177,9 @@ title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('slope vs fwhm')
 tight_layout(pad=0.3)
 
-# scatter plot sigma vs slope
-figure()
-plot(slopes, sigmas, '.')
-xlabel('slope (uv/us)')
-ylabel('sigma (um)')
-title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('sigma vs slope')
-tight_layout(pad=0.3)
-
 # plot sigma distribution
 figure()
-hist(sigmas, bins=30) # bins=40 looks a little more tantalizing
+hist(sigmas, bins=30)
 xlabel('sigma (um)')
 title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma distrib')
@@ -160,8 +203,52 @@ tight_layout(pad=0.3)
 
 # plot slope distribution
 figure()
-hist(slopes, bins=40)
+hist(slopes, bins=30)
 xlabel('slope (uV/us)')
 title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('slope distrib')
 tight_layout(pad=0.3)
+
+# plot duration distribution
+figure()
+hist(durations, bins=30)
+xlabel('duration (us)')
+title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+gcfm().window.setWindowTitle('duration distrib')
+tight_layout(pad=0.3)
+
+# separate fast vs slow waveforms using trough at 350 us in duration distrib, given
+# absslopethresh = 0.4:
+fastis = np.asarray(durations) <= 350
+slowis = np.asarray(durations) > 350
+waves = np.asarray(waves)
+
+figure()
+for wave in waves[slowis]:
+    plot(t1, wave, 'r-', lw=1)
+for wave in waves[fastis]:
+    plot(t1, wave, 'g-', lw=1)
+xlabel('t (us)')
+ylabel('voltage (uV)')
+title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+gcfm().window.setWindowTitle('slow and fast waveforms')
+tight_layout(pad=0.3)
+'''
+figure()
+for wave in waves[slowis]:
+    plot(t1, wave, 'r-', lw=1)
+xlabel('t (us)')
+ylabel('voltage (uV)')
+title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+gcfm().window.setWindowTitle('slow waveforms')
+tight_layout(pad=0.3)
+
+figure()
+for wave in waves[fastis]:
+    plot(t1, wave, 'g-', lw=1)
+xlabel('t (us)')
+ylabel('voltage (uV)')
+title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+gcfm().window.setWindowTitle('fast waveforms')
+tight_layout(pad=0.3)
+'''
