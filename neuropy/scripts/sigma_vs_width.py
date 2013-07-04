@@ -41,6 +41,7 @@ t0, t1, aligni = calc_t(nt, tres) # initial guess, for speed
 sigmas = []
 dts = []
 fwhms = []
+slopes = []
 figure() # init fig for waveform plots
 for track in tracks:
     if tres != track.tres: # recalculate timepoints
@@ -57,7 +58,7 @@ for track in tracks:
         wave = n.wavedata[maxchani]
         # interpolate waveforms for higher rez dt:
         wave = scipy.interpolate.spline(t0, wave, t1)
-        plot(wave, '.', ms=2) # overplot all waveforms
+        plot(wave, '-', lw=1) # overplot all waveforms
         t0i, t1i = wave.argmax(), wave.argmin()
         dt = abs(t0i - t1i) * newtres
         dts.append(dt) # dt between biggest max and min peaks
@@ -66,6 +67,11 @@ for track in tracks:
         li, ri = argfwhm(wave, exti, fraction=0.5)
         fwhm = abs(li - ri) * newtres
         fwhms.append(fwhm)
+        slopes.append(abs(np.diff(wave)).max())
+        # another way to measure waveform duration is to see over what duration the abs(slope)
+        # is greater than something close to 0. Starting from each end, at what timepoint does
+        # the slope exceed this minimum threshold? Difference between timepoints is duration
+        # of waveform
 
 # label the wave plots
 xlabel('t (us)')
@@ -101,6 +107,33 @@ title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('fwhm vs dt')
 tight_layout(pad=0.3)
 
+# scatter plot slope vs dt
+figure()
+plot(dts, slopes, '.')
+xlabel('dt (us)')
+ylabel('slope (uv/us)')
+title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('slope vs dt')
+tight_layout(pad=0.3)
+
+# scatter plot slope vs fwhm
+figure()
+plot(fwhms, slopes, '.')
+xlabel('FWHM (us)')
+ylabel('slope (uv/us)')
+title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('slope vs fwhm')
+tight_layout(pad=0.3)
+
+# scatter plot sigma vs slope
+figure()
+plot(slopes, sigmas, '.')
+xlabel('slope (uv/us)')
+ylabel('sigma (um)')
+title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('sigma vs slope')
+tight_layout(pad=0.3)
+
 # plot sigma distribution
 figure()
 hist(sigmas, bins=30) # bins=40 looks a little more tantalizing
@@ -123,4 +156,12 @@ hist(fwhms, bins=30)
 xlabel('FWHM (us)')
 title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('fwhm distrib')
+tight_layout(pad=0.3)
+
+# plot slope distribution
+figure()
+hist(slopes, bins=40)
+xlabel('slope (uV/us)')
+title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('slope distrib')
 tight_layout(pad=0.3)
