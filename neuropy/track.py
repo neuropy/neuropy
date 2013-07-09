@@ -273,9 +273,9 @@ class Track(object):
         return a
 
     def scstim(self, method='weighted mean', width=None, tres=None, figsize=(7.5, 6.5)):
-        """Scatter plot some summary statistic of spike correlations of each recording vs what
-        stimulus group each recording falls into. width and tres dictate tranges to split
-        recordings up into, if any"""
+        """Scatter plot some summary statistic of spike correlations of each recording,
+        classified by the stimulus group each recording falls into. width and tres dictate
+        tranges to split recordings up into, if any"""
 
         ## TODO: for each pair of recordings, find common subset of active neurons and calculate
         ## pairwise corrs for each recording in that pair using just those neurons
@@ -283,6 +283,10 @@ class Track(object):
         ## TODO: maybe limit to visually responsive cells
 
         uns = get_ipython().user_ns
+        if width == None:
+            width = uns['SCWIDTH']
+        if tres == None:
+            tres = width
         blankmseqrids = uns['BLANKMSEQRIDS'][self.absname]
         movdriftrids = uns['MOVDRIFTRIDS'][self.absname]
 
