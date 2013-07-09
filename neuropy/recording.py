@@ -834,11 +834,11 @@ class RecordingCode(BaseRecording):
                 weights = r, t
             else: # weights == 'desynch'
                 weights = 1-r, t
-        cc = SpikeCorr(recording=self, tranges=tranges, width=width, tres=tres,
+        sc = SpikeCorr(recording=self, tranges=tranges, width=width, tres=tres,
                        weights=weights, shift=shift, shiftcorrect=shiftcorrect,
                        experiments=experiments, nids=nids, R=None)
-        # run cc.calc() as late as possible, not here
-        return cc
+        # run sc.calc() as late as possible, not here
+        return sc
 
 
 class BaseNetstate(object):
