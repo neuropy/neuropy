@@ -583,7 +583,10 @@ class LFP(object):
         t0, t1 = ts[0], ts[-1] # full duration
         x = data[chani] / 1e3 # convert from uV to mV
         x = filter.notch(x)[0] # remove 60 Hz mains noise
-        rr = self.r.e0.I['REFRESHRATE']
+        try:
+            rr = self.r.e0.I['REFRESHRATE']
+        except AttributeError: # probably a recording with no experiment
+            rr = 200 # assume 200 Hz refresh rate
         if rr <= 100: # CRT was at low vertical refresh rate
             print('filtering out %d Hz from LFP in %s' % (intround(rr), self.r.name))
             x = filter.notch(x, freq=rr)[0] # remove CRT interference
