@@ -287,8 +287,8 @@ class Track(object):
             width = uns['SCWIDTH']
         if tres == None:
             tres = width
-        blankmseqrids = uns['BLANKMSEQRIDS'][self.absname]
-        movdriftrids = uns['MOVDRIFTRIDS'][self.absname]
+        blankmseqrids = uns['BLANKRIDS'][self.absname] + uns['MSEQRIDS'][self.absname]
+        movdriftrids = uns['MOVRIDS'][self.absname] + uns['DRIFTRIDS'][self.absname]
 
         blankmseqcorrs = []
         movdriftcorrs = []
@@ -328,8 +328,8 @@ class Track(object):
                  plottime=False, s=5, figsize=(7.5, 6.5)):
         """Scatter plot some summary statistic of spike correlations of each recording vs
         synchrony index SI. Colour each point according to stimulus type. width and tres
-        dictate tranges to split recordings up into. timeaverage means average across time
-        values of both sc and si for each recording"""
+        (sec) dictate tranges to split recordings up into. timeaverage averages across time
+        values of both sc and si for each recording. s is point size"""
         ## TODO: maybe limit to visually responsive cells
         ## TODO: add linear regression of si vs log(sc)
 
@@ -338,29 +338,18 @@ class Track(object):
             width = uns['SIWIDTH'] # want powers of two for efficient FFT
         if tres == None:
             tres = width
-        rids = sorted(self.r) # do everything in rid order
-        recs = [ self.r[rid] for rid in rids ]
-        msrids, bsrids, mvrids, dbrids = [], [], [], []
-        for rid in rids:
-            r = self.r[rid]
-            rname = r.name
-            if 'mseq' in rname:
-                msrids.append(rid)
-            elif 'blank' in rname or 'spont' in rname:
-                bsrids.append(rid)
-            elif 'MVI' in rname:
-                mvrids.append(rid)
-            elif 'driftbar' in rname:
-                dbrids.append(rid)
-
-        print('mseq: %r' % [self.r[rid].name for rid in msrids])
+        bsrids = uns['BLANKRIDS'][self.absname]
+        msrids = uns['MSEQRIDS'][self.absname]
+        mvrids = uns['MOVRIDS'][self.absname]
+        dbrids = uns['DRIFTRIDS'][self.absname]
+        rids = sorted(bsrids + msrids + mvrids + dbrids) # do everything in rid order
         print('blankscreen: %r' % [self.r[rid].name for rid in bsrids])
+        print('mseq: %r' % [self.r[rid].name for rid in msrids])
         print('movie: %r' % [self.r[rid].name for rid in mvrids])
         print('driftbar: %r' % [self.r[rid].name for rid in dbrids])
         isect = core.intersect1d([msrids, bsrids, mvrids, dbrids])
         if len(isect) != 0:
             raise RuntimeError("some rids were classified into more than one type: %r" % isect)
-        rids = np.unique(np.hstack([msrids, bsrids, mvrids, dbrids]))
 
         scs, sis, c = [], [], []
         for rid in rids:
@@ -376,8 +365,8 @@ class Track(object):
                 si = si.mean()
             scs.append(sc)
             sis.append(si)
-            if rid in msrids: color = 'k'
-            elif rid in bsrids: color = 'e'
+            if rid in bsrids: color = 'e'
+            elif rid in msrids: color = 'k'
             elif rid in mvrids: color = 'r'
             elif rid in dbrids: color = 'b'
             else: raise ValueError("unclassified recording: %r" % r.name)
@@ -398,13 +387,13 @@ class Track(object):
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         # make proxy line artists for legend:
-        ms = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='k', mec='k')
         bs = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='e', mec='e')
+        ms = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='k', mec='k')
         mv = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='r', mec='r')
         db = mpl.lines.Line2D([1], [1], color='white', marker='o', mfc='b', mec='b')
         # add legend:
-        a.legend([ms, bs, mv, db],
-                 ['mseq', 'blank screen', 'movie', 'drift bar'],
+        a.legend([bs, ms, mv, db],
+                 ['blank screen', 'mseq', 'movie', 'drift bar'],
                  numpoints=1, loc='lower right',
                  handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents

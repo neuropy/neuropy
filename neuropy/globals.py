@@ -54,13 +54,25 @@ SUPRANGE = 0, 500 # um
 MIDRANGE = 500, 700 # um
 DEEPRANGE = 700, 2000 # um
 
-"""IDs of blankscreen and msequence recordings"""
-BLANKMSEQRIDS = {'ptc22.tr1': ['04', '07', '09', '11', '17', '21'],
-                 'ptc22.tr2': ['26', '27', '32', '34', '36'],
-                }
-"""IDs of movie and drift bar recordings"""
-MOVDRIFTRIDS = {'ptc22.tr1': ['03', '05', '06', '08', '10', '18', '19', '20'],
-                'ptc22.tr2': ['25', '28', '31', '33'],
-               }
+"""IDs of blankscreen recordings"""
+BLANKRIDS = {'ptc22.tr1': ['07', '09', '11', '21'],
+             'ptc22.tr2': ['27', '32', '36'],
+             'ptc15.tr7c': ['87']
+            }
+"""IDs of msequence recordings"""
+MSEQRIDS = {'ptc22.tr1': ['04', '17'],
+            'ptc22.tr2': ['26', '34'],
+            'ptc15.tr7c': ['70', '81', '91', '92', '94']
+           }
+"""IDs of movie recordings"""
+MOVRIDS = {'ptc22.tr1': ['05', '06', '08', '10', '19', '20'],
+           'ptc22.tr2': ['28', '33'],
+           'ptc15.tr7c': ['76', '96']
+          }
+"""IDs of drift bar recordings"""
+DRIFTRIDS = {'ptc22.tr1': ['03', '18'],
+             'ptc22.tr2': ['25', '31'],
+             'ptc15.tr7c': ['71', '82']
+            }
 
 NULLDIN = 65535 # integer value in stimulus .din files used as NULL (stimulus off)
