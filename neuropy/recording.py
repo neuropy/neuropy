@@ -1480,18 +1480,16 @@ class NetstateDJSHist(BaseNetstate):
         """Plots histogram DJSs and DJSratios in logspace"""
         try: self.nidss, self.DJSs
         except AttributeError: self.calc(ngroups=ngroups)
-        x = np.logspace(start=logrange[0], stop=logrange[1], num=nbins, endpoint=True,
-                        base=10.0)
+        nedges = nbins + 1
+        x = np.logspace(start=logrange[0], stop=logrange[1], num=nedges, endpoint=True,
+                        base=10.0) # len nedges
         n = {} # stores a list of the bin heights in a separate key for each model
         for model in self.models:
-            n[model] = np.histogram(self.DJSs[model], bins=x, density=False)[0]
+            n[model] = np.histogram(self.DJSs[model], bins=x, density=False)[0] # len nbins
         color = {'indep': 'blue', 'ising': 'red'} # maps from model name to colour
         # each bar will have a different width, convert to list so you can append
-        barwidths = list(np.diff(x))
-        # need to add one more entry to barwidth to the end to get nbins of them:
-        barwidths.append(0) # don't display the last one
-        logbinwidth = (logrange[1]-logrange[0]) / float(nbins)
-        #barwidths.append(10**(logrange[1]+logbinwidth) - x[-1]) # should be exactly correct
+        barwidths = list(np.diff(x)) # len nbins
+        logbinwidth = (logrange[1]-logrange[0]) / nbins
 
         # plot DJSs of all models on the same axes
         f1 = pl.figure()
@@ -1501,7 +1499,7 @@ class NetstateDJSHist(BaseNetstate):
         heights = {}
         for model in self.models:
             heights[model] = n[model] / float(self.ngroups * logbinwidth) # density
-            bars[model] = a1.bar(left=x, height=heights[model], width=barwidths,
+            bars[model] = a1.bar(left=x[:-1], height=heights[model], width=barwidths,
                                  color=color[model], edgecolor=color[model])
         # need to set scale of x axis AFTER bars have been plotted, otherwise
         # autoscale_view() call in bar() raises a ValueError for log scale:
