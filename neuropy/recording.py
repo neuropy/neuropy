@@ -1,6 +1,7 @@
 """Defines the Recording class"""
 
 from __future__ import division
+from __future__ import print_function
 
 import os
 import StringIO
@@ -84,7 +85,7 @@ class BaseRecording(object):
 
     def tree(self):
         """Print tree hierarchy"""
-        print self.treebuf.getvalue(),
+        print(self.treebuf.getvalue(), end='')
 
     def writetree(self, string):
         """Write to self's tree buffer and to parent's too"""
@@ -954,8 +955,8 @@ class BaseNetstate(object):
         # can be transposed, or something
         spikeps = np.array(spikeps, ndmin=2)
         nospikeps = 1 - spikeps
-        #print 'spikesps: ', spikeps.__repr__()
-        #print 'nospikesps: ', nospikeps.__repr__()
+        #print('spikesps: ', spikeps.__repr__())
+        #print('nospikesps: ', nospikeps.__repr__())
         binarytable = core.getbinarytable(nbits)
         # 2D array of probs of having a 1 in the right place for all possible population
         # code words:
@@ -963,11 +964,11 @@ class BaseNetstate(object):
         # 2D array of probs of having a 0 in the right place for all possible population
         # code words:
         poff = (1 - binarytable) * nospikeps.transpose()
-        #print 'pon', pon.__repr__()
-        #print 'poff', poff.__repr__()
+        #print('pon', pon.__repr__())
+        #print('poff', poff.__repr__())
         # add the 2D arrays, each has zero p values where the other has non-zero p values:
         x = pon + poff
-        #print 'x', x.__repr__()
+        #print('x', x.__repr__())
         # take the product along the 0th axis (the columns) to get the prob of each
         # population code word
         intcodeps = x.prod(axis=0)
@@ -980,7 +981,7 @@ class BaseNetstate(object):
         uns = get_ipython().user_ns
         if nids == None:
             nids = self.cs.nids[0:uns['CODEWORDLEN']]
-        #print 'nids:', nids.__repr__()
+        #print('nids:', nids.__repr__())
         if R:
             assert len(R) == 2 and R[0] < R[1] # should be R = (R0, R1) torus
         codes = self.codes(nids=nids)
@@ -990,7 +991,7 @@ class BaseNetstate(object):
         # subtracting 1
         c = codes.c.copy() # don't modify the original
         c = c*2 - 1 # this should be safe to do cuz c is a 2D array of signed int8 values
-        #print 'c:', c.__repr__()
+        #print('c:', c.__repr__())
         means = [ row.mean() for row in c ] # iterate over rows of codes in c
         nrows = c.shape[0]
         pairmeans = []
@@ -1397,8 +1398,8 @@ class NetstateI2vsIN(BaseNetstate):
             I2 = S1 - S2
             I2s.append(I2 / tres * 1e6) # convert to bits/sec
             INs.append(IN / tres * 1e6)
-            print 'groupi',
-        print('\n')
+            print('groupi', end='')
+        print()
         self.I2s = np.asarray(I2s)
         self.INs = np.asarray(INs)
         self.I2divIN = self.I2s / self.INs
@@ -1460,12 +1461,12 @@ class NetstateDJSHist(BaseNetstate):
             nids = random.sample(self.cs.nids, self.nbits)
             self.nidss.append(nids)
             for modeli, model in enumerate(self.models): # for each model, use the same nids
-            print '%d' % groupi,
                 nss = NetstateScatter(recording=self.r, experiments=self.e, nids=nids)
                 nss.calc(model=model, R=self.R, shufflecodes=self.shufflecodes,
                          algorithm=self.algorithm)
                 self.DJSs[model].append(core.DJS(nss.pobserved, nss.pexpected))
-        print('\n')
+            print('%d' % groupi, end='')
+        print()
         # now find the DJSratios between the two models, for each group of neurons
         # do it only if there's 2 models, otherwise it's indeterminate which two to take
         # ratio of
@@ -1590,18 +1591,18 @@ class NetstateS1INvsN(BaseNetstate):
                 #t2 = time.clock()
                 p1 = np.asarray(self.intcodesFPDF(nids=nids)[0]) # indep model
                 pN = np.asarray(self.intcodesPDF(nids=nids)[0]) # observed word probs
-                #print 'calcing ps took: %f sec' % (time.clock()-t2)
+                #print('calcing ps took: %f sec' % (time.clock()-t2))
                 S1 = entropy_no_sing(p1) # ignore any singularities
                 SN = entropy_no_sing(pN)
                 # better be, indep model assumes the least structure:
                 assert S1 > SN or approx(S1, SN), 'S1 is %.20f, SN is %.20f' % (S1, SN)
                 IN = S1 - SN
-                #print S1, SN, IN
+                #print(S1, SN, IN)
                 S1s.append(S1 / tres * 1e6) # convert to bits/sec
                 INs.append(IN / tres * 1e6)
             self.S1ss.append(S1s)
             self.INss.append(INs)
-        print('\n')
+        print()
         self.S1mean = [ np.asarray(S1s).mean() for S1s in self.S1ss ]
         self.S1std = [ np.asarray(S1s).std() for S1s in self.S1ss ]
         self.S1sem = np.asarray(self.S1std) / sqrt(np.asarray(self.nsamples))

@@ -7,8 +7,9 @@ ip.write() # write a string to the shell
 ip.push() # push a variable in a dict to user namespace
 
 """
-
 from __future__ import division
+from __future__ import print_function
+
 import os
 
 import matplotlib as mpl

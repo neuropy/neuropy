@@ -1,6 +1,7 @@
 """Main neuropy window"""
 
 from __future__ import division
+from __future__ import print_function
 
 __authors__ = ['Martin Spacek']
 

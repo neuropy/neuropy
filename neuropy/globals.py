@@ -3,6 +3,8 @@ Access programatically using:
 
 get_ipython().user_ns['VARNAME']
 """
+from __future__ import division
+from __future__ import print_function
 
 import os
 

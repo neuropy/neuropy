@@ -1,6 +1,7 @@
 """Defines the Neuron class and all of its support classes"""
 
 from __future__ import division
+from __future__ import print_function
 
 import os
 import StringIO
@@ -57,7 +58,7 @@ class BaseNeuron(object):
     '''
     def tree(self):
         """Print tree hierarchy"""
-        print self.treebuf.getvalue(),
+        print(self.treebuf.getvalue(), end='')
 
     def writetree(self,string):
         """Write to self's tree buffer and to parent's too"""
@@ -478,7 +479,7 @@ class IDPRate(BaseRate):
             except IndexError:
                 pass
 
-        print 'IDPRATE IS INCOMPLETE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+        print('IDPRATE IS INCOMPLETE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         raise NotImplementedError
 
         # Step 2: extend back half an ISI from sudden rate increase, and forward half an ISI from sudden rate decrease
@@ -812,11 +813,11 @@ class STA(RevCorr):
 class STC(RevCorr):
     """Spike-triggered correlation revcorr object"""
     def calc(self):
-        print 'INCOMPLETE'
+        print('INCOMPLETE')
         super(STC, self).calc() # run the general calc() steps
 
     def plot(self):
-        print 'INCOMPLETE'
+        print('INCOMPLETE')
         vals = super(STC, self).plot()
         return vals
     plot.__doc__ = RevCorr.plot.__doc__
@@ -962,7 +963,7 @@ class Tune(object):
             sweepis = np.where(vals == val)[0]
             if fixed != None:
                 sweepis = np.intersect1d(sweepis, fixedsweepis, assume_unique=True)
-                print sweepis
+                print(sweepis)
             for sweepi in sweepis:
                 y[vali] += self.counts[sweepi].sum()
         # create a new figure:

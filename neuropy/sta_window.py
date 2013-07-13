@@ -1,6 +1,7 @@
 """STA (spike-triggered average) window in Qt4"""
 
 from __future__ import division
+from __future__ import print_function
 
 import sys
 

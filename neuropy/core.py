@@ -1,6 +1,7 @@
 """Miscellaneous functions and classes"""
 
 from __future__ import division
+from __future__ import print_function
 
 import os
 import sys
@@ -893,7 +894,7 @@ class SpatialPopulationRaster(object):
     def _onkeypress(self, event):
         """Called during a figure keypress"""
         key = event.guiEvent.GetKeyCode() # wx dependent
-        #print key
+        #print(key)
         # you can also just use the backend-neutral event.key, but that doesn't recognize as many keypresses, like pgup, pgdn, etc.
         if not event.guiEvent.ControlDown(): # Ctrl key isn't down, wx dependent
             if key == wx.WXK_RIGHT: # pan right
@@ -1311,8 +1312,8 @@ class SpikeCorr(object):
             if nmid: midmeds[shifti] = np.median(self.corrs[midis])
             if ndeep: deepmeds[shifti] = np.median(self.corrs[deepis])
             if nother: othermeds[shifti] = np.median(self.corrs[otheris])
-            print '%d,' % shift, # no newline
-        print # newline
+            print('%d,' % shift, end='')
+        print()
         self.clear_codes() # free memory
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -2129,10 +2130,10 @@ class ReceptiveFieldFrame(wx.Frame):
         """
         # might be a more direct way to set these:
         for rowi in range(1, len(self.ns)+1):
-            print 'rowi:', rowi
+            print('rowi:', rowi)
             grid_sizer_1.AddGrowableRow(rowi)
         for coli in range(1, len(self.ts)+1):
-            print 'coli:', coli
+            print('coli:', coli)
             grid_sizer_1.AddGrowableCol(coli)
         """
         sizer_1.Add(self.panel, 1, wx.ADJUST_MINSIZE|wx.EXPAND, 0)
@@ -2201,8 +2202,8 @@ class Ising(object):
         from scipy import maxentropy
 
         # why are the abs values of these so big, shouldn't they be near 0?:
-        #print 'means:\n', means
-        #print 'pairmeans:\n', pairmeans
+        #print('means:\n', means)
+        #print('pairmeans:\n', pairmeans)
 
         nbits = len(means)
         npairs = len(pairmeans)
@@ -2270,31 +2271,31 @@ class Ising(object):
         self.p = self.model.probdist()
         # sanity checks:
         assert (len(self.hi), len(self.Jij), len(self.p)) == (nbits, npairs, 2**nbits)
-        #print 'means:', means
-        #print 'pairmeans:', pairmeans
-        #print '%d iters,' % self.model.iters
-        #print 'hi:', self.hi.__repr__()
-        #print 'Jij:', self.Jij.__repr__()
+        #print('means:', means)
+        #print('pairmeans:', pairmeans)
+        #print('%d iters,' % self.model.iters)
+        #print('hi:', self.hi.__repr__())
+        #print('Jij:', self.Jij.__repr__())
 
         '''
         # Output the distribution
-        print "\nFitted model parameters are:\n" + str(self.model.params)
-        print "\nFitted distribution is:"
+        print("\nFitted model parameters are:\n" + str(self.model.params))
+        print("\nFitted distribution is:")
         for j in range(len(self.model.samplespace)):
             x = np.array(self.model.samplespace[j])
             x = (x+1)/2 # convert from -1s and 1s back to 0s and 1s
-            print '\tx:%s, p(x):%s' % (x, p[j])
+            print('\tx:%s, p(x):%s' % (x, p[j]))
         '''
         '''
         # Now show how well the constraints are satisfied:
-        print
-        print "Desired constraints:"
-        print "\tp['dans'] + p['en'] = 0.3"
-        print ("\tp['dans'] + p['" + a_grave + "']  = 0.5").encode('utf-8')
-        print
-        print "Actual expectations under the fitted model:"
-        print "\tp['dans'] + p['en'] =", p[0] + p[1]
-        print ("\tp['dans'] + p['" + a_grave + "']  = " + str(p[0]+p[2])).encode('utf-8')
+        print()
+        print("Desired constraints:")
+        print("\tp['dans'] + p['en'] = 0.3")
+        print("\tp['dans'] + p['" + a_grave + "']  = 0.5".encode('utf-8'))
+        print()
+        print("Actual expectations under the fitted model:")
+        print("\tp['dans'] + p['en'] =", p[0] + p[1])
+        print(("\tp['dans'] + p['" + a_grave + "']  = " + str(p[0]+p[2])).encode('utf-8'))
         # (Or substitute "x.encode('latin-1')" if you have a primitive terminal.)
         '''
 '''
@@ -2352,11 +2353,11 @@ class Cat15Movie(object):
         leftover = self.f.read() # check if there are any leftover bytes in the file
         if leftover != '':
             pprint(leftover)
-            print self.ncellswide, self.ncellshigh, self.nframes
+            print(self.ncellswide, self.ncellshigh, self.nframes)
             raise RuntimeError, 'There are unread bytes in movie file %r. Width, height, or nframes is incorrect in the movie file header.' % self.fname
         self.f.close() # close the movie file
         treestr = self.level*TAB + self.fname
-        print treestr
+        print(treestr)
 
     def _loadasarray(self, flip=False):
         self.frames = np.fromfile(self.f, np.uint8, count=self.nframes*self.framesize)
@@ -2552,7 +2553,7 @@ def txtdin2binarydin(fin, fout):
         fo.write( struct.pack('@qq', int(line[0]), int(line[1])) )
     fi.close()
     fo.close()
-    print 'Converted ascii din: %r to binary din: %r' % (fin, fout)
+    print('Converted ascii din: %r to binary din: %r' % (fin, fout))
 
 def convertalltxtdin2binarydin(path=None):
     """Converts all text .csv din files in path (or cwd) to 64 bit binary .din files of the
@@ -2582,7 +2583,7 @@ def renameSpikeFiles(path, newname):
             i = fname.find('_t')
             if i != -1:
                 newfname = newname+fname[i::]
-                print newfname
+                print(newfname)
                 os.rename(os.path.join(path, fname), os.path.join(path, newfname))
 
 def csv2binary(fin, multiplier=1e6, skipfirstline=True):
@@ -2591,7 +2592,7 @@ def csv2binary(fin, multiplier=1e6, skipfirstline=True):
     multiplier before saving"""
     fin = os.path.normpath(fin)
     fi = file(fin, 'r') # open csv file for reading in text mode
-    print 'Exporting %s to:' % fi.name
+    print('Exporting %s to:' % fi.name)
     firstline = fi.next()
     nneurons = len(firstline.split(','))
     if not skipfirstline: # ie first line isn't just column headers
@@ -2620,7 +2621,7 @@ def csv2binary(fin, multiplier=1e6, skipfirstline=True):
         fname = (os.path.join(path, tail) + '_t' +
                  pad0s(ni, ndigits=len(str(nneurons))) + '.spk')
         fo = file(fname, 'wb') # for writing in binary mode
-        print fo.name
+        print(fo.name)
         for spiketime in neuron:
             # write each spiketime to the file, there should be a more streamlined way
             # to do this. Write the value out as a C long long, using the system's native
@@ -2720,8 +2721,8 @@ def approx(a, b, rtol=1.e-14, atol=1.e-14):
     numpy.allclose()"""
     x = np.array(a, copy=False)
     y = np.array(b, copy=False)
-    #print x.shape
-    #print y.shape
+    #print(x.shape)
+    #print(y.shape)
     return np.less(np.absolute(x-y), atol + rtol * np.absolute(y))
 
 def pmf(a, bins=10, range=None, weights=None):
@@ -2766,9 +2767,9 @@ def sah(t, y, ts, keep=False):
         # representational inaccuracies). If so, inc i at that point so you keep y at that
         # point.
         si = approx(t[1::], ts[di])
-        #print i
+        #print(i)
         i[di[si]] += 1
-        #print i
+        #print(i)
     return y[i]
 
 def corrcoef(x, y):
@@ -2824,9 +2825,9 @@ def binarray2int(bin):
         multiplier.append(2**i)
     # convert from list and transpose to a column vector (have to make it 2D to transpose):
     multiplier = np.array(multiplier, ndmin=2).transpose()
-    #print multiplier
+    #print(multiplier)
     x = bin*multiplier
-    #print x
+    #print(x)
     # sum over the first dimension (the rows), that way, you're left with only columns in
     # a row vector:
     return x.sum(axis=0)
@@ -3011,7 +3012,7 @@ def combs(objects, r=2):
     # here's the innermost part of the nested for loops
     code += tabs + 'combi += 1\n'
     code += tabs + 'combs[combi] = objects[i]\n'
-    #print code
+    #print(code)
 
     exec(code) # run the generated code
     return combs
@@ -3045,7 +3046,7 @@ def argcombs(objects, r=2):
     # here's the innermost part of the nested for loops
     code += tabs + 'combi += 1\n'
     code += tabs + 'argcombs[combi, :] = i\n'
-    #print code
+    #print(code)
 
     exec(code) # run the generated code
     return argcombs
@@ -3163,7 +3164,7 @@ def ensurenormed(p, atol=1e-8):
     p = np.asarray(p)
     psum = p.sum()
     if not approx(psum, 1.0, atol=atol): # make sure the probs sum to 1
-        print 'ps don''t sum to 1, they sum to %f instead, normalizing for you' % psum
+        print('ps don''t sum to 1, they sum to %f instead, normalizing for you' % psum)
         p /= float(psum)
     return p
 
@@ -3243,16 +3244,16 @@ def MIbinarrays(Nbinarray=None, Mbinarray=None, verbose=False):
     bins = [xedges, yedges]
     # generate joint pdf, *edgesout exclude rightmost edge:
     jpdf, xedgesout, yedgesout = pmf2d(Nintcodes, Mintcodes, bins)
-    #print 'jpdf\n', jpdf.__repr__()
-    #print 'jpdf.sum()', jpdf.sum()
+    #print('jpdf\n', jpdf.__repr__())
+    #print('jpdf.sum()', jpdf.sum())
     assert (np.float64(xedges)[:-1] == xedgesout).all() # sanity check
     assert (np.float64(yedges)[:-1] == yedgesout).all()
     # pdf of N cells
     #Npdf, Nedges = pmf(Nintcodes, bins=range(2**N + 1))
-    #print 'first 100 Npdf\n', Npdf[:100].__repr__()
+    #print('first 100 Npdf\n', Npdf[:100].__repr__())
     # pdf of M cells
     #Mpdf, Medges = pmf(Mintcodes, bins=range(2**M + 1))
-    #print 'first 100 Mpdf\n', Mpdf[:100].__repr__()
+    #print('first 100 Mpdf\n', Mpdf[:100].__repr__())
     marginalMpdf = jpdf.sum(axis=0)
     # make sure what you get from the joint is what you get when just building up the
     # pdf straight up on its own:
@@ -3261,18 +3262,18 @@ def MIbinarrays(Nbinarray=None, Mbinarray=None, verbose=False):
     # mutual info as fraction of entropy in M group of cells:
     IdivS = I / entropy(marginalMpdf)
     if verbose:
-        print 'nids', nids
-        print 'mids', mids
-        #print 'Mpdf', Mpdf
-        #print 'entropy(Mpdf)', entropy(Mpdf)
-        print 'marginal Mpdf', marginalMpdf
-        print 'entropy(marginal Mpdf)', entropy(marginalMpdf)
-        print 'I', I
-        print 'I/entropy', IdivS
+        print('nids', nids)
+        print('mids', mids)
+        #print('Mpdf', Mpdf)
+        #print('entropy(Mpdf)', entropy(Mpdf))
+        print('marginal Mpdf', marginalMpdf)
+        print('entropy(marginal Mpdf)', entropy(marginalMpdf))
+        print('I', I)
+        print('I/entropy', IdivS)
     if not 0.0 <= IdivS <= 1.0+1e-10:
         import pdb; pdb.set_trace()
-        print 'IdivS is out of range'
-        print 'IdivS is %.16f' % IdivS
+        print('IdivS is out of range')
+        print('IdivS is %.16f' % IdivS)
 
     return dictattr(I=I, IdivS=IdivS)
 
@@ -3349,7 +3350,7 @@ def inverse_uquadratic_cdf(y, a=0, b=1):
     assert b > a
     alpha = 12 / ((b - a)**3)
     beta = (b + a) / 2
-    print (y * 3 / alpha - (beta - a)**3)
+    print(y * 3 / alpha - (beta - a)**3)
     return cbrt(y * 3 / alpha - (beta - a)**3) + beta
 
 def sample_uquadratic(a=0, b=1, size=None):

@@ -1,6 +1,7 @@
 """Defines the Experiment class"""
 
 from __future__ import division
+from __future__ import print_function
 
 import os
 import StringIO
@@ -48,7 +49,7 @@ class BaseExperiment(object):
 
     def tree(self):
         """Print tree hierarchy"""
-        print self.treebuf.getvalue(),
+        print(self.treebuf.getvalue(), end='')
 
     def writetree(self, string):
         """Write to self's tree buffer and to parent's too"""
@@ -325,10 +326,10 @@ class BaseExperiment(object):
 
         # Print out values for vars in varlist, as well as the shuffle and dim fields
         # for each var
-        #print 'varlist with vals:'
+        #print('varlist with vals:')
         #for var in varlist:
-        #    print var + ' =', eval(var), ',', varlist[var]
-        #print
+        #    print(var + ' =', eval(var), ',', varlist[var])
+        #print()
 
         # First find total number of distinct dimensions in varlist. The dimension numbers
         # entered in the 'dim' field in varlist don't have to be consecutive. Eg, they could
@@ -381,10 +382,10 @@ class BaseExperiment(object):
             dimlist[dim]={'vars':dimvars[dim], 'shuffle':dimshuffles[dim], 'dim':dim} # write the entry for this dim into dimlist
 
         # Print dimlist
-        #print 'Dimension list:'
+        #print('Dimension list:')
         #for dim in range(ndims):
-        #    print dimlist[dim]
-        #print
+        #    print(dimlist[dim])
+        #print()
 
         # Build the ordered (unshuffled/unrandomized) indextable
         vali = [None]*ndims # stores the index we're on in each dimension
@@ -398,8 +399,8 @@ class BaseExperiment(object):
             tabs +='\t'
 
         code += tabs+'indextable.append(vali[:])\n' # here's the innermost part of the nested for loops, val[:] returns a copy (important!)
-        #print code
-        #print
+        #print(code)
+        #print()
         exec(code) # run the generated code, this builds the ordered indextable with all the permutations
 
         # example of what the generated code looks like for 3 dimensions:
@@ -492,7 +493,7 @@ class BaseExperiment(object):
 
         sweeplist = sweeplistlist # rename it now that we're done the shuffle loop
         #t2 = time.clock()
-        #print 'shuffling took', t2-t1
+        #print('shuffling took', t2-t1)
 
         sweeplist *= ncopies # does nothing if shuffleRuns==1 (ncopies is 1), make nruns copies of sweeplist if shuffleRuns==0 (ncopies is nruns)
 
@@ -514,13 +515,13 @@ class BaseExperiment(object):
                     stimOn[sweepi] = 0 # stimulus will be off on sweepi
             if shuffleBlankSweeps == 1:
                 stimOn = core.shuffle(stimOn) # shuffle the stimulus state list
-            #print 'stimOn is', stimOn
+            #print('stimOn is', stimOn)
             # insert blank sweeps into sweeplist, according to stimulus state list
             for sweepi in xrange(nsweeps): # for all sweeps (values) in stimulus table
                 if stimOn[sweepi] == 0: # if we're on a blank sweep
                     insertioni = min(sweepi, len(sweeplist)-1) # insert at the lesser of sweepi or what's currently the last index in sweeplist. This prevents the case where many of the zeros in a shuffled stimOn are clustered at the end, and you end up trying to insert a repeat at an index value that's out of range of sweeplist
                     sweeplist.insert(insertioni, None) # insert a 'None' value into sweeplist at insertioni, this indicates a blank sweep
-        #print 'sweeplist is', sweeplist
+        #print('sweeplist is', sweeplist)
 
         # Print sweeptable as formatted text to string
         if makeSweepTableText:

@@ -1,6 +1,7 @@
 """Defines the Sort class"""
 
 from __future__ import division
+from __future__ import print_function
 
 import os
 import StringIO
@@ -62,7 +63,7 @@ class Sort(object):
 
     def tree(self):
         """Print tree hierarchy"""
-        print self.treebuf.getvalue(),
+        print(self.treebuf.getvalue(), end='')
 
     def writetree(self, string):
         """Write to self's tree buffer and to parent's too"""
