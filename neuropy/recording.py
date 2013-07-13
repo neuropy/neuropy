@@ -928,7 +928,8 @@ class BaseNetstate(object):
             nids = random.sample(self.cs.nids, uns['CODEWORDLEN'])
         intcodes = self.get_intcodes(nids=nids)
         nbits = len(nids)
-        p, bins = pmf(intcodes, bins=np.arange(2**nbits))
+        bins = np.arange(2**nbits + 1) # bins include rightmost edge
+        p, bins = pmf(intcodes, bins=bins) # bins exclude rightmost edge
         return p, bins
 
     def intcodesFPDF(self, nids=None):
@@ -1088,7 +1089,7 @@ class NetstateNspikingPMF(BaseNetstate):
         self.nspiking = {}
         self.pnspiking = {}
         self.bins = {}
-        bins = np.arange(self.nneurons+1)
+        bins = np.arange(self.nneurons+1) # bins include rightmost edge
         for shufflecodes in (False, True):
             self.words[shufflecodes] = self.get_intcodes(nids=self.nids,
                                                          shufflecodes=shufflecodes)
@@ -1097,7 +1098,8 @@ class NetstateNspikingPMF(BaseNetstate):
             # np.binary_repr() is a bit faster than using core.bin()
             self.nspiking[shufflecodes] = [ np.binary_repr(word).count('1')
                                             for word in self.words[shufflecodes] ]
-            # want all probs to add to 1, not their area, so use pmf:
+            # want all probs to add to 1, not their area, so use pmf.
+            # self.bins exclude rightmost edge:
             self.pnspiking[shufflecodes], self.bins[shufflecodes] = (
                 pmf(self.nspiking[shufflecodes], bins=bins))
 
@@ -1166,7 +1168,9 @@ class NetstateScatter(BaseNetstate):
             self.nbits = min(len(self.nids), self.nbits) # make sure nbits isn't > len(nids)
 
         self.intcodes = self.get_intcodes(nids=self.nids, shufflecodes=self.shufflecodes)
-        self.pobserved, self.observedwords = pmf(self.intcodes, bins=np.arange(2**self.nbits))
+        bins = np.arange(2**self.nbits + 1) # bins include rightmost edge
+        # self.observedwords exclude rightmost edge:
+        self.pobserved, self.observedwords = pmf(self.intcodes, bins=bins)
 
         if self.model == 'indep':
             # expected, assuming independence:

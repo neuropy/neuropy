@@ -2725,17 +2725,21 @@ def approx(a, b, rtol=1.e-14, atol=1.e-14):
     return np.less(np.absolute(x-y), atol + rtol * np.absolute(y))
 
 def pmf(a, bins=10, range=None, weights=None):
-    """Return probability mass function of a, where sum of all bins is 1"""
+    """Return probability mass function of a, where sum of all bins is 1. If bins is
+    iterable, make sure to include the rightmost bin edge. Unlike np.histogram, returned
+    bins exclude the rightmost bin edge"""
     n, bins = np.histogram(a, bins=bins, range=range, weights=weights, density=False)
     n = n / float(sum(n)) # normalize by sum of bins to get pmf
-    return n, bins
+    return n, bins[:-1]
 
 def pmf2d(a, bins=10, range=None, weights=None):
-    """Return 2D probability mass function of a, where sum of all bins is 1"""
+    """Return 2D probability mass function of a, where sum of all bins is 1. If bins is
+    iterable, make sure to include the rightmost bin edge. Unlike np.histogram, returned
+    bins exclude the rightmost bin edge"""
     H, xedges, yedges = np.histogram2d(x, y, bins=bins, range=range, normed=False,
                                        weights=weights)
     H = H / float(sum(H)) # normalize by sum of bins to get pmf
-    return H, xedges, yedges
+    return H, xedges[:-1], yedges[:-1]
 
 def sah(t, y, ts, keep=False):
     """Resample using sample and hold. Returns resampled values at ts given the original
@@ -3234,20 +3238,20 @@ def MIbinarrays(Nbinarray=None, Mbinarray=None, verbose=False):
     # (0 and 1)
     # values 0 to 2**N - 1, plus 2**N which is needed as the rightmost bin edge for
     # histogram2d:
-    xedges = np.arange(2**N+1)
-    yedges = np.arange(2**M+1)
+    xedges = np.arange(2**N+1) # include rightmost edge
+    yedges = np.arange(2**M+1) # include rightmost edge
     bins = [xedges, yedges]
-    # generate joint pdf
+    # generate joint pdf, *edgesout exclude rightmost edge:
     jpdf, xedgesout, yedgesout = pmf2d(Nintcodes, Mintcodes, bins)
     #print 'jpdf\n', jpdf.__repr__()
     #print 'jpdf.sum()', jpdf.sum()
-    assert (np.float64(xedges) == xedgesout).all() # sanity check
-    assert (np.float64(yedges) == yedgesout).all()
+    assert (np.float64(xedges)[:-1] == xedgesout).all() # sanity check
+    assert (np.float64(yedges)[:-1] == yedgesout).all()
     # pdf of N cells
-    #Npdf, Nedges = pmf(Nintcodes, bins=range(2**N))
+    #Npdf, Nedges = pmf(Nintcodes, bins=range(2**N + 1))
     #print 'first 100 Npdf\n', Npdf[:100].__repr__()
     # pdf of M cells
-    #Mpdf, Medges = pmf(Mintcodes, bins=range(2**M))
+    #Mpdf, Medges = pmf(Mintcodes, bins=range(2**M + 1))
     #print 'first 100 Mpdf\n', Mpdf[:100].__repr__()
     marginalMpdf = jpdf.sum(axis=0)
     # make sure what you get from the joint is what you get when just building up the
