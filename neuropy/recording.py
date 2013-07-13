@@ -1451,7 +1451,7 @@ class NetstateDJSHist(BaseNetstate):
         # hold the Jensen-Shannon divergences for different models and different groups of
         # neurons:
         self.DJSs = {}
-        for model in  self.models:
+        for model in self.models:
             # init a dict with the model names as keys, and empty lists as values
             self.DJSs[model] = []
         for groupi in range(self.ngroups): # for each group of nbits cells
@@ -1459,11 +1459,11 @@ class NetstateDJSHist(BaseNetstate):
             nids = random.sample(self.cs.nids, self.nbits)
             self.nidss.append(nids)
             for modeli, model in enumerate(self.models): # for each model, use the same nids
-                so = NetstateScatter(recording=self.r, experiments=self.e, nids=nids)
-                so.calc(model=model, R=self.R, shufflecodes=self.shufflecodes,
-                        algorithm=self.algorithm)
-                self.DJSs[model].append(core.DJS(so.pobserved, so.pexpected))
             print '%d' % groupi,
+                nss = NetstateScatter(recording=self.r, experiments=self.e, nids=nids)
+                nss.calc(model=model, R=self.R, shufflecodes=self.shufflecodes,
+                         algorithm=self.algorithm)
+                self.DJSs[model].append(core.DJS(nss.pobserved, nss.pexpected))
         print('\n')
         # now find the DJSratios between the two models, for each group of neurons
         # do it only if there's 2 models, otherwise it's indeterminate which two to take
@@ -2076,9 +2076,9 @@ class RecordingNetstate(BaseRecording):
 
     def ns_scatter(self, experiments=None, nids=None, R=None):
         """Returns a NetstateScatter object"""
-        ns_so = NetstateScatter(recording=self, experiments=experiments, nids=nids)
-        ns_so.calc(R=R)
-        return ns_so
+        nss = NetstateScatter(recording=self, experiments=experiments, nids=nids)
+        nss.calc(R=R)
+        return nss
 
     def ns_i2vsin(self, experiments=None, nids=None):
         """Returns a NetstateI2vsIN object"""
@@ -2086,9 +2086,9 @@ class RecordingNetstate(BaseRecording):
 
     def ns_djshist(self, experiments=None, nids=None, ngroups=5, R=None):
         """Returns a NetstateDJSHist object"""
-        ns_djso = NetstateDJSHist(recording=self, experiments=experiments, nids=nids)
-        ns_djso.calc(ngroups=ngroups, R=R)
-        return ns_djso
+        nsdjs = NetstateDJSHist(recording=self, experiments=experiments, nids=nids)
+        nsdjs.calc(ngroups=ngroups, R=R)
+        return nsdjs
 
     def ns_s1invsn(self, experiments=None, nids=None):
         """Returns a NetstateS1INvsN object"""
