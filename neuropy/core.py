@@ -2627,16 +2627,16 @@ def csv2binary(fin, multiplier=1e6, skipfirstline=True):
             # ('@') byte order
             fo.write( struct.pack('@q', spiketime) )
         fo.close()
-
+'''
 def warn(msg, level=2, exit_val=1):
     """Standard warning printer. Gives formatting consistency. Stolen from IPython.genutils"""
     if level > 0:
         header = ['', '', 'WARNING: ', 'ERROR: ', 'FATAL ERROR: ']
         print >> sys.stderr, '%s%s' % (header[level],msg)
         if level == 4:
-            print >> sys.stderr,'Exiting.\n'
+            print >> sys.stderr, 'Exiting.\n'
             sys.exit(exit_val)
-'''
+
 def warn(msg):
     import warnings
     warnings.warn(msg, category=RuntimeWarning, stacklevel=2)
