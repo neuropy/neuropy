@@ -21,7 +21,7 @@ import util # .pyx file
 import core
 from core import (LFP, SpatialPopulationRaster, DensePopulationRaster, Codes, SpikeCorr,
                   binarray2int, nCrsamples, iterable, entropy_no_sing, lastcmd, intround,
-                  tolist, rstrip, dictattr, warn, pmf, TAB)
+                  tolist, rstrip, dictattr, pmf, TAB)
 from colour import CLUSTERCOLOURDICT
 from experiment import Experiment
 from sort import Sort

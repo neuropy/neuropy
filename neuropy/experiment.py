@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib as mpl
 
 import core
-from core import getargstr, TAB, warn, rstrip, dictattr, intround, toiter
+from core import getargstr, TAB, rstrip, dictattr, intround, toiter
 from core import joinpath, lastcmd
 from core import Codes, RevCorrWindow
 import neuron
