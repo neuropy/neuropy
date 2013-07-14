@@ -1456,9 +1456,17 @@ class NetstateDJSHist(BaseNetstate):
         for model in self.models:
             # init a dict with the model names as keys, and empty lists as values
             self.DJSs[model] = []
-        for groupi in range(self.ngroups): # for each group of nbits cells
-            # randomly sample nbits of the Netstate Codes' nids attrib:
-            nids = random.sample(self.cs.nids, self.nbits)
+        npossiblegroups = core.nCr(self.nneurons, self.nbits)
+        if ngroups > npossiblegroups:
+            raise RuntimeError("can't randomly sample %d unique groups of neurons when "
+                               "asking for %d at a time from a pool of %d"
+                               % (ngroups, self.nbits, self.nneurons))
+        for groupi in range(ngroups): # for each group of nbits cells
+            nids = self.sample_nids()
+            # make sure we haven't already had this particular sample of nids:
+            while nids in self.nidss:
+                nids = self.sample_nids() # resample
+                print('*', end='') # print an asterisk to indicate collision
             self.nidss.append(nids)
             for modeli, model in enumerate(self.models): # for each model, use the same nids
                 nss = NetstateScatter(recording=self.r, experiments=self.e, nids=nids)
@@ -1477,7 +1485,10 @@ class NetstateDJSHist(BaseNetstate):
 
         return self
 
-    def plot(self, ngroups=5, logrange=(-3.667, -0.333), nbins=50, publication=False):
+    def sample_nids(self):
+        """Randomly sample nbits of the Netstate Codes' nids"""
+        return random.sample(self.cs.nids, self.nbits)
+
         """Plots histogram DJSs and DJSratios in logspace"""
         try: self.nidss, self.DJSs
         except AttributeError: self.calc(ngroups=ngroups)
