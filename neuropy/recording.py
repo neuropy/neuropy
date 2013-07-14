@@ -1492,9 +1492,10 @@ class NetstateDJSHist(BaseNetstate):
         """Randomly sample nbits of the Netstate Codes' nids"""
         return random.sample(self.cs.nids, self.nbits)
 
+    def plot(self, logrange=(-3.667, -0.333), nbins=50, publication=False):
         """Plots histogram DJSs and DJSratios in logspace"""
         try: self.nidss, self.DJSs
-        except AttributeError: self.calc(ngroups=ngroups)
+        except AttributeError: self.calc()
         nedges = nbins + 1
         x = np.logspace(start=logrange[0], stop=logrange[1], num=nedges, endpoint=True,
                         base=10.0) # len nedges
