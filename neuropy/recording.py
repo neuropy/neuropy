@@ -1449,25 +1449,15 @@ class NetstateDJSHist(BaseNetstate):
         self.shufflecodes = shufflecodes
         self.algorithm = algorithm
 
-        self.nidss = [] # list of lists, each sublist is a group of neuron indices
-        # hold the Jensen-Shannon divergences for different models and different groups of
-        # neurons:
+        # list of lists, each sublist is a unique combination of nbit neuron indices:
+        self.nidss = nCrsamples(self.cs.nids, self.nbits, ngroups)
+        # Jensen-Shannon divergences for different models and different groups of neurons:
         self.DJSs = {}
         for model in self.models:
             # init a dict with the model names as keys, and empty lists as values
             self.DJSs[model] = []
         npossiblegroups = core.nCr(self.nneurons, self.nbits)
-        if ngroups > npossiblegroups:
-            raise RuntimeError("can't randomly sample %d unique groups of neurons when "
-                               "asking for %d at a time from a pool of %d"
-                               % (ngroups, self.nbits, self.nneurons))
-        for groupi in range(ngroups): # for each group of nbits cells
-            nids = self.sample_nids()
-            # make sure we haven't already had this particular sample of nids:
-            while nids in self.nidss:
-                nids = self.sample_nids() # resample
-                print('*', end='') # print an asterisk to indicate collision
-            self.nidss.append(nids)
+        for groupi, nids in enumerate(self.nidss): # for each group of nbits cells
             for modeli, model in enumerate(self.models): # for each model, use the same nids
                 nss = NetstateScatter(recording=self.r, experiments=self.e, nids=nids)
                 nss.calc(model=model, R=self.R, shufflecodes=self.shufflecodes,
