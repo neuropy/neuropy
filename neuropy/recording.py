@@ -1473,7 +1473,10 @@ class NetstateDJSHist(BaseNetstate):
                 nss.calc(model=model, R=self.R, shufflecodes=self.shufflecodes,
                          algorithm=self.algorithm)
                 self.DJSs[model].append(core.DJS(nss.pobserved, nss.pexpected))
-            print('%d' % groupi, end='')
+            if groupi % 10 == 0:
+                print('%d' % groupi, end='')
+            else:
+                print('.', end='')
         print()
         # now find the DJSratios between the two models, for each group of neurons
         # do it only if there's 2 models, otherwise it's indeterminate which two to take
