@@ -1435,7 +1435,7 @@ class NetstateI2vsIN(BaseNetstate):
 
 class NetstateDJSHist(BaseNetstate):
     """Jensen-Shannon histogram analysis. See Schneidman 2006 figure 2b"""
-    def calc(self, ngroups=5, models=['ising', 'indep'], R=None, shufflecodes=False,
+    def calc(self, ngroups=5, models=['indep', 'ising'], R=None, shufflecodes=False,
              algorithm='CG'):
         """Calculates Jensen-Shannon divergences and their ratios
         for ngroups random groups of cells, each of length nbits. R = (R0, R1) torus"""
@@ -1478,13 +1478,11 @@ class NetstateDJSHist(BaseNetstate):
             else:
                 print('.', end='')
         print()
-        # now find the DJSratios between the two models, for each group of neurons
-        # do it only if there's 2 models, otherwise it's indeterminate which two to take
-        # ratio of
+        # for each group of neurons find the log DJS ratios between the two models:
         if len(self.models) == 2:
-            # 2nd model as a ratio of the 1st
-            self.DJSratios = (np.asarray(self.DJSs.values()[1]) /
-                              np.asarray(self.DJSs.values()[0]))
+            # log DJS ratios of 2nd model to 1st:
+            self.logDJSratios = np.log10(np.asarray(self.DJSs[models[1]]) /
+                                         np.asarray(self.DJSs[models[0]]))
 
         return self
 
@@ -1492,8 +1490,8 @@ class NetstateDJSHist(BaseNetstate):
         """Randomly sample nbits of the Netstate Codes' nids"""
         return random.sample(self.cs.nids, self.nbits)
 
-    def plot(self, logrange=(-3.667, -0.333), nbins=50, publication=False):
-        """Plots histogram DJSs and DJSratios in logspace"""
+    def plot(self, logrange=(-3.667, -0.333), nbins=50, logratios=True, publication=False):
+        """Plots histogram DJSs in logspace, and optionally log DJS ratios"""
         try: self.nidss, self.DJSs
         except AttributeError: self.calc()
         nedges = nbins + 1
@@ -1549,28 +1547,20 @@ class NetstateDJSHist(BaseNetstate):
                             transform = a1.transAxes,
                             horizontalalignment='left',
                             verticalalignment='top')
-        '''
-        # plot DJSratios
-        if len(self.models) == 2:
+        f1.tight_layout(pad=0.3) # crop figure to contents
+
+        # plot log of DJS ratios:
+        if logratios and len(self.models) == 2:
             f2 = pl.figure()
             a2 = f2.add_subplot(111)
-            # bin heights for the DJSratios
-            nratios = np.histogram(self.DJSratios, bins=x, density=False)[0]
-            a2.bar(left=x, height=nratios, width=barwidths, color='g', edgecolor='g')
-            # need to set scale of x axis AFTER bars have been plotted, otherwise
-            # autoscale_view() call in bar() raises a ValueError for log scale
-            a2.set_xscale('log', basex=10)
-            gcfm().window.setWindowTitle(lastcmd())
-            a2.set_title('Jensen-Shannon divergence ratios histogram\n%s' % lastcmd())
+            a2.hist(self.logDJSratios, bins=nbins, color='k')
+            title = lastcmd() + '.logratio'
+            gcfm().window.setWindowTitle(title)
+            a2.set_title(title)
             a2.set_ylabel('number of groups of %d cells' % self.nbits)
-            a2.set_xlabel('DJS ratio (%s / %s)' % (self.models[1], self.models[0]))
-        '''
-        f1.tight_layout(pad=0.3) # crop figure to contents
-        #f2.tight_layout(pad=0.3) # crop figure to contents
-        #self.f = {1:f1, 2:f2}
-        #self.a = {1:a1, 2:a2}
-        self.f = {1:f1}
-        self.a = {1:a1}
+            a2.set_xlabel('log10(DJS(%s) / DJS(%s))' % (self.models[1], self.models[0]))
+            f2.tight_layout(pad=0.3) # crop figure to contents
+
         return self
 
 
