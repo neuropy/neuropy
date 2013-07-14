@@ -3061,39 +3061,40 @@ def argcombs(objects, r=2):
 
 def nCrsamples(objects, r, nsamples=None):
     """Returns a list of nsamples unique samples, each of length r, sampled from objects"""
-    maxnsamples = nCr(len(objects), r)
+    nobjects = len(objects)
+    maxnsamples = nCr(nobjects, r)
     if nsamples == None:
         nsamples = maxnsamples # return all possible combinations
     if nsamples > maxnsamples:
         # make sure we're not being asked for more than the maximum possible number of
         # unique samples
-        raise ValueError('requested unique nsamples (%d) is larger than len(objects) choose '
-                         'r (%d C %d == %d)' % (nsamples, len(objects), r, maxnsamples))
-    # I've set the criteria for generating a table to be never, because generating the table
-    # and then sampling it almost always takes longer (at least for maxnsamples as high as
-    # 325, say) than just picking combs at random and making sure they're unique
-    if maxnsamples < 0:
+        raise ValueError('requested unique nsamples (%d) is larger than nobjects choose '
+                         'r (%d C %d == %d)' % (nsamples, nobjects, r, maxnsamples))
+    # Don't use an exhaustive table, because generating it and then sampling it almost
+    # always takes longer than just picking combs at random and making sure they're unique
+    '''
+    if maxnsamples < something:
         # generate a table of all possible combinations, and then just pick nsamples from
         # it without replacement
         table = combs(objects, r)
         samples = random.sample(table, nsamples)
-    elif r == 1: # we're just choosing one item from objects at a time
+    '''
+    if r == 1: # we're just choosing one item from objects at a time
         samples = random.sample(objects, nsamples)
-    else:
-        # the number of possible combs is inconveniently large to completely tabulate,
-        # pick some combinations at random and make sure each comb is unique
+    else: # sample at random and make sure each sample is unique:
         samples = []
-        samplei = 0
-        while samplei < nsamples:
-            sample = random.sample(objects, r) # choose r objects at random
-            # sort for sake of comparison with other samples, important because this
-            # removes any differences due to permuatations (as opposed to combs)
-            sample.sort()
-            if sample not in samples:
-                # make sure they're not the same set of objects as any previous set in samples
-                samples.append(sample) # add it to the list of samples
-                samplei += 1
+        for samplei in range(nsamples):
+            sample = sortedsample(objects, r)
+            while sample in samples: # repeat until a unique one is found
+                sample = sortedsample(objects, r)
+            samples.append(sample)
     return samples
+
+def sortedsample(objects, r):
+    """Randomly sample r things from objects, sorting the result to remove permutations"""
+    sample = random.sample(objects, r)
+    sample.sort()
+    return sample
 
 '''
 # this f'n isn't really needed, just use objlist.sort(key=lambda obj: obj.attrib)
