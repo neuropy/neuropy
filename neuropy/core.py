@@ -2934,10 +2934,12 @@ def randsign(size=1):
 
 def fact(n):
     """Factorial!"""
-    assert n.__class__ == int
+    assert type(n) == int
     assert n >= 0
     if n == 0:
         n = 1 # 0! == 1!
+    #return int(np.prod(np.arange(n, 1, -1))) # this easily overflows given int64
+    # Python int math doesn't overflow:
     result = n
     for i in range(1, n):
         result *= i
@@ -2951,7 +2953,7 @@ def nPr(n, r):
 def nCr(n, r):
     """n Choose r"""
     assert n >= r
-    return nPr(n, r) // fact(r)
+    return fact(n) // (fact(n-r) * fact(r))
 
 ncr = nCr # convenience f'ns
 npr = nPr
