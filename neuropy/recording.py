@@ -1476,10 +1476,6 @@ class NetstateDJSHist(BaseNetstate):
 
         return self
 
-    def sample_nids(self):
-        """Randomly sample nbits of the Netstate Codes' nids"""
-        return random.sample(self.cs.nids, self.nbits)
-
     def plot(self, logrange=(-3.667, -0.333), nbins=50, logratios=True, publication=False):
         """Plots histogram DJSs in logspace, and optionally log DJS ratios"""
         try: self.nidss, self.DJSs
