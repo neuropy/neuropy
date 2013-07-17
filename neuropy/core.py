@@ -98,6 +98,12 @@ class PTCSHeader(object):
         # call the appropriate method:
         self.VER2FUNC = {1: self.read_ver_1, 2: self.read_ver_2, 3: self.read_ver_3}
 
+    def __getstate__(self):
+        """Instance methods must be exclude when pickling"""
+        d = self.__dict__.copy()
+        del d['VER2FUNC']
+        return d
+
     def read(self, f):
         """Read in format version, followed by rest according to verison
 
@@ -179,6 +185,12 @@ class PTCSNeuronRecord(object):
         self.header = header
         nsamplebytes = self.header.nsamplebytes
         self.wavedtype = {2: np.float16, 4: np.float32, 8: np.float64}[nsamplebytes]
+
+    def __getstate__(self):
+        """Instance methods must be exclude when pickling"""
+        d = self.__dict__.copy()
+        del d['VER2FUNC']
+        return d
 
     def read(self, f):
         self.VER2FUNC[self.header.FORMATVERSION](f) # call the appropriate method

@@ -77,6 +77,11 @@ class BaseExperiment(object):
         if self.textheader != '':
             # comment out all lines starting with "from dimstim"
             self.textheader = self.textheader.replace('from dimstim', '#from dimstim')
+            # execute any remaining 'import' lines first, so that any modules imported
+            # aren't artefactually detected as having been added to the namespace:
+            for line in self.textheader.splitlines():
+                if line.startswith('import'):
+                    exec(line)
             names1 = locals().copy() # namespace before execing the textheader
             exec(self.textheader)
             names2 = locals().copy() # namespace after
