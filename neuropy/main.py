@@ -199,8 +199,7 @@ def main():
         from IPython.qt.manager import QtKernelManager
         km = QtKernelManager()
     km.start_kernel()
-    kernel = km.kernel
-    kernel.gui = 'qt4'
+    km.kernel.gui = 'qt4'
     kc = km.client()
     kc.start_channels()
 
