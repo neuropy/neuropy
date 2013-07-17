@@ -99,9 +99,10 @@ class PTCSHeader(object):
         self.VER2FUNC = {1: self.read_ver_1, 2: self.read_ver_2, 3: self.read_ver_3}
 
     def __getstate__(self):
-        """Instance methods must be exclude when pickling"""
+        """Instance methods must be excluded when pickling"""
         d = self.__dict__.copy()
-        del d['VER2FUNC']
+        try: del d['VER2FUNC']
+        except KeyError: pass
         return d
 
     def read(self, f):
@@ -187,9 +188,10 @@ class PTCSNeuronRecord(object):
         self.wavedtype = {2: np.float16, 4: np.float32, 8: np.float64}[nsamplebytes]
 
     def __getstate__(self):
-        """Instance methods must be exclude when pickling"""
+        """Instance methods must be excluded when pickling"""
         d = self.__dict__.copy()
-        del d['VER2FUNC']
+        try: del d['VER2FUNC']
+        except KeyError: pass
         return d
 
     def read(self, f):
