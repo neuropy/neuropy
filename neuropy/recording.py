@@ -4,8 +4,10 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import time
 import StringIO
 import random
+import multiprocessing as mp
 
 import numpy as np
 import scipy.stats
@@ -1435,10 +1437,19 @@ class NetstateI2vsIN(BaseNetstate):
 
 class NetstateDJSHist(BaseNetstate):
     """Jensen-Shannon histogram analysis. See Schneidman 2006 figure 2b"""
+    MULTIPROCESS = True
+    
+    def __call__(self, groupi):
+        """Convenient workaround for instance methods not being picklable. Assigning
+        __call__ to calc_single eliminates need to pickle calc_single directly. See
+        http://stackoverflow.com/a/6975654/2020363"""
+        return self.calc_single(groupi)
+
     def calc(self, ngroups=5, models=['indep', 'ising'], R=None, shufflecodes=False,
              algorithm='CG'):
         """Calculates Jensen-Shannon divergences and their ratios
         for ngroups random groups of cells, each of length nbits. R = (R0, R1) torus"""
+        t0 = time.time()
         uns = get_ipython().user_ns
         self.nbits = uns['CODEWORDLEN']
         self.ngroups = ngroups
@@ -1451,30 +1462,40 @@ class NetstateDJSHist(BaseNetstate):
 
         # list of lists, each sublist is a unique combination of nbit neuron indices:
         self.nidss = nCrsamples(self.cs.nids, self.nbits, ngroups)
-        # Jensen-Shannon divergences for different models and different groups of neurons:
-        self.DJSs = {}
-        for model in self.models:
-            # init a dict with the model names as keys, and empty lists as values
-            self.DJSs[model] = []
-        npossiblegroups = core.nCr(self.nneurons, self.nbits)
-        for groupi, nids in enumerate(self.nidss): # for each group of nbits cells
-            for modeli, model in enumerate(self.models): # for each model, use the same nids
-                nss = NetstateScatter(recording=self.r, experiments=self.e, nids=nids)
-                nss.calc(model=model, R=self.R, shufflecodes=self.shufflecodes,
-                         algorithm=self.algorithm)
-                self.DJSs[model].append(core.DJS(nss.pobserved, nss.pexpected))
-            if groupi % 10 == 0:
-                print('%d' % groupi, end='')
-            else:
-                print('.', end='')
+
+        if self.MULTIPROCESS: # progress printing doesn't seem to work
+            pool = mp.Pool() # init pool of worker processes:
+            # pickle self, then call self.__call__ in each subprocess. Return Jensen-Shannon
+            # divergences for different models and different groups of neurons:
+            self.DJSs = np.asarray(pool.map(self, np.arange(ngroups)))
+            pool.close()
+        else: # single process alternative:
+            self.DJSs = np.asarray(map(self.calc_single, np.arange(ngroups)))
         print()
+        
         # for each group of neurons find the log DJS ratios between the two models:
         if len(self.models) == 2:
             # log DJS ratios of 2nd model to 1st:
-            self.logDJSratios = np.log10(np.asarray(self.DJSs[models[1]]) /
-                                         np.asarray(self.DJSs[models[0]]))
-
+            self.logDJSratios = np.log10(np.asarray(self.DJSs[:, 1]) /
+                                         np.asarray(self.DJSs[:, 0]))
+        
+        print('calc took %.3f sec' % (time.time()-t0))
         return self
+
+    def calc_single(self, groupi):
+        """Calculate Jensen-Shannon divergence for each model, for one group of neurons"""
+        nids = self.nidss[groupi]
+        DJS = []
+        for modeli, model in enumerate(self.models): # for each model, use the same nids
+            nss = NetstateScatter(recording=self.r, experiments=self.e, nids=nids)
+            nss.calc(model=model, R=self.R, shufflecodes=self.shufflecodes,
+                     algorithm=self.algorithm)
+            DJS.append(core.DJS(nss.pobserved, nss.pexpected))
+        if groupi % 10 == 0:
+            print('%d' % groupi, end='')
+        else:
+            print('.', end='')
+        return DJS
 
     def plot(self, logrange=(-3.667, -0.333), nbins=50, logratios=True, publication=False):
         """Plots histogram DJSs in logspace, and optionally log DJS ratios"""
@@ -1484,8 +1505,8 @@ class NetstateDJSHist(BaseNetstate):
         x = np.logspace(start=logrange[0], stop=logrange[1], num=nedges, endpoint=True,
                         base=10.0) # len nedges
         n = {} # stores a list of the bin heights in a separate key for each model
-        for model in self.models:
-            n[model] = np.histogram(self.DJSs[model], bins=x, density=False)[0] # len nbins
+        for modeli, model in enumerate(self.models):
+            n[model] = np.histogram(self.DJSs[:, modeli], bins=x, density=False)[0] # len nbins
         color = {'indep': 'blue', 'ising': 'red'} # maps from model name to colour
         # each bar will have a different width, convert to list so you can append
         barwidths = list(np.diff(x)) # len nbins
