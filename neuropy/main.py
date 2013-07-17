@@ -11,15 +11,15 @@ import platform
 
 # instantiate an IPython embedded shell which shows up in the terminal on demand
 # and on every exception in the GUI code:
-from IPython.frontend.terminal.ipapp import load_default_config
-from IPython.frontend.terminal.embed import InteractiveShellEmbed
+from IPython.terminal.ipapp import load_default_config
+from IPython.terminal.embed import InteractiveShellEmbed
 config = load_default_config()
 # automatically call the pdb debugger after every exception, override default config:
 config.TerminalInteractiveShell.pdb = True
 ipshell = InteractiveShellEmbed(display_banner=False, config=config)
 
 # IPython GUI imports, have to come before Qt imports:
-from IPython.frontend.qt.console.rich_ipython_widget import RichIPythonWidget
+from IPython.qt.console.rich_ipython_widget import RichIPythonWidget
 from IPython.lib import guisupport
 from IPython.utils.path import get_ipython_dir
 from IPython.config.loader import PyFileConfigLoader
@@ -40,7 +40,7 @@ INPROCESS = False # use inprocess kernel? otherwise, use 2 process zmq kernel
 class NeuropyWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
         """Note that a lot of default options can be changed by editing
-        IPython.frontend.qt.console.console_widget.py and ipython_widget.py"""
+        IPython.qt.console.console_widget.py and ipython_widget.py"""
         QtGui.QMainWindow.__init__(self)
         self.ui = NeuropyUi()
         self.ui.setupUi(self) # lay it out
@@ -186,28 +186,37 @@ def config_ipw(ipw):
     ipw.font.setFixedPitch(True)
 
 def main():
-    """Start kernel manager, create window, run app event loop, auto execute some code
-    in user namespace. Adapted from IPython example in:
-    docs/examples/frontend/inprocess_qtconsole.py"""
+    """Start kernel manager and client, create window, run app event loop,
+    auto execute some code in user namespace"""
     app = guisupport.get_app_qt4()
 
     if INPROCESS:
-        from IPython.kernel.inprocess.ipkernel import InProcessKernel
-        from IPython.frontend.qt.inprocess_kernelmanager import QtInProcessKernelManager
-        kernel = InProcessKernel(gui='qt4')
-        km = QtInProcessKernelManager(kernel=kernel)
-        kernel.frontends.append(km)
+        # see ipython.examples.inprocess.embedded_qtconsole
+        from IPython.qt.inprocess import QtInProcessKernelManager
+        km = QtInProcessKernelManager()
+        km.start_kernel()
+        kernel = km.kernel
+        kernel.gui = 'qt4'
     else:
-        from IPython.frontend.qt.kernelmanager import QtKernelManager
+        # see ipython.IPython.qt.console.qtconsoleapp.new_frontend_master()
+        from IPython.qt.manager import QtKernelManager
+        from IPython.qt.client import QtKernelClient
         km = QtKernelManager()
         km.start_kernel()
-    km.start_channels()
+        kernel = km.kernel
+        kernel.gui = 'qt4'
+        # as of IPython git 2013-07-16, this extra step is necessary to prevent
+        # "AttributeError: 'BlockingKernelClient' object has no attribute 'started_channels'":
+        km.client_factory = QtKernelClient
+    kc = km.client()
+    kc.start_channels()
 
     neuropywindow = NeuropyWindow()
     ipw = neuropywindow.ipw
     config_ipw(ipw)
     ipw.exit_requested.connect(app.quit)
     ipw.kernel_manager = km
+    ipw.kernel_client = kc
     neuropywindow.show()
 
     # execute some code directly, note the output appears at the system command line:
