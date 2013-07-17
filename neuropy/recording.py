@@ -1467,7 +1467,7 @@ class NetstateDJSHist(BaseNetstate):
         # 2D array of nids, each row is a unique combination of nbit neuron indices:
         self.nidss = np.asarray(nCrsamples(self.cs.nids, self.nbits, ngroups))
 
-        if self.MULTIPROCESS: # progress printing doesn't seem to work
+        if self.MULTIPROCESS:
             pool = mp.Pool() # init pool of worker processes:
             # pickle self, then call self.__call__ in each subprocess. Return Jensen-Shannon
             # divergences for different models and different groups of neurons:
@@ -1495,10 +1495,14 @@ class NetstateDJSHist(BaseNetstate):
             nss.calc(model=model, R=self.R, shufflecodes=self.shufflecodes,
                      algorithm=self.algorithm)
             DJS.append(core.DJS(nss.pobserved, nss.pexpected))
-        if groupi % 10 == 0:
-            print('%d' % groupi, end='')
-        else:
-            print('.', end='')
+        if not self.MULTIPROCESS:
+            # printing to stdout from multiple processes for the purpose of progress feedback
+            # doesn't work right, printouts are naturally out of order, but worse, they all
+            # happen only after all the worker processes have finished, which is useless
+            if groupi % 10 == 0:
+                print('%d' % groupi, end='')
+            else:
+                print('.', end='')
         return DJS
 
     RESULTS = ('DJSs', 'logDJSratios', 'models', 'nbits', 'ngroups', 'nidss', 'nneurons',
