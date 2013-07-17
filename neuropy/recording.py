@@ -1510,21 +1510,27 @@ class NetstateDJSHist(BaseNetstate):
 
     def save(self):
         """Save calc results to compressed .npz file, selected via Save dialog"""
-        fname = getSaveFileName(caption="Save DJSHist calc results to")
-                                #directory=defaultfname,
+        directory = os.path.expanduser(mpl.rcParams['savefig.directory'])
+        fname = getSaveFileName(caption="Save DJSHist calc results to",
+                                directory=directory)
         fname = str(fname)
         if fname:
+            head, tail = os.path.split(fname)
+            mpl.rcParams['savefig.directory'] = head # update
             kwargs = { result:self.__getattribute__(result) for result in RESULTS }
             np.savez_compressed(fname, **kwargs)
 
     def load(self):
         """Restore calc results from compressed .npz file, selected via Open dialog"""
+        directory = os.path.expanduser(mpl.rcParams['savefig.directory'])
         fname = getOpenFileName(caption="Restore DJSHist calc results from",
-                                #directory=defaultfname,
+                                directory=directory,
                                 filter="Numpy files (*.npz);;"
                                        "All files (*.*)")
         fname = str(fname)
         if fname:
+            head, tail = os.path.split(fname)
+            mpl.rcParams['savefig.directory'] = head # update
             f = np.load(fname)
             for attrib in f: # some attribs like ints become arrays, but that's OK
                 self.__setattr__(attrib, f[attrib])
