@@ -187,27 +187,20 @@ def config_ipw(ipw):
 
 def main():
     """Start kernel manager and client, create window, run app event loop,
-    auto execute some code in user namespace"""
+    auto execute some code in user namespace. A minimalist example is shown in
+    qt_ip_test.py. This is gleaned from ipython.examples.inprocess.embedded_qtconsole
+    and ipython.IPython.qt.console.qtconsoleapp.new_frontend_master()"""
     app = guisupport.get_app_qt4()
 
     if INPROCESS:
-        # see ipython.examples.inprocess.embedded_qtconsole
         from IPython.qt.inprocess import QtInProcessKernelManager
         km = QtInProcessKernelManager()
-        km.start_kernel()
-        kernel = km.kernel
-        kernel.gui = 'qt4'
     else:
-        # see ipython.IPython.qt.console.qtconsoleapp.new_frontend_master()
         from IPython.qt.manager import QtKernelManager
-        from IPython.qt.client import QtKernelClient
         km = QtKernelManager()
-        km.start_kernel()
-        kernel = km.kernel
-        kernel.gui = 'qt4'
-        # as of IPython git 2013-07-16, this extra step is necessary to prevent
-        # "AttributeError: 'BlockingKernelClient' object has no attribute 'started_channels'":
-        km.client_factory = QtKernelClient
+    km.start_kernel()
+    kernel = km.kernel
+    kernel.gui = 'qt4'
     kc = km.client()
     kc.start_channels()
 
