@@ -9,6 +9,10 @@ import StringIO
 import random
 import multiprocessing as mp
 
+from PyQt4 import QtGui
+getOpenFileName = QtGui.QFileDialog.getOpenFileName
+getSaveFileName = QtGui.QFileDialog.getSaveFileName
+
 import numpy as np
 import scipy.stats
 
@@ -1460,8 +1464,8 @@ class NetstateDJSHist(BaseNetstate):
         self.shufflecodes = shufflecodes
         self.algorithm = algorithm
 
-        # list of lists, each sublist is a unique combination of nbit neuron indices:
-        self.nidss = nCrsamples(self.cs.nids, self.nbits, ngroups)
+        # 2D array of nids, each row is a unique combination of nbit neuron indices:
+        self.nidss = np.asarray(nCrsamples(self.cs.nids, self.nbits, ngroups))
 
         if self.MULTIPROCESS: # progress printing doesn't seem to work
             pool = mp.Pool() # init pool of worker processes:
@@ -1497,6 +1501,30 @@ class NetstateDJSHist(BaseNetstate):
             print('.', end='')
         return DJS
 
+    RESULTS = ('DJSs', 'logDJSratios', 'models', 'nbits', 'ngroups', 'nidss', 'nneurons',
+               'R', 'tranges')
+
+    def save(self):
+        """Save calc results to compressed .npz file, selected via Save dialog"""
+        fname = getSaveFileName(caption="Save DJSHist calc results to")
+                                #directory=defaultfname,
+        fname = str(fname)
+        if fname:
+            kwargs = { result:self.__getattribute__(result) for result in RESULTS }
+            np.savez_compressed(fname, **kwargs)
+
+    def load(self):
+        """Restore calc results from compressed .npz file, selected via Open dialog"""
+        fname = getOpenFileName(caption="Restore DJSHist calc results from",
+                                #directory=defaultfname,
+                                filter="Numpy files (*.npz);;"
+                                       "All files (*.*)")
+        fname = str(fname)
+        if fname:
+            f = np.load(fname)
+            for attrib in f: # some attribs like ints become arrays, but that's OK
+                self.__setattr__(attrib, f[attrib])
+
     def plot(self, logrange=(-3.667, -0.333), nbins=50, logratios=True, publication=False):
         """Plots histogram DJSs in logspace, and optionally log DJS ratios"""
         try: self.nidss, self.DJSs
@@ -1526,8 +1554,9 @@ class NetstateDJSHist(BaseNetstate):
         # autoscale_view() call in bar() raises a ValueError for log scale:
         a1.set_xscale('log', basex=10)
         a1.set_xlim(xmin=10**logrange[0], xmax=10**logrange[1])
-        gcfm().window.setWindowTitle(lastcmd())
-        a1.set_title('%s' % lastcmd())
+        title = lastcmd()
+        gcfm().window.setWindowTitle(title)
+        a1.set_title('%s' % title)
         if publication:
             a1.set_xticklabels(['', '0.001', '0.01', '0.1', '']) ## TODO: terrible hack!
             a1.set_ylim(ymin=0, ymax=4)
@@ -1561,7 +1590,7 @@ class NetstateDJSHist(BaseNetstate):
             f2 = pl.figure()
             a2 = f2.add_subplot(111)
             a2.hist(self.logDJSratios, bins=nbins, color='k')
-            title = lastcmd() + '.logratio'
+            title = title + '.logratio'
             gcfm().window.setWindowTitle(title)
             a2.set_title(title)
             a2.set_ylabel('number of groups of %d cells' % self.nbits)
