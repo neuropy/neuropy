@@ -1517,7 +1517,7 @@ class NetstateDJSHist(BaseNetstate):
         if fname:
             head, tail = os.path.split(fname)
             mpl.rcParams['savefig.directory'] = head # update
-            kwargs = { result:self.__getattribute__(result) for result in RESULTS }
+            kwargs = { result:self.__getattribute__(result) for result in self.RESULTS }
             np.savez_compressed(fname, **kwargs)
 
     def load(self):
