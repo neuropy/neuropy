@@ -1511,9 +1511,11 @@ class NetstateDJSHist(BaseNetstate):
 
     def save(self):
         """Save calc results to compressed .npz file, selected via Save dialog"""
-        directory = os.path.expanduser(mpl.rcParams['savefig.directory'])
+        path = os.path.expanduser(mpl.rcParams['savefig.directory'])
+        fname = rstrip(self.title, '.plot()') + '.npz'
+        defaultfname = os.path.join(path, fname)
         fname = getSaveFileName(caption="Save DJSHist calc results to",
-                                directory=directory)
+                                directory=defaultfname)
         fname = str(fname)
         if fname:
             head, tail = os.path.split(fname)
