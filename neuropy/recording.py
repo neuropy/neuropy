@@ -1557,7 +1557,8 @@ class NetstateDJSHist(BaseNetstate):
         bars = {}
         heights = {}
         for model in self.models:
-            heights[model] = n[model] / float(self.ngroups * logbinwidth) # density
+            heights[model] = n[model] # count
+            #heights[model] = n[model] / float(self.ngroups * logbinwidth) # density
             bars[model] = a1.bar(left=x[:-1], height=heights[model], width=barwidths,
                                  color=color[model], edgecolor=color[model])
         # need to set scale of x axis AFTER bars have been plotted, otherwise
@@ -1567,24 +1568,11 @@ class NetstateDJSHist(BaseNetstate):
         title = lastcmd()
         gcfm().window.setWindowTitle(title)
         a1.set_title('%s' % title)
-        if publication:
-            a1.set_xticklabels(['', '0.001', '0.01', '0.1', '']) ## TODO: terrible hack!
-            a1.set_ylim(ymin=0, ymax=4)
-            a1.set_yticks((0, 2, 4))
-            for label in a1.get_xticklabels():
-                label.set_size(30)
-            for label in a1.get_yticklabels():
-                label.set_size(30)
-            a1.legend([ bars[model][0] for model in self.models ],
-                      ['pairwise', 'independent'], loc='upper right',
-                      # grab first bar for each model, label it with model name:
-                      prop=mpl.font_manager.FontProperties(size=20) )
-        else:
-            a1.set_xlabel('DJS (bits)')
-            #a1.set_ylabel('number of groups of %d cells' % self.nbits)
-            a1.set_ylabel('probability density (1 / log10(DJS))')
-            a1.legend([ bars[model][0] for model in self.models ],
-                      ['pairwise', 'independent'], loc='upper right')
+        a1.set_xlabel('DJS (bits)')
+        a1.set_ylabel('number of groups of %d cells' % self.nbits)
+        #a1.set_ylabel('probability density (1 / log10(DJS))')
+        a1.legend([ bars[model][0] for model in self.models ],
+                  ['pairwise', 'independent'], loc='upper right')
 
         # add stuff to top left of plot:
         a1.text(0.01, 0.99, '%s\n'
@@ -1600,6 +1588,7 @@ class NetstateDJSHist(BaseNetstate):
             f2 = pl.figure()
             a2 = f2.add_subplot(111)
             a2.hist(self.logDJSratios, bins=nbins, color='k')
+            a1.set_xlim(xmin=-1.4, xmax=0.2)
             title = title + '.logratio'
             gcfm().window.setWindowTitle(title)
             a2.set_title(title)
