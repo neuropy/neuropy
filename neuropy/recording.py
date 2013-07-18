@@ -1571,7 +1571,11 @@ class NetstateDJSHist(BaseNetstate):
         # autoscale_view() call in bar() raises a ValueError for log scale:
         a1.set_xscale('log', basex=10)
         a1.set_xlim(xmin=10**logrange[0], xmax=10**logrange[1])
-        title = lastcmd()
+        try:
+            title = self.title # saved?
+        except AttributeError:
+            title = lastcmd()
+            self.title = title # save title on first plot
         gcfm().window.setWindowTitle(title)
         a1.set_title('%s' % title)
         a1.set_xlabel('DJS (bits)')
