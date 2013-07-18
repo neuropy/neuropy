@@ -1505,8 +1505,9 @@ class NetstateDJSHist(BaseNetstate):
                 print('.', end='')
         return DJS
 
-    RESULTS = ('DJSs', 'logDJSratios', 'models', 'nbits', 'ngroups', 'nidss', 'nneurons',
-               'R', 'tranges')
+    # valuable attributes to save as results, plus their data types. None means array:
+    RESULTS = {'DJSs':None, 'logDJSratios':None, 'models':list, 'nbits':int, 'ngroups':int,
+               'nidss':None, 'nneurons':int, 'R':None, 'title':str, 'tranges':None}
 
     def save(self):
         """Save calc results to compressed .npz file, selected via Save dialog"""
@@ -1521,7 +1522,8 @@ class NetstateDJSHist(BaseNetstate):
             np.savez_compressed(fname, **kwargs)
 
     def load(self):
-        """Restore calc results from compressed .npz file, selected via Open dialog"""
+        """Restore calc results from arrays in compressed .npz file, selected via
+        Open dialog"""
         directory = os.path.expanduser(mpl.rcParams['savefig.directory'])
         fname = getOpenFileName(caption="Restore DJSHist calc results from",
                                 directory=directory,
@@ -1533,7 +1535,11 @@ class NetstateDJSHist(BaseNetstate):
             mpl.rcParams['savefig.directory'] = head # update
             f = np.load(fname)
             for attrib in f: # some attribs like ints become arrays, but that's OK
-                self.__setattr__(attrib, f[attrib])
+                value = f[attrib]
+                attribtype = self.RESULTS[attrib]
+                if attribtype: # not None
+                    value = attribtype(value) # convert from array to designated type
+                self.__setattr__(attrib, value)
 
     def plot(self, logrange=(-3.667, -0.333), nbins=50, logratios=True, publication=False):
         """Plots histogram DJSs in logspace, and optionally log DJS ratios"""
