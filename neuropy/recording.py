@@ -1580,7 +1580,7 @@ class NetstateDJSHist(BaseNetstate):
             self.title = title # save title on first plot
         gcfm().window.setWindowTitle(title)
         a1.set_title('%s' % title)
-        a1.set_xlabel('DJS (bits)')
+        a1.set_xlabel('$D_{JS}$ (bits)')
         a1.set_ylabel('number of groups of %d cells' % self.nbits)
         #a1.set_ylabel('probability density (1 / log10(DJS))')
         a1.legend([ bars[model][0] for model in self.models ],
@@ -1605,7 +1605,8 @@ class NetstateDJSHist(BaseNetstate):
             gcfm().window.setWindowTitle(title)
             a2.set_title(title)
             a2.set_ylabel('number of groups of %d cells' % self.nbits)
-            a2.set_xlabel('log10(DJS(%s) / DJS(%s))' % (self.models[1], self.models[0]))
+            a2.set_xlabel('$log_{10}(D_{JS}$(%s) / $D_{JS}$(%s))'
+                          % (self.models[1], self.models[0]))
             f2.tight_layout(pad=0.3) # crop figure to contents
 
         return self
