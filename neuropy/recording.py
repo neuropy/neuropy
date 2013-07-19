@@ -1605,7 +1605,7 @@ class NetstateDJSHist(BaseNetstate):
             f2 = pl.figure()
             a2 = f2.add_subplot(111)
             a2.hist(self.logDJSratios, bins=nbins, color='k')
-            a1.set_xlim(xmin=-1.4, xmax=0.2)
+            a2.set_xlim(xmin=-1.4, xmax=0.2)
             title = title + '.logratio'
             gcfm().window.setWindowTitle(title)
             a2.set_title(title)
