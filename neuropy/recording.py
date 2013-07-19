@@ -1548,7 +1548,7 @@ class NetstateDJSHist(BaseNetstate):
                     value = attribtype(value) # convert from array to designated type
                 self.__setattr__(attrib, value)
 
-    def plot(self, logrange=(-3.667, -0.333), nbins=50, logratios=True, publication=False):
+    def plot(self, logrange=(-4, -1), nbins=50, logratios=True, publication=False):
         """Plots histogram DJSs in logspace, and optionally log DJS ratios"""
         try: self.nidss, self.DJSs
         except AttributeError: self.calc()
