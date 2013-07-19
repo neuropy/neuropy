@@ -1506,18 +1506,23 @@ class NetstateDJSHist(BaseNetstate):
         return DJS
 
     # valuable attributes to save as results, plus their data types. None means array:
-    RESULTS = {'DJSs':None, 'logDJSratios':None, 'models':list, 'nbits':int, 'ngroups':int,
-               'nidss':None, 'nneurons':int, 'R':None, 'title':str, 'tranges':None}
+    RESULTS = {'fname':str, 'DJSs':None, 'logDJSratios':None, 'models':list, 'nbits':int,
+               'ngroups':int, 'nidss':None, 'nneurons':int, 'R':None, 'title':str,
+               'tranges':None}
 
     def save(self):
         """Save calc results to compressed .npz file, selected via Save dialog"""
-        path = os.path.expanduser(mpl.rcParams['savefig.directory'])
-        fname = rstrip(self.title, '.plot()') + '.npz'
-        defaultfname = os.path.join(path, fname)
+        try:
+            defaultfname = self.fname
+        except AttributeError:
+            path = os.path.expanduser(mpl.rcParams['savefig.directory'])
+            fname = rstrip(self.title, '.plot()') + '.npz'
+            defaultfname = os.path.join(path, fname)
         fname = getSaveFileName(caption="Save DJSHist calc results to",
                                 directory=defaultfname)
         fname = str(fname)
         if fname:
+            self.fname = fname # update self.fname so it's saved to file
             head, tail = os.path.split(fname)
             mpl.rcParams['savefig.directory'] = head # update
             kwargs = { result:self.__getattribute__(result) for result in self.RESULTS }
