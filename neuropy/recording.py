@@ -1467,7 +1467,7 @@ class NetstateDJSHist(BaseNetstate):
         # 2D array of nids, each row is a unique combination of nbit neuron indices:
         self.nidss = np.asarray(nCrsamples(self.cs.nids, self.nbits, ngroups))
 
-        if self.MULTIPROCESS:
+        if self.MULTIPROCESS and ngroups > 5:
             pool = mp.Pool() # init pool of worker processes:
             # pickle self, then call self.__call__ in each subprocess. Return Jensen-Shannon
             # divergences for different models and different groups of neurons:
