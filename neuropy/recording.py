@@ -1548,36 +1548,22 @@ class NetstateDJSHist(BaseNetstate):
                     value = attribtype(value) # convert from array to designated type
                 self.__setattr__(attrib, value)
 
-    def plot(self, logrange=(-4, -1), nbins=50, logratios=True, publication=False):
-        """Plots histogram DJSs in logspace, and optionally log DJS ratios"""
+    def plot(self, logrange=(-4, -1), nbins=25, logratios=True, publication=False):
+        """Plots histograms of log(DJSs), and optionally of log of DJS ratios"""
         try: self.nidss, self.DJSs
         except AttributeError: self.calc()
-        nedges = nbins + 1
-        x = np.logspace(start=logrange[0], stop=logrange[1], num=nedges, endpoint=True,
-                        base=10.0) # len nedges
-        n = {} # stores a list of the bin heights in a separate key for each model
-        for modeli, model in enumerate(self.models):
-            n[model] = np.histogram(self.DJSs[:, modeli], bins=x, density=False)[0] # len nbins
-        color = {'indep': 'blue', 'ising': 'red'} # maps from model name to colour
-        # each bar will have a different width, convert to list so you can append
-        barwidths = list(np.diff(x)) # len nbins
-        logbinwidth = (logrange[1]-logrange[0]) / nbins
 
-        # plot DJSs of all models on the same axes
+        # plot histogram of log(DJSs) of all models on the same axes:
         f1 = pl.figure()
         a1 = f1.add_subplot(111)
-        #a1.hold(True)
-        bars = {}
-        heights = {}
-        for model in self.models:
-            heights[model] = n[model] # count
-            #heights[model] = n[model] / float(self.ngroups * logbinwidth) # density
-            bars[model] = a1.bar(left=x[:-1], height=heights[model], width=barwidths,
-                                 color=color[model], edgecolor=color[model])
-        # need to set scale of x axis AFTER bars have been plotted, otherwise
-        # autoscale_view() call in bar() raises a ValueError for log scale:
-        a1.set_xscale('log', basex=10)
-        a1.set_xlim(xmin=10**logrange[0], xmax=10**logrange[1])
+        a1.hold(True)
+        colors = {'indep': 'blue', 'ising': 'red'} # maps from model name to colour
+        hists = {}
+        for modeli, model in enumerate(self.models):
+            color = colors[model]
+            hists[model] = a1.hist(np.log10(self.DJSs[:, modeli]), bins=nbins,
+                                   color=color, edgecolor=color, label=model)
+        a1.set_xlim(logrange)
         try:
             title = self.title # saved?
         except AttributeError:
@@ -1585,11 +1571,10 @@ class NetstateDJSHist(BaseNetstate):
             self.title = title # save title on first plot
         gcfm().window.setWindowTitle(title)
         a1.set_title('%s' % title)
-        a1.set_xlabel('$D_{JS}$ (bits)')
+        a1.set_xlabel('$log_{10}(D_{JS})$')
         a1.set_ylabel('number of groups of %d cells' % self.nbits)
         #a1.set_ylabel('probability density (1 / log10(DJS))')
-        a1.legend([ bars[model][0] for model in self.models ],
-                  ['pairwise', 'independent'], loc='upper right')
+        a1.legend(loc='upper right')
 
         # add stuff to top left of plot:
         a1.text(0.01, 0.99, '%s\n'
@@ -1600,11 +1585,11 @@ class NetstateDJSHist(BaseNetstate):
                             verticalalignment='top')
         f1.tight_layout(pad=0.3) # crop figure to contents
 
-        # plot log of DJS ratios:
+        # plot histogram of log of DJS ratios:
         if logratios and len(self.models) == 2:
             f2 = pl.figure()
             a2 = f2.add_subplot(111)
-            a2.hist(self.logDJSratios, bins=nbins, color='k')
+            a2.hist(self.logDJSratios, bins=2*nbins, color='k')
             a2.set_xlim(xmin=-1.4, xmax=0.2)
             title = title + '.logratio'
             gcfm().window.setWindowTitle(title)
