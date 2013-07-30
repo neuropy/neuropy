@@ -316,7 +316,8 @@ class BaseRecording(object):
         # might be faster:
         #scipy.signal.fftconvolve(spikehist, window, mode='same') / tressec / window.sum() / nn
 
-    def plot_mua(self, rates, t, n, figsize=(20, 6.5)):
+    def plot_mua(self, rates, t, n, ylabel="mean MUA (Hz/neuron)", ylim=None,
+                 figsize=(20, 6.5)):
         """Plot multiunit activity (all, sup, mid and deep firing rates) as a function of
         time"""
         f = pl.figure(figsize=figsize)
@@ -326,10 +327,12 @@ class BaseRecording(object):
         a.plot(t, rates[2], 'g', label='middle (%d)' % n[2])
         a.plot(t, rates[3], 'b', label='deep (%d)' % n[3])
         a.set_xlabel("time (sec)")
-        a.set_ylabel("mean MUA (Hz)")
+        a.set_ylabel(ylabel)
         # limit plot to duration of acquistion, in sec:
         t0, t1 = np.asarray(self.trange) / 1000000
         a.set_xlim(t0, t1)
+        if ylim:
+            a.set_ylim(ylim)
         #a.autoscale(axis='x', enable=True, tight=True)
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
@@ -349,8 +352,8 @@ class BaseRecording(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def cv_mua(self, width=None, tres=None, neurons=None, smooth=False, plot=True):
-        """Coefficient of variation (CV, sigma / mean) of MUA, ala Renart2010 and
+    def mua_cv(self, width=None, tres=None, neurons=None, smooth=False, plot=True):
+        """Coefficient of variation (sigma / mean) of MUA, ala Renart2010 and
         Okun2012"""
         # t is in sec:
         uns = get_ipython().user_ns
@@ -359,16 +362,21 @@ class BaseRecording(object):
         if tres == None:
             tres = uns['MUATRES'] # sec
         rates, t, n = self.mua(width=width, tres=tres, neurons=None, smooth=False, plot=False)
-        nn, nsup, nmid, ndeep = n
+        #nn, nsup, nmid, ndeep = n
         nt = len(t)
         assert nt == rates.shape[1]
-        dt = t[-1] - t[0]
+        dt = t[-1] - t[0] # total duration
         nchunks = int(dt // width) # round down
-        chunknt = int(nt // nchunks) # num timepoints per chunk
-        nt = chunknt * nchunks # new total number of timepoints, a multiple of nchunks
+        ntperchunk = int(nt // nchunks) # num timepoints per chunk
+        nt = ntperchunk * nchunks # new total number of timepoints, a multiple of nchunks
+        tis = np.arange(0, nt, ntperchunk)
+        t = t[tis]
         rates = np.asarray(np.split(rates[:, :nt], nchunks, axis=1)).T
-        # find std and mean of each row, ie each width
-        return rates.std(axis=0) / rates.mean(axis=0)
+        # find std and mean of each column, ie each width
+        CV = rates.std(axis=0) / rates.mean(axis=0)
+        if plot:
+            self.plot_mua(CV, t, n, ylabel='CV of MUA', ylim=(0, 1.5))
+        return CV, t, n
 
     def mua_si(self, smooth=False, chani=-1, ratio='L/(L+H)', figsize=(7.5, 6.5)):
         """Scatter plot multiunit activity vs LFP synchrony index"""
