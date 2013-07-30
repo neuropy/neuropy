@@ -349,6 +349,27 @@ class BaseRecording(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
+    def cv_mua(self, width=None, tres=None, neurons=None, smooth=False, plot=True):
+        """Coefficient of variation (CV, sigma / mean) of MUA, ala Renart2010 and
+        Okun2012"""
+        # t is in sec:
+        uns = get_ipython().user_ns
+        if width == None:
+            width = uns['MUAWIDTH'] # sec
+        if tres == None:
+            tres = uns['MUATRES'] # sec
+        rates, t, n = self.mua(width=width, tres=tres, neurons=None, smooth=False, plot=False)
+        nn, nsup, nmid, ndeep = n
+        nt = len(t)
+        assert nt == rates.shape[1]
+        dt = t[-1] - t[0]
+        nchunks = int(dt // width) # round down
+        chunknt = int(nt // nchunks) # num timepoints per chunk
+        nt = chunknt * nchunks # new total number of timepoints, a multiple of nchunks
+        rates = np.asarray(np.split(rates[:, :nt], nchunks, axis=1)).T
+        # find std and mean of each row, ie each width
+        return rates.std(axis=0) / rates.mean(axis=0)
+
     def mua_si(self, smooth=False, chani=-1, ratio='L/(L+H)', figsize=(7.5, 6.5)):
         """Scatter plot multiunit activity vs LFP synchrony index"""
         mua, muat, n = self.mua(smooth=smooth, plot=False)
