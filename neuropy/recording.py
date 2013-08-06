@@ -352,21 +352,21 @@ class BaseRecording(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def mua_cv(self, width=None, tres=None, neurons=None, smooth=False, plot=True):
+    def mua_cv(self, cvwidth=30, width=0.5, tres=0.5, neurons=None, smooth=False, plot=True):
         """Coefficient of variation (sigma / mean) of MUA, ala Renart2010 and
         Okun2012"""
-        # t is in sec:
         uns = get_ipython().user_ns
         if width == None:
             width = uns['MUAWIDTH'] # sec
         if tres == None:
             tres = uns['MUATRES'] # sec
+        # t is in sec:
         rates, t, n = self.mua(width=width, tres=tres, neurons=None, smooth=False, plot=False)
         #nn, nsup, nmid, ndeep = n
         nt = len(t)
         assert nt == rates.shape[1]
         dt = t[-1] - t[0] # total duration
-        nchunks = int(dt // width) # round down
+        nchunks = int(dt // cvwidth) # round down
         ntperchunk = int(nt // nchunks) # num timepoints per chunk
         nt = ntperchunk * nchunks # new total number of timepoints, a multiple of nchunks
         tis = np.arange(0, nt, ntperchunk)
@@ -375,7 +375,8 @@ class BaseRecording(object):
         # find std and mean of each column, ie each width
         CV = rates.std(axis=0) / rates.mean(axis=0)
         if plot:
-            self.plot_mua(CV, t, n, ylabel='CV of MUA', ylim=(0, 1.5))
+            ylim = None #(0, 1.5)
+            self.plot_mua(CV, t, n, ylabel='CV of MUA', ylim=ylim)
         return CV, t, n
 
     def mua_si(self, smooth=False, chani=-1, ratio='L/(L+H)', figsize=(7.5, 6.5)):
