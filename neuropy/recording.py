@@ -352,7 +352,7 @@ class BaseRecording(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def mua_cv(self, cvwidth=30, width=0.5, tres=0.5, neurons=None, smooth=False, plot=True):
+    def mua_cv(self, cvwidth=10, width=0.1, tres=0.1, neurons=None, smooth=False, plot=True):
         """Coefficient of variation (sigma / mean) of MUA, ala Renart2010 and
         Okun2012"""
         uns = get_ipython().user_ns
@@ -361,7 +361,8 @@ class BaseRecording(object):
         if tres == None:
             tres = uns['MUATRES'] # sec
         # t is in sec:
-        rates, t, n = self.mua(width=width, tres=tres, neurons=None, smooth=False, plot=False)
+        rates, t, n = self.mua(width=width, tres=tres, neurons=neurons, smooth=smooth,
+                               plot=False)
         #nn, nsup, nmid, ndeep = n
         nt = len(t)
         assert nt == rates.shape[1]
@@ -373,7 +374,9 @@ class BaseRecording(object):
         t = t[tis]
         rates = np.asarray(np.split(rates[:, :nt], nchunks, axis=1)).T
         # find std and mean of each column, ie each width
-        CV = rates.std(axis=0) / rates.mean(axis=0)
+        mean = rates.mean(axis=0)
+        mean[mean == 0.0] = np.inf # replace 0s with inf, which will give 0 CV
+        CV = rates.std(axis=0) / mean
         if plot:
             ylim = None #(0, 1.5)
             self.plot_mua(CV, t, n, ylabel='CV of MUA', ylim=ylim)
