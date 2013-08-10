@@ -382,9 +382,18 @@ class BaseRecording(object):
             self.plot_mua(CV, t, n, ylabel='CV of MUA', ylim=ylim)
         return CV, t, n
 
-    def mua_si(self, smooth=False, chani=-1, ratio='L/(L+H)', figsize=(7.5, 6.5)):
+    def cv_si(self, smooth=False, chani=-1, ratio='L/(L+H)', figsize=(7.5, 6.5)):
+        """Scatter plot MUA CV vs LFP SI"""
+        self.mua_si(cv=True, smooth=smooth, chani=chani, ratio=ratio, figsize=figsize)
+
+    def mua_si(self, cv=False, smooth=False, chani=-1, ratio='L/(L+H)', figsize=(7.5, 6.5)):
         """Scatter plot multiunit activity vs LFP synchrony index"""
-        mua, muat, n = self.mua(smooth=smooth, plot=False)
+        if cv: # mua and muat will refer to CV of MUA, not MUA itself
+            mua, muat, n = self.mua_cv(smooth=smooth, plot=False)
+            ylabel = 'CV of MUA'
+        else:
+            mua, muat, n = self.mua(smooth=smooth, plot=False)
+            ylabel = 'mean MUA (Hz)'
         si, sit = self.lfp.si(chani=chani, ratio=ratio, plot=False)
         # get common time resolution:
         if len(sit) > len(muat):
@@ -432,7 +441,7 @@ class BaseRecording(object):
         a.set_ylim(ylim)
         #a.autoscale(enable=True, axis='y', tight=True)
         a.set_xlabel("LFP synchrony index (%s)" % ratio)
-        a.set_ylabel("mean MUA (Hz)")
+        a.set_ylabel(ylabel)
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
