@@ -1845,7 +1845,8 @@ class SpikeCorr(object):
 
     def si(self, method='weighted mean', inclusive=False, chani=-1, ratio='L/(L+H)',
            lowband=None, highband=None, sirange=None, figsize=(7.5, 6.5), plot=True):
-        """Scatter plot spike correlations vs LFP synchrony index"""
+        """Scatter plot spike correlations vs LFP synchrony index, using the same
+        time base for both"""
         t0 = time.time()
         # ct are center timepoints:
         corrs, npairs, ct, ylabel = self.sct(method=method, inclusive=inclusive)
@@ -1855,7 +1856,8 @@ class SpikeCorr(object):
                                 width=self.width/1e6, tres=self.tres/1e6,
                                 ratio=ratio, plot=False) # sit are also center timepoints
         print('SI(t) calc took %.3f sec' % (time.time()-t0))
-        # get common time resolution, si typically has finer temporal resolution than corrs:
+        print('len(sit) = %d, len(ct) = %d' % (len(sit), len(ct)))
+        # get common time resolution:
         if len(sit) > len(ct):
             siti = sit.searchsorted(ct)
             sitii = siti < len(sit) # prevent right side out of bounds indices into si
