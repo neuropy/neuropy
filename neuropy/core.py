@@ -1788,6 +1788,8 @@ class SpikeCorr(object):
                 corrs = corrs.min(axis=0)
             elif method == 'all':
                 corrs = corrs.T # need transpose for some reason when plotting multiple traces
+            else:
+                raise ValueError("unknown method %r" % method)
             laminarcorrs.append(corrs)
             laminarnpairs.append(npairs)
         laminarcorrs = np.vstack(laminarcorrs)
