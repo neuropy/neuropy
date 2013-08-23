@@ -29,6 +29,8 @@ np.seterr(all='raise', under='ignore') # raise all except float underflow
 import scipy.signal
 from scipy.special import cbrt # real cube root
 import scipy.stats
+from scipy.spatial.distance import pdist#, squareform
+
 
 import matplotlib as mpl
 import matplotlib.cm
@@ -785,7 +787,7 @@ class DensePopulationRaster(object):
         a = f.add_subplot(111)
         a.scatter(t, y, marker='|', c=c, s=50)
         a.set_xlim(trange/tx)
-        a.set_ylim(nn, -1) # this inverts the y axis
+        a.set_ylim(nn, -1) # invert the y axis
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
@@ -1742,6 +1744,68 @@ class SpikeCorr(object):
                  handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
+        return self
+
+    def pos(self, maxsep=150, figsize=(7.5, 6.5)):
+        """Plot spike corrs between cells that fall within a threshold separation
+        distance maxsep of each other, as a function of position down length of probe"""
+        self.calc()
+        assert len(np.unique(self.pairs)) == len(self.nids) # sanity check
+        n = self.r.n
+        # use just y position of each neuron:
+        pos = np.array([n[nid].pos[1] for nid in self.nids]) # nneurons position array (um)
+        pos.shape = -1, 1 # make it 2D for pdist
+        sep = pdist(pos) # 1D vector form, requires pairwise combinatorial indexing
+        #sep = squareform(sep) # matrix form, with simple 2D indexing
+        
+        # keep only those pairs within maxsep separation:
+        pairis = sep <= maxsep # boolean array
+        pairs = self.pairs[pairis]
+        sep = sep[pairis] # keep only the relevant pair separation values
+        npairs = len(pairs)
+        pairpos = np.zeros((npairs, 2))
+        for pairi, pair in enumerate(pairs):
+            nid0, nid1 = pair
+            pairpos[pairi] = np.mean([pos[nid0], pos[nid1]], axis=0) # mean position of pair
+        corrs = self.corrs[pairis]
+        
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        ypos = pairpos[:, 1]
+        # this is only useful when connecting the dots using plot():
+        '''
+        sortis = ypos.argsort()
+        ypos = ypos[sortis]
+        corrs = corrs[sortis]
+        sep = sep[sortis]
+        '''
+        # scatter plot corrs vs ypos, black=0 um separation, white=sep um separation,
+        # could also use cmap=mpl.cm.jet_r instead:
+        a.scatter(ypos, corrs, c=sep, vmin=0, vmax=maxsep, cmap=mpl.cm.gray,
+                  marker='.', s=100, lw=0.5)
+
+        minpos = min(self.r.chanpos[:, 1])
+        maxpos = max(self.r.chanpos[:, 1])
+        a.set_xlim((minpos, maxpos))
+        ymin, ymax = a.get_ylim()
+        ymin = min(ymin, -0.05) # set to no more than this
+        ymax = max(ymax, 0.3) # set to no less than this
+        a.set_ylim((ymin, ymax))
+
+        a.set_xlabel("vertical pair position (um)")
+        a.set_ylabel("spike correlation")
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        a.set_title(titlestr)
+
+        a.text(0.99, 0.99, '%s\n'
+                           'npairs = %d\n'
+                           'maxsep = %d'
+               % (self.r.name, npairs, maxsep), color='k', transform=a.transAxes,
+               horizontalalignment='right', verticalalignment='top')
+        f.tight_layout(pad=0.3) # crop figure to contents
+        self.f = f
+        #return ypos, corrs
         return self
 
     def sct(self, method='weighted mean', inclusive=False):
