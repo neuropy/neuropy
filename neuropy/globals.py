@@ -58,12 +58,12 @@ MIDRANGE = 500, 700 # um
 DEEPRANGE = 700, 2000 # um
 
 """IDs of blankscreen recordings"""
-BLANKRIDS = {'ptc15.tr7c': ['87']
+BLANKRIDS = {'ptc15.tr7c': ['87'],
              'ptc22.tr1': ['07', '09', '11', '21'],
              'ptc22.tr2': ['27', '32', '36'],
             }
 """IDs of msequence recordings"""
-MSEQRIDS = {'ptc15.tr7c': ['70', '81', '91', '92', '94']
+MSEQRIDS = {'ptc15.tr7c': ['70', '81', '91', '92', '94'],
             'ptc22.tr1': ['04', '17'],
             'ptc22.tr2': ['26', '34'],
            }
@@ -73,7 +73,7 @@ MOVRIDS = {'ptc15.tr7c': ['76', '96'],
            'ptc22.tr2': ['28', '33'],
           }
 """IDs of drift bar recordings"""
-DRIFTRIDS = {'ptc15.tr7c': ['71', '82']
+DRIFTRIDS = {'ptc15.tr7c': ['71', '82'],
              'ptc22.tr1': ['03', '18'],
              'ptc22.tr2': ['25', '31'],
             }
