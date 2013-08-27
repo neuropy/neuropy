@@ -208,11 +208,11 @@ class Track(object):
             rids.sort()
         for rid in rids:
             r = self.r[rid]
-            r.pospdf(neurons=neurons, dim=dim, nbins=nbins, a=a, stats=False, figsize=figsize)
+            r.pospdf(neurons=neurons, dim=dim, nbins=nbins, stats=False, a=a, figsize=figsize)
 
         return a
 
-    def pospdf(self, neurons=None, dim='y', nbins=10, a=None, stats=False, figsize=(7.5, 6.5)):
+    def pospdf(self, neurons=None, dim='y', nbins=10, stats=False, a=None, figsize=(7.5, 6.5)):
         """Plot PDF of cell positions ('x' or 'y') along the polytrode
         to get an idea of how cells are distributed in space"""
         if neurons == 'all':
