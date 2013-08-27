@@ -1,5 +1,9 @@
 TODO:
 
+- add NVS's spikespecgram and stlfp
+
+- switch to PySide, or at least PyQt4 API 2.
+
 - add experiment.rastertrials, make recording.rastertrials call rec.e[0].rastertrials
 - add sc.trials: sc(t) averaged over trials, timelocked to start of each trial, include laminarity
 - add mua_trials
