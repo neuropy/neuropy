@@ -5,6 +5,29 @@ from __future__ import print_function
 
 __authors__ = ['Martin Spacek']
 
+def disable(*modules):
+    """ Simulate the non-existance of modules, taken from:
+    https://gist.github.com/ChrisBeaumont/5048768
+ 
+    :param modules: One or more modules to mock-uninstall, for the rest of the
+                    process
+    """
+    class ID(object):
+        def __init__(self, modules):
+            self.forbidden = modules
+        def find_module(self, mod_name, pth):
+            if mod_name in self.forbidden:
+                return self
+        def load_module(self, mod_name):
+            raise ImportError("forbidden")
+ 
+    id = ID(modules)
+    import sys
+    sys.meta_path.append(id)
+
+# in case PySide is installed, hide it to prevent conflicts between it and PyQt4 in IPython:
+disable('PySide')
+
 import os
 import sys
 import platform
