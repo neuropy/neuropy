@@ -653,7 +653,7 @@ class RevCorrs(object):
             if normed: # either 'global' or True
                 if normed == True: # normalize across the timepoints for this Neuron
                     vmin, vmax = rf.min(), rf.max()
-                norm = mpl.colors.normalize(vmin=vmin, vmax=vmax, clip=True)
+                norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
                 rf = norm(rf) # normalize the rf the same way across all timepoints
             else: # don't normalize across timepoints, leave each one to autoscale
                 for ti in range(self.nt):
