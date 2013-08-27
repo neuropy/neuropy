@@ -57,6 +57,12 @@ SUPRANGE = 0, 500 # um
 MIDRANGE = 500, 700 # um
 DEEPRANGE = 700, 2000 # um
 
+"""Track-specific superficial, middle and deep layer ranges (um), inferred from
+track.pospdf and sc.pos"""
+LAYERS = {'ptc15.tr7c': [(0, 900), (900, 1100), (1100, 2000)],
+          'ptc22.tr1':  [(0, 500), (500,  700), ( 700, 2000)],
+          'ptc22.tr2':  [(0, 550), (550,  700), ( 700, 2000)],
+         }
 """IDs of blankscreen recordings"""
 BLANKRIDS = {'ptc15.tr7c': ['87'],
              'ptc22.tr1': ['07', '09', '11', '21'],
