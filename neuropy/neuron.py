@@ -114,13 +114,18 @@ class NeuronBasics(object):
         # this is what we're trying to do:
         return self.spikes[ (self.spikes >= tstart) & (self.spikes <= tend) ]
         self.searchsorted(values) method does it faster. It returns an index where
-        the value would fit in self. The index is such that self[index-1] < value <= self[index].
+        the value would fit in self. The index is such that self[index-1] < value <=
+        self[index].
         In this formula self[self.size]=inf and self[-1]= -inf
         Another possibility could be to use a masked array instead?
         '''
-        lo, hi = self.spikes.searchsorted([tstart, tend]) # returns indices where tstart and tend would fit in spikes
-        if tend == self.spikes[min(hi, self.nspikes-1)]: # if tend matches a spike (protect from going out of index bounds when checking)
-            hi += 1 # inc to include a spike if it happens to exactly equal tend. This gives us end inclusion
+        # indices where tstart and tend would fit in spikes:
+        lo, hi = self.spikes.searchsorted([tstart, tend])
+        if tend == self.spikes[min(hi, self.nspikes-1)]:
+            # if tend matches a spike (protect from going out of index bounds when
+            # checking), inc to include a spike if it happens to exactly equal tend.
+            # This gives us end inclusion:
+            hi += 1
             hi = min(hi, self.nspikes) # limit hi to max slice index (==max value index + 1)
         cutspikes = self.spikes[lo:hi] # slice it
         return cutspikes
@@ -353,8 +358,10 @@ class BaseRate(object):
     def __eq__(self, other):
         selfd = self.__dict__.copy()
         otherd = other.__dict__.copy()
-        # Delete their r and t attribs, if they exist, to prevent comparing them below, since those attribs may not have yet been calculated
-        [ d.__delitem__(key) for d in [selfd, otherd] for key in ['r', 't', 'rawr', 'rawt'] if d.has_key(key) ]
+        # Delete their r and t attribs, if they exist, to prevent comparing them below,
+        # since those attribs may not have yet been calculated:
+        [ d.__delitem__(key) for d in [selfd, otherd]
+          for key in ['r', 't', 'rawr', 'rawt'] if d.has_key(key) ]
         if type(self) == type(other) and selfd == otherd:
             return True
         else:
@@ -394,7 +401,8 @@ class BinRate(BaseRate):
 
 
 class nISIRate(BaseRate):
-    """Uses nisi inter spike intervals to calculate firing rate, with a fixed number of spikes nisi+1 per bin. nisi == 1 is the ISI rate"""
+    """Uses nisi inter spike intervals to calculate firing rate, with a fixed number of
+    spikes nisi+1 per bin. nisi == 1 is the ISI rate"""
     def __init__(self, neuron=None, trange=None, nisi=3, tres=50000, interp='sah'):
         super(nISIRate, self).__init__(neuron=neuron, trange=trange)
         self.kind = 'nisi'
@@ -406,19 +414,26 @@ class nISIRate(BaseRate):
         s = self.neuron.cut(self.trange) # spike times
         #n0 = self.n-1 # 0-based n
         # compare s to a shifted version of itself:
-        diff = s[self.nisi::] - s[:-self.nisi:] # (n0 to end, single steps) - (beginning to n0 from end, single steps)
+        # (n0 to end, single steps) - (beginning to n0 from end, single steps):
+        diff = s[self.nisi::] - s[:-self.nisi:]
         r = float(self.nisi+1) / diff * 1000000 # spikes/sec
-        t = s[self.nisi::] # for the corresponding timepoints, pick the spike time at the end of the group of n spikes to keep it causal
+        # for the corresponding timepoints, pick the spike time at the end of the group
+        # of n spikes to keep it causal:
+        t = s[self.nisi::]
         #self.rawr = r
         #self.rawt = t
         if not self.interp:
             self.t = t
             self.r = r
             return
-        # make the start of our interpolated timepoints be an even multiple of self.tres. Round down to the nearest multiple. This way, the timepoints will line up, even if different Rates have different starting points, like neuron.rate() vs experiment.rate()
+        # make the start of our interpolated timepoints be an even multiple of self.tres.
+        # Round down to the nearest multiple. This way, the timepoints will line up, even if
+        # different Rates have different starting points, like neuron.rate() vs
+        # experiment.rate():
         tstart = t[0] - (t[0] % self.tres)
         # should we have tend = t[-1] + self.tres ?
-        self.t = np.arange(tstart, t[-1], self.tres) # new set of timepoints to interpolate over
+        # new set of timepoints to interpolate over:
+        self.t = np.arange(tstart, t[-1], self.tres)
         if self.interp == 'sah':
             self.r = sah(t, r, self.t, keep=False)
         elif self.interp == 'linear':
@@ -451,10 +466,13 @@ class IDPRate(BaseRate):
 
         # Step 1: find sudden changes in ISI distribution
         Is = self.neuron.isi() # intervals
-        # y=gdtrc(a,b,x) returns the integral from x to infinity of the gamma probability density function.  SEE gdtr, gdtri
+        # y=gdtrc(a,b,x) returns the integral from x to infinity of the gamma probability
+        # density function. See gdtr, gdtri
         b = IDP_a
-        increaseOnsets = [] # stores the interval indices of significant sudden increases in ISI rate
-        decreaseOnsets = [] # stores the interval indices of significant sudden decreases in ISI rate
+        # stores the interval indices of significant sudden increases in ISI rate:
+        increaseOnsets = []
+        # stores the interval indices of significant sudden decreases in ISI rate:
+        decreaseOnsets = []
         for (n,I) in enumerate(Is):
             try:
                 IDP_mu = Is(n+1) # the next interval
@@ -463,7 +481,8 @@ class IDPRate(BaseRate):
                 IDP_mu = Is(n+2) # the interval after that
                 a = IDP_a / float(IDP_mu)
                 p2 = gdtrc(a,b,I) # integrate from I to infinity
-                if p1 < pthresh and p2 < pthresh: # then this nth interval was a sudden increase in ISI firing rate
+                if p1 < pthresh and p2 < pthresh:
+                    # then this nth interval was a sudden increase in ISI firing rate
                     inreaseOnsets.append(n)
             except IndexError:
                 pass
@@ -474,7 +493,8 @@ class IDPRate(BaseRate):
                 IDP_mu = Is(n-2) # the interval before that
                 a = IDP_a / float(IDP_mu)
                 p2 = gdtrc(a,b,I) # integrate from I to infinity
-                if p1 < pthresh and p2 < pthresh: # then this nth interval was a sudden increase in ISI firing rate
+                if p1 < pthresh and p2 < pthresh:
+                    # then this nth interval was a sudden increase in ISI firing rate
                     dereaseOnsets.append(n)
             except IndexError:
                 pass
@@ -482,10 +502,12 @@ class IDPRate(BaseRate):
         print('IDPRATE IS INCOMPLETE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         raise NotImplementedError
 
-        # Step 2: extend back half an ISI from sudden rate increase, and forward half an ISI from sudden rate decrease
+        # Step 2: extend back half an ISI from sudden rate increase, and forward half an ISI
+        # from sudden rate decrease
 
         # Step 3: sample our new ISI rate with extended intervals with sufficient resolution
-        isi = self.neuron.rate(kind='nisi', nisi=1, interp=None) # ISI rate object with with no interpolation
+        # ISI rate object with with no interpolation:
+        isi = self.neuron.rate(kind='nisi', nisi=1, interp=None)
         isi.r
         isi.t
         isi = sah(isi)
@@ -558,11 +580,14 @@ class RatePDF(object):
             for i, r in enumerate(safe):
                 if r == 0:
                     safe[i] = 0.1 # set to 0.1 Hz
-            self.logrrange = log10(tuple(safe)) # convert back to tuple, is now safe to take log
+            # convert back to tuple, is now safe to take log:
+            self.logrrange = log10(tuple(safe))
             # r sequence demarcates left rate bin edges
-            r = np.logspace(start=self.logrrange[0], stop=self.logrrange[1], num=self.nbins, endpoint=True, base=10.0)
+            r = np.logspace(start=self.logrrange[0], stop=self.logrrange[1], num=self.nbins,
+                            endpoint=True, base=10.0)
         elif self.scale == 'linear':
-            r = np.linspace(start=self.rrange[0], stop=self.rrange[1], num=self.nbins, endpoint=True)
+            r = np.linspace(start=self.rrange[0], stop=self.rrange[1], num=self.nbins,
+                            endpoint=True)
         else:
             raise ValueError('unknown scale: %r' % scale)
         self.n, self.r = np.histogram(self.rate.r, bins=r, density=self.density)
@@ -570,17 +595,21 @@ class RatePDF(object):
     def plot(self):
         pl.figure()
         if self.scale == 'log':
-            barwidth = list(diff(self.r)) # each bar will have a different width, convert to list so you can append
+            # each bar will have a different width, convert to list so you can append:
+            barwidth = list(diff(self.r))
             # need to add one more entry to barwidth to the end to get nbins of them:
             #barwidth.append(barwidth[-1]) # not exactly correct
             logbinwidth = (self.logrrange[1]-self.logrrange[0]) / float(self.nbins)
-            barwidth.append(10**(self.logrrange[1]+logbinwidth) - self.r[-1]) # should be exactly correct
+            # should be exactly correct:
+            barwidth.append(10**(self.logrrange[1]+logbinwidth) - self.r[-1])
         elif self.scale == 'linear':
             barwidth = (self.rrange[1]-self.rrange[0]) / float(self.nbins)
         else:
             raise ValueError('unknown scale: %r' % scale)
         pl.bar(left=self.r, height=self.n, width=barwidth)
-        pl.axes().set_xscale(self.scale, basex=10) # need to set scale of x axis AFTER bars have been plotted, otherwise autoscale_view() call in bar() raises a ValueError for log scale
+        # need to set scale of x axis AFTER bars have been plotted, otherwise
+        # autoscale_view() call in bar() raises a ValueError for log scale:
+        pl.axes().set_xscale(self.scale, basex=10)
         title('neuron %d - %s spike rate PDF' % (self.neuron.id, self.rate.kind))
         if self.density:
             pl.ylabel('probability density')
@@ -613,7 +642,9 @@ class NeuronRate(object):
             raise ValueError('unknown kind: %r' % self.kind)
         for rate in self._rates:
             if ro == rate: # need to define special == method for class Rate()
-                return rate # returns the first Rate object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._rates
+                # return the first Rate object whose attributes match what's desired,
+                # this saves on calc() time and avoids duplicates in self._rates:
+                return rate
         ro.calc() # no matching Rate was found, calculate it
         self._rates.append(ro) # add it to the Rate object list
         return ro
@@ -635,7 +666,9 @@ class NeuronRate(object):
         rpdf = RatePDF(neuron=self, **kwargs)
         for ratepdf in self._ratepdfs:
             if rpdf == ratepdf: # need to define special == method for class RatePDF()
-                return ratepdf # returns the first RatePDF object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._ratepdfs
+                # returns the first RatePDF object whose attributes match what's desired,
+                # this saves on calc() time and avoids duplicates in self._ratepdfs:
+                return ratepdf
         rpdf.calc() # no matching RatePDF object was found, calculate it
         self._ratepdfs.append(rpdf) # add it to the RatePDF object list
         return rpdf
@@ -698,7 +731,7 @@ class RevCorr(object):
         #self.din = self.experiment.din[rcdini, 1] # get the din (frame indices) at the rcdini
 
     def plot(self, interp='nearest', normed=True, title='RevCorrWindow', scale=2.0):
-        """Plots the spatiotemporal RF as bitmaps in a wx.Frame"""
+        """Plot the spatiotemporal RF as bitmaps in a custom (non MPL) Qt window"""
         # create a copy to manipulate for display purposes, (nt, width, height):
         rf = self.rf.copy()
         if normed: # normalize across the timepoints for this RevCorr
@@ -785,7 +818,8 @@ class NeuronRevCorr(object):
             self._stas
         except AttributeError: # self._stas doesn't exist yet
             self._stas = [] # create a list that'll hold STA objects
-        if experiment == None: # no Experiment was passed, use the first experiment this Neuron was involved in
+        if experiment == None:
+            # no Experiment was passed, use first experiment this Neuron was involved in:
             experiment = self.sort.r.e[0]
         else:
             if type(experiment) == int:
@@ -796,7 +830,10 @@ class NeuronRevCorr(object):
         for sta in self._stas:
             if stao == sta: # need to define special == method for RevCorr class
                 if sta.done:
-                    return sta # returns the first STA object whose attributes match what's desired, and whose calculation done flag is set. This saves on calc() time and avoids wasting memory with unnecessary sta objects
+                    # return the first STA object whose attributes match what's desired, and
+                    # whose calculation done flag is set. This saves on calc() time and
+                    # avoids wasting memory with unnecessary sta objects:
+                    return sta
                 else:
                     sta.calc() # re-run its calc()
                     return sta
@@ -813,7 +850,8 @@ class NeuronRevCorr(object):
             self._stcs
         except AttributeError: # self._stcs doesn't exist yet
             self._stcs = [] # create a list that'll hold STC objects
-        if experiment == None: # no Experiment was passed, use the first experiment this Neuron was involved in
+        if experiment == None:
+            # no Experiment was passed, use first experiment this Neuron was involved in:
             experiment = self.sort.r.e[0]
         else:
             try: # assume experiment is an Experiment id, get the associated object
@@ -823,7 +861,9 @@ class NeuronRevCorr(object):
         stco = STC(neuron=self, experiment=experiment, **kwargs) # init a new STC object
         for stc in self._stcs:
             if stco == stc: # need to define special == method for class STC
-                return stc # returns the first STC object whose attributes match what's desired. This saves on calc() time and avoids duplicates in self._stcs
+                # return the first STC object whose attributes match what's desired.
+                # This saves on calc() time and avoids duplicates in self._stcs:
+                return stc
         stco.calc() # no matching STC was found, calculate it
         self._stcs.append(stco) # add it to the STC object list
         return stco
