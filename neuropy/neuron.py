@@ -102,75 +102,13 @@ class BaseNeuron(object):
 
 class NeuronBasics(object):
     """Mix-in class that defines basic Neuron methods"""
-    def cut(self, *args):
-        """Returns a view of the Neuron's spike times where tstart <= spikes <= tend
-        *args can be: nothing (returns all spikes), None, tstart, or (tstart, tend)
-        None and 0 for tstart are shorthand for 'from first spike'
-        None and -1 for tend are shorthand for 'to last spike'"""
-        print("WARNING: Neuron.cut should be deprecated, use spikes.searchsorted "
-              "directly instead")
-        tstart, tend = self._parse_cutargs(*args)
-        '''
-        # this is what we're trying to do:
-        return self.spikes[ (self.spikes >= tstart) & (self.spikes <= tend) ]
-        self.searchsorted(values) method does it faster. It returns an index where
-        the value would fit in self. The index is such that self[index-1] < value <=
-        self[index].
-        In this formula self[self.size]=inf and self[-1]= -inf
-        Another possibility could be to use a masked array instead?
-        '''
-        # indices where tstart and tend would fit in spikes:
-        lo, hi = self.spikes.searchsorted([tstart, tend])
-        if tend == self.spikes[min(hi, self.nspikes-1)]:
-            # if tend matches a spike (protect from going out of index bounds when
-            # checking), inc to include a spike if it happens to exactly equal tend.
-            # This gives us end inclusion:
-            hi += 1
-            hi = min(hi, self.nspikes) # limit hi to max slice index (==max value index + 1)
-        cutspikes = self.spikes[lo:hi] # slice it
-        return cutspikes
-
-    def cutrel(self, *args):
-        """Cuts Neuron spike times and returns them relative to tstart"""
-        print("WARNING: Neuron.cutrel should be deprecated, use spikes.searchsorted "
-              "directly instead")
-        tstart, tend = self._parse_cutargs(*args)
-        cutspikes = self.cut(tstart, tend)
-        # let's keep all the returned spikes as integers, us is more than accurate enough
-        tstart = np.int64(round(tstart))
-        return cutspikes - tstart
-
-    def _parse_cutargs(self, *args):
-        """Takes set of args as passed to cut or cutrel and returns (tstart, tend)"""
-        print("WARNING: Neuron._parse_cutargs should be deprecated, use spikes.searchsorted "
-              "directly instead")
-        tstart = None
-        tend = None
-        if len(args) == 0: # passed nothing
-            pass
-        elif len(args) == 1: # passed None, or just tstart, or a (tstart, tend) sequence
-            if not iterable(args[0]):
-                if args[0] == None:
-                    pass
-                else: # just tstart was passed
-                    tstart = args[0]
-            elif len(args[0]) == 2: # it's a sequence
-                tstart = args[0][0]
-                tend = args[0][1]
-            else:
-                raise ValueError('sequence is too long')
-        elif len(args) == 2: # passed tstart and tend as separate args
-            tstart = args[0]
-            tend = args[1]
-        else:
-            raise ValueError('too many arguments')
-        if tstart in [None, 0]:
-            # shorthand for "from first spike" - would be problematic if a spike existed at t=0
-            tstart = self.spikes[0]
-        if tend in [None, -1]:
-            # shorthand for "to last spike" - would be problematic if a spike existed at t=-1
-            tend = self.spikes[-1]
-        return (tstart, tend)
+    def cut(self, trange):
+        """Return spike times that fall within trange (in us), edge inclusive"""
+        t0, t1 = trange
+        assert t0 < t1
+        lo = self.spikes.searchsorted(t0, side='left') # left is the default: start inclusive
+        hi = self.spikes.searchsorted(t1, side='right') # end inclusive
+        return self.spikes[lo:hi] # slice it
 
     def copy(self):
         """Returns a copy of the Neuron"""
@@ -178,7 +116,11 @@ class NeuronBasics(object):
 
     def isi(self, trange=None):
         """Returns the inter-spike intervals of the Neuron's spike train in trange"""
-        return diff(self.cut(trange))
+        if trange == None:
+            spikes = self.spikes # all of them
+        else:
+            spikes = self.cut(trange)
+        return diff(spikes)
 
     def iisii(self, trange=None):
         """Returns the inter-ISI intervals (the differences between consecutive ISIs)
