@@ -886,7 +886,8 @@ class SpatialPopulationRaster(object):
         self.f.canvas.mpl_connect('key_press_event', self._onkeypress)
 
         if event.inaxes: # if mouse is inside the axes
-            nii = int(math.floor(event.ydata)) # use ydata to get index into sorted list of neurons
+            # use ydata to get index into sorted list of neurons:
+            nii = int(math.floor(event.ydata))
             ni = self.nids[nii]
             neuron = self.neurons[ni]
             currentexp = None
@@ -896,7 +897,8 @@ class SpatialPopulationRaster(object):
                 if estart < event.xdata  < eend:
                     currentexp = e
                     break # don't need to check any of the other experiments
-            tip = 't: %.3f ms\n' % event.xdata # print timepoint down to nearest us, in units of ms
+            # print timepoint down to nearest us, in units of ms:
+            tip = 't: %.3f ms\n' % event.xdata
             tip += 'n%d: %d spikes' % (neuron.id, neuron.nspikes)
             if currentexp == None:
                 tip += '\nno experiment'
@@ -911,7 +913,8 @@ class SpatialPopulationRaster(object):
         """Called during a figure keypress"""
         key = event.guiEvent.GetKeyCode() # wx dependent
         #print(key)
-        # you can also just use the backend-neutral event.key, but that doesn't recognize as many keypresses, like pgup, pgdn, etc.
+        # could also just use the backend-neutral event.key, but that doesn't recognize
+        # as many keypresses, like pgup, pgdn, etc.
         if not event.guiEvent.ControlDown(): # Ctrl key isn't down, wx dependent
             if key == wx.WXK_RIGHT: # pan right
                 self._panx(+0.1)
@@ -930,11 +933,13 @@ class SpatialPopulationRaster(object):
             elif key == wx.WXK_END: # go to end of last Experiment
                 self._panx(left=self.experimentmarkers[-1]-self.width)
             elif key == ord('['): # skip backwards to previous jump point
-                i = self.jumpts.searchsorted(self.left, side='left') # current position of left edge of the window in jumpts list
+                # current position of left edge of the window in jumpts list:
+                i = self.jumpts.searchsorted(self.left, side='left')
                 i = max(0, i-1) # decrement by 1, do bounds checking
                 self._panx(left=self.jumpts[i])
             elif key == ord(']'): # skip forwards to next jump point
-                i = self.jumpts.searchsorted(self.left, side='right') # current position of left edge of the window in jumpts list
+                # current position of left edge of the window in jumpts list:
+                i = self.jumpts.searchsorted(self.left, side='right')
                 i = min(i, len(self.jumpts)-1) # bounds checking
                 self._panx(left=self.jumpts[i])
             elif key == wx.WXK_RETURN: # go to position
@@ -945,11 +950,13 @@ class SpatialPopulationRaster(object):
                 self._togglebinedges()
         else: # Ctrl key is down
             if key == wx.WXK_LEFT: # skip backwards to previous experiment marker
-                i = self.experimentmarkers.searchsorted(self.left, side='left') # current position of left edge of the window in experimentmarkers list
+                # current position of left edge of the window in experimentmarkers list:
+                i = self.experimentmarkers.searchsorted(self.left, side='left')
                 i = max(0, i-1) # decrement by 1, do bounds checking
                 self._panx(left=self.experimentmarkers[i])
             elif key == wx.WXK_RIGHT: # skip forwards to next experiment marker
-                i = self.experimentmarkers.searchsorted(self.left, side='right') # current position of left edge of the window in experimentmarkers list
+                # current position of left edge of the window in experimentmarkers list:
+                i = self.experimentmarkers.searchsorted(self.left, side='right')
                 i = min(i, len(self.experimentmarkers)-1) # bounds checking
                 self._panx(left=self.experimentmarkers[i])
             elif key == wx.WXK_UP: # zoom in faster
@@ -2160,24 +2167,28 @@ class RevCorrWindow(NeuropyWindow):
 
 '''
 class NetstateReceptiveFieldFrame(ReceptiveFieldFrame):
-    """A wx.Frame for plotting a scrollable 2D grid of netstate receptive fields, with netstate and time labels.
-    rfs is a list of (nt, width, height) sized receptive fields of uint8 RGB data, one per netstate"""
+    """A wx.Frame for plotting a scrollable 2D grid of netstate receptive fields, with
+    netstate and time labels. rfs is a list of (nt, width, height) sized receptive fields of
+    uint8 RGB data, one per netstate"""
     def __init__(self, parent=None, id=-1, title='NetstateReceptiveFieldFrame',
                  rfs=None, intcodes=None, t=None, scale=2.0):
         self.rfs = rfs
         self.intcodes = tolist(intcodes)
         self.t = t
         self.title = title
-        wx.Frame.__init__(self, parent=parent, id=id, title=title, style=wx.DEFAULT_FRAME_STYLE)
+        wx.Frame.__init__(self, parent=parent, id=id, title=title,
+                          style=wx.DEFAULT_FRAME_STYLE)
         self.panel = wx.ScrolledWindow(self, -1, style=wx.TAB_TRAVERSAL)
         self.bitmaps = {}
         for ii, i in enumerate(self.intcodes):
             self.bitmaps[ii] = {}
             for ti, t in enumerate(self.t):
                 rf = self.rfs[ii][ti]
-                im = wx.ImageFromData(width=rf.shape[0], height=rf.shape[1], data=rf.data) # expose rf as databuffer
+                # expose rf as databuffer:
+                im = wx.ImageFromData(width=rf.shape[0], height=rf.shape[1], data=rf.data)
                 im = im.Scale(width=im.GetWidth()*scale, height=im.GetHeight()*scale)
-                self.bitmaps[ii][t] = wx.StaticBitmap(parent=self.panel, bitmap=im.ConvertToBitmap())
+                self.bitmaps[ii][t] = wx.StaticBitmap(parent=self.panel,
+                                                      bitmap=im.ConvertToBitmap())
         self.__set_properties()
         self.__do_layout()
 
@@ -2188,14 +2199,20 @@ class NetstateReceptiveFieldFrame(ReceptiveFieldFrame):
 
     def __do_layout(self):
         sizer_1 = wx.GridSizer(1, 1, 0, 0)
-        grid_sizer_1 = wx.FlexGridSizer(rows=len(self.intcodes)+1, cols=len(self.t)+1, vgap=2, hgap=2) # add an extra row and column for the text labels
+        # add an extra row and column for the text labels:
+        grid_sizer_1 = wx.FlexGridSizer(rows=len(self.intcodes)+1, cols=len(self.t)+1,
+                                        vgap=2, hgap=2)
         grid_sizer_1.Add((1, 1), 0, wx.ADJUST_MINSIZE, 0) # spacer in top left corner
         for t in self.t:
-            grid_sizer_1.Add(wx.StaticText(self.panel, -1, "%sms" % t), 0, wx.ADJUST_MINSIZE, 0) # text row along top
+            grid_sizer_1.Add(wx.StaticText(self.panel, -1, "%sms" % t), 0,
+                             wx.ADJUST_MINSIZE, 0) # text row along top
         for ii, i in enumerate(self.intcodes):
-            grid_sizer_1.Add(wx.StaticText(self.panel, -1, "ns%d" % i), 0, wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL|wx.ADJUST_MINSIZE, 0) # text down left side
+            # text down left side:
+            grid_sizer_1.Add(wx.StaticText(self.panel, -1, "ns%d" % i), 0,
+                wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL|wx.ADJUST_MINSIZE, 0)
             for t in self.t:
-                grid_sizer_1.Add(self.bitmaps[ii][t], 1, wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL, 0)
+                grid_sizer_1.Add(self.bitmaps[ii][t], 1,
+                                 wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL, 0)
         self.panel.SetAutoLayout(True)
         self.panel.SetSizer(grid_sizer_1)
         grid_sizer_1.Fit(self.panel)
@@ -2318,14 +2335,17 @@ class NeuropyScalarFormatter(mpl.ticker.ScalarFormatter):
     """Overloaded from mpl.ticker.ScalarFormatter for 4 reasons:
     1) turn off stupid offset
     2) increase maximum possible number of sigfigs
-    3) increase +ve and -ve order of magnitude thresholds before switching to scientific notation
+    3) increase +ve and -ve order of magnitude thresholds before switching to scientific
+       notation
     4) keep exponents in engineering notation, ie multiples of 3
     """
     def __init__(self, useOffset=False, useMathText=False):
         # useOffset allows plotting small data ranges with large offsets:
         # for example: [1+1e-9,1+2e-9,1+3e-9]
         # useMathText will render the offset an scientific notation in mathtext
-        #super(NeuropyScalarFormatter, self).__init__(useOffset=useOffset, useMathText=useMathText) # can't use this, cuz derived from an old-style class
+        # can't use this, because derived from an old-style class:
+        #super(NeuropyScalarFormatter, self).__init__(useOffset=useOffset,
+        #                                             useMathText=useMathText)
         mpl.ticker.ScalarFormatter.__init__(self, useOffset=useOffset, useMathText=useMathText)
         self.thousandsSep = '' # default to not using a thousands separator
 
@@ -2340,16 +2360,19 @@ class NeuropyScalarFormatter(mpl.ticker.ScalarFormatter):
             if val == 0: oom = 0
             else: oom = math.floor(math.log10(val))
         if oom < -3: # decreased -ve threshold for sci notation
-            self.orderOfMagnitude = (oom // 3)*3 # stick to engineering notation, multiples of 3
+            # stick to engineering notation, multiples of 3:
+            self.orderOfMagnitude = (oom // 3)*3
         elif oom > 6: # increased +ve threshold for sci notation
-            self.orderOfMagnitude = (oom // 3)*3 # stick to engineering notation, multiples of 3
+            # stick to engineering notation, multiples of 3:
+            self.orderOfMagnitude = (oom // 3)*3
         else:
             self.orderOfMagnitude = 0
 
     def _set_format(self):
         # set the format string to format all the ticklabels
         locs = (np.array(self.locs)-self.offset) / 10**self.orderOfMagnitude+1e-15
-        sigfigs = [len(str('%1.10f'% loc).split('.')[1].rstrip('0')) for loc in locs] # '%1.3f' changed to '%1.10f' to increase maximum number of possible sigfigs
+        # '%1.3f' changed to '%1.10f' to increase maximum number of possible sigfigs:
+        sigfigs = [len(str('%1.10f'% loc).split('.')[1].rstrip('0')) for loc in locs]
         sigfigs.sort()
         self.format = '%1.' + str(sigfigs[-1]) + 'f'
         if self._usetex or self._useMathText: self.format = '$%s$'%self.format
@@ -2360,16 +2383,19 @@ class NeuropyScalarFormatter(mpl.ticker.ScalarFormatter):
         s = self.format % xp
         if self.thousandsSep: # add thousands-separating characters
             if s.count('.'): # it's got a decimal in there
-                s = re.sub(r'(?<=\d)(?=(\d\d\d)+\.)', self.thousandsSep, s) # use the regexp for floats
+                # use the regexp for floats:
+                s = re.sub(r'(?<=\d)(?=(\d\d\d)+\.)', self.thousandsSep, s)
             else: # it's an int
-                s = re.sub(r'(?<=\d)(?=(\d\d\d)+$)', self.thousandsSep, s) # use the regexp for ints
+                # use the regexp for ints:
+                s = re.sub(r'(?<=\d)(?=(\d\d\d)+$)', self.thousandsSep, s)
         return s
 
 
 class NeuropyAutoLocator(mpl.ticker.MaxNLocator):
     """A tick autolocator that generates more ticks than the standard mpl autolocator"""
     def __init__(self):
-        #mpl.ticker.MaxNLocator.__init__(self, nbins=9, steps=[1, 2, 5, 10]) # standard autolocator
+        # standard autolocator:
+        #mpl.ticker.MaxNLocator.__init__(self, nbins=9, steps=[1, 2, 5, 10])
         mpl.ticker.MaxNLocator.__init__(self) # use MaxNLocator's defaults instead
 
 

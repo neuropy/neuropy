@@ -2065,8 +2065,14 @@ class NetstateTriggeredAverage(BaseNetstate):
             if not cont:
                 pd.Destroy()
                 return
-            # for now, we're using the Codes object created across the entire Recording. It might be slightly more correct to generate a separate codes object for each Experiment. That way, the wordts for would be aligned to the start of each Experiment, as opposed to the start of the Recording, as they are now.
-            cutwordts = self.cut(e.trange) # get wordts that were active during this experiment. This isn't really necessary is it??????????????????????????? Might speed things up for the next searchsorted call, since cutwordts is shorter than wordts
+            """For now, we're using the Codes object created across the entire Recording. It
+            might be slightly more correct to generate a separate codes object for each
+            Experiment. That way, the wordts for would be aligned to the start of each
+            Experiment, as opposed to the start of the Recording, as they are now."""
+            """Get wordts that were active during this experiment. This isn't really necessary
+            is it? Might speed things up for the next searchsorted call, since cutwordts is
+            shorter than wordts:"""
+            cutwordts = self.cut(e.trange)
             rcdini = e.din[:, 0].searchsorted(cutwordts) - 1 # revcorr dini. Find where the cutwordts times fall in the din, dec so you get indices that point to the most recent din value for each cutwordt
             #self.din = e.din[rcdini, 1] # get the din (frame indices) at the rcdini
             # for now, only do revcorr if experiment.stims has only one entry. Stims no longer exists in dimstim >= 0.16 anyway
