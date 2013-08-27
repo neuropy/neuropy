@@ -1747,7 +1747,7 @@ class SpikeCorr(object):
         return self
 
     def pos(self, maxsep=150, figsize=(7.5, 6.5)):
-        """Plot spike corrs between cells that fall within a threshold separation
+        """Plot spike corrs between cell pairs that fall within a threshold separation
         distance maxsep of each other, as a function of position down length of probe"""
         self.calc()
         assert len(np.unique(self.pairs)) == len(self.nids) # sanity check
@@ -1779,12 +1779,15 @@ class SpikeCorr(object):
         corrs = corrs[sortis]
         sep = sep[sortis]
         '''
-        # scatter plot corrs vs ypos, black=0 um separation, white=sep um separation,
+        # underplot horizontal line at y=0:
+        a.axhline(y=0, c='e', ls='--', marker=None)
+
+        # scatter plot corrs vs ypos, black=0 um separation, white=maxsep um separation,
         # could also use cmap=mpl.cm.jet_r instead:
         a.scatter(ypos, corrs, c=sep, vmin=0, vmax=maxsep, cmap=mpl.cm.gray,
                   marker='.', s=100, lw=0.5)
 
-        minpos = min(self.r.chanpos[:, 1])
+        minpos = 0 #min(self.r.chanpos[:, 1])
         maxpos = max(self.r.chanpos[:, 1])
         a.set_xlim((minpos, maxpos))
         ymin, ymax = a.get_ylim()
@@ -1798,10 +1801,10 @@ class SpikeCorr(object):
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
 
-        a.text(0.99, 0.99, '%s\n'
-                           'npairs = %d\n'
-                           'maxsep = %d'
-               % (self.r.name, npairs, maxsep), color='k', transform=a.transAxes,
+        a.text(0.995, 0.99, '%s\n'
+                            'white = %d um maxsep\n'
+                            'npairs = %d'
+               % (self.r.name, maxsep, npairs), color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
