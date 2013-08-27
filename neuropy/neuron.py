@@ -714,53 +714,7 @@ class RevCorr(object):
                             ts=self.ts, scale=scale)
         win.show()
         return win # necessary in IPython
-    '''
-    def oldplot(self, interp='nearest', normed=True):
-        """Plots the RFs as images, returns all the image objects"""
-        mpl.rcParams['interactive'] = False # there's gotta be a figure or frame object attribute you can set instead of having to change the global rcParams
-        #mpl.rcParams['toolbar'] = None # turn off toolbars for this figure. There's gotta be a more OO way...
-        nt = self.nt
-        figure(figsize=(nt*0.9, 1.5)) # in inches
-        gcfm().frame.GetStatusBar().Hide()
-        gcfm().frame.GetToolBar().Hide()
-        gcfm().frame.Fit()
-        #frame()
-        # looks like the minimum frame width in Windows is 112 pixels, minimum height is 27 pix
-        # with no toolbar, menubar, statusbar, a
-        # (112, 112) frame has usable area (104, 85), which means (8, 27) are used by border and caption regions
-        frameedgepix = (8, 27)
-        framewidthpix = 100*nt+frameedgepix[0]
-        frameheightpix = 20+100+frameedgepix[1]
-        gcfm().frame.SetSize((framewidthpix, frameheightpix)) # hack
-        # look up wxSizers to see how to get around stupid mpl problems and size stuff properly
-        #gcfm().frame.Fit()
-        #gcf().set_figsize_inches([8, 0.8])
-        #as = [] # stores axes handles
-        ias = [] # stores image axes handles
-        hspace = 0.01
-        hborder = 0.15
-        vborder = 0.03
-        width = (1.0 - hspace*(nt-1) - vborder*2) / nt
-        height = 1 - hborder*2
-        bottom = hborder
-        if normed:
-            vmin, vmax = self.rf.min(), self.rf.max()
-        else:
-            vmin, vmax = None, None
-        for ti, t in zip(self.tis, self.t):
-            left = (width + hspace)*ti + vborder
-            a = axes([left, bottom, width, height])
-            # should there be something in here to ensure the image uses up the whole axes space with no borders?
-            ia = imshow(self.rf[ti], vmin=vmin, vmax=vmax, interpolation=interp)
-            ia.axes.axison = False # turns off x and y axis
-            ias.append(ia)
-            gcf().text(left, 1-hborder/2.0, '%dms' % t, horizontalalignment='center', verticalalignment='center') # the -0.06 is a hack, verticalalignment is off, cuz of hidden statusbar/toolbar?
-        mpl.rcParams['interactive'] = True
-        pl.show()
-        #mpl.rcParams['toolbar'] = 'toolbar2' # turn toolbars back on for subsequent figures
-        #return ias # this prints a whole bunch to screen if not bound to a var, kinda annoying, not too useful anyway
-        # use wx's gcf().canvas.Refresh() to update the window, if it doesn't do so automatically when you modify its contents. Or, you can use matplotlib's pl.draw() command instead, better yet, use fig.canvas.draw() explicitly
-    '''
+
 
 class STA(RevCorr):
     """Spike-triggered average revcorr object"""
