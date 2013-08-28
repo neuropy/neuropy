@@ -756,7 +756,7 @@ class DensePopulationRaster(object):
         print(nids)
         # depth of nids from top of electrode
         ypos = np.array([ neurons[nid].pos[1] for nid in nids ])
-        supis, midis, deepis = laminarity(ypos)
+        supis, midis, deepis = laminarity(ypos, r.tr.absname)
         nn = len(nids)
         t, y, c = [], [], []
         for nidi, nid in enumerate(nids):
@@ -1271,7 +1271,7 @@ class SpikeCorr(object):
         Return RGB colours and indices into self.pairs"""
         # y positions of all nids:
         ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
-        supis, midis, deepis = laminarity(ys)
+        supis, midis, deepis = laminarity(ys, self.r.tr.absname)
         npairs = len(pairs)
         c = np.empty((npairs, 3), dtype=float) # color RGB array
         cc = mpl.colors.colorConverter
@@ -1363,6 +1363,7 @@ class SpikeCorr(object):
         a.set_title(titlestr)
         # add info text to top/bottom right of plot:
         uns = get_ipython().user_ns
+        sup, mid, deep = uns['LAYERS'][self.r.tr.absname]
         a.text(pos[0], pos[1], '%s\n'
                                'tres = %d ms\n'
                                'phase = %d deg\n'
@@ -1376,8 +1377,7 @@ class SpikeCorr(object):
                                'dt = %d min'
                                % (self.r.name, uns['CODETRES']//1000, uns['CODEPHASE'],
                                   self.R, uns['MINRATE'], len(self.nids), self.npairs,
-                                  uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE'],
-                                  intround(self.r.dtmin)),
+                                  sup, mid, deep, intround(self.r.dtmin)),
                                transform=a.transAxes,
                                horizontalalignment='right',
                                verticalalignment=verticalalignment)
@@ -1494,6 +1494,7 @@ class SpikeCorr(object):
         self.stdev = np.std(corrs)
         # add stuff to top right of plot:
         uns = get_ipython().user_ns
+        sup, mid, deep = uns['LAYERS'][self.r.tr.absname]
         a.text(0.99, 0.99, '%s\n'
                            'mean = %.3f\n'
                            'median = %.3f\n'
@@ -1511,8 +1512,7 @@ class SpikeCorr(object):
                            % (self.r.name, self.mean, self.median, self.stdev,
                               uns['CODETRES']//1000, uns['CODEPHASE'], self.R,
                               uns['MINRATE'], len(self.nids), self.npairs,
-                              uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE'],
-                              intround(self.r.dtmin)),
+                              sup, mid, deep, intround(self.r.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='right',
                            verticalalignment='top')
@@ -1627,6 +1627,7 @@ class SpikeCorr(object):
         a.set_title(titlestr)
         # add stuff to top left of plot:
         uns = get_ipython().user_ns
+        sup, mid, deep = uns['LAYERS'][self.r.tr.absname]
         a.text(0.01, 0.99, 'tres = %d ms\n'
                            'phase = %d deg\n'
                            'R = %r um\n'
@@ -1640,7 +1641,7 @@ class SpikeCorr(object):
                            'r%s.dt = %d min'
                            % (uns['CODETRES']//1000, uns['CODEPHASE'], self.R, uns['MINRATE'],
                               len(nids), sc0.npairs,
-                              uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE'],
+                              sup, mid, deep,
                               r0.id, intround(r0.dtmin), r1.id, intround(r1.dtmin)),
                            transform = a.transAxes,
                            horizontalalignment='left',
@@ -1718,6 +1719,7 @@ class SpikeCorr(object):
         a.set_title(titlestr)
         # add stuff to top right of plot:
         uns = get_ipython().user_ns
+        sup, mid, deep = uns['LAYERS'][self.r.tr.absname]
         a.text(0.99, 0.99, '%s\n'
                            'tres = %d ms\n'
                            'phase = %d deg\n'
@@ -1731,8 +1733,7 @@ class SpikeCorr(object):
                            'dt = %d min'
                            % (self.r.name, uns['CODETRES']//1000, uns['CODEPHASE'], self.R,
                               uns['MINRATE'], len(self.nids), npairs,
-                              uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE'],
-                              intround(self.r.dtmin)),
+                              sup, mid, deep, intround(self.r.dtmin)),
                            transform=a.transAxes,
                            horizontalalignment='right',
                            verticalalignment='top')
@@ -1904,12 +1905,13 @@ class SpikeCorr(object):
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         uns = get_ipython().user_ns
+        sup, mid, deep = uns['LAYERS'][self.r.tr.absname]
         a.text(0.998, 0.99,
                '%s\n'
                'sup = %r um\n'
                'mid = %r um\n'
                'deep = %r um'
-               % (self.r.name, uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE']),
+               % (self.r.name, sup, mid, deep),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
@@ -1996,12 +1998,13 @@ class SpikeCorr(object):
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         uns = get_ipython().user_ns
+        sup, mid, deep = uns['LAYERS'][self.r.tr.absname]
         a.text(0.998, 0.99,
                '%s\n'
                'sup = %r um\n'
                'mid = %r um\n'
                'deep = %r um'
-               % (self.r.name, uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE']),
+               % (self.r.name, sup, mid, deep),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
@@ -2068,12 +2071,13 @@ class SpikeCorr(object):
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         uns = get_ipython().user_ns
+        sup, mid, deep = uns['LAYERS'][self.r.tr.absname]
         a.text(0.998, 0.99,
                '%s\n'
                'sup = %r um\n'
                'middle = %r um\n'
                'deep = %r um'
-               % (self.r.name, uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE']),
+               % (self.r.name, sup, mid, deep),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
@@ -3343,18 +3347,16 @@ def split_tranges(tranges, width, tres):
         newtranges.append(subtranges)
     return np.vstack(newtranges)
 
-def laminarity(ys):
-    """Return boolean arrays indicating whether a given depth is superficial, middle,
+def laminarity(ys, trackabsname):
+    """Return boolean arrays indicating whether depths ys are superficial, middle,
     or deep layer (or none of the above)"""
     uns = get_ipython().user_ns
-    sup0, sup1 = uns['SUPRANGE']
-    mid0, mid1 = uns['MIDRANGE']
-    deep0, deep1 = uns['DEEPRANGE']
+    (sup0, sup1), (mid0, mid1), (deep0, deep1) = uns['LAYERS'][trackabsname]
     # boolean neuron indices:
     supis = (sup0 <= ys) * (ys < sup1) # True values are superficial
     midis = (mid0 <= ys) * (ys < mid1) # True values are middle
     deepis = (deep0 <= ys) * (ys < deep1) # True values are deep
-    #otheris = not(supis + deepis) # True values are other, not needed
+    #otheris = not(supis + midis + deepis) # True values are other, not needed
     return supis, midis, deepis
 
 def rainbow_text(a, x, y, words, colors, **kwargs):

@@ -241,7 +241,7 @@ class BaseRecording(object):
 
         nids = np.sort(neurons.keys())
         ys = np.array([ neurons[nid].pos[1] for nid in nids ]) # y positions of each neuron
-        supis, midis, deepis = core.laminarity(ys)
+        supis, midis, deepis = core.laminarity(ys, self.tr.absname)
         supnids = nids[supis]
         midnids = nids[midis]
         deepnids = nids[deepis]
@@ -341,12 +341,13 @@ class BaseRecording(object):
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         uns = get_ipython().user_ns
+        sup, mid, deep = uns['LAYERS'][self.tr.absname]
         a.text(0.998, 0.99,
                '%s\n'
                'sup = %r um\n'
                'mid = %r um\n'
                'deep = %r um\n'
-               % (self.name, uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE']),
+               % (self.name, sup, mid, deep),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
@@ -446,12 +447,13 @@ class BaseRecording(object):
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         uns = get_ipython().user_ns
+        sup, mid, deep = uns['LAYERS'][self.tr.absname]
         a.text(0.998, 0.99,
                '%s\n'
                'sup = %r um\n'
                'mid = %r um\n'
                'deep = %r um\n'
-               % (self.name, uns['SUPRANGE'], uns['MIDRANGE'], uns['DEEPRANGE']),
+               % (self.name, sup, mid, deep),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
@@ -794,7 +796,7 @@ class RecordingRaster(BaseRecording):
         maxdt = max(dts) # max trial duration
         # depth of nids from top of electrode
         ypos = np.array([ self.alln[nid].pos[1] for nid in nids ])
-        supis, midis, deepis = core.laminarity(ypos)
+        supis, midis, deepis = core.laminarity(ypos, self.tr.absname)
         nn = len(nids)
         ntrials = len(tranges)
         figsize = figsize[0], 1 + ntrials / 36 # ~1/36th vertical inch per trial
