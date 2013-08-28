@@ -700,10 +700,10 @@ class RecordingRaster(BaseRecording):
             norder = self.cc().norder()
         if dense:
             return DensePopulationRaster(trange=trange, neurons=neurons, norder=norder,
-                                         units=units, text=self.name)
+                                         units=units, r=self)
         else:
             return SpatialPopulationRaster(trange=trange, neurons=neurons, norder=norder,
-                                           units=units, text=self.name)
+                                           units=units, r=self)
 
     def traster(self, nids=None, eid=0, t0=None, dt=None, blank=True, s=20,
                 figsize=(7.5, None)):

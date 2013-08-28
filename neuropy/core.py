@@ -739,7 +739,7 @@ class LFP(object):
 class DensePopulationRaster(object):
     """Population spike raster plot, with dense vertical spacing according to neuron depth
     rank, and colour proportional to neuron depth"""
-    def __init__(self, trange=None, neurons=None, norder=None, units='sec', text=None,
+    def __init__(self, trange=None, neurons=None, norder=None, units='sec', r=None,
                  figsize=(20, None)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
         is displayed in time units of units"""
@@ -795,8 +795,7 @@ class DensePopulationRaster(object):
         a.set_ylabel("neuron depth rank")
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
-        if text: # add text to titlestr, to keep axes completely free of text
-            titlestr += ' (%s)' % text
+        titlestr += ' (%s)' % r.name
         a.set_title(titlestr)
         # add pseudo legend of coloured text:
         tmax = a.get_xlim()[1]
@@ -811,7 +810,7 @@ class DensePopulationRaster(object):
 class SpatialPopulationRaster(object):
     """Population spike raster plot, with vertical spacing proportional to neuron depth,
     colour representing neuron id, and point size inversely proportional to spike rate."""
-    def __init__(self, trange=None, neurons=None, norder=None, units='sec', text=None,
+    def __init__(self, trange=None, neurons=None, norder=None, units='sec', r=None,
                  figsize=(20, 6.5)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
         is displayed in time units of units"""
@@ -873,8 +872,7 @@ class SpatialPopulationRaster(object):
             a.set_ylabel("depth (um)")
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
-        if text: # add text to titlestr, to keep axes completely free of text
-            titlestr += ' (%s)' % text
+        titlestr += ' (%s)' % r.name
         a.set_title(titlestr)
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
