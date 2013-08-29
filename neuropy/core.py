@@ -1801,13 +1801,17 @@ class SpikeCorr(object):
             nbins = len(edges) - 1
             means = np.zeros(nbins)
             stdevs = np.zeros(nbins)
+            #sems = np.zeros(nbins)
             # bini == 0: left of leftmost midedge; bini == nbins: right of rightmost midedge
             binis = np.digitize(seps, midedges)
             for bini in range(nbins):
                 bincorrs = corrs[binis == bini]
-                if len(bincorrs) > 0:
-                    means[bini] = bincorrs.mean()
-                    stdevs[bini] = bincorrs.std()
+                n = len(bincorrs)
+                if n == 0:
+                    continue
+                means[bini] = bincorrs.mean()
+                stdevs[bini] = bincorrs.std()
+                #sems[bini] = stdevs[bini] / np.sqrt(n)
             x = (edges[1:] + edges[:-1]) / 2 # bin midpoints
             # don't plot empty bins, for safety, only exclude if both mean and stdev are 0:
             keepis = (means != 0.0) + (stdevs != 0.0)
