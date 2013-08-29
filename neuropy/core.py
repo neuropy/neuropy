@@ -1470,7 +1470,7 @@ class SpikeCorr(object):
         pairs = self.pairs[sortis] # pairs in decreasing corrs order
         npairs = len(pairs)
 
-        # color pairs according to whether they're superficial, deep, or other:
+        # identify pairs as superficial, middle, deep, or other:
         c, supis, midis, deepis, otheris = self.pair_laminarity(self.nids, pairs)
         # get percentages of each:
         psup = intround(len(supis) / npairs * 100)
@@ -1578,7 +1578,7 @@ class SpikeCorr(object):
         npairs = len(pairs)
         corrs0, corrs1 = sc0.corrs, sc1.corrs
         
-        # color pairs according to whether they're superficial, middle, deep, or other
+        # identify pairs as superficial, middle, deep, or other:
         c, supis, midis, deepis, otheris = self.pair_laminarity(nids, pairs)
         # get percentages of each:
         psup = intround(len(supis) / npairs * 100)
@@ -1672,7 +1672,7 @@ class SpikeCorr(object):
         npairs = len(pairs)
         n = self.r.n
 
-        # color pairs according to whether they're superficial, middle, deep, or other:
+        # identify pairs as superficial, middle, deep, or other:
         c, supis, midis, deepis, otheris = self.pair_laminarity(self.nids, pairs)
         # get percentages of each:
         psup = intround(len(supis) / npairs * 100)
