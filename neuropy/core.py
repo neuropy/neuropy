@@ -1662,9 +1662,7 @@ class SpikeCorr(object):
         return self
 
     def sep(self, figsize=(7.5, 6.5)):
-        """Plot pairwise spike correlations as a f'n of pair separation"""
-        ## TODO: histogram sc values in say 200 um bins, and plot line with stdev errorbars
-        ## vs time, in black
+        """Scatter plot pairwise spike correlations as a f'n of pair separation"""
         self.calc()
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -1711,7 +1709,7 @@ class SpikeCorr(object):
         a.scatter(seps, corrs, marker='o', c=c, edgecolor='none', s=10, zorder=100)
         a.set_xlim(left=0)
         # underplot horizontal line at y=0:
-        a.axhline(y=0, c='e', ls='--', marker=None)
+        a.axhline(y=0, c='e', ls='--', marker=None, zorder=-100)
         a.set_xlabel("pair separation (um)")
         a.set_ylabel("spike correlation")
         titlestr = lastcmd()
