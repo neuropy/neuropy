@@ -1750,6 +1750,106 @@ class SpikeCorr(object):
         self.f = f
         return self
 
+    def sepbin(self, binwidth=100, figsize=(7.5, 6.5)):
+        """Plot mean pairwise spike correlations as a f'n of binned pair separation"""
+        self.calc()
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        nids = self.nids
+        corrs = self.corrs
+        pairs = self.pairs
+        npairs = len(pairs)
+        n = self.r.n
+
+        # identify pairs as superficial, middle, deep, or other:
+        c, supis, midis, deepis, otheris = self.pair_laminarity(self.nids, pairs)
+        # get percentages of each:
+        pall = intround(npairs / npairs * 100)
+        psup = intround(len(supis) / npairs * 100)
+        pmid = intround(len(midis) / npairs * 100)
+        pdeep = intround(len(deepis) / npairs * 100)
+        pother = intround(len(otheris) / npairs * 100)
+        allcorrs = corrs
+        supcorrs = allcorrs[supis]
+        midcorrs = allcorrs[midis]
+        deepcorrs = allcorrs[deepis]
+        othercorrs = allcorrs[otheris]
+
+        # pairwise separations:
+        allseps = np.zeros(npairs)
+        for i, pair in enumerate(pairs):
+            nid0, nid1 = nids[pair[0]], nids[pair[1]]
+            allseps[i] = dist(n[nid0].pos, n[nid1].pos)
+        supseps = allseps[supis]
+        midseps = allseps[midis]
+        deepseps = allseps[deepis]
+        otherseps = allseps[otheris]
+
+        #a.scatter(allseps, corrs, marker='o', c=c, edgecolor='none', s=10, zorder=100)
+        depthinfo = {'other': (otherseps, othercorrs, 'y', 'other: %d%%' % pother),
+                     'sup': (supseps, supcorrs, 'r', 'superficial: %d%%' % psup),
+                     'mid': (midseps, midcorrs, 'g', 'middle: %d%%' % pmid),
+                     'deep': (deepseps, deepcorrs, 'b', 'deep: %d%%' % pdeep),
+                     'all': (allseps, allcorrs, 'e', 'all: %d%%' % pall)}
+
+        for depth in ('other', 'sup', 'mid', 'deep', 'all'):
+            seps, corrs, c, label = depthinfo[depth]
+            if len(seps) == 0:
+                continue # skip this depth type
+            edges = np.arange(0, seps.max()+binwidth, binwidth) # incl left and right edges
+            midedges = edges[1:-1] # exclude left and right edges
+            nbins = len(edges) - 1
+            means = np.zeros(nbins)
+            stdevs = np.zeros(nbins)
+            # bini == 0: left of leftmost midedge; bini == nbins: right of rightmost midedge
+            binis = np.digitize(seps, midedges)
+            for bini in range(nbins):
+                bincorrs = corrs[binis == bini]
+                if len(bincorrs) > 0:
+                    means[bini] = bincorrs.mean()
+                    stdevs[bini] = bincorrs.std()
+            x = (edges[1:] + edges[:-1]) / 2 # bin midpoints
+            # don't plot empty bins, for safety, only exclude if both mean and stdev are 0:
+            keepis = (means != 0.0) + (stdevs != 0.0)
+            x, means, stdevs = x[keepis], means[keepis], stdevs[keepis]
+            a.errorbar(x, means, yerr=stdevs, marker='o', c=c, label=label, mec='none')
+            
+        a.set_xlim(left=0)
+        # underplot horizontal line at y=0:
+        a.axhline(y=0, c='e', ls='--', marker=None, zorder=-100)
+        a.set_xlabel("pair separation (um)")
+        a.set_ylabel("mean spike correlation")
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        a.set_title(titlestr)
+        # add stuff to top right of plot:
+        uns = get_ipython().user_ns
+        sup, mid, deep = uns['LAYERS'][self.r.tr.absname]
+        a.text(0.99, 0.99, '%s\n'
+                           'tres = %d ms\n'
+                           'phase = %d deg\n'
+                           'R = %r um\n'
+                           'minrate = %.2f Hz\n'
+                           'nneurons = %d\n'
+                           'npairs = %d\n'
+                           'sup = %r um\n'
+                           'mid = %r um\n'
+                           'deep = %r um\n'
+                           'dt = %d min\n'
+                           'binwidth = %d um'
+                           % (self.r.name, uns['CODETRES']//1000, uns['CODEPHASE'], self.R,
+                              uns['MINRATE'], len(self.nids), npairs,
+                              sup, mid, deep, intround(self.r.dtmin), binwidth),
+                           transform=a.transAxes,
+                           horizontalalignment='right',
+                           verticalalignment='top')
+        # add legend:
+        a.legend(numpoints=1, loc='upper center',
+                 handlelength=1, handletextpad=0.5, labelspacing=0.1)
+        f.tight_layout(pad=0.3) # crop figure to contents
+        self.f = f
+        return self
+
     def pos(self, maxsep=150, figsize=(7.5, 6.5)):
         """Plot spike corrs between cell pairs that fall within a threshold separation
         distance maxsep of each other, as a function of position down length of probe"""
