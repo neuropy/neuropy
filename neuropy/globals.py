@@ -51,31 +51,41 @@ SCTRES = 1 # sec
 MUAWIDTH = SCWIDTH # sec
 MUATRES = SCTRES # sec
 
+"""List of sorted track IDs"""
+TRACKS = ['ptc15.tr7c', 'ptc22.tr1', 'ptc22.tr2']
+
 """Track-specific superficial, middle and deep layer ranges (um), inferred from
 track.pospdf and sc.pos"""
 LAYERS = {'ptc15.tr7c': [(0, 900), (900, 1100), (1100, 2000)],
           'ptc22.tr1':  [(0, 500), (500,  700), ( 700, 2000)],
-          'ptc22.tr2':  [(0, 550), (550,  700), ( 700, 2000)],
-         }
+          'ptc22.tr2':  [(0, 550), (550,  700), ( 700, 2000)]}
+          
 """IDs of blankscreen recordings"""
 BLANKRIDS = {'ptc15.tr7c': ['87'],
-             'ptc22.tr1': ['07', '09', '11', '21'],
-             'ptc22.tr2': ['27', '32', '36'],
-            }
+             'ptc22.tr1':  ['07', '09', '11', '21'],
+             'ptc22.tr2':  ['27', '32', '36']}
+             
 """IDs of msequence recordings"""
 MSEQRIDS = {'ptc15.tr7c': ['70', '81', '91', '92', '94'],
-            'ptc22.tr1': ['04', '17'],
-            'ptc22.tr2': ['26', '34'],
-           }
+            'ptc22.tr1':  ['04', '17'],
+            'ptc22.tr2':  ['26', '34']}
+            
 """IDs of movie recordings"""
 MOVRIDS = {'ptc15.tr7c': ['76', '96'],
-           'ptc22.tr1': ['05', '06', '08', '10', '19', '20'],
-           'ptc22.tr2': ['28', '33'],
-          }
+           'ptc22.tr1':  ['05', '06', '08', '10', '19', '20'],
+           'ptc22.tr2':  ['28', '33']}
+           
 """IDs of drift bar recordings"""
 DRIFTRIDS = {'ptc15.tr7c': ['71', '82'],
-             'ptc22.tr1': ['03', '18'],
-             'ptc22.tr2': ['25', '31'],
-            }
+             'ptc22.tr1':  ['03', '18'],
+             'ptc22.tr2':  ['25', '31']}
+
+"""Per-track list of relevant recordings, merged from those above"""
+RIDS = {}
+for track in TRACKS:
+    rids = []
+    for ridtype in [BLANKRIDS, MSEQRIDS, MOVRIDS, DRIFTRIDS]:
+        rids.extend(ridtype[track])
+    RIDS[track] = sorted(rids)
 
 NULLDIN = 65535 # integer value in stimulus .din files used as NULL (stimulus off)
