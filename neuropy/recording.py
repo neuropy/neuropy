@@ -31,6 +31,8 @@ from core import (LFP, SpatialPopulationRaster, DensePopulationRaster, Codes, Sp
 from colour import CLUSTERCOLOURDICT
 from experiment import Experiment
 from sort import Sort
+from dimstimskeletal import Movie
+
 '''
 # Good global setting for presentation plots:
 pl.rcParams['axes.labelsize'] = 30
@@ -720,8 +722,8 @@ class RecordingRaster(BaseRecording):
             nids = sorted(self.alln.keys()) # use all neurons
         else:
             nids = tolist(nids) # use specified neurons
-        if 'framei' in e.vs: # movie type of stimulus, where each frame is a sweep
         e = self.e[eid]
+        if type(e.e) == Movie: # movie stimulus, each frame is a sweep
             trialtype = 'dinrange' # one trial for every cycle of din values
         else:
             trialtype = 'dinval' # one trial per block of identical din values
