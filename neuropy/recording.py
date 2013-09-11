@@ -812,10 +812,12 @@ class RecordingRaster(BaseRecording):
                 # each trial, convert from us to sec
                 ts = (spikes[si0:si1] - trange[0]) / 1e6
                 nspikes = len(ts)
-                if nspikes == 0:
+                if nspikes == 0: # no spikes for this neuron for this trial
                     continue
                 trials.append(ts) # x values for this trial
                 trialis.append(np.tile(triali+1, nspikes)) # 1-based y values for this trial
+            if len(trials) == 0: # no spikes for this neuron for this experiment
+                continue
             trials = np.hstack(trials)
             trialis = np.hstack(trialis)
             if supis[nidi]: c = 'r'
