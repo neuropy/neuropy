@@ -120,13 +120,13 @@ class NeuronBasics(object):
             spikes = self.spikes # all of them
         else:
             spikes = self.cut(trange)
-        return diff(spikes)
+        return np.diff(spikes)
 
     def iisii(self, trange=None):
         """Returns the inter-ISI intervals (the differences between consecutive ISIs)
         of the Neuron's spike train in trange.
         See delta def'n in: 2002 Segev, et al - Long term behavior of lithographically..."""
-        return diff(self.isi(trange))
+        return np.diff(self.isi(trange))
 
 
 class XCorr(object):
@@ -357,8 +357,8 @@ class nISIRate(BaseRate):
         #n0 = self.n-1 # 0-based n
         # compare s to a shifted version of itself:
         # (n0 to end, single steps) - (beginning to n0 from end, single steps):
-        diff = s[self.nisi::] - s[:-self.nisi:]
-        r = float(self.nisi+1) / diff * 1000000 # spikes/sec
+        d = s[self.nisi::] - s[:-self.nisi:]
+        r = float(self.nisi+1) / d * 1000000 # spikes/sec
         # for the corresponding timepoints, pick the spike time at the end of the group
         # of n spikes to keep it causal:
         t = s[self.nisi::]
@@ -538,7 +538,7 @@ class RatePDF(object):
         pl.figure()
         if self.scale == 'log':
             # each bar will have a different width, convert to list so you can append:
-            barwidth = list(diff(self.r))
+            barwidth = list(np.diff(self.r))
             # need to add one more entry to barwidth to the end to get nbins of them:
             #barwidth.append(barwidth[-1]) # not exactly correct
             logbinwidth = (self.logrrange[1]-self.logrrange[0]) / float(self.nbins)
