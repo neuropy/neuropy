@@ -720,8 +720,8 @@ class RecordingRaster(BaseRecording):
             nids = sorted(self.alln.keys()) # use all neurons
         else:
             nids = tolist(nids) # use specified neurons
-        e = self.e[0]
         if 'framei' in e.vs: # movie type of stimulus, where each frame is a sweep
+        e = self.e[eid]
             trialtype = 'dinrange' # one trial for every cycle of din values
         else:
             trialtype = 'dinval' # one trial per block of identical din values
