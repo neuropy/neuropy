@@ -792,7 +792,10 @@ class DensePopulationRaster(object):
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
         a.set_xlabel("time (%s)" % units)
-        a.set_ylabel("neuron depth rank")
+        if norder == None:
+            a.set_ylabel("neuron depth rank")
+        else:
+            a.set_ylabel("neuron order")
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         titlestr += ' (%s)' % r.name
@@ -816,12 +819,12 @@ class SpatialPopulationRaster(object):
         is displayed in time units of units"""
         assert len(trange) == 2
         trange = np.asarray(trange)
-        if norder != None:
+        if norder == None:
+            nids = sorted(neurons.keys())
+        else:
             nids = norder
             self.norder = norder
             print(norder)
-        else:
-            nids = sorted(neurons.keys())
         t, y, c, s = [], [], [], []
         for nidi, nid in enumerate(nids):
             n = neurons[nid]
@@ -830,10 +833,10 @@ class SpatialPopulationRaster(object):
             nspikes = len(spikes)
             if nspikes > 0:
                 t.append(spikes)
-                if norder != None:
-                    ypos = nidi
-                else:
+                if norder == None:
                     ypos = -n.pos[1]
+                else:
+                    ypos = nidi
                 y.append(np.tile(ypos, nspikes)) # -ve, distance below top of electrode
                 color = CLUSTERCOLOURRGBDICT[nid]
                 c.append(np.tile(color, nspikes))
@@ -866,10 +869,10 @@ class SpatialPopulationRaster(object):
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
         a.set_xlabel("time (%s)" % units)
-        if norder != None:
-            a.set_ylabel("nidi")
-        else:
+        if norder == None:
             a.set_ylabel("depth (um)")
+        else:
+            a.set_ylabel("neuron order")
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         titlestr += ' (%s)' % r.name
