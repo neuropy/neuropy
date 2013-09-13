@@ -220,10 +220,11 @@ class BaseRecording(object):
                     nidi += 1
         return np.sort(nids) # may as well sort them
 
-    def mua(self, width=None, tres=None, neurons=None, smooth=False, plot=True):
+    def mua(self, width=None, tres=None, neurons=None, smooth=False, layers=True, plot=True):
         """Calculate and optionally plot multiunit activity as a function of time. neurons can
         be None, 'quiet', 'all', or a dict. `width' and `tres' of time bins are in seconds. If
-        `smooth' is True, convolve with a smoothing window of width `width'"""
+        `smooth' is True, convolve with a smoothing window of width `width'. If layers is
+        False, just plot MUA for all neurons, don't plot layer subsets"""
         if neurons == None:
             neurons = self.n # use active neurons
         elif neurons == 'quiet':
@@ -290,7 +291,7 @@ class BaseRecording(object):
         rates = np.vstack([allrates, suprates, midrates, deeprates])
         n = nn, nsup, nmid, ndeep
         if plot:
-            self.plot_mua(rates, t, n)
+            self.plot_mua(rates, t, n, layers=layers)
         return rates, t, n
 
     def calc_mua(self, spikes, nn, tranges):
@@ -318,16 +319,17 @@ class BaseRecording(object):
         # might be faster:
         #scipy.signal.fftconvolve(spikehist, window, mode='same') / tressec / window.sum() / nn
 
-    def plot_mua(self, rates, t, n, ylabel="mean MUA (Hz/neuron)", ylim=None,
+    def plot_mua(self, rates, t, n, layers=True, ylabel="mean MUA (Hz/neuron)", ylim=None,
                  figsize=(20, 6.5)):
         """Plot multiunit activity (all, sup, mid and deep firing rates) as a function of
         time"""
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         a.plot(t, rates[0], 'e', label='all (%d)' % n[0])
-        a.plot(t, rates[1], 'r', label='superficial (%d)' % n[1])
-        a.plot(t, rates[2], 'g', label='middle (%d)' % n[2])
-        a.plot(t, rates[3], 'b', label='deep (%d)' % n[3])
+        if layers:
+            a.plot(t, rates[1], 'r-', label='superficial (%d)' % n[1])
+            a.plot(t, rates[2], 'g-', label='middle (%d)' % n[2])
+            a.plot(t, rates[3], 'b-', label='deep (%d)' % n[3])
         a.set_xlabel("time (sec)")
         a.set_ylabel(ylabel)
         # limit plot to duration of acquistion, in sec:
