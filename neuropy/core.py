@@ -740,7 +740,7 @@ class DensePopulationRaster(object):
     """Population spike raster plot, with dense vertical spacing according to neuron depth
     rank, and colour proportional to neuron depth"""
     def __init__(self, trange=None, neurons=None, norder=None, units='sec', r=None,
-                 figsize=(20, None)):
+                 size=None, color=None, figsize=(20, None)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
         is displayed in time units of units"""
         assert len(trange) == 2
@@ -767,11 +767,11 @@ class DensePopulationRaster(object):
             if nspikes > 0:
                 t.append(spikes)
                 y.append(np.tile(nidi, nspikes)) # depth rank below top of electrode
-                if supis[nidi]: color = 'r'
-                elif midis[nidi]: color = 'g'
-                elif deepis[nidi]: color = 'b'
-                else: color = 'y'
-                c.append(np.tile(color, nspikes))
+                if supis[nidi]: nc = 'r'
+                elif midis[nidi]: nc = 'g'
+                elif deepis[nidi]: nc = 'b'
+                else: nc = 'y'
+                c.append(np.tile(nc, nspikes))
 
         t = np.hstack(t)
         # spike time multiplier to use for raster labels:
@@ -781,11 +781,18 @@ class DensePopulationRaster(object):
         y = np.hstack(y)
         c = np.hstack(c)
 
+        s = 50
+        # manual size or color settings override the automatic values
+        if size != None:
+            s = size
+        if color != None:
+            c = color
+
         if figsize[1] == None:
             figsize = figsize[0], 1 + nn / 7 # ~1/7th vertical inch per neuron
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.scatter(t, y, marker='|', c=c, s=50)
+        a.scatter(t, y, marker='|', c=c, s=s)
         a.set_xlim(trange/tx)
         a.set_ylim(nn, -1) # invert the y axis
         # turn off annoying "+2.41e3" type offset on x axis:
@@ -814,7 +821,7 @@ class SpatialPopulationRaster(object):
     """Population spike raster plot, with vertical spacing proportional to neuron depth,
     colour representing neuron id, and point size inversely proportional to spike rate."""
     def __init__(self, trange=None, neurons=None, norder=None, units='sec', r=None,
-                 figsize=(20, 6.5)):
+                 size=None, color=None, figsize=(20, 6.5)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
         is displayed in time units of units"""
         assert len(trange) == 2
@@ -838,8 +845,8 @@ class SpatialPopulationRaster(object):
                 else:
                     ypos = nidi
                 y.append(np.tile(ypos, nspikes)) # -ve, distance below top of electrode
-                color = CLUSTERCOLOURRGBDICT[nid]
-                c.append(np.tile(color, nspikes))
+                nc = CLUSTERCOLOURRGBDICT[nid]
+                c.append(np.tile(nc, nspikes))
                 # use big points for low rate cells, small points for high rate cells:
                 ms = max(min(10000/nspikes, 50), 5)
                 s.append(np.tile(ms, nspikes))
@@ -852,6 +859,12 @@ class SpatialPopulationRaster(object):
         c = np.hstack(c)
         c.shape = -1, 3
         s = np.hstack(s)
+
+        # manual size or color settings override the automatic values
+        if size != None:
+            s = size
+        if color != None:
+            c = color
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)

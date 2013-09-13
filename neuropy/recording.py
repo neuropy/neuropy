@@ -681,11 +681,17 @@ class RecordingRevCorr(BaseRecording):
 
 class RecordingRaster(BaseRecording):
     """Mix-in class that defines the raster related Recording methods"""
-    def praster(self, t0=None, t1=None, neurons=None, norder=None, dense=True, units='sec'):
-        """Create a population spike raster plot. neurons can be None, 'quiet', 'all', or a
-        dict. norder can be a sequence of nids, designating what order to present them in
+    def praster(self, t0=None, t1=None, neurons=None, norder=None, dense=True,
+                size=None, color=None, units='sec'):
+        """Create a dense or spatial population spike raster plot. For the spatial population
+        raster, the neurons are spaced vertically according to their actual spacing, whereas
+        for the dense they all have equal dense spacing. neurons can be None, 'quiet', 'all',
+        or a dict. norder can be a sequence of nids, designating what order to present them in
         the raster plot, from bottom to top. If set to True, the order is automatically
-        determined by MDS of pairwise spike correlations. Default order is spatial"""
+        determined by MDS of pairwise spike correlations. For both dense and spatial types of
+        raster plots, the default neuron order is vertical spatial. Default size and color of
+        ticks in both types of population rasters can be overridden using the size and color
+        kwargs."""
         if neurons == None:
             neurons = self.n # use active neurons
         elif neurons == 'quiet':
@@ -706,11 +712,11 @@ class RecordingRaster(BaseRecording):
             nids = sorted(neurons)
             norder = self.sc(nids=nids).norder()
         if dense:
-            return DensePopulationRaster(trange=trange, neurons=neurons, norder=norder,
-                                         units=units, r=self)
+            PRaster = DensePopulationRaster
         else:
-            return SpatialPopulationRaster(trange=trange, neurons=neurons, norder=norder,
-                                           units=units, r=self)
+            PRaster = SpatialPopulationRaster
+        return PRaster(trange=trange, neurons=neurons, norder=norder, units=units, r=self,
+                       size=size, color=color)
 
     def traster(self, nids=None, eid=0, t0=None, dt=None, blank=True, s=20,
                 figsize=(7.5, None)):
