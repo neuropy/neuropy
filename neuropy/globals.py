@@ -43,13 +43,13 @@ SITRES = 1 # sec
 SILOWBAND = 0.5, 7 # Hz
 SIHIGHBAND = 7, 100 # Hz
 
-"""Code correlation time range windows"""
+"""Spike correlation time range windows"""
 SCWIDTH = 16.384 # sec
 SCTRES = 1 # sec
 
 """Multiunit activity time range windows"""
-MUAWIDTH = SCWIDTH # sec
-MUATRES = SCTRES # sec
+MUAWIDTH = 1 # sec
+MUATRES = 0.1 # sec
 
 """List of sorted track IDs"""
 TRACKS = ['ptc15.tr7c', 'ptc22.tr1', 'ptc22.tr2']
