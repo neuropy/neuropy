@@ -703,7 +703,7 @@ class RecordingRaster(BaseRecording):
                 t1 *= tx # convert to us
         trange = np.array([t0, t1])
         if norder == True:
-            norder = self.cc().norder()
+            norder = self.sc().norder()
         if dense:
             return DensePopulationRaster(trange=trange, neurons=neurons, norder=norder,
                                          units=units, r=self)
