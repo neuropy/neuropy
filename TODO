@@ -2,6 +2,8 @@ TODO:
 
 - add NVS's spikespecgram and stlfp
 
+- try using SPIKE-distance instead of spike correlations as similarity matrix for MDS when ordering cells in praster(norder=True)
+
 - switch to PySide, or at least PyQt4 API 2.
 
 - add experiment.rastertrials, make recording.rastertrials call rec.e[0].rastertrials
