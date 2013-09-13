@@ -1068,7 +1068,7 @@ class SpikeCorr(object):
                                       "simplify the logic")
 
         if nids == None:
-            nids = sorted(self.r.n)
+            nids = sorted(self.r.n) # grab active neurons
             if len(nids) == 0:
                 raise RuntimeError("Recording %s has no active neurons" % self.r.id)
         self.nids = nids

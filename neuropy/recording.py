@@ -703,7 +703,8 @@ class RecordingRaster(BaseRecording):
                 t1 *= tx # convert to us
         trange = np.array([t0, t1])
         if norder == True:
-            norder = self.sc().norder()
+            nids = sorted(neurons)
+            norder = self.sc(nids=nids).norder()
         if dense:
             return DensePopulationRaster(trange=trange, neurons=neurons, norder=norder,
                                          units=units, r=self)
@@ -867,7 +868,7 @@ class RecordingCode(BaseRecording):
         to tranges, or to the tranges of experiments"""
         if nids == None:
             nids = self.get_nids() # sorted nids of all active neurons
-        neurons = [ self.n[nid] for nid in nids ] # sorted list of neurons
+        neurons = [ self.alln[nid] for nid in nids ] # sorted list of neurons
         if tranges == None:
             tranges = [self.trange] # use whole Recording trange
             if experiments != None:
