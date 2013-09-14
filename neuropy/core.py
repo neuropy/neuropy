@@ -704,7 +704,7 @@ class LFP(object):
         else:
             f = pl.figure(figsize=figsize)
             a = f.add_subplot(111)
-        a.plot(t, P, 'k.-')
+        a.plot(t, P, 'k-')
         a.set_xlabel("time (sec)")
         if ylabel == None:
             ylabel = "power (AU?)"
