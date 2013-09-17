@@ -698,6 +698,8 @@ class RecordingRaster(BaseRecording):
             neurons = self.qn # use quiet neurons
         elif neurons == 'all':
             neurons = self.alln # use all neurons
+        else: # assume it's a list of nids
+            neurons = { nid:self.alln[nid] for nid in neurons }
         if t0 == None:
             t0, t1 = self.trange # use full recording trange
         else:
