@@ -220,7 +220,7 @@ class BaseRecording(object):
                     nidi += 1
         return np.sort(nids) # may as well sort them
 
-    def mua(self, width=None, tres=None, neurons=None, smooth=False, layers=True, plot=True):
+    def mua(self, width=None, tres=None, neurons=None, smooth=False, layers=False, plot=True):
         """Calculate and optionally plot multiunit activity as a function of time. neurons can
         be None, 'quiet', 'all', or a dict. `width' and `tres' of time bins are in seconds. If
         `smooth' is True, convolve with a smoothing window of width `width'. If layers is
@@ -319,7 +319,7 @@ class BaseRecording(object):
         # might be faster:
         #scipy.signal.fftconvolve(spikehist, window, mode='same') / tressec / window.sum() / nn
 
-    def plot_mua(self, rates, t, n, layers=True, ylabel="mean MUA (Hz/neuron)", ylim=None,
+    def plot_mua(self, rates, t, n, layers=False, ylabel="mean MUA (Hz/neuron)", ylim=None,
                  figsize=(20, 6.5)):
         """Plot multiunit activity (all, sup, mid and deep firing rates) as a function of
         time"""
