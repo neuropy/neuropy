@@ -357,35 +357,54 @@ class BaseRecording(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def mua_cv(self, cvwidth=10, width=0.1, tres=0.1, neurons=None, smooth=False, plot=True):
-        """Coefficient of variation (sigma / mean) of MUA, ala Renart2010 and
-        Okun2012"""
+    def mua_state(self, kind='cv', width=5, muawidth=None, muatres=None, neurons=None,
+                  smooth=False, plot=True, layers=False):
+        """Calculate some kind of measure of brain state, using (for now) non-overlapping
+        windows of width, based on MUA, itself calculated according to muawidth and muatres.
+        Options for kind are:
+
+        'cv': coefficient of variation (sigma / mean), for all layer types. See
+        Renart2010 and Okun2012
+
+        'ptpmed': peak-to-peak / median
+
+        TODO: add a tres kwarg for overlapping brain state windows
+        """
         uns = get_ipython().user_ns
-        if width == None:
-            width = uns['MUAWIDTH'] # sec
-        if tres == None:
-            tres = uns['MUATRES'] # sec
+        if muawidth == None:
+            muawidth = uns['MUAWIDTH'] # sec
+        if muatres == None:
+            muatres = uns['MUATRES'] # sec
         # t is in sec:
-        rates, t, n = self.mua(width=width, tres=tres, neurons=neurons, smooth=smooth,
+        rates, t, n = self.mua(width=muawidth, tres=muatres, neurons=neurons, smooth=smooth,
                                plot=False)
         #nn, nsup, nmid, ndeep = n
         nt = len(t)
         assert nt == rates.shape[1]
         dt = t[-1] - t[0] # total duration
-        nchunks = int(dt // cvwidth) # round down
+        nchunks = int(dt // width) # round down
         ntperchunk = int(nt // nchunks) # num timepoints per chunk
         nt = ntperchunk * nchunks # new total number of timepoints, a multiple of nchunks
         tis = np.arange(0, nt, ntperchunk)
         t = t[tis]
         rates = np.asarray(np.split(rates[:, :nt], nchunks, axis=1)).T
-        # find std and mean of each column, ie each width
-        mean = rates.mean(axis=0)
-        mean[mean == 0.0] = np.inf # replace 0s with inf, which will give 0 CV
-        CV = rates.std(axis=0) / mean
+        if kind == 'cv':
+            # find std and mean of each column, ie each width
+            mean = rates.mean(axis=0)
+            mean[mean == 0.0] = np.inf # replace 0s with inf, gives 0 brain state
+            state = rates.std(axis=0) / mean
+            ylabel = 'CV of MUA'
+        elif kind == 'ptpmed':
+            median = np.median(rates, axis=0)
+            median[median == 0.0] = np.inf # replace 0s with inf, gives 0 brain state
+            state = rates.ptp(axis=0) / median
+            ylabel = 'peak-to-peak / median'
+        else:
+            raise ValueError('unknown brain state kind %r' % kind)
         if plot:
             ylim = None #(0, 1.5)
-            self.plot_mua(CV, t, n, ylabel='CV of MUA', ylim=ylim)
-        return CV, t, n
+            self.plot_mua(state, t, n, layers=layers, ylabel=ylabel, ylim=ylim)
+        return state, t, n
 
     def cv_si(self, smooth=False, chani=-1, ratio='L/(L+H)', figsize=(7.5, 6.5)):
         """Scatter plot MUA CV vs LFP SI"""
