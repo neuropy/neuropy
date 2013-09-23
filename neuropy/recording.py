@@ -363,8 +363,9 @@ class BaseRecording(object):
         windows of width, based on MUA, itself calculated according to muawidth and muatres.
         Options for kind are:
 
-        'cv': coefficient of variation (sigma / mean), for all layer types. See
-        Renart2010 and Okun2012
+        'cv': coefficient of variation (sigma / mean), see Renart2010 and Okun2012
+
+        'stdmed': standard deviation / median
 
         'ptpmed': peak-to-peak / median
 
@@ -393,12 +394,19 @@ class BaseRecording(object):
             mean = rates.mean(axis=0)
             mean[mean == 0.0] = np.inf # replace 0s with inf, gives 0 brain state
             state = rates.std(axis=0) / mean
-            ylabel = 'CV of MUA'
+            ylabel = 'MUA CV'
+        elif kind == 'stdmed':
+            # find std and median of each column, ie each width
+            median = np.median(rates, axis=0)
+            median[median == 0.0] = np.inf # replace 0s with inf, gives 0 brain state
+            state = rates.std(axis=0) / median
+            ylabel = 'MUA $sigma$ / median'
         elif kind == 'ptpmed':
+            # find peak-to-peak and median of each column, ie each width
             median = np.median(rates, axis=0)
             median[median == 0.0] = np.inf # replace 0s with inf, gives 0 brain state
             state = rates.ptp(axis=0) / median
-            ylabel = 'peak-to-peak / median'
+            ylabel = 'MUA peak-to-peak / median'
         else:
             raise ValueError('unknown brain state kind %r' % kind)
         if plot:
