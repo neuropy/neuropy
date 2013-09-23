@@ -48,7 +48,7 @@ SCWIDTH = 16.384 # sec
 SCTRES = 1 # sec
 
 """Multiunit activity time range windows"""
-MUAWIDTH = 1 # sec
+MUAWIDTH = 0.25 # sec
 MUATRES = 0.1 # sec
 
 """List of sorted track IDs"""
