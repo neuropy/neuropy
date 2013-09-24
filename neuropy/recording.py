@@ -322,7 +322,7 @@ class BaseRecording(object):
     def plot_mua(self, rates, t, n, layers=False, ylabel="mean MUA (Hz/neuron)", ylim=None,
                  figsize=(20, 6.5)):
         """Plot multiunit activity (all, sup, mid and deep firing rates) as a function of
-        time"""
+        time in seconds"""
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         a.plot(t, rates[0], 'k-', label='all (%d)' % n[0])
@@ -357,15 +357,15 @@ class BaseRecording(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def mua_state(self, kind='cv', width=5, muawidth=None, muatres=None, neurons=None,
+    def mua_state(self, kind='cv', width=5, tres=1, muawidth=None, muatres=None, neurons=None,
                   smooth=False, plot=True, layers=False):
-        """Calculate some kind of measure of brain state, using (for now) non-overlapping
-        windows of width, based on MUA, itself calculated according to muawidth and muatres.
+        """Calculate a measure of brain state, using potentially overlapping
+        windows of width and tres of MUA, itself calculated according to muawidth and muatres.
         Options for kind are:
 
-        'cv': coefficient of variation (sigma / mean), see Renart2010 and Okun2012
+        'cv': coefficient of variation (stdev / mean), see Renart2010 and Okun2012
 
-        'stdmed': standard deviation / median
+        'stdmed': stdev / median
 
         'ptpmed': peak-to-peak / median
 
@@ -382,13 +382,18 @@ class BaseRecording(object):
         #nn, nsup, nmid, ndeep = n
         nt = len(t)
         assert nt == rates.shape[1]
-        dt = t[-1] - t[0] # total duration
-        nchunks = int(dt // width) # round down
-        ntperchunk = int(nt // nchunks) # num timepoints per chunk
-        nt = ntperchunk * nchunks # new total number of timepoints, a multiple of nchunks
-        tis = np.arange(0, nt, ntperchunk)
-        t = t[tis]
-        rates = np.asarray(np.split(rates[:, :nt], nchunks, axis=1)).T
+
+        # potentially overlapping bin time ranges:
+        trange = t[0], t[-1]
+        tranges = core.split_tranges([trange], width, tres) # in us
+        ntranges = len(tranges)
+        tis = t.searchsorted(tranges) # ntranges x 2 array
+        binrates = []
+        for t0i, t1i in tis:
+            binrates.append(rates[:, t0i:t1i])
+        rates = np.asarray(binrates).T # ntranges x nlayers x binnt
+        # get midpoint of each trange:
+        t = tranges.mean(axis=1)
         if kind == 'cv':
             # find std and mean of each column, ie each width
             mean = rates.mean(axis=0)
@@ -400,7 +405,7 @@ class BaseRecording(object):
             median = np.median(rates, axis=0)
             median[median == 0.0] = np.inf # replace 0s with inf, gives 0 brain state
             state = rates.std(axis=0) / median
-            ylabel = 'MUA $sigma$ / median'
+            ylabel = 'MUA $\sigma$ / median'
         elif kind == 'ptpmed':
             # find peak-to-peak and median of each column, ie each width
             median = np.median(rates, axis=0)
