@@ -326,6 +326,11 @@ class SPKHeader(object):
                    and fname.endswith('.spk') ] # spike filenames
         self.spkfnames = sorted(fnames)
         self.nspikes = 0
+        # for compatibility with PTCSHeader:
+        self.datetime = 0
+        self.pttype = None
+        self.chanpos = None
+        self.samplerate = 25000 # assumed
 
     def read(self, neuron):
         neuron.loadspk() # load the neuron
@@ -345,6 +350,16 @@ class SPKNeuronRecord(object):
     PTCSNeuronRecord, but much more impoverished"""
     def __init__(self, fname):
         self.fname = fname
+        # for compatibility with PTCSHeader:
+        self.descr = None
+        self.xpos, self.ypos = None, None
+        self.sigma = None
+        self.nchans = None
+        self.chans = None
+        self.maxchan = None
+        self.nt = None
+        self.wavedata = None
+        self.wavestd = None
         
     def parse_id(self):
         """Return everything from just after the last '_t' to the end of the

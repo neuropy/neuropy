@@ -118,7 +118,7 @@ class TrackSort(object):
         self.tr = track
         self.alln = {} # dict to store all Neurons
         self.nspikes = None
-        self.datetime = None
+        self.datetime = EPOCH
         self.pttype = None
         self.chanpos = None
         self.samplerate = None

@@ -130,7 +130,7 @@ class BaseRecording(object):
 
         # load all Sorts, or just the most recent one:
         uns = get_ipython().user_ns
-        if not uns['LOADALLSORTS']:
+        if not uns['LOADALLSORTS'] and len(sortfdnames) > 0:
             sortfdnames = [sortfdnames[-1]] # just the most recent one
         for sortid, fdname in enumerate(sortfdnames):
             path = os.path.join(self.path, fdname)
@@ -138,8 +138,10 @@ class BaseRecording(object):
             sort.load()
             self.sorts[sort.name] = sort # save it
             self.__setattr__('sort' + str(sort.id), sort) # add shortcut attrib
-        # make last sort the default one
-        self.sort = self.sorts[sortfdnames[-1]]
+        self.sort = None
+        if len(sortfdnames) > 0:
+            # make last sort the default one
+            self.sort = self.sorts[sortfdnames[-1]]
 
         # load all .din as Experiments:
         for expid, fname in enumerate(dinfnames): # expids follow order in dinfnames
@@ -167,10 +169,13 @@ class BaseRecording(object):
             # start of the first experiment to end of the last one
             self.trange = e0.trange[0], e1.trange[1]
         else:
-            # self.e is empty, no experiments in this recording, use first and last
-            # spike across all neurons
-            tranges = np.asarray([ n.trange for n in self.alln.values() ])
-            self.trange = min(tranges[:, 0]), max(tranges[:, 1])
+            if self.sort:
+                # self.e is empty, no experiments in this recording, use first and last
+                # spike across all neurons
+                tranges = np.asarray([ n.trange for n in self.alln.values() ])
+                self.trange = min(tranges[:, 0]), max(tranges[:, 1])
+            else:
+                self.trange = 0, 0 # no experiments or sort, no trange
 
         # these are static, no need for properties:
         self.dt = self.trange[1] - self.trange[0] # duration (us)
@@ -178,7 +183,8 @@ class BaseRecording(object):
         self.dtmin = self.dtsec / 60
         self.dthour = self.dtmin / 60
 
-        self.calc_meanrates()
+        if self.sort:
+            self.calc_meanrates()
 
     def get_ordnids(self):
         """Return nids of active neurons in vertical spatial order, superficial to deep"""

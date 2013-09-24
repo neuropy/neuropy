@@ -91,6 +91,9 @@ class Track(object):
         self.dtmin = self.dtsec / 60
         self.dthour = self.dtmin / 60
 
+        if recording.sort == None or type(recording.sort.header) == core.SPKHeader:
+            return # skip everything else due to impoverished .spk files
+
         # create a TrackSort with TrackNeurons:
         self.sort = TrackSort(self)
         self.sort.load()
