@@ -91,6 +91,9 @@ class Track(object):
         self.dtmin = self.dtsec / 60
         self.dthour = self.dtmin / 60
 
+        if len(rnames) == 0:
+            return # no recordings in this track, nothing else to do
+
         if recording.sort == None or type(recording.sort.header) == core.SPKHeader:
             return # skip everything else due to impoverished .spk files
 
