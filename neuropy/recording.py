@@ -363,8 +363,8 @@ class BaseRecording(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def mua_state(self, kind='cv', width=5, tres=1, muawidth=None, muatres=None, neurons=None,
-                  smooth=False, plot=True, layers=False):
+    def mua_state(self, kind='stdmed', width=10, tres=1, muawidth=None, muatres=None,
+                  neurons=None, smooth=False, plot=True, layers=False):
         """Calculate a measure of brain state, using potentially overlapping
         windows of width and tres of MUA, itself calculated according to muawidth and muatres.
         Options for kind are:
@@ -375,7 +375,11 @@ class BaseRecording(object):
 
         'ptpmed': peak-to-peak / median
 
-        TODO: add a tres kwarg for overlapping brain state windows
+        'maxmed': (max - median) / median
+        
+        Note that median is a better estimate of baseline MUA (quiet periods during synch
+        state) than mean, since mean is more affected by peaks in MUA (up phases during synch
+        state)
         """
         uns = get_ipython().user_ns
         if muawidth == None:
@@ -386,43 +390,49 @@ class BaseRecording(object):
         rates, t, n = self.mua(width=muawidth, tres=muatres, neurons=neurons, smooth=smooth,
                                plot=False)
         #nn, nsup, nmid, ndeep = n
-        nt = len(t)
-        assert nt == rates.shape[1]
+        nlayers, nt = rates.shape
+        assert nt == len(t)
 
         # potentially overlapping bin time ranges:
         trange = t[0], t[-1]
         tranges = core.split_tranges([trange], width, tres) # in us
         ntranges = len(tranges)
         tis = t.searchsorted(tranges) # ntranges x 2 array
-        binrates = []
-        for t0i, t1i in tis:
-            binrates.append(rates[:, t0i:t1i])
-        rates = np.asarray(binrates).T # ntranges x nlayers x binnt
+        # number of timepoints to use for each trange, almost all will be the same width:
+        binnt = intround((tis[:, 1] - tis[:, 0]).mean())
+        binrates = np.zeros((ntranges, nlayers, binnt)) # init appropriate array
+        for trangei, t0i in enumerate(tis[:, 0]):
+            binrates[trangei] = rates[:, t0i:t0i+binnt]
+        binrates = binrates.T # binnt x nlayers x ntranges
         # get midpoint of each trange:
         t = tranges.mean(axis=1)
+
+        old_settings = np.seterr(all='ignore') # suppress div by 0 errors
         if kind == 'cv':
-            # find std and mean of each column, ie each width
-            mean = rates.mean(axis=0)
-            mean[mean == 0.0] = np.inf # replace 0s with inf, gives 0 brain state
-            state = rates.std(axis=0) / mean
+            # stdev / mean of each column, ie each width
+            state = binrates.std(axis=0) / binrates.mean(axis=0)
             ylabel = 'MUA CV'
         elif kind == 'stdmed':
-            # find std and median of each column, ie each width
-            median = np.median(rates, axis=0)
-            median[median == 0.0] = np.inf # replace 0s with inf, gives 0 brain state
-            state = rates.std(axis=0) / median
+            # stdev / median of each column, ie each width
+            state = binrates.std(axis=0) / np.median(binrates, axis=0)
             ylabel = 'MUA $\sigma$ / median'
         elif kind == 'ptpmed':
-            # find peak-to-peak and median of each column, ie each width
-            median = np.median(rates, axis=0)
-            median[median == 0.0] = np.inf # replace 0s with inf, gives 0 brain state
-            state = rates.ptp(axis=0) / median
+            # peak-to-peak / median of each column, ie each width
+            state = binrates.ptp(axis=0) / np.median(binrates, axis=0)
             ylabel = 'MUA peak-to-peak / median'
+        elif kind == 'maxmed':
+            # peak-to-peak / median of each column, ie each width
+            median = np.median(binrates, axis=0)
+            state = (binrates.max(axis=0) - median) / median
+            ylabel = 'MUA (max - median) / median'
         else:
             raise ValueError('unknown brain state kind %r' % kind)
+        state[state == np.nan] = 0
+        state[state == np.inf] = 0
         if plot:
             ylim = None #(0, 1.5)
             self.plot_mua(state, t, n, layers=layers, ylabel=ylabel, ylim=ylim)
+        np.seterr(**old_settings) # restore old settings
         return state, t, n
 
     def cv_si(self, smooth=False, chani=-1, ratio='L/(L+H)', figsize=(7.5, 6.5)):
