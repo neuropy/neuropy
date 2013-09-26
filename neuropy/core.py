@@ -481,7 +481,7 @@ class LFP(object):
         return self
         
     def specgram(self, t0=None, t1=None, f0=0.1, f1=100, p0=-60, p1=None, chanis=-1,
-                 width=4.096, tres=1, cm=None, colorbar=False, figsize=(20, 6.5)):
+                 width=1, tres=0.2, cm=None, colorbar=False, figsize=(20, 6.5)):
         """Plot a spectrogram from t0 to t1 in sec, from f0 to f1 in Hz, and clip power values
         from p0 to p1 in dB, based on channel index chani of LFP data. chanis=0 uses most
         superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, take mean of
