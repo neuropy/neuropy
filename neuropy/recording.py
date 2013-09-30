@@ -74,8 +74,8 @@ class BaseRecording(object):
     absname = property(get_absname)
 
     def get_id(self):
-        # return the first word in the name, using - or whitespace as separators
-        return self.name.split('-')[0].split(' ')[0]
+        # return the first word in the name, using -, _ and whitespace as separators
+        return self.name.split('-')[0].split('_')[0].split(' ')[0]
 
     id = property(get_id)
 
