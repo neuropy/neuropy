@@ -369,7 +369,8 @@ class BaseRecording(object):
         windows of width and tres of MUA, itself calculated according to muawidth and muatres.
         Options for kind are:
 
-        'cv': coefficient of variation (stdev / mean), see Renart2010 and Okun2012
+        'cv': coefficient of variation (stdev / mean), see Renart2010 and Okun2012. Okun2012
+        consider CV >= 1 to be synchronized state, and CV <= 0.5 to be desynchronized.
 
         'stdmed': stdev / median
 
@@ -379,7 +380,8 @@ class BaseRecording(object):
         
         Note that median is a better estimate of baseline MUA (quiet periods during synch
         state) than mean, since mean is more affected by peaks in MUA (up phases during synch
-        state)
+        state). This is especially the case for signals with mostly unipolar peaks. If the
+        peaks are bipolar, median and mean will probably be quite close.
         """
         uns = get_ipython().user_ns
         if muawidth == None:
