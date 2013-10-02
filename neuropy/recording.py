@@ -364,13 +364,15 @@ class BaseRecording(object):
         f.tight_layout(pad=0.3) # crop figure to contents
 
     def mua_state(self, kind='stdmed', width=10, tres=1, muawidth=None, muatres=None,
-                  neurons=None, smooth=False, plot=True, layers=False):
+                  upper=75, lower=25, neurons=None, smooth=False, plot=True, layers=False):
         """Calculate a measure of brain state, using potentially overlapping
         windows of width and tres of MUA, itself calculated according to muawidth and muatres.
         Options for kind are:
 
         'cv': coefficient of variation (stdev / mean), see Renart2010 and Okun2012. Okun2012
         consider CV >= 1 to be synchronized state, and CV <= 0.5 to be desynchronized.
+
+        'cqv': coefficient of quartile variation (upper-lower)/(upper+lower), see Bonnet2005.
 
         'stdmed': stdev / median
 
@@ -414,10 +416,16 @@ class BaseRecording(object):
             # stdev / mean of each column, ie each width
             state = binrates.std(axis=0) / binrates.mean(axis=0)
             ylabel = 'MUA CV'
+        elif kind == 'cqv':
+            # coefficient of quartile variation of each column, ie each width
+            u = np.percentile(binrates, upper, axis=0)
+            l = np.percentile(binrates, lower, axis=0)
+            state = (u - l) / (u + l)
+            ylabel = 'MUA CQV: (%d - %d)/(%d + %d)%%' % (upper, lower, upper, lower)
         elif kind == 'stdmed':
             # stdev / median of each column, ie each width
             state = binrates.std(axis=0) / np.median(binrates, axis=0)
-            ylabel = 'MUA $\sigma$ / median'
+            ylabel = 'MUA $\sigma$/median'
         elif kind == 'ptpmed':
             # peak-to-peak / median of each column, ie each width
             state = binrates.ptp(axis=0) / np.median(binrates, axis=0)
