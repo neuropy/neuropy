@@ -379,6 +379,10 @@ class BaseRecording(object):
         'ptpmed': peak-to-peak / median
 
         'maxmed': (max - median) / median
+
+        'ncv': normalized CV: (std - mean) / (std + mean)
+
+        'nstdmed': normalized stdevmed: (std - med) / (std + med)
         
         Note that median is a better estimate of baseline MUA (quiet periods during synch
         state) than mean, since mean is more affected by peaks in MUA (up phases during synch
@@ -435,10 +439,21 @@ class BaseRecording(object):
             median = np.median(binrates, axis=0)
             state = (binrates.max(axis=0) - median) / median
             ylabel = 'MUA (max - median) / median'
+        elif kind == 'ncv':
+            s = binrates.std(axis=0)
+            mean = binrates.mean(axis=0)
+            state = (s - mean) / (s + mean)
+            ylabel = 'MUA (std - mean) / (std + mean)'
+        elif kind == 'nstdmed':
+            s = binrates.std(axis=0)
+            med = np.median(binrates, axis=0)
+            state = (s - med) / (s + med)
+            ylabel = 'MUA (std - med) / (std + med)'
         else:
             raise ValueError('unknown brain state kind %r' % kind)
         # keep only points where state calculated from all neurons (row 0) is finite
         keepis = np.isfinite(state[0])
+        print('num not finite points:', (keepis == False).sum())
         state, t = state[:, keepis], t[keepis]
         if plot:
             ylim = None #(0, 1.5)
