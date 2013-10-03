@@ -437,8 +437,9 @@ class BaseRecording(object):
             ylabel = 'MUA (max - median) / median'
         else:
             raise ValueError('unknown brain state kind %r' % kind)
-        state[state == np.nan] = 0
-        state[state == np.inf] = 0
+        # keep only points where state calculated from all neurons (row 0) is finite
+        keepis = np.isfinite(state[0])
+        state, t = state[:, keepis], t[keepis]
         if plot:
             ylim = None #(0, 1.5)
             self.plot_mua(state, t, n, layers=layers, ylabel=ylabel, ylim=ylim)
