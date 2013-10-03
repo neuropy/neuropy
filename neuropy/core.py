@@ -2097,7 +2097,10 @@ class SpikeCorr(object):
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        ylim = corrs[:5].min(), corrs[:5].max()
+        if layers:
+            ylim = corrs[:5].min(), corrs[:5].max()
+        else:
+            ylim = corrs[0].min(), corrs[0].max()
         yrange = ylim[1] - ylim[0]
         extra = yrange*0.03 # 3 %
         ylim = ylim[0]-extra, ylim[1]+extra
@@ -2115,24 +2118,28 @@ class SpikeCorr(object):
 
         # plot linear regressions:
         m0, b0, r0, p0, stderr0 = scipy.stats.linregress(si, corrs[0])
-        m1, b1, r1, p1, stderr1 = scipy.stats.linregress(si, corrs[1])
-        m2, b2, r2, p2, stderr2 = scipy.stats.linregress(si, corrs[2])
-        m3, b3, r3, p3, stderr3 = scipy.stats.linregress(si, corrs[3])
-        m4, b4, r4, p4, stderr4 = scipy.stats.linregress(si, corrs[4])
         a.plot(sirange, m0*sirange+b0, 'e--')
-        a.plot(sirange, m1*sirange+b1, 'r--')
-        a.plot(sirange, m2*sirange+b2, 'g--')
-        a.plot(sirange, m3*sirange+b3, 'b--')
-        a.plot(sirange, m4*sirange+b4, 'y--', zorder=0)
+        if layers:
+            m1, b1, r1, p1, stderr1 = scipy.stats.linregress(si, corrs[1])
+            a.plot(sirange, m1*sirange+b1, 'r--')
+            m2, b2, r2, p2, stderr2 = scipy.stats.linregress(si, corrs[2])
+            a.plot(sirange, m2*sirange+b2, 'g--')
+            m3, b3, r3, p3, stderr3 = scipy.stats.linregress(si, corrs[3])
+            a.plot(sirange, m3*sirange+b3, 'b--')
+            m4, b4, r4, p4, stderr4 = scipy.stats.linregress(si, corrs[4])
+            a.plot(sirange, m4*sirange+b4, 'y--', zorder=0)
 
         # scatter plot corrs vs si, one colour per laminarity:
         a.plot(si, corrs[0], 'e.', label='all (%d), m=%.3f, r=%.3f' % (npairs[0], m0, r0))
-        a.plot(si, corrs[1], 'r.', label='superficial (%d), m=%.3f, r=%.3f'
-                                         % (npairs[1], m1, r1))
-        a.plot(si, corrs[2], 'g.', label='middle (%d), m=%.3f, r=%.3f' % (npairs[2], m2, r2))
-        a.plot(si, corrs[3], 'b.', label='deep (%d), m=%.3f, r=%.3f' % (npairs[3], m3, r3))
-        a.plot(si, corrs[4], 'y.', label='other (%d), m=%.3f, r=%.3f'
-                                         % (npairs[4], m4, r4), zorder=0)
+        if layers:
+            a.plot(si, corrs[1], 'r.', label='superficial (%d), m=%.3f, r=%.3f'
+                                             % (npairs[1], m1, r1))
+            a.plot(si, corrs[2], 'g.', label='middle (%d), m=%.3f, r=%.3f'
+                                             % (npairs[2], m2, r2))
+            a.plot(si, corrs[3], 'b.', label='deep (%d), m=%.3f, r=%.3f'
+                                             % (npairs[3], m3, r3))
+            a.plot(si, corrs[4], 'y.', label='other (%d), m=%.3f, r=%.3f'
+                                             % (npairs[4], m4, r4), zorder=0)
         #a.set_xlim(sirange)
         if sisource == 'lfp':
             a.set_xlim(0, 1)
