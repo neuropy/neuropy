@@ -2050,18 +2050,28 @@ class SpikeCorr(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def si(self, method='weighted mean', inclusive=False, chani=-1, ratio='L/(L+H)',
-           lowband=None, highband=None, sirange=None, figsize=(7.5, 6.5), plot=True):
-        """Scatter plot spike correlations vs LFP synchrony index, using the same
-        time base for both"""
+    def si(self, method='weighted mean', inclusive=False, kind='cv', chani=-1,
+           lowband=None, highband=None, sirange=None, figsize=(7.5, 6.5),
+           plot=True, layers=True):
+        """Scatter plot spike correlations vs MUA state (kind=cv, stdmed, ptpmed or maxmed) or
+        LFP synchrony index (kind=L/(L+H) or L/H), using the same time base for both"""
+        rec = self.r
         t0 = time.time()
         # ct are center timepoints:
         corrs, npairs, ct, ylabel = self.sct(method=method, inclusive=inclusive)
         print('sct(t) calc took %.3f sec' % (time.time()-t0))
+        if kind in ('L/(L+H)', 'L/H'):
+            sisource = 'lfp'
+        else:
+            sisource = 'mua'
         t0 = time.time()
-        si, sit = self.r.lfp.si(chani=chani, lowband=lowband, highband=highband,
-                                width=self.width/1e6, tres=self.tres/1e6,
-                                ratio=ratio, plot=False) # sit are also center timepoints
+        if sisource == 'lfp':
+            si, sit = rec.lfp.si(chani=chani, lowband=lowband, highband=highband,
+                                 width=self.width/1e6, tres=self.tres/1e6,
+                                 ratio=kind, plot=False) # sit are also center timepoints
+        else:
+            si, sit, n = rec.mua_state(kind=kind, plot=False)
+            si = si[0] # keep only mua state from all cells, not layer specific subsets
         print('SI(t) calc took %.3f sec' % (time.time()-t0))
         print('len(sit) = %d, len(ct) = %d' % (len(sit), len(ct)))
         # get common time resolution:
@@ -2094,7 +2104,10 @@ class SpikeCorr(object):
 
         # keep only those points whose synchrony index falls within sirange:
         if sirange == None:
-            sirange = (0, 1)
+            if sisource == 'lfp':
+                sirange = 0, 1
+            else:
+                sirange = si.min(), si.max()
         sirange = np.asarray(sirange)
         keepis = (sirange[0] <= si) * (si <= sirange[1]) # boolean index array
         si = si[keepis]
@@ -2121,23 +2134,24 @@ class SpikeCorr(object):
         a.plot(si, corrs[4], 'y.', label='other (%d), m=%.3f, r=%.3f'
                                          % (npairs[4], m4, r4), zorder=0)
         #a.set_xlim(sirange)
-        a.set_xlim(0, 1)
+        if sisource == 'lfp':
+            a.set_xlim(0, 1)
         a.set_ylim(ylim)
         #a.autoscale(enable=True, axis='y', tight=True)
-        a.set_xlabel("LFP synchrony index (%s)" % ratio)
+        a.set_xlabel(kind)
         ylabel = ylabel + " (%d pairs)" % self.npairs
         a.set_ylabel(ylabel)
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         uns = get_ipython().user_ns
-        sup, mid, deep = uns['LAYERS'][self.r.tr.absname]
+        sup, mid, deep = uns['LAYERS'][rec.tr.absname]
         a.text(0.998, 0.99,
                '%s\n'
                'sup = %r um\n'
                'mid = %r um\n'
                'deep = %r um'
-               % (self.r.name, sup, mid, deep),
+               % (rec.name, sup, mid, deep),
                color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
