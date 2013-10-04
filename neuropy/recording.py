@@ -465,7 +465,7 @@ class BaseRecording(object):
         """Scatter plot MUA CV vs LFP SI"""
         self.mua_si(cv=True, smooth=smooth, chani=chani, ratio=ratio, figsize=figsize)
 
-    def mua_si(self, cv=False, smooth=False, chani=-1, ratio='L/(L+H)', figsize=(7.5, 6.5)):
+    def mua_lfpsi(self, cv=False, smooth=False, chani=-1, ratio='L/(L+H)', figsize=(7.5, 6.5)):
         """Scatter plot multiunit activity vs LFP synchrony index"""
         if cv: # mua and muat will refer to CV of MUA, not MUA itself
             mua, muat, n = self.mua_cv(smooth=smooth, plot=False)
