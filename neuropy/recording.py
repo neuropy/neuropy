@@ -363,9 +363,9 @@ class BaseRecording(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def mua_state(self, kind='stdmed', width=10, tres=1, muawidth=None, muatres=None,
+    def mua_si(self, kind='stdmed', width=10, tres=1, muawidth=None, muatres=None,
                   upper=75, lower=25, neurons=None, smooth=False, plot=True, layers=False):
-        """Calculate a measure of brain state, using potentially overlapping
+        """Calculate a synchrony index from MUA, using potentially overlapping
         windows of width and tres of MUA, itself calculated according to muawidth and muatres.
         Options for kind are:
 
@@ -383,6 +383,8 @@ class BaseRecording(object):
         'ncv': normalized CV: (std - mean) / (std + mean)
 
         'nstdmed': normalized stdevmed: (std - med) / (std + med)
+            - this seems to have a bit of positive bias, i.e. it overestimates synchrony
+            and is less symmetric around 0 than ncv
         
         Note that median is a better estimate of baseline MUA (quiet periods during synch
         state) than mean, since mean is more affected by peaks in MUA (up phases during synch

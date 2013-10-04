@@ -2070,7 +2070,7 @@ class SpikeCorr(object):
                                  width=self.width/1e6, tres=self.tres/1e6,
                                  ratio=kind, plot=False) # sit are also center timepoints
         else:
-            si, sit, n = rec.mua_state(kind=kind, plot=False)
+            si, sit, n = rec.mua_si(kind=kind, plot=False)
             si = si[0] # keep only mua state from all cells, not layer specific subsets
         print('SI(t) calc took %.3f sec' % (time.time()-t0))
         print('len(sit) = %d, len(ct) = %d' % (len(sit), len(ct)))
