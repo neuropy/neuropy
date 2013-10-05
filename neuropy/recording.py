@@ -164,8 +164,8 @@ class BaseRecording(object):
                                % (nlfpfiles, self.path))
 
         if len(self.e) > 0:
-            eids = list(self.e)
-            e0, e1 = self.e[min(eids)], self.e[max(eids)]
+            exps = self.esorted()
+            e0, e1 = exps[0], exps[-1]
             # start of the first experiment to end of the last one
             self.trange = e0.trange[0], e1.trange[1]
         else:
@@ -225,6 +225,13 @@ class BaseRecording(object):
                 else: # keep nid (for now), inc nidi
                     nidi += 1
         return np.sort(nids) # may as well sort them
+
+    def esorted(self):
+        """Return list of experiments, sorted by ID"""
+        if len(self.e) == 0:
+            return []
+        eids = sorted(self.e)
+        return [ self.e[eid] for eid in eids ]
 
     def mua(self, width=None, tres=None, neurons=None, smooth=False, layers=False, plot=True):
         """Calculate and optionally plot multiunit activity as a function of time. neurons can
@@ -988,14 +995,18 @@ class RecordingCode(BaseRecording):
     """Mix-in class that defines spike code related methods"""
     def codes(self, nids=None, tranges=None, experiments=None, shufflecodes=False):
         """Return a Codes object, a 2D array where each row is a neuron code constrained
-        to tranges, or to the tranges of experiments"""
+        to tranges, or to the tranges of experiments. If both are None, code is constrained
+        to tranges of all experiments in self"""
         if nids == None:
             nids = self.get_nids() # sorted nids of all active neurons
         neurons = [ self.alln[nid] for nid in nids ] # sorted list of neurons
         if tranges == None:
-            tranges = [self.trange] # use whole Recording trange
-            if experiments != None:
+            if experiments == None:
+                experiments = self.esorted()
+            if len(experiments) > 0:
                 tranges = [ e.trange for e in experiments ] # assume a list of Experiments
+            else:
+                tranges = [self.trange] # use whole Recording trange
         codes = Codes(neurons=neurons, tranges=tranges, shufflecodes=shufflecodes)
         codes.calc()
         return codes
@@ -1016,6 +1027,8 @@ class RecordingCode(BaseRecording):
                 weights = r, t
             else: # weights == 'desynch'
                 weights = 1-r, t
+        if experiments == None:
+            experiments = self.esorted()
         sc = SpikeCorr(recording=self, tranges=tranges, width=width, tres=tres,
                        weights=weights, shift=shift, shiftcorrect=shiftcorrect,
                        experiments=experiments, nids=nids, R=None)
@@ -1027,8 +1040,8 @@ class BaseNetstate(object):
     """Base class of Network state analyses.
     Implements a lot of the analyses on network states found in the 2006 Schneidman paper
 
-    WARNING: not sure if self.tranges, which derives from self.experiments, is being
-    used at all yet. See codes() method below.
+    WARNING: not completely sure if self.tranges, which derives from self.experiments, is
+    being used everywhere. See codes() method below.
     """
     def __init__(self, recording, experiments=None, nids=None):
         self.r = recording
@@ -1037,15 +1050,7 @@ class BaseNetstate(object):
             # or should we check to see if this Recording has a tranges field due to
             # appending Neurons?
         else:
-            experiments = tolist(experiments)
-            try:
-                # is experiments a list of Experiments?
-                self.tranges = [ e.trange for e in experiments ]
-            except AttributeError:
-                # assume experiments is a list of experiment ids:
-                self.tranges = [ self.r.e[ei].trange for ei in experiments ]
-                # convert to a list of Experiments
-                experiments = [ self.r.e[ei] for ei in experiments ]
+            self.tranges = [ e.trange for e in experiments ]
         self.e = experiments # save list of Experiments (could potentially be None)
         self.neurons = self.r.n
         self.nneurons = len(self.neurons)
@@ -1062,8 +1067,6 @@ class BaseNetstate(object):
     def codes(self, nids=None, shufflecodes=False):
         """Returns the appropriate Codes object, depending on the recording
         and experiments defined for this Netstate object"""
-        ## TODO: codes are not currently constrained to when stimuli are on the screen,
-        ## although this shouldn't be a big deal most of the time...
         return self.r.codes(nids=nids, experiments=self.e, shufflecodes=shufflecodes)
 
     def get_wordts(self, nids=None, mids=None):
@@ -1899,7 +1902,6 @@ class NetstateNNplus1(BaseNetstate):
         IdivS = np.ma.array(mask, mask=mask, fill_value=666)
         # cell group size, excluding the N+1th neuron. This will be the x axis in the plot:
         self.N = range(1, maxN+1)
-        #self.N=[15]#.reverse() # for fun and pleasure
         # take up to maxnsamples of all the other neurons, if that many even exist (for the
         # lower N values, the constraint may end up being the total number of possible
         # combinations of cells), for each N+1th cell. Taken from nNplus1s-1 cuz you always
