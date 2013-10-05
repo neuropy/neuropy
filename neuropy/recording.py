@@ -347,7 +347,7 @@ class BaseRecording(object):
         a.set_ylabel(ylabel)
         # limit plot to duration of acquistion, in sec:
         t0, t1 = np.asarray(self.trange) / 1000000
-        a.set_xlim(t0, t1)
+        a.set_xlim(0, t1) # acquisition starts at t=0
         if ylim:
             a.set_ylim(ylim)
         #a.autoscale(axis='x', enable=True, tight=True)
@@ -823,7 +823,7 @@ class RecordingRaster(BaseRecording):
         else: # assume it's a list of nids
             neurons = { nid:self.alln[nid] for nid in neurons }
         if t0 == None:
-            t0, t1 = self.trange # use full recording trange
+            t0, t1 = 0, self.trange[1] # use full recording trange, from t=0 acquisition start
         else:
             tx = {'us': 1, 'ms': 1000, 'sec': 1000000}[units]
             t0 *= tx # convert to us

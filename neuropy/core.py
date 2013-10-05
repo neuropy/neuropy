@@ -506,13 +506,12 @@ class LFP(object):
             data = data[chanis].mean(axis=0) # take mean of data on chanis
         else:
             data = data[chanis] # get single row of data at chanis
-        # convert data from uV to mV, returned t is midpoints of timebins in sec from
+        # convert data from uV to mV, returned t is midpoints of time bins in sec from
         # start of data. I think P is in mV^2?:
         P, freqs, t = mpl.mlab.specgram(data/1e3, NFFT=NFFT, Fs=self.sampfreq,
                                         noverlap=noverlap)
-        # for completeness, should convert t to time from start of acquisition, although
-        # there's no need to because t isn't used anywhere:
-        #t += t0
+        # convert t to time from start of acquisition:
+        t += t0
         # keep only freqs between f0 and f1:
         if f0 == None:
             f0 = freqs[0]
@@ -536,13 +535,14 @@ class LFP(object):
         #self.P = P
         # Label far left, right, top and bottom edges of imshow image. imshow interpolates
         # between these to place the axes ticks. Time limits are
-        # set from start of acquisition:
-        extent = t0, t1, freqs[0], freqs[-1]
+        # set from midpoints of specgram time bins
+        extent = t[0], t[-1], freqs[0], freqs[-1]
         #print('specgram extent: %r' % (extent,))
         # flip P vertically for compatibility with imshow:
         im = a.imshow(P[::-1], extent=extent, cmap=cm)
         a.autoscale(enable=True, tight=True)
         a.axis('tight')
+        a.set_xlim(xmin=0) # acquisition starts at t=0
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
@@ -557,7 +557,7 @@ class LFP(object):
         if colorbar:
             f.colorbar(im, pad=0) # creates big whitespace to the right for some reason
         self.f = f
-        return P, freqs
+        return P, freqs, t
 
     def notch(self, chanis=None, freq=60, bw=0.25, gpass=0.01, gstop=30, ftype='ellip'):
         """Filter out frequencies centered on freq (Hz), of bandwidth +/- bw (Hz) on
