@@ -376,7 +376,11 @@ class BaseRecording(object):
 
         'stdmed': stdev / median
 
+        'madmed': maximum absolute deviation (MAD) wrt median: mad / med
+
         'ptpmed': peak-to-peak / median
+
+        'ptpmean' ptp / mean
 
         'maxmed': (max - median) / median
 
@@ -385,6 +389,14 @@ class BaseRecording(object):
         'nstdmed': normalized stdevmed: (std - med) / (std + med)
             - this seems to have a bit of positive bias, i.e. it overestimates synchrony
             and is less symmetric around 0 than ncv
+
+        'nptpmed': normalized ptpmed: (ptp - med) / (ptp + med)
+
+        'nptpmean' normalized ptpmean: (ptp - mean) / (ptp + mean)
+
+        'nmaxmed': normalized maxmed: (max - median) / (max + median)
+
+        'nmadmed': normalized madmed: (mad - med)/(mad + med)
         
         Note that median is a better estimate of baseline MUA (quiet periods during synch
         state) than mean, since mean is more affected by peaks in MUA (up phases during synch
@@ -418,28 +430,32 @@ class BaseRecording(object):
         t = tranges.mean(axis=1)
 
         old_settings = np.seterr(all='ignore') # suppress div by 0 errors
+        # calculate some metric of each column, ie each width:
         if kind == 'cv':
-            # stdev / mean of each column, ie each width
             state = binrates.std(axis=0) / binrates.mean(axis=0)
             ylabel = 'MUA CV'
         elif kind == 'cqv':
-            # coefficient of quartile variation of each column, ie each width
             u = np.percentile(binrates, upper, axis=0)
             l = np.percentile(binrates, lower, axis=0)
             state = (u - l) / (u + l)
             ylabel = 'MUA CQV: (%d - %d)/(%d + %d)%%' % (upper, lower, upper, lower)
         elif kind == 'stdmed':
-            # stdev / median of each column, ie each width
             state = binrates.std(axis=0) / np.median(binrates, axis=0)
             ylabel = 'MUA $\sigma$/median'
+        elif kind == 'madmed':
+            med = np.median(binrates, axis=0)
+            mad = (np.abs(binrates - med)).mean(axis=0)
+            state = mad / med
+            ylabel = 'MUA MAD / median'
         elif kind == 'ptpmed':
-            # peak-to-peak / median of each column, ie each width
             state = binrates.ptp(axis=0) / np.median(binrates, axis=0)
             ylabel = 'MUA peak-to-peak / median'
+        elif kind == 'ptpmean':
+            state = binrates.ptp(axis=0) / binrates.mean(axis=0)
+            ylabel = 'MUA peak-to-peak / mean'
         elif kind == 'maxmed':
-            # peak-to-peak / median of each column, ie each width
-            median = np.median(binrates, axis=0)
-            state = (binrates.max(axis=0) - median) / median
+            med = np.median(binrates, axis=0)
+            state = (binrates.max(axis=0) - med) / med
             ylabel = 'MUA (max - median) / median'
         elif kind == 'ncv':
             s = binrates.std(axis=0)
@@ -451,11 +467,34 @@ class BaseRecording(object):
             med = np.median(binrates, axis=0)
             state = (s - med) / (s + med)
             ylabel = 'MUA (std - med) / (std + med)'
+        elif kind == 'nptpmed':
+            ptp = binrates.ptp(axis=0)
+            med = np.median(binrates, axis=0)
+            state = (ptp - med) / (ptp + med)
+            ylabel = 'MUA (ptp - med) / (ptp + med)'
+        elif kind == 'nptpmean':
+            ptp = binrates.ptp(axis=0)
+            mean = binrates.mean(axis=0)
+            state = (ptp - med) / (ptp + med)
+            ylabel = 'MUA (ptp - mean) / (ptp + mean)'
+        elif kind == 'nmaxmed':
+            mx = binrates.max(axis=0)
+            med = np.median(binrates, axis=0)
+            state = (mx - med) / (mx + med)
+            ylabel = 'MUA (max - median) / (max + median)'
+        elif kind == 'nmadmed':
+            med = np.median(binrates, axis=0)
+            mad = (np.abs(binrates - med)).mean(axis=0)
+            state = (mad - med) / (mad + med)
+            ylabel = 'MUA (MAD - median) / (MAD + median)'
         else:
             raise ValueError('unknown brain state kind %r' % kind)
+        nanis = np.isnan(state)
+        print('num not finite points across layers:', nanis.sum())
+        #if kind[0] == 'n': # normalized metric, varies from -1 to 1
+        #    state[nanis] = 0 # set invalid values to 0
         # keep only points where state calculated from all neurons (row 0) is finite
         keepis = np.isfinite(state[0])
-        print('num not finite points:', (keepis == False).sum())
         state, t = state[:, keepis], t[keepis]
         if plot:
             ylim = None #(0, 1.5)
