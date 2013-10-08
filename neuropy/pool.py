@@ -9,7 +9,7 @@ from core import lastcmd
 from track import Track
 
 
-def sc_si(source, method='weighted mean', kind='ncv', layers=False, sirange=(-1, 1),
+def sc_si(source, method='weighted mean', kind='ncv', layers=False, ms=1, sirange=(-1, 1),
           figsize=(7.5, 6.5)):
     """Pool recording.sc().si() results across recordings specified by source,
     plot the result"""
@@ -76,16 +76,16 @@ def sc_si(source, method='weighted mean', kind='ncv', layers=False, sirange=(-1,
         #a.plot(sirange, m4*sirange+b4, 'y--', zorder=0)
 
     # scatter plot corrs vs si, one colour per laminarity:
-    a.plot(si[0], corrs[0], 'e.', label='all, m=%.3f, r=%.3f' % (m0, r0))
+    a.plot(si[0], corrs[0], 'e.', ms=ms, label='all, m=%.3f, r=%.3f' % (m0, r0))
     if layers:
-        a.plot(si[0], corrs[1], 'r.', label='superficial, m=%.3f, r=%.3f'
-                                         % (m1, r1))
-        a.plot(si[0], corrs[2], 'g.', label='middle, m=%.3f, r=%.3f'
-                                         % (m2, r2))
-        a.plot(si[0], corrs[3], 'b.', label='deep, m=%.3f, r=%.3f'
-                                         % (m3, r3))
-        #a.plot(si[0], corrs[4], 'y.', label='other, m=%.3f, r=%.3f'
-        #                                 % (m4, r4), zorder=0)
+        a.plot(si[0], corrs[1], 'r.', ms=ms, label='superficial, m=%.3f, r=%.3f'
+                                                   % (m1, r1))
+        a.plot(si[0], corrs[2], 'g.', ms=ms, label='middle, m=%.3f, r=%.3f'
+                                                   % (m2, r2))
+        a.plot(si[0], corrs[3], 'b.', ms=ms, label='deep, m=%.3f, r=%.3f'
+                                                   % (m3, r3))
+        #a.plot(si[0], corrs[4], 'y.', ms=ms, label='other, m=%.3f, r=%.3f'
+        #                                           % (m4, r4), zorder=0)
     #a.set_xlim(sirange)
     if sisource == 'lfp':
         a.set_xlim(0, 1)

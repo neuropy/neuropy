@@ -2052,7 +2052,7 @@ class SpikeCorr(object):
 
     def si(self, method='weighted mean', inclusive=False, kind='ncv', chani=-1,
            lowband=None, highband=None, sirange=None, figsize=(7.5, 6.5),
-           plot=True, layers=False):
+           plot=True, layers=False, ms=5):
         """Scatter plot spike correlations vs MUA state (kind=cv, stdmed, ptpmed or maxmed) or
         LFP synchrony index (kind=L/(L+H) or L/H), using the same time base for both"""
         rec = self.r
@@ -2128,16 +2128,17 @@ class SpikeCorr(object):
             #a.plot(sirange, m4*sirange+b4, 'y--', zorder=0)
 
         # scatter plot corrs vs si[0], one colour per laminarity:
-        a.plot(si[0], corrs[0], 'e.', label='all (%d), m=%.3f, r=%.3f' % (npairs[0], m0, r0))
+        a.plot(si[0], corrs[0], 'e.', ms=ms, label='all (%d), m=%.3f, r=%.3f'
+                                                   % (npairs[0], m0, r0))
         if layers:
-            a.plot(si[0], corrs[1], 'r.', label='superficial (%d), m=%.3f, r=%.3f'
-                                             % (npairs[1], m1, r1))
-            a.plot(si[0], corrs[2], 'g.', label='middle (%d), m=%.3f, r=%.3f'
-                                             % (npairs[2], m2, r2))
-            a.plot(si[0], corrs[3], 'b.', label='deep (%d), m=%.3f, r=%.3f'
-                                             % (npairs[3], m3, r3))
-            #a.plot(si[0], corrs[4], 'y.', label='other (%d), m=%.3f, r=%.3f'
-            #                                 % (npairs[4], m4, r4), zorder=0)
+            a.plot(si[0], corrs[1], 'r.', ms=ms, label='superficial (%d), m=%.3f, r=%.3f'
+                                                       % (npairs[1], m1, r1))
+            a.plot(si[0], corrs[2], 'g.', ms=ms, label='middle (%d), m=%.3f, r=%.3f'
+                                                       % (npairs[2], m2, r2))
+            a.plot(si[0], corrs[3], 'b.', ms=ms, label='deep (%d), m=%.3f, r=%.3f'
+                                                       % (npairs[3], m3, r3))
+            #a.plot(si[0], corrs[4], 'y.', ms=ms, label='other (%d), m=%.3f, r=%.3f'
+            #                                           % (npairs[4], m4, r4), zorder=0)
         #a.set_xlim(sirange)
         if sisource == 'lfp':
             a.set_xlim(0, 1)
