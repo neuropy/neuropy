@@ -279,7 +279,7 @@ class Track(object):
         f.canvas.draw() # this is needed if a != None when passed as arg
         return a
 
-    def scstim(self, method='weighted mean', width=None, tres=None, figsize=(7.5, 6.5)):
+    def scstim(self, method='mean', width=None, tres=None, figsize=(7.5, 6.5)):
         """Scatter plot some summary statistic of spike correlations of each recording,
         classified by the stimulus group each recording falls into. width and tres dictate
         tranges to split recordings up into, if any"""
@@ -331,7 +331,7 @@ class Track(object):
         f.tight_layout(pad=0.3) # crop figure to contents
         f.show()
 
-    def scsistim(self, method='weighted mean', width=None, tres=None, timeaverage=False,
+    def scsistim(self, method='mean', width=None, tres=None, timeaverage=False,
                  plottime=False, s=5, figsize=(7.5, 6.5)):
         """Scatter plot some summary statistic of spike correlations of each recording vs
         synchrony index SI. Colour each point according to stimulus type. width and tres

@@ -1950,9 +1950,9 @@ class SpikeCorr(object):
         #return ypos, corrs
         return self
 
-    def sct(self, method='weighted mean', inclusive=False):
+    def sct(self, method='mean', inclusive=False):
         """Calculate pairwise spike correlations for each type of laminarity as a function of
-        time. method can be 'weightedmean', 'mean', 'median', 'max', 'min' or 'all'"""
+        time. method can be 'weighted mean', 'mean', 'median', 'max', 'min' or 'all'"""
         uns = get_ipython().user_ns
         if self.width == None:
             self.width = intround(uns['SCWIDTH'] * 1000000) # convert from sec to us
@@ -2005,9 +2005,9 @@ class SpikeCorr(object):
         ylabel = method + ' spike correlations'
         return laminarcorrs, laminarnpairs, t, ylabel
 
-    def plot(self, method='weighted mean', inclusive=False, figsize=(20, 6.5)):
+    def plot(self, method='mean', inclusive=False, figsize=(20, 6.5)):
         """Plot pairwise spike correlations as a function of time. method can be
-        'weightedmean', 'mean', 'median', 'max' or 'min'"""
+        'weighted mean', 'mean', 'median', 'max' or 'min'"""
         corrs, npairs, t, ylabel = self.sct(method=method, inclusive=inclusive)
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -2050,7 +2050,7 @@ class SpikeCorr(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def si(self, method='weighted mean', inclusive=False, kind='ncv', chani=-1,
+    def si(self, method='mean', inclusive=False, kind='ncv', chani=-1,
            lowband=None, highband=None, sirange=None, figsize=(7.5, 6.5),
            plot=True, layers=False, ms=5):
         """Scatter plot spike correlations vs MUA state (kind=cv, stdmed, ptpmed or maxmed) or
@@ -2180,7 +2180,7 @@ class SpikeCorr(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def mua(self, method='weighted mean', inclusive=False, smooth=False, figsize=(7.5, 6.5)):
+    def mua(self, method='mean', inclusive=False, smooth=False, figsize=(7.5, 6.5)):
         """Scatter plot spike correlations vs multiunit activity"""
         corrs, npairs, ct, ylabel = self.sct(method=method, inclusive=inclusive)
         mua, muat, n = self.r.mua(smooth=smooth, plot=False)

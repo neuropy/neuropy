@@ -10,7 +10,7 @@ from core import lastcmd
 from track import Track
 
 
-def sc_si(source, method='weighted mean', kind='ncv', layers=False, ms=1, sirange=(-1, 1),
+def sc_si(source, method='mean', kind='ncv', layers=False, ms=1, sirange=(-1, 1),
           figsize=(7.5, 6.5)):
     """Pool recording.sc().si() results across recordings specified by source,
     plot the result"""
