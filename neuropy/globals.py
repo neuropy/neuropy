@@ -82,6 +82,16 @@ DRIFTRIDS = {'ptc15.tr7c': ['71', '82'],
              'ptc22.tr1':  ['03', '18'],
              'ptc22.tr2':  ['25', '31']}
 
+"""IDs of full field flash recordings"""
+FFFRIDS = {'ptc15.tr7c': ['69', '78', '79', '88', '93'],
+           'ptc22.tr1':  ['01', '02', '12', '16', '22'],
+           'ptc22.tr2':  ['23', '24', '35']}
+
+"""IDs of flash grating recordings"""
+FGRIDS = {'ptc15.tr7c': ['73'],
+          'ptc22.tr1':  ['13'],
+          'ptc22.tr2':  ['30']}
+
 """Per-track list of relevant recordings, merged from those above"""
 RIDS = mergeuniquedictvals([BLANKRIDS, MSEQRIDS, MOVRIDS, DRIFTRIDS])
 """Per-track list of blankscreen and msequence recordings"""
