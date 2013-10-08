@@ -2107,10 +2107,8 @@ class SpikeCorr(object):
 
         # keep only those points whose synchrony index falls within sirange:
         if sirange == None:
-            if sisource == 'lfp':
-                sirange = 0, 1
-            else:
-                sirange = si.min(), si.max()
+            finitesi = si[np.isfinite(si)]
+            sirange = finitesi.min(), finitesi.max()
         sirange = np.asarray(sirange)
         keepis = (sirange[0] <= si[0]) * (si[0] <= sirange[1]) # boolean index array
         si = si[:, keepis]
@@ -2143,6 +2141,8 @@ class SpikeCorr(object):
         #a.set_xlim(sirange)
         if sisource == 'lfp':
             a.set_xlim(0, 1)
+        elif sisource == 'mua' and kind[0] == 'n':
+            a.set_xlim(-1, 1)
         a.set_ylim(ylim)
         #a.autoscale(enable=True, axis='y', tight=True)
         a.set_xlabel(kind)
