@@ -2052,14 +2052,14 @@ class SpikeCorr(object):
 
     def si(self, method='weighted mean', inclusive=False, kind='ncv', chani=-1,
            lowband=None, highband=None, sirange=None, figsize=(7.5, 6.5),
-           plot=True, layers=True):
+           plot=True, layers=False):
         """Scatter plot spike correlations vs MUA state (kind=cv, stdmed, ptpmed or maxmed) or
         LFP synchrony index (kind=L/(L+H) or L/H), using the same time base for both"""
         rec = self.r
         t0 = time.time()
         # ct are center timepoints:
         corrs, npairs, ct, ylabel = self.sct(method=method, inclusive=inclusive)
-        print('sct(t) calc took %.3f sec' % (time.time()-t0))
+        #print('sct(t) calc took %.3f sec' % (time.time()-t0))
         if kind in ('L/(L+H)', 'L/H'):
             sisource = 'lfp'
         else:
@@ -2072,8 +2072,8 @@ class SpikeCorr(object):
             si = np.vstack([si, si, si, si]) # make 4 x nt, just like for mua si
         else:
             si, sit, n = rec.mua_si(kind=kind, plot=False)
-        print('SI(t) calc took %.3f sec' % (time.time()-t0))
-        print('len(sit) = %d, len(ct) = %d' % (len(sit), len(ct)))
+        #print('SI(t) calc took %.3f sec' % (time.time()-t0))
+        print('len(sit, ct) = %d, %d' % (len(sit), len(ct)))
         # get common time resolution:
         if len(sit) > len(ct):
             siti = sit.searchsorted(ct)
