@@ -1086,7 +1086,7 @@ class SpikeCorr(object):
         self.r = recording
         if tranges != None:
             self.tranges = tranges
-        elif experiments != None:
+        elif experiments != None and len(experiments) > 0:
             self.tranges = [ e.trange for e in experiments ]
         else:
             self.tranges = [ self.r.trange ] # use the Recording's trange
