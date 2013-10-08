@@ -30,7 +30,7 @@ import scipy.signal
 from scipy.special import cbrt # real cube root
 import scipy.stats
 from scipy.spatial.distance import pdist#, squareform
-
+from scipy.stats import linregress
 
 import matplotlib as mpl
 import matplotlib.cm
@@ -2056,7 +2056,16 @@ class SpikeCorr(object):
         """Scatter plot spike correlations vs MUA state (kind=cv, stdmed, ptpmed or maxmed) or
         LFP synchrony index (kind=L/(L+H) or L/H), using the same time base for both"""
         rec = self.r
+        uns = get_ipython().user_ns
         t0 = time.time()
+
+        if layers == False:
+            layers = ['all']
+        elif layers == True:
+            layers = ['sup', 'deep']
+        LAYER2I = {'all':0, 'sup':1, 'mid':2, 'deep':3, 'other':4}
+        layeris = [ LAYER2I[layer] for layer in layers ]
+
         # ct are center timepoints:
         corrs, npairs, ct, ylabel = self.sct(method=method, inclusive=inclusive)
         #print('sct(t) calc took %.3f sec' % (time.time()-t0))
@@ -2097,13 +2106,12 @@ class SpikeCorr(object):
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        if layers:
-            ylim = corrs[:5].min(), corrs[:5].max()
-        else:
-            ylim = corrs[0].min(), corrs[0].max()
-        yrange = ylim[1] - ylim[0]
-        extra = yrange*0.03 # 3 %
-        ylim = ylim[0]-extra, ylim[1]+extra
+
+        #ylim = corrs[layeris].min(), corrs[layeris].max()
+        #yrange = ylim[1] - ylim[0]
+        #extra = yrange*0.03 # 3 %
+        #ylim = ylim[0]-extra, ylim[1]+extra
+        ylim = uns['SCLIMITS']
 
         # keep only those points whose synchrony index falls within sirange:
         if sirange == None:
@@ -2115,30 +2123,38 @@ class SpikeCorr(object):
         corrs = corrs[:, keepis]
 
         # plot linear regressions of corrs vs si[0]:
-        m0, b0, r0, p0, stderr0 = scipy.stats.linregress(si[0], corrs[0])
-        a.plot(sirange, m0*sirange+b0, 'e--')
-        if layers:
-            m1, b1, r1, p1, stderr1 = scipy.stats.linregress(si[0], corrs[1])
+        if 'all' in layers:
+            m0, b0, r0, p0, stderr0 = linregress(si[0], corrs[0])
+            a.plot(sirange, m0*sirange+b0, 'e--')
+        if 'sup' in layers:
+            m1, b1, r1, p1, stderr1 = linregress(si[0], corrs[1])
             a.plot(sirange, m1*sirange+b1, 'r--')
-            m2, b2, r2, p2, stderr2 = scipy.stats.linregress(si[0], corrs[2])
+        if 'mid' in layers:
+            m2, b2, r2, p2, stderr2 = linregress(si[0], corrs[2])
             a.plot(sirange, m2*sirange+b2, 'g--')
-            m3, b3, r3, p3, stderr3 = scipy.stats.linregress(si[0], corrs[3])
+        if 'deep' in layers:
+            m3, b3, r3, p3, stderr3 = linregress(si[0], corrs[3])
             a.plot(sirange, m3*sirange+b3, 'b--')
-            #m4, b4, r4, p4, stderr4 = scipy.stats.linregress(si[0], corrs[4])
-            #a.plot(sirange, m4*sirange+b4, 'y--', zorder=0)
+        if 'other' in layers:
+            m4, b4, r4, p4, stderr4 = linregress(si[0], corrs[4])
+            a.plot(sirange, m4*sirange+b4, 'y--', zorder=0)
 
         # scatter plot corrs vs si[0], one colour per laminarity:
-        a.plot(si[0], corrs[0], 'e.', ms=ms, label='all (%d), m=%.3f, r=%.3f'
-                                                   % (npairs[0], m0, r0))
-        if layers:
+        if 'all' in layers:
+            a.plot(si[0], corrs[0], 'e.', ms=ms, label='all (%d), m=%.3f, r=%.3f'
+                                                       % (npairs[0], m0, r0))
+        if 'sup' in layers:
             a.plot(si[0], corrs[1], 'r.', ms=ms, label='superficial (%d), m=%.3f, r=%.3f'
                                                        % (npairs[1], m1, r1))
+        if 'mid' in layers:
             a.plot(si[0], corrs[2], 'g.', ms=ms, label='middle (%d), m=%.3f, r=%.3f'
                                                        % (npairs[2], m2, r2))
+        if 'deep' in layers:
             a.plot(si[0], corrs[3], 'b.', ms=ms, label='deep (%d), m=%.3f, r=%.3f'
                                                        % (npairs[3], m3, r3))
-            #a.plot(si[0], corrs[4], 'y.', ms=ms, label='other (%d), m=%.3f, r=%.3f'
-            #                                           % (npairs[4], m4, r4), zorder=0)
+        if 'other' in layers:
+            a.plot(si[0], corrs[4], 'y.', ms=ms, label='other (%d), m=%.3f, r=%.3f'
+                                                       % (npairs[4], m4, r4), zorder=0)
         #a.set_xlim(sirange)
         if sisource == 'lfp':
             a.set_xlim(0, 1)
@@ -2152,7 +2168,6 @@ class SpikeCorr(object):
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
-        uns = get_ipython().user_ns
         sup, mid, deep = uns['LAYERS'][rec.tr.absname]
         a.text(0.998, 0.99,
                '%s\n'
@@ -2198,11 +2213,11 @@ class SpikeCorr(object):
         muarange = np.array([mua.min(), mua.max()])
 
         # plot linear regressions:
-        m0, b0, r0, p0, stderr0 = scipy.stats.linregress(mua, corrs[0])
-        m1, b1, r1, p1, stderr1 = scipy.stats.linregress(mua, corrs[1])
-        m2, b2, r2, p2, stderr2 = scipy.stats.linregress(mua, corrs[2])
-        m3, b3, r3, p3, stderr3 = scipy.stats.linregress(mua, corrs[3])
-        m4, b4, r4, p4, stderr4 = scipy.stats.linregress(mua, corrs[4])
+        m0, b0, r0, p0, stderr0 = linregress(mua, corrs[0])
+        m1, b1, r1, p1, stderr1 = linregress(mua, corrs[1])
+        m2, b2, r2, p2, stderr2 = linregress(mua, corrs[2])
+        m3, b3, r3, p3, stderr3 = linregress(mua, corrs[3])
+        m4, b4, r4, p4, stderr4 = linregress(mua, corrs[4])
         a.plot(muarange, m0*muarange+b0, 'e--')
         a.plot(muarange, m1*muarange+b1, 'r--')
         a.plot(muarange, m2*muarange+b2, 'g--')

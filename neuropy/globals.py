@@ -47,6 +47,7 @@ SIHIGHBAND = 7, 100 # Hz
 """Spike correlation time range windows"""
 SCWIDTH = 16.384 # sec
 SCTRES = 1 # sec
+SCLIMITS = -0.01, 0.13
 
 """Multiunit activity time range windows"""
 MUAWIDTH = 0.25 # sec
