@@ -19,6 +19,7 @@ import pylab as pl
 from animal import Animal
 from track import Track
 from recording import Recording
+import pool
 
 
 def cf():
