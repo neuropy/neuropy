@@ -39,7 +39,7 @@ def sc_si(source, method='mean', kind='ncv', layers=False, ms=1, sirange=(-1, 1)
     corrss, sis = [], []
     for rec in recs:
         print(rec.absname)
-        corrs, si, ylabel = rec.sc().si(method=method, plot=False)
+        corrs, si, ylabel = rec.sc().si(method=method, kind=kind, plot=False)
         corrss.append(corrs)
         sis.append(si)
     corrs = np.hstack(corrss)
