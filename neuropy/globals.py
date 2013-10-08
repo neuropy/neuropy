@@ -8,6 +8,7 @@ get_ipython().user_ns['VARNAME']
 #from __future__ import print_function
 
 import os
+from core import mergeuniquedictvals
 
 DATAPATH = os.path.expanduser('~/data')
 MOVIEPATH = os.path.expanduser('~/data/mov')
@@ -81,11 +82,10 @@ DRIFTRIDS = {'ptc15.tr7c': ['71', '82'],
              'ptc22.tr2':  ['25', '31']}
 
 """Per-track list of relevant recordings, merged from those above"""
-RIDS = {}
-for track in TRACKS:
-    rids = []
-    for ridtype in [BLANKRIDS, MSEQRIDS, MOVRIDS, DRIFTRIDS]:
-        rids.extend(ridtype[track])
-    RIDS[track] = sorted(rids)
+RIDS = mergeuniquedictvals([BLANKRIDS, MSEQRIDS, MOVRIDS, DRIFTRIDS])
+"""Per-track list of blankscreen and msequence recordings"""
+BLANKMSEQRIDS = mergeuniquedictvals([BLANKRIDS, MSEQRIDS])
+"""Per-track list of movie and driftbar recordings"""
+MOVDRIFTRIDS = mergeuniquedictvals([MOVRIDS, DRIFTRIDS])
 
 NULLDIN = 65535 # integer value in stimulus .din files used as NULL (stimulus off)

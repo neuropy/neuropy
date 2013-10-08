@@ -3535,3 +3535,17 @@ def rainbow_text(a, x, y, words, colors, **kwargs):
         text.draw(f.canvas.get_renderer())
         ex = text.get_window_extent()
         t = mpl.transforms.offset_copy(text._transform, x=ex.width, units='dots')
+
+def mergeuniquedictvals(dicts):
+    """Merge a collection of dicts into a single dict, concatenating the list values
+    of same-named keys into a single sorted list of unique values for each key"""
+    keys = set()
+    for d in dicts:
+        keys.update(list(d))
+    md = {} # merged dict
+    for key in keys:
+        md[key] = set()
+        for d in dicts:
+            md[key].update(d[key])
+        md[key] = sorted(md[key])
+    return md
