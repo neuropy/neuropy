@@ -38,12 +38,6 @@ CODETRES = 20000 # us
 CODEPHASE = 0 # deg
 CODEWORDLEN = 10 # in bits
 
-"""LFP synchrony index time range windows"""
-SIWIDTH = 32.768 # sec (2**15 ms)
-SITRES = 1 # sec
-SILOWBAND = 0.5, 7 # Hz
-SIHIGHBAND = 7, 100 # Hz
-
 """Spike correlation time range windows"""
 SCWIDTH = 16.384 # sec
 SCTRES = 1 # sec
@@ -52,6 +46,12 @@ SCLIMITS = -0.01, 0.13
 """Multiunit activity time range windows"""
 MUAWIDTH = 0.25 # sec
 MUATRES = 0.1 # sec
+
+"""LFP synchrony index time range windows"""
+LFPSIWIDTH = 32.768 # sec (2**15 ms)
+LFPSITRES = 1 # sec
+LFPSILOWBAND = 0.5, 7 # Hz
+LFPSIHIGHBAND = 7, 100 # Hz
 
 """List of sorted track IDs"""
 TRACKS = ['ptc15.tr7c', 'ptc22.tr1', 'ptc22.tr2']

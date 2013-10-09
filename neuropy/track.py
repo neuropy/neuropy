@@ -334,7 +334,7 @@ class Track(object):
     def scsistim(self, method='mean', width=None, tres=None, timeaverage=False,
                  plottime=False, s=5, figsize=(7.5, 6.5)):
         """Scatter plot some summary statistic of spike correlations of each recording vs
-        synchrony index SI. Colour each point according to stimulus type. width and tres
+        LFP synchrony index SI. Colour each point according to stimulus type. width and tres
         (sec) dictate tranges to split recordings up into. timeaverage averages across time
         values of both sc and si for each recording. s is point size"""
         ## TODO: maybe limit to visually responsive cells
@@ -342,7 +342,7 @@ class Track(object):
 
         uns = get_ipython().user_ns
         if width == None:
-            width = uns['SIWIDTH'] # want powers of two for efficient FFT
+            width = uns['LFPSIWIDTH']
         if tres == None:
             tres = width
         bsrids = uns['BLANKRIDS'][self.absname]

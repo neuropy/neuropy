@@ -625,18 +625,18 @@ class LFP(object):
 
         uns = get_ipython().user_ns
         if lowband == None:
-            lowband = uns['SILOWBAND']
+            lowband = uns['LFPSILOWBAND']
         f0, f1 = lowband
         if highband == None:
-            highband = uns['SIHIGHBAND']
+            highband = uns['LFPSIHIGHBAND']
         f2, f3 = highband
         if width != None:
             if tres == None:
                 tres = width
         if width == None:
-            width = uns['SIWIDTH'] # sec
+            width = uns['LFPSIWIDTH'] # sec
         if tres == None:
-            tres = uns['SITRES'] # sec
+            tres = uns['LFPSITRES'] # sec
         assert tres <= width
         NFFT = intround(width * self.sampfreq)
         noverlap = intround(NFFT - tres * self.sampfreq)
@@ -674,10 +674,10 @@ class LFP(object):
         Hilbert transform (Saleem2010). Use either L/(L+H) ratio (Saleem2010) or L/H ratio
         (Li, Poo, Dan 2009)"""
         if lowband == None:
-            lowband = uns['SILOWBAND']
+            lowband = uns['LFPSILOWBAND']
         f0, f1 = lowband
         if highband == None:
-            highband = uns['SIHIGHBAND']
+            highband = uns['LFPSIHIGHBAND']
         f2, f3 = highband
         data = self.get_data()
         t = self.get_tssec() # full set of timestamps, in sec
