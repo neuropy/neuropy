@@ -370,7 +370,7 @@ class BaseRecording(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def mua_si(self, kind='ncv', width=10, tres=1, muawidth=None, muatres=None,
+    def mua_si(self, kind='ncv', width=None, tres=None, muawidth=None, muatres=None,
                   upper=75, lower=25, neurons=None, smooth=False, plot=True, layers=False):
         """Calculate a synchrony index from MUA, using potentially overlapping
         windows of width and tres of MUA, itself calculated according to muawidth and muatres.
@@ -411,6 +411,10 @@ class BaseRecording(object):
         peaks are bipolar, median and mean will probably be quite close.
         """
         uns = get_ipython().user_ns
+        if width == None:
+            width = uns['MUASIWIDTH'] # sec
+        if tres == None:
+            tres = uns['MUASITRES'] # sec
         if muawidth == None:
             muawidth = uns['MUAWIDTH'] # sec
         if muatres == None:
