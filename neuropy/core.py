@@ -481,19 +481,24 @@ class LFP(object):
         return self
         
     def specgram(self, t0=None, t1=None, f0=0.1, f1=100, p0=-60, p1=None, chanis=-1,
-                 width=4.096, tres=1, cm=None, colorbar=False, figsize=(20, 6.5)):
+                 width=None, tres=None, cm=None, colorbar=False, figsize=(20, 6.5)):
         """Plot a spectrogram from t0 to t1 in sec, from f0 to f1 in Hz, and clip power values
         from p0 to p1 in dB, based on channel index chani of LFP data. chanis=0 uses most
         superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, take mean of
-        specified chanis. width and tres are in sec. Best to keep number of samples in width a
-        power of 2. As an alternative to cm.jet (the default), cm.gray, cm.hsv cm.terrain, and
-        cm.cubehelix_r colormaps seem to bring out the most structure in the spectrogram"""
+        specified chanis. width and tres are in sec. As an alternative to cm.jet (the
+        default), cm.gray, cm.hsv cm.terrain, and cm.cubehelix_r colormaps seem to bring out
+        the most structure in the spectrogram"""
+        uns = get_ipython().user_ns
         self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
         if t0 == None:
             t0, t1 = ts[0], ts[-1] # full duration
         if t1 == None:
             t1 = t0 + 10 # 10 sec window
+        if width == None:
+            width = uns['LFPWIDTH'] # sec
+        if tres == None:
+            tres = uns['LFPTRES'] # sec
         assert tres <= width
         NFFT = intround(width * self.sampfreq)
         noverlap = intround(NFFT - tres * self.sampfreq)
@@ -605,11 +610,12 @@ class LFP(object):
         self.data[chanis] = data
         return b, a
 
-    def si(self, chani=-1, lowband=None, highband=None, ratio='L/(L+H)',
-           width=None, tres=None, plot=True):
-        """Return synchrony index, i.e. power ratio of low vs high bands, as measured by
-        Fourier transform. Use either L/(L+H) ratio (Saleem2010) or L/H ratio (Li, Poo, Dan
-        2009). width and tres are in sec. A smaller tres smooths the returned time series"""
+    def si(self, kind='ncv', chani=-1, width=None, tres=None, lfpwidth=None, lfptres=None,
+           lowband=None, highband=None, plot=True):
+        """Calculate an LFP synchrony index, using potentially overlapping windows of
+        width and tres, in sec, from the LFP spectrogram, itself composed of bins of
+        lfpwidth and lfptres. Options for kind are:
+
         data = self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
         t0, t1 = ts[0], ts[-1] # full duration
@@ -624,22 +630,24 @@ class LFP(object):
             x = filter.notch(x, freq=rr)[0] # remove CRT interference
 
         uns = get_ipython().user_ns
+        if width == None:
+            width = uns['LFPSIWIDTH'] # sec
+        if tres == None:
+            tres = uns['LFPSITRES'] # sec
+        if lfpwidth == None:
+            lfpwidth = uns['LFPWIDTH'] # sec
+        if lfptres == None:
+            lfptres = uns['LFPTRES'] # sec
         if lowband == None:
             lowband = uns['LFPSILOWBAND']
         f0, f1 = lowband
         if highband == None:
             highband = uns['LFPSIHIGHBAND']
         f2, f3 = highband
-        if width != None:
-            if tres == None:
-                tres = width
-        if width == None:
-            width = uns['LFPSIWIDTH'] # sec
-        if tres == None:
-            tres = uns['LFPSITRES'] # sec
-        assert tres <= width
-        NFFT = intround(width * self.sampfreq)
-        noverlap = intround(NFFT - tres * self.sampfreq)
+
+        assert lfptres <= lfpwidth
+        NFFT = intround(lfpwidth * self.sampfreq)
+        noverlap = intround(NFFT - lfptres * self.sampfreq)
         #print('len(x), NFFT, noverlap: %d, %d, %d' % (len(x), NFFT, noverlap))
         # t is midpoints of timebins in sec from start of data. P is in mV^2?:
         P, freqs, t = mpl.mlab.specgram(x, NFFT=NFFT, Fs=self.sampfreq, noverlap=noverlap)

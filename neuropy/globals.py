@@ -51,6 +51,10 @@ MUATRES = 0.1 # sec
 MUASIWIDTH = 10 # sec
 MUASITRES = 1 # sec
 
+"""LFP power time range windows"""
+LFPWIDTH = 2 # sec
+LFPTRES = 0.5 # sec
+
 """LFP synchrony index time range windows"""
 LFPSIWIDTH = 32.768 # sec (2**15 ms)
 LFPSITRES = 1 # sec
