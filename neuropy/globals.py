@@ -56,10 +56,10 @@ LFPWIDTH = 2 # sec
 LFPTRES = 0.5 # sec
 
 """LFP synchrony index time range windows"""
-LFPSIWIDTH = 32.768 # sec (2**15 ms)
-LFPSITRES = 1 # sec
+LFPSIWIDTH = 10 # sec (2**15 ms)
+LFPSITRES = 2 # sec
 LFPSILOWBAND = 0.5, 7 # Hz
-LFPSIHIGHBAND = 7, 100 # Hz
+LFPSIHIGHBAND = 15, 100 # Hz
 
 """List of sorted track IDs"""
 TRACKS = ['ptc15.tr7c', 'ptc22.tr1', 'ptc22.tr2']
