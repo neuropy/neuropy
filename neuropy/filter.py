@@ -25,14 +25,15 @@ def notch(data, sampfreq=1000, freq=60, bw=0.25, gpass=0.01, gstop=30, ftype='el
 def naivenotch(data, sampfreq=1000, freqs=60, bws=1):
     """Filter out frequencies in data centered on freqs (Hz), of bandwidths bws (Hz).
     Filtering out by setting components to 0 is probably naive"""
+    raise NotImplementedError("this doesn't seem to work right!")
     nt = data.shape[1]
     tres = 1 / sampfreq
     dt = tres / 1e6 # in sec
     f = np.fft.fftfreq(nt, dt) # fft bin frequencies
     f = f[:nt//2] # grab +ve freqs by splitting f in half
     franges = []
-    freqs = tolist(freqs)
-    bws = tolist(bws)
+    freqs = np.atleast_1d(freqs)
+    bws = np.atleast_1d(bws)
     if len(freqs) > 1 and len(bws) == 1:
         bws = bws * len(freqs) # make freqs and bw the same length
     for freq, bw in zip(freqs, bws):
