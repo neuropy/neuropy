@@ -511,6 +511,7 @@ class LFP(object):
             data = data[chanis].mean(axis=0) # take mean of data on chanis
         else:
             data = data[chanis] # get single row of data at chanis
+        #data = filter.notch(data)[0] # remove 60 Hz mains noise
         # convert data from uV to mV, returned t is midpoints of time bins in sec from
         # start of data. I think P is in mV^2?:
         P, freqs, t = mpl.mlab.specgram(data/1e3, NFFT=NFFT, Fs=self.sampfreq,
@@ -566,7 +567,7 @@ class LFP(object):
 
     def notch(self, chanis=None, freq=60, bw=0.25, gpass=0.01, gstop=30, ftype='ellip'):
         """Filter out frequencies centered on freq (Hz), of bandwidth +/- bw (Hz) on
-        data row indices chanis.
+        data row indices chanis, in-place.
 
         ftype: 'ellip', 'butter', 'cheby1', 'cheby2', 'bessel'
         """
@@ -579,14 +580,14 @@ class LFP(object):
         return b, a
 
     def naivenotch(self, freqs=60, bws=1):
-        """Filter out frequencies in data centered on freqs (Hz), of bandwidths bws (Hz).
-        Filtering out by setting components to 0 is probably naive"""
+        """Filter out frequencies in data centered on freqs (Hz), of bandwidths bws (Hz),
+        in-place. Filtering out by setting components to 0 is probably naive"""
         data = self.get_data()
         self.data = filter.naivenotch(data, self.sampfreq, freqs, bws)
 
     def filter(self, chanis=None, f0=0, f1=7, fr=0.5, gpass=0.01, gstop=30, ftype='ellip'):
         """Bandpass filter data on row indices chanis, between f0 and f1 (Hz), with filter
-        rolloff (?) fr (Hz).
+        rolloff (?) fr (Hz). Done in-place.
 
         ftype: 'ellip', 'butter', 'cheby1', 'cheby2', 'bessel'
         """
@@ -600,8 +601,8 @@ class LFP(object):
 
     def filterord(self, chanis=None, f0=300, f1=None, order=4, rp=None, rs=None,
                   btype='highpass', ftype='butter'):
-        """Bandpass filter data by specifying filter order and btype, instead of gpass and
-        gstop"""
+        """Bandpass filter data in-place by specifying filter order and btype, instead of
+        gpass and gstop"""
         data = self.get_data()
         if chanis == None:
             chanis = np.arange(len(data))
@@ -616,9 +617,24 @@ class LFP(object):
         width and tres, in sec, from the LFP spectrogram, itself composed of bins of
         lfpwidth and lfptres. Options for kind are:
 
+        'L/(L+H)': fraction of power in low band vs total power (Saleem2010)
+
+        'L/H': low to highband power ratio (Li, Poo, Dan 2009)
+
+        'cv': coefficient of variation (std / mean) of all power
+
+        'ncv': normalized CV: (std - mean) / (std + mean)
+
+        'nstdmed': normalized stdevmed: (std - med) / (std + med)
+
+        """
+        if kind.startswith('L/'):
+            pratio = True
+        else:
+            pratio = False
+
         data = self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
-        t0, t1 = ts[0], ts[-1] # full duration
         x = data[chani] / 1e3 # convert from uV to mV
         x = filter.notch(x)[0] # remove 60 Hz mains noise
         try:
@@ -650,32 +666,158 @@ class LFP(object):
         noverlap = intround(NFFT - lfptres * self.sampfreq)
         #print('len(x), NFFT, noverlap: %d, %d, %d' % (len(x), NFFT, noverlap))
         # t is midpoints of timebins in sec from start of data. P is in mV^2?:
-        P, freqs, t = mpl.mlab.specgram(x, NFFT=NFFT, Fs=self.sampfreq, noverlap=noverlap)
+        P, freqs, Pt = mpl.mlab.specgram(x, NFFT=NFFT, Fs=self.sampfreq, noverlap=noverlap)
         # don't convert power to dB, just washes out the signal in the ratio:
         #P = 10. * np.log10(P)
         # convert t to time from start of acquisition:
-        t += t0
+        Pt += ts[0]
+        nfreqs = len(freqs)
+
         # keep only freqs between f0 and f1, and f2 and f3:
-        if f0 == None:
-            f0 = freqs[0]
-        if f1 == None:
-            f1 = freqs[-1]
         f0i, f1i, f2i, f3i = freqs.searchsorted([f0, f1, f2, f3])
-        lP = P[f0i:f1i]
-        hP = P[f2i:f3i]
-        lP = lP.sum(axis=0)
-        hP = hP.sum(axis=0)
-        if ratio == 'L/(L+H)':
-            r = lP/(hP + lP)
-        elif ratio == 'L/H':
-            r = lP/hP
+        lP = P[f0i:f1i] # nsubfreqs x nt
+        hP = P[f2i:f3i] # nsubfreqs x nt
+        lP = lP.sum(axis=0) # nt
+        hP = hP.sum(axis=0) # nt
+
+        if pratio:
+            t = Pt
+            ylim = 0, 1
+            ylabel = kind
         else:
-            raise ValueError
+            # potentially overlapping bin time ranges:
+            trange = Pt[0], Pt[-1]
+            tranges = split_tranges([trange], width, tres) # in us
+            ntranges = len(tranges)
+            tis = Pt.searchsorted(tranges) # ntranges x 2 array
+            # number of timepoints to use for each trange, almost all will be the same width:
+            binnt = intround((tis[:, 1] - tis[:, 0]).mean())
+            binhP = np.zeros((ntranges, binnt)) # init appropriate array
+            for trangei, t0i in enumerate(tis[:, 0]):
+                binhP[trangei] = hP[t0i:t0i+binnt]
+            # get midpoint of each trange:
+            t = tranges.mean(axis=1)
+
+        #old_settings = np.seterr(all='ignore') # suppress div by 0 errors
+        # calculate some metric of each column, ie each width:
+        self.si_plot(Pt, hP, t0=0, t1=t[-1], ylim=None, ylabel='highband power',
+                     title=lastcmd()+' highband power', text=self.r.name)
+        if kind[0] == 'n':
+            ylim = -1, 1
+        if kind == 'L/(L+H)':
+            si = lP/(hP + lP)
+        elif kind == 'L/H':
+            si = lP/hP
+        elif kind == 'cv':
+            si = binhP.std(axis=1) / binhP.mean(axis=1)
+            ylim = 0, 2
+            ylabel = 'LFP power CV'
+        elif kind == 'ncv':
+            s = binhP.std(axis=1)
+            mean = binhP.mean(axis=1)
+            si = (s - mean) / (s + mean)
+            ylabel = 'LFP power (std - mean) / (std + mean)'
+            pl.plot(t, s)
+            pl.plot(t, mean)
+        elif kind == 'n2stdmean':
+            s2 = 2 * binhP.std(axis=1)
+            mean = binhP.mean(axis=1)
+            si = (s2 - mean) / (s2 + mean)
+            ylabel = 'LFP power (2*std - mean) / (2*std + mean)'
+            pl.plot(t, s2)
+            pl.plot(t, mean)
+        elif kind == 'n3stdmean':
+            s3 = 3 * binhP.std(axis=1)
+            mean = binhP.mean(axis=1)
+            si = (s3 - mean) / (s3 + mean)
+            ylabel = 'LFP power (3*std - mean) / (3*std + mean)'
+            pl.plot(t, s3)
+            pl.plot(t, mean)
+        elif kind == 'nstdmed':
+            s = binhP.std(axis=1)
+            med = np.median(binhP, axis=1)
+            si = (s - med) / (s + med)
+            ylabel = 'LFP power (std - med) / (std + med)'
+            pl.plot(t, s)
+            pl.plot(t, med)
+        elif kind == 'n2stdmed':
+            s2 = 2 * binhP.std(axis=1)
+            med = np.median(binhP, axis=1)
+            si = (s2 - med) / (s2 + med)
+            ylabel = 'LFP power (2*std - med) / (2*std + med)'
+            pl.plot(t, s2)
+            pl.plot(t, med)
+        elif kind == 'n3stdmed':
+            s3 = 3 * binhP.std(axis=1)
+            med = np.median(binhP, axis=1)
+            si = (s3 - med) / (s3 + med)
+            ylabel = 'LFP power (3*std - med) / (3*std + med)'
+            pl.plot(t, s3)
+            pl.plot(t, med)
+        elif kind == 'nstdmin':
+            s = binhP.std(axis=1)
+            min = binhP.min(axis=1)
+            si = (s - min) / (s + min)
+            ylabel = 'LFP power (std - min) / (std + min)'
+            pl.plot(t, s)
+            pl.plot(t, min)
+        elif kind == 'nmadmean':
+            mean = binhP.mean(axis=1)
+            mad = (np.abs(binhP - mean[:, None])).mean(axis=1)
+            si = (mad - mean) / (mad + mean)
+            ylabel = 'MUA (MAD - mean) / (MAD + mean)'
+            pl.plot(t, mad)
+            pl.plot(t, mean)
+        elif kind == 'nmadmed':
+            med = np.median(binhP, axis=1)
+            mad = (np.abs(binhP - med[:, None])).mean(axis=1)
+            si = (mad - med) / (mad + med)
+            ylabel = 'MUA (MAD - median) / (MAD + median)'
+            pl.plot(t, mad)
+            pl.plot(t, med)
+        elif kind == 'nvarmin':
+            v = binhP.var(axis=1)
+            min = binhP.min(axis=1)
+            si = (v - min) / (v + min)
+            ylabel = 'LFP power (std - min) / (std + min)'
+            pl.plot(t, v)
+            pl.plot(t, min)
+        elif kind == 'nptpmean':
+            ptp = binhP.ptp(axis=1)
+            mean = binhP.mean(axis=1)
+            si = (ptp - mean) / (ptp + mean)
+            ylabel = 'MUA (ptp - mean) / (ptp + mean)'
+            pl.plot(t, ptp)
+            pl.plot(t, mean)
+        elif kind == 'nptpmed':
+            ptp = binhP.ptp(axis=1)
+            med = np.median(binhP, axis=1)
+            si = (ptp - med) / (ptp + med)
+            ylabel = 'MUA (ptp - med) / (ptp + med)'
+            pl.plot(t, ptp)
+            pl.plot(t, med)
+        elif kind == 'nptpmin':
+            ptp = binhP.ptp(axis=1)
+            min = binhP.min(axis=1)
+            si = (ptp - min) / (ptp + min)
+            ylabel = 'MUA (ptp - min) / (ptp + min)'
+            pl.plot(t, ptp)
+            pl.plot(t, min)
+        elif kind == 'nmaxmin':
+            max = binhP.max(axis=1)
+            min = binhP.min(axis=1)
+            si = (max - min) / (max + min)
+            ylabel = 'MUA (max - min) / (max + min)'
+            pl.plot(t, max)
+            pl.plot(t, min)
+        else:
+            raise ValueError('unknown kind %r' % kind)
         if plot:
-            ylabel = 'LFP synchrony index (%s)' % ratio
-            self.si_plot(t, r, t0, t1, ylabel, title=lastcmd(), text=self.r.name)
-        return r, t # t are midpoints of bins, from start of acquisition
-        
+            self.si_plot(t, si, t0=0, t1=t[-1], ylim=ylim, ylabel=ylabel, title=lastcmd(),
+                         text=self.r.name)
+        #np.seterr(**old_settings) # restore old settings
+        return si, t # t are midpoints of bins, from start of acquisition
+    '''
     def si_hilbert(self, chani=-1, lowband=None, highband=None, ratio='L/(L+H)',
                    plot=True):
         """Return synchrony index, i.e. power ratio of low vs high bands, as measured by
@@ -716,8 +858,8 @@ class LFP(object):
             ylabel = 'LFP synchrony index (%s)' % ratio
             self.si_plot(t, r, t0, t1, ylabel, title=lastcmd(), text=self.r.name)
         return r, t
-
-    def si_plot(self, t, P, t0=None, t1=None, ylabel=None, title=None, text=None,
+    '''
+    def si_plot(self, t, P, t0=None, t1=None, ylim=None, ylabel=None, title=None, text=None,
                 figsize=(20, 6.5)):
         """Plot synchrony index as a function of time, with hopefully the same
         temporal scale as some of the other plots in self"""
@@ -727,14 +869,13 @@ class LFP(object):
         else:
             f = pl.figure(figsize=figsize)
             a = f.add_subplot(111)
+        a.axhline(y=0, c='e', ls='--', marker=None) # underplot horizontal line at y=0:
         a.plot(t, P, 'k-')
         a.set_xlabel("time (sec)")
         if ylabel == None:
             ylabel = "power (AU?)"
-        elif ylabel in ['L/(L+H)', 'H/(L+H)']:
-            a.set_ylim(0, 1)
         a.set_xlim(t0, t1) # low/high limits are unchanged if None
-        a.set_ylim(0, 1) # full SI range
+        a.set_ylim(ylim)
         a.set_ylabel(ylabel)
         #a.autoscale(axis='x', enable=True, tight=True)
         # turn off annoying "+2.41e3" type offset on x axis:
@@ -2826,7 +2967,8 @@ def toiter(x):
 
 def tolist(x):
     """Convert to list. If input is a dict, returns its values. If it's already a list,
-    returns it. Otherwise, input is returned in a list."""
+    returns it. Otherwise, input is returned in a list. TODO: this can probably be replaced
+    by np.atleast_1d"""
     if type(x) == dict:
         return list(x.values())
     elif type(x) == list:
