@@ -701,11 +701,14 @@ class LFP(object):
             t = tranges.mean(axis=1)
 
         #old_settings = np.seterr(all='ignore') # suppress div by 0 errors
-        # calculate some metric of each column, ie each width:
-        self.si_plot(Pt, hP, t0=0, t1=t[-1], ylim=None, ylabel='highband power',
-                     title=lastcmd()+' highband power', text=self.r.name)
+        # plot power signal to be analyzed
+        #self.si_plot(Pt, hP, t0=0, t1=t[-1], ylim=None, ylabel='highband power',
+        #             title=lastcmd()+' highband power', text=self.r.name)
+        hlines = []
         if kind[0] == 'n':
             ylim = -1, 1
+            hlines = [0]
+        # calculate some metric of each column, ie each width:
         if kind == 'L/(L+H)':
             si = lP/(hP + lP)
         elif kind == 'L/H':
@@ -719,104 +722,112 @@ class LFP(object):
             mean = binhP.mean(axis=1)
             si = (s - mean) / (s + mean)
             ylabel = 'LFP power (std - mean) / (std + mean)'
-            pl.plot(t, s)
-            pl.plot(t, mean)
+            #pl.plot(t, s)
+            #pl.plot(t, mean)
         elif kind == 'n2stdmean':
             s2 = 2 * binhP.std(axis=1)
             mean = binhP.mean(axis=1)
             si = (s2 - mean) / (s2 + mean)
             ylabel = 'LFP power (2*std - mean) / (2*std + mean)'
-            pl.plot(t, s2)
-            pl.plot(t, mean)
+            #pl.plot(t, s2)
+            #pl.plot(t, mean)
         elif kind == 'n3stdmean':
             s3 = 3 * binhP.std(axis=1)
             mean = binhP.mean(axis=1)
             si = (s3 - mean) / (s3 + mean)
             ylabel = 'LFP power (3*std - mean) / (3*std + mean)'
-            pl.plot(t, s3)
-            pl.plot(t, mean)
+            hlines = [-0.1, 0, 0.1] # demarcate desynched and synched thresholds
+            #pl.plot(t, s3)
+            #pl.plot(t, mean)
+        elif kind == 'n4stdmean':
+            s4 = 4 * binhP.std(axis=1)
+            mean = binhP.mean(axis=1)
+            si = (s4 - mean) / (s4 + mean)
+            ylabel = 'LFP power (4*std - mean) / (4*std + mean)'
+            #pl.plot(t, s4)
+            #pl.plot(t, mean)
         elif kind == 'nstdmed':
             s = binhP.std(axis=1)
             med = np.median(binhP, axis=1)
             si = (s - med) / (s + med)
             ylabel = 'LFP power (std - med) / (std + med)'
-            pl.plot(t, s)
-            pl.plot(t, med)
+            #pl.plot(t, s)
+            #pl.plot(t, med)
         elif kind == 'n2stdmed':
             s2 = 2 * binhP.std(axis=1)
             med = np.median(binhP, axis=1)
             si = (s2 - med) / (s2 + med)
             ylabel = 'LFP power (2*std - med) / (2*std + med)'
-            pl.plot(t, s2)
-            pl.plot(t, med)
+            #pl.plot(t, s2)
+            #pl.plot(t, med)
         elif kind == 'n3stdmed':
             s3 = 3 * binhP.std(axis=1)
             med = np.median(binhP, axis=1)
             si = (s3 - med) / (s3 + med)
             ylabel = 'LFP power (3*std - med) / (3*std + med)'
-            pl.plot(t, s3)
-            pl.plot(t, med)
+            #pl.plot(t, s3)
+            #pl.plot(t, med)
         elif kind == 'nstdmin':
             s = binhP.std(axis=1)
             min = binhP.min(axis=1)
             si = (s - min) / (s + min)
             ylabel = 'LFP power (std - min) / (std + min)'
-            pl.plot(t, s)
-            pl.plot(t, min)
+            #pl.plot(t, s)
+            #pl.plot(t, min)
         elif kind == 'nmadmean':
             mean = binhP.mean(axis=1)
             mad = (np.abs(binhP - mean[:, None])).mean(axis=1)
             si = (mad - mean) / (mad + mean)
             ylabel = 'MUA (MAD - mean) / (MAD + mean)'
-            pl.plot(t, mad)
-            pl.plot(t, mean)
+            #pl.plot(t, mad)
+            #pl.plot(t, mean)
         elif kind == 'nmadmed':
             med = np.median(binhP, axis=1)
             mad = (np.abs(binhP - med[:, None])).mean(axis=1)
             si = (mad - med) / (mad + med)
             ylabel = 'MUA (MAD - median) / (MAD + median)'
-            pl.plot(t, mad)
-            pl.plot(t, med)
+            #pl.plot(t, mad)
+            #pl.plot(t, med)
         elif kind == 'nvarmin':
             v = binhP.var(axis=1)
             min = binhP.min(axis=1)
             si = (v - min) / (v + min)
             ylabel = 'LFP power (std - min) / (std + min)'
-            pl.plot(t, v)
-            pl.plot(t, min)
+            #pl.plot(t, v)
+            #pl.plot(t, min)
         elif kind == 'nptpmean':
             ptp = binhP.ptp(axis=1)
             mean = binhP.mean(axis=1)
             si = (ptp - mean) / (ptp + mean)
             ylabel = 'MUA (ptp - mean) / (ptp + mean)'
-            pl.plot(t, ptp)
-            pl.plot(t, mean)
+            #pl.plot(t, ptp)
+            #pl.plot(t, mean)
         elif kind == 'nptpmed':
             ptp = binhP.ptp(axis=1)
             med = np.median(binhP, axis=1)
             si = (ptp - med) / (ptp + med)
             ylabel = 'MUA (ptp - med) / (ptp + med)'
-            pl.plot(t, ptp)
-            pl.plot(t, med)
+            #pl.plot(t, ptp)
+            #pl.plot(t, med)
         elif kind == 'nptpmin':
             ptp = binhP.ptp(axis=1)
             min = binhP.min(axis=1)
             si = (ptp - min) / (ptp + min)
             ylabel = 'MUA (ptp - min) / (ptp + min)'
-            pl.plot(t, ptp)
-            pl.plot(t, min)
+            #pl.plot(t, ptp)
+            #pl.plot(t, min)
         elif kind == 'nmaxmin':
             max = binhP.max(axis=1)
             min = binhP.min(axis=1)
             si = (max - min) / (max + min)
             ylabel = 'MUA (max - min) / (max + min)'
-            pl.plot(t, max)
-            pl.plot(t, min)
+            #pl.plot(t, max)
+            #pl.plot(t, min)
         else:
             raise ValueError('unknown kind %r' % kind)
         if plot:
             self.si_plot(t, si, t0=0, t1=t[-1], ylim=ylim, ylabel=ylabel, title=lastcmd(),
-                         text=self.r.name)
+                         text=self.r.name, hlines=hlines)
         #np.seterr(**old_settings) # restore old settings
         return si, t # t are midpoints of bins, from start of acquisition
     '''
@@ -861,8 +872,8 @@ class LFP(object):
             self.si_plot(t, r, t0, t1, ylabel, title=lastcmd(), text=self.r.name)
         return r, t
     '''
-    def si_plot(self, t, P, t0=None, t1=None, ylim=None, ylabel=None, title=None, text=None,
-                figsize=(20, 6.5)):
+    def si_plot(self, t, si, t0=None, t1=None, ylim=None, ylabel=None, title=None, text=None,
+                hlines=[0], figsize=(20, 6.5)):
         """Plot synchrony index as a function of time, with hopefully the same
         temporal scale as some of the other plots in self"""
         if figsize == None:
@@ -871,11 +882,13 @@ class LFP(object):
         else:
             f = pl.figure(figsize=figsize)
             a = f.add_subplot(111)
-        a.axhline(y=0, c='e', ls='--', marker=None) # underplot horizontal line at y=0:
-        a.plot(t, P, 'k-')
+        # underplot horizontal lines:
+        for hline in hlines:
+            a.axhline(y=hline, c='e', ls='--', marker=None)
+        a.plot(t, si, 'k-')
         a.set_xlabel("time (sec)")
         if ylabel == None:
-            ylabel = "power (AU?)"
+            ylabel = "synchrony index (AU?)"
         a.set_xlim(t0, t1) # low/high limits are unchanged if None
         a.set_ylim(ylim)
         a.set_ylabel(ylabel)

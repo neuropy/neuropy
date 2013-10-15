@@ -333,11 +333,14 @@ class BaseRecording(object):
         #scipy.signal.fftconvolve(spikehist, window, mode='same') / tressec / window.sum() / nn
 
     def plot_mua(self, rates, t, n, layers=False, ylabel="mean MUA (Hz/neuron)", ylim=None,
-                 figsize=(20, 6.5)):
+                 hlines=[0], figsize=(20, 6.5)):
         """Plot multiunit activity (all, sup, mid and deep firing rates) as a function of
         time in seconds"""
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
+        # underplot horizontal lines:
+        for hline in hlines:
+            a.axhline(y=hline, c='e', ls='--', marker=None)
         a.plot(t, rates[0], 'k-', label='all (%d)' % n[0])
         if layers:
             a.plot(t, rates[1], 'r-', label='superficial (%d)' % n[1])
@@ -441,6 +444,11 @@ class BaseRecording(object):
         t = tranges.mean(axis=1)
 
         old_settings = np.seterr(all='ignore') # suppress div by 0 errors
+        ylim = None
+        hlines = []
+        if kind[0] == 'n':
+            ylim = -1, 1
+            hlines = [0]
         # calculate some metric of each column, ie each width:
         if kind == 'cv':
             si = binrates.std(axis=0) / binrates.mean(axis=0)
@@ -473,6 +481,7 @@ class BaseRecording(object):
             mean = binrates.mean(axis=0)
             si = (s - mean) / (s + mean)
             ylabel = 'MUA (std - mean) / (std + mean)'
+            hlines = [-0.1, 0, 0.1] # demarcate desynched and synched thresholds
         elif kind == 'nstdmed':
             s = binrates.std(axis=0)
             med = np.median(binrates, axis=0)
@@ -510,8 +519,7 @@ class BaseRecording(object):
         keepis = np.isfinite(si[0])
         si, t = si[:, keepis], t[keepis]
         if plot:
-            ylim = None #(0, 1.5)
-            self.plot_mua(si, t, n, layers=layers, ylabel=ylabel, ylim=ylim)
+            self.plot_mua(si, t, n, layers=layers, ylabel=ylabel, ylim=ylim, hlines=hlines)
         np.seterr(**old_settings) # restore old settings
         return si, t, n
 
