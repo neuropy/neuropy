@@ -611,8 +611,8 @@ class LFP(object):
         self.data[chanis] = data
         return b, a
 
-    def si(self, kind='ncv', chani=-1, width=None, tres=None, lfpwidth=None, lfptres=None,
-           lowband=None, highband=None, plot=True):
+    def si(self, kind='n3stdmean', chani=-1, width=None, tres=None,
+           lfpwidth=None, lfptres=None, lowband=None, highband=None, plot=True):
         """Calculate an LFP synchrony index, using potentially overlapping windows of
         width and tres, in sec, from the LFP spectrogram, itself composed of bins of
         lfpwidth and lfptres. Options for kind are:
@@ -625,7 +625,9 @@ class LFP(object):
 
         'ncv': normalized CV: (std - mean) / (std + mean)
 
-        'nstdmed': normalized stdevmed: (std - med) / (std + med)
+        'nstdmed': normalized stdmed: (std - med) / (std + med)
+
+        'n3stdmean': normalized 3stdmean: (3*std - mean) / (3*std + mean)
 
         """
         if kind.startswith('L/'):
