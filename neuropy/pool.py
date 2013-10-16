@@ -10,6 +10,23 @@ from core import lastcmd
 from track import Track
 
 
+def parse_source(source):
+    """Collect recordings from source, return in a list"""
+    uns = get_ipython().user_ns
+    if type(source) == Track:
+        rids = uns['RIDS'][source.absname]
+        recs = [ source.r[rid] for rid in rids ]
+    elif type(source) == list: # assume it's a list of recordings
+        recs = source
+    elif type(source) == dict: # assume it's a dict of {animal.tr: [rids]} key-value pairs
+        recs = []
+        for animal_track, rids in source.items():
+            animalname, trackname = animal_track.split('.')
+            tr = uns[animalname].__getattribute__(trackname)
+            recs.extend([ tr.r[rid] for rid in rids ])
+    return recs
+
+
 def sc_si(source, method='mean', kind='ncv', layers=False, ms=1, sirange=(-1, 1),
           figsize=(7.5, 6.5)):
     """Pool recording.sc().si() results across recordings specified by source,
@@ -22,18 +39,7 @@ def sc_si(source, method='mean', kind='ncv', layers=False, ms=1, sirange=(-1, 1)
     LAYER2I = {'all':0, 'sup':1, 'mid':2, 'deep':3, 'other':4}
     layeris = [ LAYER2I[layer] for layer in layers ]
 
-    # decide which recordings to pool across, collect recordings in a list:
-    if type(source) == Track:
-        rids = uns['RIDS'][source.absname]
-        recs = [ source.r[rid] for rid in rids ]
-    elif type(source) == list: # assume it's a list of recordings
-        recs = source
-    elif type(source) == dict: # assume it's a dict of {animal.tr: [rids]} key-value pairs
-        recs = []
-        for animal_track, rids in source.items():
-            animalname, trackname = animal_track.split('.')
-            tr = uns[animalname].__getattribute__(trackname)
-            recs.extend([ tr.r[rid] for rid in rids ])
+    recs = parse_source(source)
 
     # calculate
     corrss, sis = [], []
