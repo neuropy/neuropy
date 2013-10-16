@@ -2218,14 +2218,15 @@ class SpikeCorr(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def si(self, method='mean', inclusive=False, kind='ncv', chani=-1,
-           lowband=None, highband=None, sirange=None, figsize=(7.5, 6.5),
-           plot=True, layers=False, ms=5):
-        """Scatter plot spike correlations vs MUA state (kind=cv, stdmed, ptpmed or maxmed) or
-        LFP synchrony index (kind=L/(L+H) or L/H), using the same time base for both"""
+    def si(self, method='mean', inclusive=False, sisource='lfp', kind=None, chani=-1,
+           sirange=None, plot=True, layers=False, ms=5, figsize=(7.5, 6.5)):
+        """Scatter plot spike correlations vs MUA or LFP synchrony index"""
         rec = self.r
         uns = get_ipython().user_ns
         t0 = time.time()
+
+        if sisource not in ['lfp', 'mua']:
+            raise ValueError('unknown sisource %r' % sisource)
 
         if kind == None:
             if sisource == 'lfp':
@@ -2243,20 +2244,14 @@ class SpikeCorr(object):
         # ct are center timepoints:
         corrs, npairs, ct, ylabel = self.sct(method=method, inclusive=inclusive)
         #print('sct(t) calc took %.3f sec' % (time.time()-t0))
-        if kind in ('L/(L+H)', 'L/H'):
-            sisource = 'lfp'
-        else:
-            sisource = 'mua'
-        t0 = time.time()
+        # sit are also center timepoints:
         if sisource == 'lfp':
-            si, sit = rec.lfp.si(chani=chani, lowband=lowband, highband=highband,
-                                 width=self.width/1e6, tres=self.tres/1e6,
-                                 ratio=kind, plot=False) # sit are also center timepoints
+            si, sit = rec.lfp.si(chani=chani, kind=kind, plot=False)
             si = np.vstack([si, si, si, si]) # make 4 x nt, just like for mua si
         else:
             si, sit, n = rec.mua_si(kind=kind, plot=False)
         #print('SI(t) calc took %.3f sec' % (time.time()-t0))
-        print('len(sit, ct) = %d, %d' % (len(sit), len(ct)))
+        #print('len(sit, ct) = %d, %d' % (len(sit), len(ct)))
 
         # get common time resolution:
         t, corrs, si = commontres(ct, corrs, sit, si)
@@ -2316,13 +2311,11 @@ class SpikeCorr(object):
             a.plot(si[0], corrs[4], 'y.', ms=ms, label='other (%d), m=%.3f, r=%.3f'
                                                        % (npairs[4], m4, r4), zorder=0)
         #a.set_xlim(sirange)
-        if sisource == 'lfp':
-            a.set_xlim(0, 1)
-        elif sisource == 'mua' and kind[0] == 'n':
+        if kind[0] == 'n':
             a.set_xlim(-1, 1)
         a.set_ylim(ylim)
         #a.autoscale(enable=True, axis='y', tight=True)
-        a.set_xlabel(kind)
+        a.set_xlabel('%s SI (%s)' % (sisource.upper(), kind))
         ylabel = ylabel + " (%d pairs)" % self.npairs
         a.set_ylabel(ylabel)
         titlestr = lastcmd()

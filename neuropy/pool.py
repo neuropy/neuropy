@@ -27,8 +27,8 @@ def parse_source(source):
     return recs
 
 
-def sc_si(source, method='mean', kind='ncv', layers=False, ms=1, sirange=(-1, 1),
-          figsize=(7.5, 6.5)):
+def sc_si(source, method='mean', sisource='lfp', kind=None, chani=-1, sirange=None,
+          layers=False, ms=1, figsize=(7.5, 6.5)):
     """Pool recording.sc().si() results across recordings specified by source,
     plot the result"""
     uns = get_ipython().user_ns
@@ -41,6 +41,9 @@ def sc_si(source, method='mean', kind='ncv', layers=False, ms=1, sirange=(-1, 1)
 
     recs = parse_source(source)
 
+    if sisource not in ['lfp', 'mua']:
+        raise ValueError('unknown sisource %r' % sisource)
+
     if kind == None:
         if sisource == 'lfp':
             kind = uns['LFPSIKIND']
@@ -51,18 +54,14 @@ def sc_si(source, method='mean', kind='ncv', layers=False, ms=1, sirange=(-1, 1)
     corrss, sis = [], []
     for rec in recs:
         print(rec.absname)
-        corrs, si, ylabel = rec.sc().si(method=method, kind=kind, plot=False)
+        corrs, si, ylabel = rec.sc().si(method=method, sisource=sisource, kind=kind,
+                                        chani=chani, sirange=sirange, plot=False)
         corrss.append(corrs)
         sis.append(si)
     corrs = np.hstack(corrss)
     si = np.hstack(sis)
 
     # plot
-    if kind in ('L/(L+H)', 'L/H'):
-        sisource = 'lfp'
-    else:
-        sisource = 'mua'
-
     f = pl.figure(figsize=figsize)
     a = f.add_subplot(111)
 
@@ -114,13 +113,11 @@ def sc_si(source, method='mean', kind='ncv', layers=False, ms=1, sirange=(-1, 1)
         a.plot(si[0], corrs[4], 'y.', ms=ms, label='other, m=%.3f, r=%.3f'
                                                    % (m4, r4), zorder=0)
     #a.set_xlim(sirange)
-    if sisource == 'lfp':
-        a.set_xlim(0, 1)
-    elif sisource == 'mua' and kind[0] == 'n':
+    if kind[0] == 'n':
         a.set_xlim(-1, 1)
     a.set_ylim(ylim)
     #a.autoscale(enable=True, axis='y', tight=True)
-    a.set_xlabel(kind)
+    a.set_xlabel('%s SI (%s)' % (sisource.upper(), kind))
     a.set_ylabel(ylabel)
     titlestr = lastcmd()
     gcfm().window.setWindowTitle(titlestr)

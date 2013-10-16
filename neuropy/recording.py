@@ -532,10 +532,8 @@ class BaseRecording(object):
             plotseries = False
         lfpsi, lfpt = self.lfp.si(plot=plotseries)
         muasi, muat, n = self.mua_si(plot=plotseries)
-        print('old muasi.shape:', muasi.shape)
         # get common time resolution:
         t, lfpsi, muasi = core.commontres(lfpt, lfpsi, muat, muasi)
-        print('new muasi.shape:', muasi.shape)
         if not plot:
             return lfpsi, muasi, t
             
