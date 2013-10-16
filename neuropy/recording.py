@@ -537,22 +537,7 @@ class BaseRecording(object):
             ylabel = 'mean MUA (Hz)'
         si, sit = self.lfp.si(chani=chani, ratio=ratio, plot=False)
         # get common time resolution:
-        if len(sit) > len(muat):
-            siti = sit.searchsorted(muat)
-            sitii = siti < len(sit) # prevent right side out of bounds indices into si
-            muat = muat[sitii]
-            mua = mua[:, sitii]
-            siti = siti[sitii]
-            sit = sit[siti]
-            si = si[siti]
-        else:
-            muati = muat.searchsorted(sit)
-            muatii = muati < len(muat) # prevent right side out of bounds indices into mua
-            sit = sit[muatii]
-            si = si[muatii]
-            muati = muati[muatii]
-            muat = muat[muati]
-            mua = mua[:, muati]
+        t, mua, si = core.commontres(muat, mua, sit, si)
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)

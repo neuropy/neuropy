@@ -2247,23 +2247,9 @@ class SpikeCorr(object):
             si, sit, n = rec.mua_si(kind=kind, plot=False)
         #print('SI(t) calc took %.3f sec' % (time.time()-t0))
         print('len(sit, ct) = %d, %d' % (len(sit), len(ct)))
+
         # get common time resolution:
-        if len(sit) > len(ct):
-            siti = sit.searchsorted(ct)
-            sitii = siti < len(sit) # prevent right side out of bounds indices into si
-            ct = ct[sitii]
-            corrs = corrs[:, sitii]
-            siti = siti[sitii]
-            sit = sit[siti]
-            si = si[:, siti]
-        else:
-            cti = ct.searchsorted(sit)
-            ctii = cti < len(ct) # prevent right side out of bounds indices into corrs
-            sit = sit[ctii]
-            si = si[:, ctii]
-            cti = cti[ctii]
-            ct = ct[cti]
-            corrs = corrs[:, cti]
+        t, corrs, si = commontres(ct, corrs, sit, si)
 
         if not plot:
             return corrs, si, ylabel # return corrs and si of all laminarities
@@ -2350,23 +2336,9 @@ class SpikeCorr(object):
         mua, muat, n = self.r.mua(smooth=smooth, plot=False)
         # keep only MUA of all neurons, throw away laminar MUA information (for now at least):
         mua = mua[0] # 1D array
+
         # get common time resolution:
-        if len(muat) > len(ct):
-            muati = muat.searchsorted(ct)
-            muatii = muati < len(muat) # prevent right side out of bounds indices into mua
-            ct = ct[muatii]
-            corrs = corrs[:, muatii]
-            muati = muati[muatii]
-            muat = muat[muati]
-            mua = mua[muati]
-        else:
-            cti = ct.searchsorted(muat)
-            ctii = cti < len(ct) # prevent right side out of bounds indices into corrs
-            muat = muat[ctii]
-            mua = mua[ctii]
-            cti = cti[ctii]
-            ct = ct[cti]
-            corrs = corrs[:, cti]
+        t, corrs, mua = commontres(ct, corrs, muat, mua)
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -3730,3 +3702,40 @@ def mergeuniquedictvals(dicts):
             md[key].update(d[key])
         md[key] = sorted(md[key])
     return md
+
+def commontres(t0, y0, t1, y1):
+    """Return signals y0 and y1 with common time resolution of overlap periods.
+    y0 and y1 can be of arbitrary dimension, but their last dimension must correspond to
+    their t0 and t1 timepoints respectively. Assume timepoints t0 and t1 are sorted"""
+    assert y0.shape[-1] == len(t0)
+    assert y1.shape[-1] == len(t1)
+
+    # find time overlap of both signals:
+    mint = max(t0[0], t1[0])
+    maxt = min(t0[-1], t1[-1])
+    if mint > maxt:
+        raise RuntimeError("time series don't overlap")
+    trange = mint, maxt # overlapping time range
+    i, j = t0.searchsorted(trange)
+    t0 = t0[i:j]
+    y0 = y0[..., i:j]
+    i, j = t1.searchsorted(trange)
+    t1 = t1[i:j]
+    y1 = y1[..., i:j]
+    # choose the lower resolution signal as the reference over the overlapping interval:
+    if len(t1) < len(t0):
+        # t1 is lower res, find where t1 fits into t0:
+        t0i = t0.searchsorted(t1)
+        if t0i[-1] >= len(t0):
+            t0i[-1] = len(t0) - 1 # prevent right edge out of bounds into t0 and y0
+        t = t0[t0i]
+        y0 = y0[..., t0i]
+    else:
+        # t0 is lower res, find where t0 fits into t1:
+        t1i = t1.searchsorted(t0)
+        if t1i[-1] >= len(t1):
+            t1i[-1] = len(t1) - 1 # prevent right edge out of bounds into t1 and y1
+        t = t1[t1i]
+        y1 = y1[..., t1i]
+
+    return t, y0, y1
