@@ -374,7 +374,7 @@ class BaseRecording(object):
         f.tight_layout(pad=0.3) # crop figure to contents
 
     def mua_si(self, kind='ncv', width=None, tres=None, muawidth=None, muatres=None,
-                  upper=75, lower=25, neurons=None, smooth=False, plot=True, layers=False):
+               upper=75, lower=25, neurons=None, smooth=False, plot=True, layers=False):
         """Calculate a synchrony index from MUA, using potentially overlapping
         windows of width and tres of MUA, itself calculated according to muawidth and muatres.
         Options for kind are:
@@ -522,6 +522,37 @@ class BaseRecording(object):
             self.plot_mua(si, t, n, layers=layers, ylabel=ylabel, ylim=ylim, hlines=hlines)
         np.seterr(**old_settings) # restore old settings
         return si, t, n
+
+    def mua_si_lfp_si(self, ms=5, layers=False, plot=True, plotseries=True,
+                      figsize=(7.5, 6.5)):
+        """Scatter plot MUA SI vs LFP SI"""
+        if not plot:
+            plotseries = False
+        lfpsi, lfpt = self.lfp.si(plot=plotseries)
+        muasi, muat, n = self.mua_si(plot=plotseries)
+        print('old muasi.shape:', muasi.shape)
+        # get common time resolution:
+        t, lfpsi, muasi = core.commontres(lfpt, lfpsi, muat, muasi)
+        print('new muasi.shape:', muasi.shape)
+        if not plot:
+            return lfpsi, muasi, t
+            
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        a.plot([-1, 1], [-1, 1], 'e--') # underplot y=x line
+        a.plot(lfpsi, muasi[0], 'e.', ms=ms)
+        if layers:
+            a.plot(lfpsi, muasi[1], 'r.', ms=ms)
+            a.plot(lfpsi, muasi[2], 'g.', ms=ms)
+            a.plot(lfpsi, muasi[3], 'b.', ms=ms)
+        a.set_xlabel('LFP SI')
+        a.set_ylabel('MUA SI')
+        a.set_xlim(-1, 1)
+        a.set_ylim(-1, 1)
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        a.set_title(titlestr)
+        f.tight_layout(pad=0.3) # crop figure to contents
 
     def cv_si(self, smooth=False, chani=-1, ratio='L/(L+H)', figsize=(7.5, 6.5)):
         """Scatter plot MUA CV vs LFP SI"""

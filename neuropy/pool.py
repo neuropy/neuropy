@@ -121,3 +121,36 @@ def sc_si(source, method='mean', kind='ncv', layers=False, ms=1, sirange=(-1, 1)
     a.set_title(titlestr)
     a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
     f.tight_layout(pad=0.3) # crop figure to contents
+
+
+def mua_si_lfp_si(source, layers=False, ms=1, figsize=(7.5, 6.5)):
+    """Pool recording.mua_si_lfp_si() results across recordings specified by source,
+    plot the result"""
+    recs = parse_source(source)
+    lfpsis, muasis = [], []
+    for rec in recs:
+        print(rec.absname)
+        lfpsi, muasi, t = rec.mua_si_lfp_si(ms=ms, layers=layers, plot=False, plotseries=False,
+                                            figsize=figsize)
+        lfpsis.append(lfpsi)
+        muasis.append(muasi)
+    lfpsi = np.hstack(lfpsis)
+    muasi = np.hstack(muasis)
+    # plot:
+    f = pl.figure(figsize=figsize)
+    a = f.add_subplot(111)
+    a.plot([-1, 1], [-1, 1], 'e--') # underplot y=x line
+    a.plot(lfpsi, muasi[0], 'e.', ms=ms)
+    if layers:
+        a.plot(lfpsi, muasi[1], 'r.', ms=ms)
+        a.plot(lfpsi, muasi[2], 'g.', ms=ms)
+        a.plot(lfpsi, muasi[3], 'b.', ms=ms)
+    a.set_xlabel('LFP SI')
+    a.set_ylabel('MUA SI')
+    a.set_xlim(-1, 1)
+    a.set_ylim(-1, 1)
+    titlestr = lastcmd()
+    gcfm().window.setWindowTitle(titlestr)
+    a.set_title(titlestr)
+    f.tight_layout(pad=0.3) # crop figure to contents
+    #return lfpsi, muasi, t
