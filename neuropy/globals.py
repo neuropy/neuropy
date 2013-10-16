@@ -50,6 +50,7 @@ MUATRES = 0.1 # sec
 """MUA synchrony index time range windows"""
 MUASIWIDTH = 10 # sec
 MUASITRES = 1 # sec
+MUASIKIND = 'ncv'
 
 """LFP power time range windows"""
 LFPWIDTH = 2 # sec
@@ -60,6 +61,7 @@ LFPSIWIDTH = 10 # sec (2**15 ms)
 LFPSITRES = 2 # sec
 LFPSILOWBAND = 0.5, 7 # Hz
 LFPSIHIGHBAND = 15, 100 # Hz
+LFPSIKIND = 'n3stdmean'
 
 """List of sorted track IDs"""
 TRACKS = ['ptc15.tr7c', 'ptc22.tr1', 'ptc22.tr2']

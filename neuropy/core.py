@@ -611,7 +611,7 @@ class LFP(object):
         self.data[chanis] = data
         return b, a
 
-    def si(self, kind='n3stdmean', chani=-1, width=None, tres=None,
+    def si(self, kind=None, chani=-1, width=None, tres=None,
            lfpwidth=None, lfptres=None, lowband=None, highband=None, plot=True):
         """Calculate an LFP synchrony index, using potentially overlapping windows of
         width and tres, in sec, from the LFP spectrogram, itself composed of bins of
@@ -627,9 +627,14 @@ class LFP(object):
 
         'nstdmed': normalized stdmed: (std - med) / (std + med)
 
+        'n2stdmean': normalized 2stdmean: (2*std - mean) / (2*std + mean)
+
         'n3stdmean': normalized 3stdmean: (3*std - mean) / (3*std + mean)
 
         """
+        uns = get_ipython().user_ns
+        if kind == None:
+            kind = uns['LFPSIKIND']
         if kind.startswith('L/'):
             pratio = True
         else:
@@ -647,7 +652,6 @@ class LFP(object):
             print('filtering out %d Hz from LFP in %s' % (intround(rr), self.r.name))
             x = filter.notch(x, freq=rr)[0] # remove CRT interference
 
-        uns = get_ipython().user_ns
         if width == None:
             width = uns['LFPSIWIDTH'] # sec
         if tres == None:
@@ -2222,6 +2226,12 @@ class SpikeCorr(object):
         rec = self.r
         uns = get_ipython().user_ns
         t0 = time.time()
+
+        if kind == None:
+            if sisource == 'lfp':
+                kind = uns['LFPSIKIND']
+            else:
+                kind = uns['MUASIKIND']
 
         if layers == False:
             layers = ['all']

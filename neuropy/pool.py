@@ -41,6 +41,12 @@ def sc_si(source, method='mean', kind='ncv', layers=False, ms=1, sirange=(-1, 1)
 
     recs = parse_source(source)
 
+    if kind == None:
+        if sisource == 'lfp':
+            kind = uns['LFPSIKIND']
+        else:
+            kind = uns['MUASIKIND']
+
     # calculate
     corrss, sis = [], []
     for rec in recs:

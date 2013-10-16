@@ -373,7 +373,7 @@ class BaseRecording(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def mua_si(self, kind='ncv', width=None, tres=None, muawidth=None, muatres=None,
+    def mua_si(self, kind=None, width=None, tres=None, muawidth=None, muatres=None,
                upper=75, lower=25, neurons=None, smooth=False, plot=True, layers=False):
         """Calculate a synchrony index from MUA, using potentially overlapping
         windows of width and tres of MUA, itself calculated according to muawidth and muatres.
@@ -414,6 +414,8 @@ class BaseRecording(object):
         peaks are bipolar, median and mean will probably be quite close.
         """
         uns = get_ipython().user_ns
+        if kind == None:
+            kind = uns['MUASIKIND']
         if width == None:
             width = uns['MUASIWIDTH'] # sec
         if tres == None:
@@ -558,7 +560,7 @@ class BaseRecording(object):
         """Scatter plot MUA CV vs LFP SI"""
         self.mua_si(cv=True, smooth=smooth, chani=chani, ratio=ratio, figsize=figsize)
 
-    def mua_lfpsi(self, cv=False, smooth=False, chani=-1, kind='n3stdmean',
+    def mua_lfpsi(self, cv=False, smooth=False, chani=-1, kind=None,
                   figsize=(7.5, 6.5)):
         """Scatter plot multiunit activity vs LFP synchrony index"""
         if cv: # mua and muat will refer to CV of MUA, not MUA itself
