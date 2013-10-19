@@ -484,11 +484,37 @@ class BaseRecording(object):
             si = (s - mean) / (s + mean)
             ylabel = 'MUA (std - mean) / (std + mean)'
             hlines = [-0.1, 0, 0.1] # demarcate desynched and synched thresholds
+        elif kind == 'n2stdmean':
+            s2 = 2 * binrates.std(axis=0)
+            mean = binrates.mean(axis=0)
+            si = (s2 - mean) / (s2 + mean)
+            ylabel = 'MUA (2*std - mean) / (2*std + mean)'
+            hlines = [-0.1, 0, 0.1] # demarcate desynched and synched thresholds
+        elif kind == 'n3stdmean':
+            s3 = 3 * binrates.std(axis=0)
+            mean = binrates.mean(axis=0)
+            si = (s3 - mean) / (s3 + mean)
+            ylabel = 'MUA (3*std - mean) / (3*std + mean)'
+            hlines = [-0.1, 0, 0.1] # demarcate desynched and synched thresholds
         elif kind == 'nstdmed':
             s = binrates.std(axis=0)
             med = np.median(binrates, axis=0)
             si = (s - med) / (s + med)
             ylabel = 'MUA (std - med) / (std + med)'
+        elif kind == 'n2stdmed':
+            s2 = 2 * binrates.std(axis=0)
+            med = np.median(binrates, axis=0)
+            si = (s2 - med) / (s2 + med)
+            ylabel = 'MUA (2*std - med) / (2*std + med)'
+            hlines = [-0.1, 0, 0.1] # demarcate desynched and synched thresholds
+        elif kind == 'n3stdmed':
+            s3 = 3 * binrates.std(axis=0)
+            med = np.median(binrates, axis=0)
+            si = (s3 - med) / (s3 + med)
+            ylabel = 'MUA (3*std - med) / (3*std + med)'
+            hlines = [-0.1, 0, 0.1] # demarcate desynched and synched thresholds
+            #pl.plot(t, s3)
+            #pl.plot(t, med)
         elif kind == 'nptpmed':
             ptp = binrates.ptp(axis=0)
             med = np.median(binrates, axis=0)
