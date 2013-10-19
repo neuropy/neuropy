@@ -129,6 +129,7 @@ def sc_si(source, method='mean', sisource='lfp', kind=None, chani=-1, sirange=No
 def mua_si_lfp_si(source, layers=False, ms=1, figsize=(7.5, 6.5)):
     """Pool recording.mua_si_lfp_si() results across recordings specified by source,
     plot the result"""
+    uns = get_ipython().user_ns
     recs = parse_source(source)
     lfpsis, muasis = [], []
     for rec in recs:
@@ -148,8 +149,8 @@ def mua_si_lfp_si(source, layers=False, ms=1, figsize=(7.5, 6.5)):
         a.plot(lfpsi, muasi[1], 'r.', ms=ms)
         a.plot(lfpsi, muasi[2], 'g.', ms=ms)
         a.plot(lfpsi, muasi[3], 'b.', ms=ms)
-    a.set_xlabel('LFP SI')
-    a.set_ylabel('MUA SI')
+    a.set_xlabel('LFP SI (%s)' % uns['LFPSIKIND'])
+    a.set_ylabel('MUA SI (%s)' % uns['MUASIKIND'])
     a.set_xlim(-1, 1)
     a.set_ylim(-1, 1)
     titlestr = lastcmd()
