@@ -717,6 +717,10 @@ class LFP(object):
             si = lP/(hP + lP)
         elif kind == 'L/H':
             si = lP/hP
+        if kind == 'nLH':
+            t = Pt
+            si = (lP - hP) / (lP + hP)
+            ylabel = 'LFP (L - H / L + H)'
         elif kind == 'cv':
             si = binhP.std(axis=1) / binhP.mean(axis=1)
             ylim = 0, 2
@@ -733,6 +737,7 @@ class LFP(object):
             mean = binhP.mean(axis=1)
             si = (s2 - mean) / (s2 + mean)
             ylabel = 'LFP power (2*std - mean) / (2*std + mean)'
+            hlines = [-0.1, 0, 0.1] # demarcate desynched and synched thresholds
             #pl.plot(t, s2)
             #pl.plot(t, mean)
         elif kind == 'n3stdmean':
@@ -755,6 +760,7 @@ class LFP(object):
             med = np.median(binhP, axis=1)
             si = (s - med) / (s + med)
             ylabel = 'LFP power (std - med) / (std + med)'
+            hlines = [-0.1, 0, 0.1] # demarcate desynched and synched thresholds
             #pl.plot(t, s)
             #pl.plot(t, med)
         elif kind == 'n2stdmed':
@@ -762,6 +768,7 @@ class LFP(object):
             med = np.median(binhP, axis=1)
             si = (s2 - med) / (s2 + med)
             ylabel = 'LFP power (2*std - med) / (2*std + med)'
+            hlines = [-0.1, 0, 0.1] # demarcate desynched and synched thresholds
             #pl.plot(t, s2)
             #pl.plot(t, med)
         elif kind == 'n3stdmed':
@@ -769,6 +776,7 @@ class LFP(object):
             med = np.median(binhP, axis=1)
             si = (s3 - med) / (s3 + med)
             ylabel = 'LFP power (3*std - med) / (3*std + med)'
+            hlines = [-0.1, 0, 0.1] # demarcate desynched and synched thresholds
             #pl.plot(t, s3)
             #pl.plot(t, med)
         elif kind == 'nstdmin':
