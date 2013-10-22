@@ -122,8 +122,7 @@ def xcorr(int64_t[::1] x,
             if yti > maxyti: # don't exceed maxyti when indexing into y
                 break
             dt = y[yti] - t # update for next loop iter
-    dts = dts[:dtsi] # trim it down
-    return dts
+    return np.asarray(dts[:dtsi]) # trim it down, convert memory view slice to array
 
 
 def sct(int8_t[:, ::1] c,
