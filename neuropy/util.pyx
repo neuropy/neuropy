@@ -77,14 +77,12 @@ cdef int64_t int_sum(int64_t[::1] x) nogil:
     return result
 
 
-## TODO: try memoryviews instead of eventually deprecated ndarray buffers
-def xcorr(np.ndarray[int64_t, ndim=1, mode='c'] x,
-          np.ndarray[int64_t, ndim=1, mode='c'] y,
-          np.ndarray[int64_t, ndim=1, mode='c'] trange):
+def xcorr(int64_t[::1] x,
+          int64_t[::1] y,
+          int64_t[::1] trange):
     """Calculate cross-correlation of timepoints in x with y, constrained to lower
     and upper bounds in trange. Assume timepoints in x and y are sorted. Return spike times
     of y relative to x."""
-    # should assert contig of x and y, this seems to happen automatically though
     cdef int64_t ntx, nty, loti, dtsi, xti, yti, maxxti, maxyti, t, dt
     cdef int64_t low = trange[0]
     cdef int64_t high = trange[1]
@@ -93,7 +91,7 @@ def xcorr(np.ndarray[int64_t, ndim=1, mode='c'] x,
     nty = y.shape[0]
     maxxti = ntx - 1
     maxyti = nty - 1
-    cdef np.ndarray[int64_t, ndim=1] dts = np.zeros(DTSALLOCSIZE, dtype=np.int64)
+    cdef int64_t[::1] dts = np.zeros(DTSALLOCSIZE, dtype=np.int64)
     cdef int64_t maxdtsi = dts.shape[0] - 1
 
     loti = 0
