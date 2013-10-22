@@ -682,6 +682,50 @@ class BaseRecording(object):
         a.set_ylabel('neuron count')
         f.tight_layout(pad=0.3) # crop figure to contents
 
+    def cch(self, nid0, nid1=None, trange=50, binw=None, rate=False, figsize=(7.5, 6.5)):
+        """Plot cross-correlation histogram given nid0 and nid1. If nid1 is None,
+        calculate autocorrelogram. +/- trange and binw are in ms"""
+        if nid1 == None:
+            nid1 = nid0
+        autocorr = nid0 == nid1
+        n0 = self.alln[nid0]
+        n1 = self.alln[nid1]
+        trange *= 1000 # convert to us
+        trange = np.array([-trange, trange]) # convert to a +/- array, in us
+        dts = util.xcorr(n0.spikes, n1.spikes, trange=trange) # in us
+        if autocorr:
+            dts = dts[dts != 0] # remove 0s for autocorr
+
+        if not binw:
+            nbins = intround(np.sqrt(len(dts))) # good heuristic
+            nbins = max(20, nbins) # enforce min nbins
+            nbins = min(200, nbins) # enforce max nbins
+        else:
+            binw *= 1000 # convert to us
+            nbins = intround((trange[1] - trange[0]) / binw)
+
+        dts = dts / 1000 # in ms, converts to float64 array
+        trange = trange / 1000 # in ms, converts to float64 array
+        t = np.linspace(start=trange[0], stop=trange[1], num=nbins+1, endpoint=True)
+        n = np.histogram(dts, bins=t, density=False)[0]
+        binw = t[1] - t[0] # all should be equal width
+        if rate: # normalize by binw and convert to float:
+            n = n / binw
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        a.bar(left=t[:-1], height=n, width=binw) # omit last right edge in t
+        a.set_xlim(t[0], t[-1])
+        a.set_xlabel('ISI (ms)')
+        if rate:
+            a.set_ylabel('coincidence rate (Hz)')
+        else:
+            a.set_ylabel('count')
+        #a.set_title('n%d spikes relative to n%d spikes' % (self.n1.id, self.n0.id))
+        title = lastcmd() + ', binwidth: %.2f ms' % binw
+        a.set_title(title)
+        gcfm().window.setWindowTitle(title)
+        f.tight_layout(pad=0.3) # crop figure to contents
+
     def collectcchs(self, nids, trange, bins, shiftcorrect=False, nshifts=50, normalize=False):
         """Collect cross-correlation histograms for all pairs in nids. trange and bins are in
         us. If shiftcorrect, then calculate shift corrector by shifting one spike train in
