@@ -735,8 +735,8 @@ class BaseRecording(object):
         nn = len(nids)
         npairs = nCr(nn, 2)
         nbins = len(bins) - 1
-        hists = np.zeros((npairs, nbins))
-        shifthists = np.zeros((npairs, nbins)) # average shift predictors
+        cchs = np.zeros((npairs, nbins))
+        shiftcchs = np.zeros((npairs, nbins)) # average shift predictors
         if shiftcorrect:
             # make sure no part of the shift corrector overlaps with trange:
             width = trange[1] - trange[0]
@@ -744,30 +744,30 @@ class BaseRecording(object):
             # +/- width to +/- 2*width
             tshifts = intround(width + width*np.random.random(nshifts))
             tshifts *= core.randsign(nshifts)
-            shifthist = np.zeros((nshifts, nbins)) # init once, re-use
+            shiftcch = np.zeros((nshifts, nbins)) # init once, re-use
         pairi = 0
         for nii0 in range(nn):
             for nii1 in range(nii0+1, nn):
                 spikes0 = n[nids[nii0]].spikes
                 spikes1 = n[nids[nii1]].spikes
                 dts = util.xcorr(spikes0, spikes1, trange) # spike time differences in us
-                hist = np.histogram(dts, bins=bins)[0]
+                cch = np.histogram(dts, bins=bins)[0]
                 # if we don't normalize, we treat our confidence in the CCH of a cell pair
                 # proportionally to the number of spikes in that pair, which may be the
                 # optimal thing to do. Otherwise, if we do normalize, we treat the CCH
                 # of each pair equally, and therefore imply equal confidence in the
                 # CCH of all pairs.
                 if normalize:
-                    hist = hist / hist.sum() # pmf: normalize so that sum of each hist is 1
-                hists[pairi] = hist
+                    cch = cch / cch.sum() # pmf: normalize so that sum of each cch is 1
+                cchs[pairi] = cch
                 if shiftcorrect:
-                    shifthist[:] = 0 # clear
+                    shiftcch[:] = 0 # clear
                     for shifti in range(nshifts):
                         shiftdts = util.xcorr(spikes0, spikes1+tshifts[shifti], trange)
-                        shifthist[shifti] = np.histogram(shiftdts, bins=bins)[0]
-                    shifthists[pairi] = shifthist.mean(axis=0) # average shift predictor
+                        shiftcch[shifti] = np.histogram(shiftdts, bins=bins)[0]
+                    shiftcchs[pairi] = shiftcch.mean(axis=0) # average shift predictor
                 pairi += 1
-        return hists, shifthists # one row per CCH
+        return cchs, shiftcchs # one row per CCH
 
     def meancch(self, trange=(-100, 100), binw=2, shiftcorrect=False, nshifts=50,
                 shufflenids=False, subtract=False, figsize=(7.5, 6.5)):
@@ -796,36 +796,36 @@ class BaseRecording(object):
         npairs = nCr(nn, 2)
         bins = np.arange(trange[0], trange[1]+binw, binw)
         nbins = len(bins) - 1 # last value is right bin edge
-        histss = np.zeros((nruns, npairs, nbins))
-        shifthistss = np.zeros((nruns, npairs, nbins))
+        cchss = np.zeros((nruns, npairs, nbins))
+        shiftcchss = np.zeros((nruns, npairs, nbins))
         for runi in range(nruns):
             if shufflenids:
                 np.random.shuffle(nids) # in place
-            hists, shifthists = self.collectcchs(nids, trange, bins, shiftcorrect, nshifts,
+            cchs, shiftcchs = self.collectcchs(nids, trange, bins, shiftcorrect, nshifts,
                                                  normalize=False)
-            histss[runi] = hists
-            shifthistss[runi] = shifthists
-        hists = histss.mean(axis=0) # mean over nruns, left with npairs x nbins
-        shifthists = shifthistss.mean(axis=0)
+            cchss[runi] = cchs
+            shiftcchss[runi] = shiftcchs
+        cchs = cchss.mean(axis=0) # mean over nruns, left with npairs x nbins
+        shiftcchs = shiftcchss.mean(axis=0)
         if shiftcorrect:
-            hists -= shifthists # subtract shift correctors from CCHs
+            cchs -= shiftcchs # subtract shift correctors from CCHs
             # disallow any negative bin counts from subtracting the shift corrector:
-            hists[hists < 0] = 0
-        hist = hists.mean(axis=0) # nbins
+            cchs[cchs < 0] = 0
+        cch = cchs.mean(axis=0) # nbins
 
         if shufflenids and subtract: # call collectcchs one more time, without shuffling
             nids = self.get_ordnids() # in vertical spatial order
-            ushists, usshifthists = self.collectcchs(nids, trange, bins, shiftcorrect, nshifts,
+            uscchs, usshiftcchs = self.collectcchs(nids, trange, bins, shiftcorrect, nshifts,
                                                      normalize=False)
             if shiftcorrect:
-                ushists -= usshifthists
-                ushists[ushists < 0] = 0
-            ushist = ushists.mean(axis=0) # nbins
-            hist = ushist - hist # unshuffled minus shuffled, nbins
+                uscchs -= usshiftcchs
+                uscchs[uscchs < 0] = 0
+            uscch = uscchs.mean(axis=0) # nbins
+            cch = uscch - cch # unshuffled minus shuffled, nbins
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.bar(bins[:-1]/1000, hist, width=binw/1000)
+        a.bar(bins[:-1]/1000, cch, width=binw/1000)
         a.set_xlim(trange/1000)
         if not subtract:
             a.set_ylim(ymin=0)
