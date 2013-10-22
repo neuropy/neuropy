@@ -731,7 +731,7 @@ class BaseRecording(object):
         us. If shiftcorrect, then calculate shift corrector by shifting one spike train in
         each pair by some random amount, nshifts number of times. If normalize, weight each
         pair equally."""
-        n = self.n
+        alln = self.alln
         nn = len(nids)
         npairs = nCr(nn, 2)
         nbins = len(bins) - 1
@@ -748,8 +748,8 @@ class BaseRecording(object):
         pairi = 0
         for nii0 in range(nn):
             for nii1 in range(nii0+1, nn):
-                spikes0 = n[nids[nii0]].spikes
-                spikes1 = n[nids[nii1]].spikes
+                spikes0 = alln[nids[nii0]].spikes
+                spikes1 = alln[nids[nii1]].spikes
                 dts = util.xcorr(spikes0, spikes1, trange) # spike time differences in us
                 cch = np.histogram(dts, bins=bins)[0]
                 # if we don't normalize, we treat our confidence in the CCH of a cell pair
