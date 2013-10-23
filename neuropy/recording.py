@@ -838,6 +838,90 @@ class BaseRecording(object):
                horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3)
 
+    def sc_cch(self, trange=10000, blrange=1000, binw=None, shiftcorrect=False):
+        """Return spike correlations between all cell pairs, calculated from the
+        CCH peak relative to baseline. trange and binw are in ms"""
+        uns = get_ipython().user_ns
+        assert trange > blrange
+        trange = np.asarray([-trange, trange]) * 1000 # us
+        blrange = np.asarray([-blrange, blrange]) * 1000 # us
+        halfpeakwidth = uns['CODETRES'] / 2 # us, typically +/- 10 ms
+        if not binw:
+            binw = halfpeakwidth # us
+        else:
+            binw *= 1000 # us
+        bins = np.arange(trange[0], trange[1]+binw, binw)
+        p0i, p1i = bins.searchsorted((-halfpeakwidth, halfpeakwidth))
+        bl0i, bl1i = bins.searchsorted(blrange)
+        npi = p1i - p0i
+        nids = self.get_ordnids() # in vertical spatial order
+        cchs, shiftcchs = self.collectcchs(nids, trange, bins, shiftcorrect=shiftcorrect)
+        npairs = len(cchs)
+        corrs = np.zeros(npairs)
+        for pairi, cch in enumerate(cchs):
+            peakarea = cch[p0i:p1i].sum()
+            if peakarea == 0:
+                continue # leave corrs entry as 0
+            # estimate baseline from way out on either side of t=0:
+            baseline = np.mean(np.hstack([cch[:bl0i], cch[bl1i:]]))
+            baselinearea = baseline * npi
+            corrs[pairi] = (peakarea - baselinearea) / (peakarea + baselinearea)
+            #print(pairi, peakarea, baselinearea, corrs[pairi])
+        #import ipdb; ipdb.set_trace()
+        return corrs
+
+    def sc_dt(self, trange=10000, blrange=1000):
+        """Return spike correlations between all cell pairs, calculated from all the
+        delta t's without building an actual CCH. trange and binw are in ms"""
+        uns = get_ipython().user_ns
+        assert trange > blrange
+        trange *= 1000 # us
+        trangearr = np.asarray([-trange, trange])
+        blrange *= 1000 # us
+        # imagine we're only dealing with one half of the CCH, so divide by 2, but really
+        # we're dealing with both halves simultaneously, because we're taking abs(dts)
+        # in the neuron pair loop:
+        binw = uns['CODETRES'] / 2 # us, typically 10 ms
+        alln = self.alln
+        nids = self.get_ordnids() # in vertical spatial order
+        nn = len(nids)
+        npairs = nCr(nn, 2)
+        corrs = np.zeros(npairs)
+        nbaselinebins = (trange - blrange) / binw
+        pairi = -1
+        for nii0 in range(nn):
+            for nii1 in range(nii0+1, nn):
+                pairi += 1
+                spikes0 = alln[nids[nii0]].spikes
+                spikes1 = alln[nids[nii1]].spikes
+                dts = abs(util.xcorr(spikes0, spikes1, trangearr)) # abs spike delta ts, us
+                peak = (dts <= binw).sum() # coincidences per bin
+                if peak == 0:
+                    continue # leave corrs entry as 0
+                baseline = (dts > blrange).sum() / nbaselinebins
+                corrs[pairi] = (peak - baseline) / (peak + baseline)
+                #print((nids[nii0], nids[nii1]), peak, baseline, corrs[pairi])
+        #import ipdb; ipdb.set_trace()
+        return corrs
+
+    def sc_ising_vs_cch(self, ms=5, figsize=(7.5, 6.5)):
+        sc = self.sc()
+        sc.calc()
+        sc_ising = sc.corrs
+        sc_cch = self.sc_dt()
+        # plot:
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        a.plot(sc_ising, sc_cch, 'e.', ms=ms)
+        a.set_xlabel('Ising spike corrs')
+        a.set_ylabel('CCH spike corrs')
+        a.set_xlim(-0.05, 0.2)
+        a.set_ylim(-0.5, 1)
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        a.set_title(titlestr)
+        f.tight_layout(pad=0.3) # crop figure to contents
+
     def pospdf(self, neurons=None, dim='y', nbins=10, a=None, stats=False, figsize=(7.5, 6.5)):
         """Plot PDF of cell positions ('x' or 'y') along the polytrode
         to get an idea of how cells are distributed in space"""
