@@ -168,6 +168,7 @@ class BaseRecording(object):
             e0, e1 = exps[0], exps[-1]
             # start of the first experiment to end of the last one
             self.trange = e0.trange[0], e1.trange[1]
+            self.tranges = [ exp.trange for exp in exps ]
         else:
             if self.sort:
                 # self.e is empty, no experiments in this recording, use first and last
@@ -176,6 +177,7 @@ class BaseRecording(object):
                 self.trange = min(tranges[:, 0]), max(tranges[:, 1])
             else:
                 self.trange = 0, 0 # no experiments or sort, no trange
+            self.tranges = [self.trange]
 
         # these are static, no need for properties:
         self.dt = self.trange[1] - self.trange[0] # duration (us)
