@@ -3750,3 +3750,22 @@ def commontres(t0, y0, t1, y1):
         y1 = y1[..., t1i]
 
     return t, y0, y1
+
+def parse_source(source):
+    """Collect recordings from source, whether a track, a list of recordings, or a dict of
+    track:rid keyvals. Return all collected recordings in a list, in no particular order,
+    as well as the set of associated tracks"""
+    uns = get_ipython().user_ns
+    if type(source) == Track:
+        rids = uns['RIDS'][source.absname]
+        recs = [ source.r[rid] for rid in rids ]
+    elif type(source) == list: # assume it's a list of recordings
+        recs = source
+    elif type(source) == dict: # assume it's a dict of {animal.tr: [rids]} key-value pairs
+        recs = []
+        for animal_track, rids in source.items():
+            animalname, trackname = animal_track.split('.')
+            tr = uns[animalname].__getattribute__(trackname)
+            recs.extend([ tr.r[rid] for rid in rids ])
+    tracks = list(set([ rec.track for rec in recs ]))
+    return recs, tracks

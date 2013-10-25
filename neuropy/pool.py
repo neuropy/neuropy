@@ -6,25 +6,8 @@ from scipy.stats import linregress
 import pylab as pl
 from pylab import get_current_fig_manager as gcfm
 
-from core import lastcmd
+from core import lastcmd, parse_source
 from track import Track
-
-
-def parse_source(source):
-    """Collect recordings from source, return in a list"""
-    uns = get_ipython().user_ns
-    if type(source) == Track:
-        rids = uns['RIDS'][source.absname]
-        recs = [ source.r[rid] for rid in rids ]
-    elif type(source) == list: # assume it's a list of recordings
-        recs = source
-    elif type(source) == dict: # assume it's a dict of {animal.tr: [rids]} key-value pairs
-        recs = []
-        for animal_track, rids in source.items():
-            animalname, trackname = animal_track.split('.')
-            tr = uns[animalname].__getattribute__(trackname)
-            recs.extend([ tr.r[rid] for rid in rids ])
-    return recs
 
 
 def sc_si(source, method='mean', sisource='lfp', kind=None, chani=-1, sirange=None,
@@ -39,7 +22,7 @@ def sc_si(source, method='mean', sisource='lfp', kind=None, chani=-1, sirange=No
     LAYER2I = {'all':0, 'sup':1, 'mid':2, 'deep':3, 'other':4}
     layeris = [ LAYER2I[layer] for layer in layers ]
 
-    recs = parse_source(source)
+    recs, tracks = parse_source(source)
 
     if sisource not in ['lfp', 'mua']:
         raise ValueError('unknown sisource %r' % sisource)
@@ -130,7 +113,7 @@ def mua_si_lfp_si(source, layers=False, ms=1, figsize=(7.5, 6.5)):
     """Pool recording.mua_si_lfp_si() results across recordings specified by source,
     plot the result"""
     uns = get_ipython().user_ns
-    recs = parse_source(source)
+    recs, tracks = parse_source(source)
     lfpsis, muasis = [], []
     for rec in recs:
         print(rec.absname)
