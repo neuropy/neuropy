@@ -186,11 +186,13 @@ class BaseRecording(object):
         if self.sort:
             self.calc_meanrates()
 
-    def get_ordnids(self):
-        """Return nids of active neurons in vertical spatial order, superficial to deep"""
+    def get_ordnids(self, n=None):
+        """Return nids of neurons in dict n in vertical spatial order, superficial to deep"""
         # numerical order, isn't necessarily the same as spatial order:
-        nids = np.sort(self.n.keys())
-        ypos = [ self.n[nid].pos[1] for nid in nids ]
+        if n == None:
+            n = self.n
+        nids = np.sort(n.keys())
+        ypos = [ n[nid].pos[1] for nid in nids ]
         sortis = np.argsort(ypos) # superficial to deep
         return nids[sortis]
 
