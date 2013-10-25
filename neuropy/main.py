@@ -165,8 +165,8 @@ class NeuropyWindow(QtGui.QMainWindow):
     def open_recording(self, path):
         rec = Recording(path) # init it just to parse its id
         exec_lines = (
-        "r%d = Recording(%r)\n"
-        "r%d.load()" % (rec.id, path, rec.id)
+        "r%s = Recording(%r)\n"
+        "r%s.load()" % (rec.id, path, rec.id)
         )
         self.ipw.execute(exec_lines)
 
