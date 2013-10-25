@@ -804,7 +804,7 @@ class BaseRecording(object):
             if shufflenids:
                 np.random.shuffle(nids) # in place
             cchs, shiftcchs = self.collectcchs(nids, trange, bins, shiftcorrect, nshifts,
-                                                 normalize=False)
+                                               normalize=False)
             cchss[runi] = cchs
             shiftcchss[runi] = shiftcchs
         cchs = cchss.mean(axis=0) # mean over nruns, left with npairs x nbins
@@ -840,7 +840,7 @@ class BaseRecording(object):
                horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3)
 
-    def sc_cch(self, trange=10000, blrange=1000, binw=None, shiftcorrect=False):
+    def sc_fullcch(self, trange=10000, blrange=1000, binw=None, shiftcorrect=False):
         """Return spike correlations between all cell pairs, calculated from the
         CCH peak relative to baseline. trange and binw are in ms"""
         uns = get_ipython().user_ns
@@ -872,18 +872,21 @@ class BaseRecording(object):
         #import ipdb; ipdb.set_trace()
         return corrs
 
-    def sc_dt(self, trange=10000, blrange=1000):
+    def sc_cch(self, trange=10000, blrange=1000):
         """Return spike correlations between all cell pairs, calculated from all the
         delta t's without building an actual CCH. trange and binw are in ms"""
         uns = get_ipython().user_ns
-        assert trange > blrange
+        binw = uns['CODETRES'] # us, typically 20 ms
+        binwsec = binw / 1000000
         trange *= 1000 # us
-        trangearr = np.asarray([-trange, trange])
         blrange *= 1000 # us
+        assert trange > binw
+        assert blrange > binw
+        assert trange > blrange
+        trangearr = np.asarray([-trange, trange])
         # imagine we're only dealing with one half of the CCH, so divide by 2, but really
         # we're dealing with both halves simultaneously, because we're taking abs(dts)
         # in the neuron pair loop:
-        binw = uns['CODETRES'] / 2 # us, typically 10 ms
         alln = self.alln
         nids = self.get_ordnids() # in vertical spatial order
         nn = len(nids)
@@ -894,27 +897,30 @@ class BaseRecording(object):
         for nii0 in range(nn):
             for nii1 in range(nii0+1, nn):
                 pairi += 1
-                spikes0 = alln[nids[nii0]].spikes
-                spikes1 = alln[nids[nii1]].spikes
-                dts = abs(util.xcorr(spikes0, spikes1, trangearr)) # abs spike delta ts, us
-                peak = (dts <= binw).sum() # coincidences per bin
+                n0, n1 = alln[nids[nii0]], alln[nids[nii1]]
+                dts = abs(util.xcorr(n0.spikes, n1.spikes, trangearr)) # abs spike delta ts, us
+                peak = (dts <= binw).sum() / binwsec # coincidence rate, Hz
                 if peak == 0:
                     continue # leave corrs entry as 0
+                #baseline = n0.meanrate * n1.meanrate # expected coincidence rate, Hz^2
+                #baseline = np.sqrt(baseline)
                 baseline = (dts > blrange).sum() / nbaselinebins
                 corrs[pairi] = (peak - baseline) / (peak + baseline)
-                #print((nids[nii0], nids[nii1]), peak, baseline, corrs[pairi])
+                print((nids[nii0], nids[nii1]), peak, baseline, corrs[pairi])
         #import ipdb; ipdb.set_trace()
         return corrs
 
     def sc_ising_vs_cch(self, ms=5, figsize=(7.5, 6.5)):
+        """Scatter plot spike corrs calculated from Ising matrix against those calculated
+        from CCH"""
         sc = self.sc()
         sc.calc()
-        sc_ising = sc.corrs
-        sc_cch = self.sc_dt()
+        isingsc = sc.corrs
+        cchsc = self.sc_fullcch()
         # plot:
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.plot(sc_ising, sc_cch, 'e.', ms=ms)
+        a.plot(isingsc, cchsc, 'e.', ms=ms)
         a.set_xlabel('Ising spike corrs')
         a.set_ylabel('CCH spike corrs')
         a.set_xlim(-0.05, 0.2)
