@@ -3753,8 +3753,9 @@ def commontres(t0, y0, t1, y1):
 
 def parse_source(source):
     """Collect recordings from source, whether a track, a list of recordings, or a dict of
-    track:rid keyvals. Return all collected recordings in a list, in no particular order,
-    as well as the set of associated tracks"""
+    track:rid keyvals. Return all collected recordings in a list, as well as the set of all
+    associated tracks. Both are sorted in order of their absnames"""
+    from track import Track # do this here to prevent circular import
     uns = get_ipython().user_ns
     if type(source) == Track:
         rids = uns['RIDS'][source.absname]
@@ -3767,5 +3768,14 @@ def parse_source(source):
             animalname, trackname = animal_track.split('.')
             tr = uns[animalname].__getattribute__(trackname)
             recs.extend([ tr.r[rid] for rid in rids ])
-    tracks = list(set([ rec.track for rec in recs ]))
+    else:
+        raise ValueError('unknown source type %r' % type(source))
+    # set of all associated tracks:
+    tracks = list(set([ rec.tr for rec in recs ]))
+    # sort recordings by their absnames:
+    recis = np.argsort([ rec.absname for rec in recs ])
+    recs = [ recs[reci] for reci in recis ]
+    # sort tracks by their absnames:
+    trackis = np.argsort([ track.absname for track in tracks ])
+    tracks = [ tracks[tracki] for tracki in trackis ]
     return recs, tracks
