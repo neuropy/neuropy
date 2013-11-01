@@ -1516,45 +1516,6 @@ class SpikeCorr(object):
         #print(norder)
         return norder
 
-    def pair_laminarity(self, nids, pairs, inclusive=False):
-        """Color cell pairs according to whether they're superficial, deep, or other. If
-        inclusive, label a pair as superficial if *either* of the cells are superficial. Ditto
-        for deep. This means many pairs will be counted as both superficial and deep.
-        Return RGB colours and indices into self.pairs"""
-        # y positions of all nids:
-        ys = np.array([ self.r.n[nid].pos[1] for nid in nids ])
-        supis, midis, deepis = laminarity(ys, self.r.tr.absname)
-        npairs = len(pairs)
-        c = np.empty((npairs, 3), dtype=float) # color RGB array
-        cc = mpl.colors.colorConverter
-        REDRGB = cc.to_rgb('r')
-        GREENRGB = cc.to_rgb('g')
-        BLUERGB = cc.to_rgb('b')
-        YELLOWRGB = cc.to_rgb('y')
-        c[:] = YELLOWRGB # init to yellow, other pairs remain yellow
-        if inclusive:
-            for i, (ni0, ni1) in enumerate(pairs):
-                if supis[ni0] or supis[ni1]:
-                    c[i] = REDRGB # at least one cell is superficial
-                if midis[ni0] or midis[ni1]:
-                    c[i] = GREENRGB # at least one cell is middle
-                if deepis[ni0] or deepis[ni1]:
-                    c[i] = BLUERGB # at least one cell is deep
-        else:
-            for i, (ni0, ni1) in enumerate(pairs):
-                if supis[ni0] and supis[ni1]:
-                    c[i] = REDRGB # both cells are superficial
-                if midis[ni0] and midis[ni1]:
-                    c[i] = GREENRGB # both cells are middle
-                if deepis[ni0] and deepis[ni1]:
-                    c[i] = BLUERGB # both cells are deep
-        # overwrite boolean neuron indices with boolean pair indices:
-        supis, = np.where((c == REDRGB).all(axis=1))
-        midis, = np.where((c == GREENRGB).all(axis=1))
-        deepis, = np.where((c == BLUERGB).all(axis=1))
-        otheris, = np.where((c == YELLOWRGB).all(axis=1))
-        return c, supis, midis, deepis, otheris
-
     def shifts(self, start=-5000, stop=5000, step=50, shiftcorrect=True, figsize=(7.5, 6.5)):
         """Plot shift-corrected, or just shifted, median pairwise spike correlations of all
         cell pairs as a function of shifts, from start to stop in steps of step ms"""
@@ -3710,17 +3671,55 @@ def split_tranges(tranges, width, tres):
         newtranges.append(subtranges)
     return np.vstack(newtranges)
 
-def laminarity(ys, trackabsname):
-    """Return boolean arrays indicating whether depths ys are superficial, middle,
+def laminarity(ypos, trackabsname):
+    """Return boolean arrays indicating whether depths ypos are superficial, middle,
     or deep layer (or none of the above)"""
     uns = get_ipython().user_ns
     (sup0, sup1), (mid0, mid1), (deep0, deep1) = uns['LAYERS'][trackabsname]
     # boolean neuron indices:
-    supis = (sup0 <= ys) * (ys < sup1) # True values are superficial
-    midis = (mid0 <= ys) * (ys < mid1) # True values are middle
-    deepis = (deep0 <= ys) * (ys < deep1) # True values are deep
+    supis = (sup0 <= ypos) * (ypos < sup1) # True values are superficial
+    midis = (mid0 <= ypos) * (ypos < mid1) # True values are middle
+    deepis = (deep0 <= ypos) * (ypos < deep1) # True values are deep
     #otheris = not(supis + midis + deepis) # True values are other, not needed
     return supis, midis, deepis
+
+def pair_laminarity(nids, ypos, trackabsname, pairs, inclusive=False):
+    """Color cell pairs according to whether they're superficial, deep, or other. If
+    inclusive, label a pair as superficial if *either* of the cells are superficial. Ditto
+    for deep. This means many pairs will be counted as both superficial and deep.
+    Return RGB colours and indices into self.pairs"""
+    # y positions of all nids:
+    supis, midis, deepis = laminarity(ypos, trackabsname)
+    npairs = len(pairs)
+    c = np.empty((npairs, 3), dtype=float) # color RGB array
+    cc = mpl.colors.colorConverter
+    REDRGB = cc.to_rgb('r')
+    GREENRGB = cc.to_rgb('g')
+    BLUERGB = cc.to_rgb('b')
+    YELLOWRGB = cc.to_rgb('y')
+    c[:] = YELLOWRGB # init to yellow, other pairs remain yellow
+    if inclusive:
+        for i, (ni0, ni1) in enumerate(pairs):
+            if supis[ni0] or supis[ni1]:
+                c[i] = REDRGB # at least one cell is superficial
+            if midis[ni0] or midis[ni1]:
+                c[i] = GREENRGB # at least one cell is middle
+            if deepis[ni0] or deepis[ni1]:
+                c[i] = BLUERGB # at least one cell is deep
+    else:
+        for i, (ni0, ni1) in enumerate(pairs):
+            if supis[ni0] and supis[ni1]:
+                c[i] = REDRGB # both cells are superficial
+            if midis[ni0] and midis[ni1]:
+                c[i] = GREENRGB # both cells are middle
+            if deepis[ni0] and deepis[ni1]:
+                c[i] = BLUERGB # both cells are deep
+    # overwrite boolean neuron indices with boolean pair indices:
+    supis, = np.where((c == REDRGB).all(axis=1))
+    midis, = np.where((c == GREENRGB).all(axis=1))
+    deepis, = np.where((c == BLUERGB).all(axis=1))
+    otheris, = np.where((c == YELLOWRGB).all(axis=1))
+    return c, supis, midis, deepis, otheris
 
 def rainbow_text(a, x, y, words, colors, **kwargs):
     """
