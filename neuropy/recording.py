@@ -1234,17 +1234,11 @@ class RecordingCode(BaseRecording):
         code2 = self.n[nid2].code(tranges=tranges)
         return corrcoef(code1.c, code2.c)
     '''
-    def sc(self, tranges=None, width=None, tres=None, weights=None, shift=0,
-           shiftcorrect=0, nids=None, R=None):
+    def sc(self, tranges=None, width=None, tres=None, shift=0, shiftcorrect=0,
+           nids=None, R=None):
         """Return a SpikeCorr object"""
-        if weights in ['synch', 'desynch']:
-            r, t = self.lfp.si(plot=False)
-            if weights == 'synch':
-                weights = r, t
-            else: # weights == 'desynch'
-                weights = 1-r, t
         sc = SpikeCorr([self], tranges=tranges, width=width, tres=tres,
-                       weights=weights, shift=shift, shiftcorrect=shiftcorrect,
+                       shift=shift, shiftcorrect=shiftcorrect,
                        nids=nids, R=None)
         # run sc.calc() as late as possible, not here
         return sc
