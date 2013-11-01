@@ -1377,7 +1377,7 @@ class SpikeCorr(object):
         self.corrs = corrs
         self.counts = counts
         self.pairs = pairs
-        self.npairs = len(pairs)
+        self.npairs = [ len(pair) for pair in pairs ]
 
     def calc_single(self, code, nids):
         """Calculate one spike correlation value for each cell pair, given code spanning
