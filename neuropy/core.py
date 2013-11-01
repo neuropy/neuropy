@@ -1212,6 +1212,7 @@ class Codes(object):
         self.t = codeo.t
         nneurons = len(self.neurons)
         nbins = len(self.c[0]) # all entries in the list should be the same length
+        ## TODO: why not just do self.c = np.vstack(self.c) ???
         self.c = np.concatenate(self.c).reshape(nneurons, nbins)
 
     def syncis(self):
@@ -1253,11 +1254,10 @@ class SpikeCorr(object):
     """Calculate and plot spike correlations of all cell pairs from nids (or of all
     cell pairs within some torus of radii R=(R0, R1) in um) in this Recording, during tranges
     or experiments. If width is not None, calculate self as a function of time, with bin
-    widths width sec and time resolution tres sec. Weights is a tuple of weight values and
-    times, to weight different parts of the recording differently. For each pair, shift the
+    widths width sec and time resolution tres sec. For each pair, shift the
     second spike train by shift ms, or shift it by shiftcorrect ms and subtract the
     correlation from the unshifted value."""
-    def __init__(self, source, tranges=None, width=None, tres=None, weights=None,
+    def __init__(self, source, tranges=None, width=None, tres=None,
                  shift=0, shiftcorrect=0, nids=None, R=None):
         uns = get_ipython().user_ns
         recs, tracks = parse_source(source)
@@ -1339,9 +1339,6 @@ class SpikeCorr(object):
         self.width = width
         self.tres = tres
 
-        if weights != None:
-            raise NotImplementedError('weights are currently disabled for speed')
-            self.weights = weights
         if shift or shiftcorrect:
             raise NotImplementedError("shift and shiftcorrect are currently disabled to "
                                       "simplify the logic")
@@ -1384,33 +1381,11 @@ class SpikeCorr(object):
 
     def calc_single(self, code, nids):
         """Calculate one spike correlation value for each cell pair, given code spanning
-        some subset of self.tranges, contrained to torus described by self.R, weighted by
-        self.weights"""
+        some subset of self.tranges, contrained to torus described by self.R"""
         nneurons, nbins = code.shape
         print('nneurons', nneurons)
         code = np.float64(code) # prevent int8 overflow somewhere
-        '''
-        # calculate bin weights:
-        binw = 1 # default
-        if self.weights != None:
-            w, wt = self.weights # weights and weight times
-            assert len(w) == len(wt)
-            ## TODO: maybe w needs to be recentered between max and min possible LFP
-            ## synch values (say, 1 and 0.15?)
-            # get bin times from codes:
-            t = codes.t
-            binw = np.zeros(nbins) # bin weights
-            # this might assume that there are fewer weight times than bin times,
-            # but that should usually be a safe assumption if weights come from LFP:
-            assert len(wt) < nbins
-            tis = t.searchsorted(wt) # where weight times fit into bin times
-            tis = np.append(tis, nbins)
-            for i in range(len(tis)-1):
-                ti0 = tis[i]
-                ti1 = tis[i+1]
-                binw[ti0:ti1] = w[i]
-        meanw = np.mean(binw)
-        '''
+
         # precalculate mean and std of each cell's codetrain, rows correspond to nids:
         means = code.mean(axis=1)
         stds = code.std(axis=1)
@@ -1447,7 +1422,6 @@ class SpikeCorr(object):
                 c0 = code[nii0]
                 c1 = code[nii1]
                 # (mean of product - product of means) / product of stds:
-                #numer = (c0 * c1 * binw).mean() - means[nii0] * means[nii1] * meanw
                 numer = np.dot(c0, c1) / nbins - means[nii0] * means[nii1]
                 denom = stds[nii0] * stds[nii1]
                 if numer == 0.0:
