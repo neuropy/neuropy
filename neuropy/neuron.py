@@ -893,3 +893,12 @@ class TrackNeuron(NeuronRate,
         self.level = 4 # level in the hierarchy, just below TrackSort
         self.path = sort.path
         self.sort = sort # a TrackSort
+
+
+class DummyRecord(object):
+    def __init__(self):
+        self.spikes = np.array([], dtype=np.int64)
+
+class DummyNeuron(Neuron):
+    def __init__(self):
+        self.record = DummyRecord()

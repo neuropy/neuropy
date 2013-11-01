@@ -31,6 +31,7 @@ from core import (LFP, SpatialPopulationRaster, DensePopulationRaster, Codes, Sp
 from colour import CLUSTERCOLOURDICT
 from experiment import Experiment
 from sort import Sort
+from neuron import DummyNeuron
 from dimstimskeletal import Movie
 
 '''
@@ -1205,8 +1206,16 @@ class RecordingCode(BaseRecording):
         to tranges, or to the tranges of experiments. If both are None, code is constrained
         to tranges of all experiments in self"""
         if nids == None:
-            nids = self.get_nids() # sorted nids of all active neurons
-        neurons = [ self.alln[nid] for nid in nids ] # sorted list of neurons
+            nids = self.get_nids() # sorted nids of all active nids
+        neurons = [] # sorted list of neurons
+        for nid in nids:
+            try:
+                neuron = self.alln[nid]
+            except KeyError: # nid has no spikes during this recording
+                # create a spikeless neuron as a placeholder
+                neuron = DummyNeuron()
+                neuron.record.nid = nid
+            neurons.append(neuron)
         if tranges == None:
             if experiments == None:
                 experiments = self.esorted()
@@ -1226,7 +1235,7 @@ class RecordingCode(BaseRecording):
         return corrcoef(code1.c, code2.c)
     '''
     def sc(self, tranges=None, width=None, tres=None, weights=None, shift=0,
-           shiftcorrect=0, experiments=None, nids=None, R=None):
+           shiftcorrect=0, nids=None, R=None):
         """Return a SpikeCorr object"""
         if weights in ['synch', 'desynch']:
             r, t = self.lfp.si(plot=False)
@@ -1234,11 +1243,9 @@ class RecordingCode(BaseRecording):
                 weights = r, t
             else: # weights == 'desynch'
                 weights = 1-r, t
-        if experiments == None:
-            experiments = self.esorted()
-        sc = SpikeCorr(recording=self, tranges=tranges, width=width, tres=tres,
+        sc = SpikeCorr([self], tranges=tranges, width=width, tres=tres,
                        weights=weights, shift=shift, shiftcorrect=shiftcorrect,
-                       experiments=experiments, nids=nids, R=None)
+                       nids=nids, R=None)
         # run sc.calc() as late as possible, not here
         return sc
 

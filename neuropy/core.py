@@ -1257,27 +1257,79 @@ class SpikeCorr(object):
     times, to weight different parts of the recording differently. For each pair, shift the
     second spike train by shift ms, or shift it by shiftcorrect ms and subtract the
     correlation from the unshifted value."""
-    def __init__(self, recording=None, tranges=None, width=None, tres=None, weights=None,
-                 shift=0, shiftcorrect=0, experiments=None, nids=None, R=None):
-        self.r = recording
+    def __init__(self, source, tranges=None, width=None, tres=None, weights=None,
+                 shift=0, shiftcorrect=0, nids=None, R=None):
+        uns = get_ipython().user_ns
+        recs, tracks = parse_source(source)
+        self.recs, self.tracks = recs, tracks
+        
         if tranges != None:
-            self.tranges = tranges
-        elif experiments != None and len(experiments) > 0:
-            self.tranges = [ e.trange for e in experiments ]
-        else:
-            self.tranges = [ self.r.trange ] # use the Recording's trange
-
-        if shift or shiftcorrect:
-            raise NotImplementedError("shift and shiftcorrect are currently disabled to "
-                                      "simplify the logic")
-
+            if len(recs) == 1:
+                tranges = recs[0].tranges # use the Recording's trange
+            else: # more than one recording in source:
+                raise ValueError("can't analyze across recordings when tranges selected")
+        #self.tranges = tranges
+        
         if nids == None:
-            nids = sorted(self.r.n) # grab active neurons
-            if len(nids) == 0:
-                raise RuntimeError("Recording %s has no active neurons" % self.r.id)
-        self.nids = nids
-        self.codes = self.r.codes(nids=nids, tranges=tranges) # calculate them once
+            nids = 'active'
+        if len(tracks) > 1: # recordings from multiple tracks, collect nids per track
+            if nids == 'active':
+                nidss = [ sorted(track.n) for track in tracks ]
+            elif nids == 'quiet':
+                nidss = [ sorted(track.qn) for track in tracks ]
+            elif nids == 'all':
+                nidss = [ sorted(track.alln) for track in tracks ]
+            else:
+                raise ValueError("can't analyze across tracks when specific nids selected")
+        else: # all recordings from same track
+            track = tracks[0]
+            if nids == 'active':
+                if len(recs) == 1:
+                    nids = sorted(recs[0].n) # single recording's active nids
+                elif len(recs) > 1:
+                    nids = sorted(track.n) # single parent track's active nids
+            elif nids == 'quiet':
+                if len(recs) == 1:
+                    nids = sorted(recs[0].qn) # single recording's quiet nids
+                elif len(recs) > 1:
+                    nids = sorted(track.qn) # single parent track's quiet nids
+            elif nids == 'all':
+                if len(recs) == 1:
+                    nids = sorted(recs[0].alln) # all of single recording's nids
+                elif len(recs) > 1:
+                    nids = sorted(track.alln) # all of single parent track's nids
+            nidss = [ nids ]
+        self.nidss = nidss # list of nids lists
 
+        # calculate Ising code matrix (or matrices) once:
+        if len(tracks) > 1: # recordings from multiple tracks, collect lists of code arrs
+            codes = []
+            for nids, track in zip(nidss, tracks):
+                trcodes = [ rec.codes(nids=nids, tranges=tranges).c for rec in recs
+                            if rec.tr == track ]
+                trcodes = np.hstack(trcodes)
+                codes.append(trcodes)
+        else: # all recordings from same track
+            reccodes = [ rec.codes(nids=nids, tranges=tranges) for rec in recs ]
+            codes = [ np.hstack(reccode.c for reccode in reccodes) ]
+        self.codes = codes # list of Ising code matrices
+
+        if len(recs) == 1: # grab actual time values for single recording
+            ts = [ reccodes[0].t ]
+            tranges = [ reccodes[0].tranges ]
+        else: # generate fake time values, starting from 0, one set per code array
+            ts, tranges = [], []
+            bw = uns['CODETRES'] # us
+            for code in codes: # iterate over list of code arrays
+                nbins = code.shape[1]
+                t = np.arange(0, nbins*bw, bw)
+                trange = t[0], t[-1]
+                ts.append(t)
+                tranges.append(trange)
+        self.ts = ts # list of timestamp arrs corresponding to bin edges in codes
+        self.tranges = tranges # list of tranges
+
+        # width and tres are for calculating a metric of all corrs as f'n of time
         if width != None:
             if tres == None:
                 tres = width
@@ -1289,40 +1341,54 @@ class SpikeCorr(object):
 
         if weights != None:
             raise NotImplementedError('weights are currently disabled for speed')
-        self.weights = weights
-        self.shift = shift # shift spike train of the second of each neuron pair, in ms
-        # shift correct spike train of the second of each neuron pair by this much, in ms
-        self.shiftcorrect = shiftcorrect
+            self.weights = weights
+        if shift or shiftcorrect:
+            raise NotImplementedError("shift and shiftcorrect are currently disabled to "
+                                      "simplify the logic")
+            self.shift = shift # shift spike train of the second of each neuron pair, in ms
+            # shift correct spike train of the second of each neuron pair by this much, in ms
+            self.shiftcorrect = shiftcorrect
         if R != None:
+            raise NotImplementedError("torus code hasn't been tested in a long time")
             assert len(R) == 2 and R[0] < R[1]  # should be R = (R0, R1) torus
-        self.R = R
+            self.R = R
 
     def calc(self):
+        uns = get_ipython().user_ns
+        corrs, counts, pairs = [], [], []
         if self.width != None:
-            # compute correlation coefficients as a function of time, one value per trange:
-            self.tranges = split_tranges(self.tranges, self.width, self.tres)
-            uns = get_ipython().user_ns
+            tranges = []
             highval = uns['CODEVALS'][1]
-            c, t = self.codes.c, self.codes.t
-            corrs, counts = util.sct(c, t, self.tranges, highval)
-            nneurons = len(c)
-            pairs = np.asarray(np.triu_indices(nneurons, k=1)).T
+            for code, t, trange in zip(self.codes, self.ts, self.tranges):
+                # compute correlation coefficients as a function of time, one value per trange:
+                trange = split_tranges(trange, self.width, self.tres)
+                corr, count = util.sct(code, t, trange, highval)
+                nneurons = len(code)
+                corrs.append(corr)
+                counts.append(counts)
+                pairs.append(np.asarray(np.triu_indices(nneurons, k=1)).T)
+                tranges.append(trange)
+            self.tranges = tranges # overwrite
         else:
-            # compute correlation coefficients once across entire set of tranges:
-            corrs, counts, pairs = self.calc_single(self.codes)
+            corrs, counts, pairs = [], [], []
+            for code, nids in zip(self.codes, self.nidss):
+                # compute correlation coefficients once across entire set of tranges:
+                corr, count, pair = self.calc_single(code, nids)
+                corrs.append(corr)
+                counts.append(count)
+                pairs.append(pair)
         self.corrs = corrs
         self.counts = counts
         self.pairs = pairs
         self.npairs = len(pairs)
 
-    def calc_single(self, codes):
-        """Calculate one spike correlation value for each cell pair, given codes spanning
+    def calc_single(self, code, nids):
+        """Calculate one spike correlation value for each cell pair, given code spanning
         some subset of self.tranges, contrained to torus described by self.R, weighted by
         self.weights"""
-        c = codes.c # nneurons x nbins array
-        c = np.float64(c) # prevent int8 overflow somewhere
-        nneurons, nbins = c.shape
-        nids = self.nids
+        nneurons, nbins = code.shape
+        print('nneurons', nneurons)
+        code = np.float64(code) # prevent int8 overflow somewhere
         '''
         # calculate bin weights:
         binw = 1 # default
@@ -1346,8 +1412,8 @@ class SpikeCorr(object):
         meanw = np.mean(binw)
         '''
         # precalculate mean and std of each cell's codetrain, rows correspond to nids:
-        means = c.mean(axis=1)
-        stds = c.std(axis=1)
+        means = code.mean(axis=1)
+        stds = code.std(axis=1)
 
         # precalculate number of high states in each neuron's code:
         nhigh = np.zeros(nneurons, dtype=np.int64)
@@ -1355,15 +1421,15 @@ class SpikeCorr(object):
         if uns['CODEVALS'] != [0, 1]:
             raise RuntimeError("counting of high states assumes CODEVALS = [0, 1]")
         for nii0 in range(nneurons):
-            nhigh[nii0] = c[nii0].sum()
+            nhigh[nii0] = code[nii0].sum()
         
         #shift, shiftcorrect = self.shift, self.shiftcorrect
         #if shift and shiftcorrect:
         #    raise ValueError("only one of shift or shiftcorrect can be nonzero")
 
         # iterate over all pairs:
-        n = self.r.n
-        R = self.R
+        #n = self.r.n
+        #R = self.R
         corrs = []
         counts = []
         pairs = []
@@ -1371,15 +1437,15 @@ class SpikeCorr(object):
             ni0 = nids[nii0]
             for nii1 in range(nii0+1, nneurons):
                 ni1 = nids[nii1]
-                # skip the pair's if a torus is specified and if
+                # skip the pair if a torus is specified and if
                 # the pair's separation falls outside bounds of specified torus:
-                if R != None and not (R[0] < dist(n[ni0].pos, n[ni1].pos) < R[1]):
-                    continue # to next pair
+                #if R != None and not (R[0] < dist(n[ni0].pos, n[ni1].pos) < R[1]):
+                #    continue # to next pair
                 # potentially shift only the second code train of each pair:
                 #c0 = self.r.n[ni0].code(tranges=tranges).c
                 #c1 = self.r.n[ni1].code(tranges=tranges, shift=shift).c
-                c0 = c[nii0]
-                c1 = c[nii1]
+                c0 = code[nii0]
+                c1 = code[nii1]
                 # (mean of product - product of means) / product of stds:
                 #numer = (c0 * c1 * binw).mean() - means[nii0] * means[nii1] * meanw
                 numer = np.dot(c0, c1) / nbins - means[nii0] * means[nii1]
