@@ -1383,7 +1383,7 @@ class SpikeCorr(object):
         """Calculate one spike correlation value for each cell pair, given code spanning
         some subset of self.tranges, contrained to torus described by self.R"""
         nneurons, nbins = code.shape
-        print('nneurons', nneurons)
+        print('nneurons, nbins = ', nneurons, nbins)
         code = np.float64(code) # prevent int8 overflow somewhere
 
         # precalculate mean and std of each cell's codetrain, rows correspond to nids:
@@ -1449,12 +1449,13 @@ class SpikeCorr(object):
         return corrs, counts, pairs
 
     def clear_codes(self):
-        """Delete all of recording's cached codes"""
-        for n in self.r.alln.values():
-            try:
-                del n._codes
-            except AttributeError:
-                pass
+        """Delete cached codes from all recordings"""
+        for rec in self.recs:
+            for n in rec.alln.values():
+                try:
+                    del n._codes
+                except AttributeError:
+                    pass
 
     def norder(self, metric=False, n_init=10, max_iter=1000, verbose=0, eps=-np.inf,
                n_jobs=1, init=None):
@@ -1478,13 +1479,17 @@ class SpikeCorr(object):
         values seem to provide more consistent neuron sorting across runs ("inits" in
         sklearn's language) than when simply exiting at minimum stress, but I'm not all that
         certain.
-        """
+
         ## TODO: try Isomap instead
+        """
         from sklearn.manifold import MDS
+        if len(self.nidss) > 1:
+            raise ValueError('too many sources defined, which nids should I work on?')
+        nids = self.nidss[0]
         self.calc()
-        sim = copy(self.corrs) # similarities, 1D array of length npairs
+        sim = copy(self.corrs[0]) # similarities, 1D array of length npairs
         npairs = len(sim)
-        N = len(self.nids)
+        N = len(nids)
         assert npairs == N * (N-1) / 2 # sanity check
         # scale, might not be necessary, although -ve values might be bad:
         sim -= sim.min()
@@ -1506,7 +1511,7 @@ class SpikeCorr(object):
         sortis = pos.ravel().argsort()
         #print('sortis:')
         #print(sortis)
-        norder = np.asarray(self.nids)[sortis]
+        norder = np.asarray(nids)[sortis]
         #print('sorted nids:')
         #print(norder)
         return norder
