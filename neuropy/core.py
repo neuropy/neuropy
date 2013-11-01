@@ -1749,12 +1749,17 @@ class SpikeCorr(object):
         """Scatter plot pairwise spike correlations in this recording vs that of
         another recording. If the two recordings are the same, split it in half and scatter
         plot first half against the second half."""
+        ## TODO: for case when splitting a code array in half and comparing the two halves,
+        ## extend this to work even when len(self.recs) > 1, as long as len(self.codes) == 1
+
         ## TODO: add interleave flag which generates a sufficiently interleaved, equally sized,
         ## non-overlapping set of tranges to scatter plot against each other, to eliminate
         ## temporal bias inherent in a simple split in time
-        r0 = self.r
+        if len(self.recs) > 1:
+            raise ValueError('for now, this method only works on single recordings')
+        r0 = self.recs[0]
         tr = r0.tr
-        otherr = tr.r[otherrid]
+        otherr = tr.r[otherrid] # assume otherrid is from same track
         r1 = otherr
         # make sure they're from the same track, though the above should guarantee it
         assert r0.tr == r1.tr
@@ -1780,20 +1785,21 @@ class SpikeCorr(object):
 
         # given the same nids, calculate corrs for both, constrained to tranges0
         # and tranges1 respectively, and to the torus described by R:
-        sc0 = SpikeCorr(recording=r0, tranges=tranges0, nids=nids, R=self.R)
-        sc1 = SpikeCorr(recording=r1, tranges=tranges1, nids=nids, R=self.R)
+        sc0 = SpikeCorr([r0], tranges=tranges0, nids=nids)
+        sc1 = SpikeCorr([r1], tranges=tranges1, nids=nids)
         sc0.calc()
         sc1.calc()
         # just to be sure:
-        if sc0.npairs != sc1.npairs or (sc0.pairs != sc1.pairs).any():
+        if sc0.npairs[0] != sc1.npairs[0] or (sc0.pairs[0] != sc1.pairs[0]).any():
             import pdb; pdb.set_trace()
             raise RuntimeError("sc0 and sc1 pairs don't match")
-        pairs = sc0.pairs
+        pairs = sc0.pairs[0]
         npairs = len(pairs)
-        corrs0, corrs1 = sc0.corrs, sc1.corrs
+        corrs0, corrs1 = sc0.corrs[0], sc1.corrs[0]
         
         # identify pairs as superficial, middle, deep, or other:
-        c, supis, midis, deepis, otheris = self.pair_laminarity(nids, pairs)
+        ypos = np.array([ r0.n[nid].pos[1] for nid in nids ])
+        c, supis, midis, deepis, otheris = pair_laminarity(nids, ypos, tr.absname, pairs)
         # get percentages of each:
         psup = intround(len(supis) / npairs * 100)
         pmid = intround(len(midis) / npairs * 100)
@@ -1841,10 +1847,9 @@ class SpikeCorr(object):
         a.set_title(titlestr)
         # add stuff to top left of plot:
         uns = get_ipython().user_ns
-        sup, mid, deep = uns['LAYERS'][self.r.tr.absname]
+        sup, mid, deep = uns['LAYERS'][tr.absname]
         a.text(0.01, 0.99, 'tres = %d ms\n'
                            'phase = %d deg\n'
-                           'R = %r um\n'
                            'minrate = %.2f Hz\n'
                            'nneurons = %d\n'
                            'npairs = %d\n'
@@ -1853,8 +1858,8 @@ class SpikeCorr(object):
                            'deep = %r um\n'
                            'r%s.dt = %d min\n'
                            'r%s.dt = %d min'
-                           % (uns['CODETRES']//1000, uns['CODEPHASE'], self.R, uns['MINRATE'],
-                              len(nids), sc0.npairs,
+                           % (uns['CODETRES']//1000, uns['CODEPHASE'], uns['MINRATE'],
+                              len(nids), sc0.npairs[0],
                               sup, mid, deep,
                               r0.id, intround(r0.dtmin), r1.id, intround(r1.dtmin)),
                            transform = a.transAxes,
