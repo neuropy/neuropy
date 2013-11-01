@@ -7,7 +7,6 @@ import pylab as pl
 from pylab import get_current_fig_manager as gcfm
 
 from core import lastcmd, parse_source
-from track import Track
 
 
 def sc_si(source, method='mean', sisource='lfp', kind=None, chani=-1, sirange=None,
