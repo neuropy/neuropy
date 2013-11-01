@@ -1519,6 +1519,7 @@ class SpikeCorr(object):
     def shifts(self, start=-5000, stop=5000, step=50, shiftcorrect=True, figsize=(7.5, 6.5)):
         """Plot shift-corrected, or just shifted, median pairwise spike correlations of all
         cell pairs as a function of shifts, from start to stop in steps of step ms"""
+        ## TODO: update for multiple tracks
         assert step > 0
         if stop % step == 0:
             stop += step # make stop end inclusive
@@ -1674,6 +1675,7 @@ class SpikeCorr(object):
 
     def sort(self, figsize=(7.5, 6.5)):
         """Plot pairwise spike correlations in decreasing order"""
+        ## TODO: update for multiple tracks
         self.calc()
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -1876,6 +1878,7 @@ class SpikeCorr(object):
 
     def sep(self, figsize=(7.5, 6.5)):
         """Scatter plot pairwise spike correlations as a f'n of pair separation"""
+        ## TODO: update for multiple tracks
         self.calc()
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -1965,6 +1968,7 @@ class SpikeCorr(object):
 
     def sepbin(self, binwidth=100, figsize=(7.5, 6.5)):
         """Plot mean pairwise spike correlations as a f'n of binned pair separation"""
+        ## TODO: update for multiple tracks
         self.calc()
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -2070,6 +2074,7 @@ class SpikeCorr(object):
     def pos(self, maxsep=150, figsize=(7.5, 6.5)):
         """Plot spike corrs between cell pairs that fall within a threshold separation
         distance maxsep of each other, as a function of position down length of probe"""
+        ## TODO: update for multiple tracks
         self.calc()
         assert len(np.unique(self.pairs)) == len(self.nids) # sanity check
         n = self.r.n
@@ -2135,6 +2140,8 @@ class SpikeCorr(object):
     def sct(self, method='mean', inclusive=False):
         """Calculate pairwise spike correlations for each type of laminarity as a function of
         time. method can be 'weighted mean', 'mean', 'median', 'max', 'min' or 'all'"""
+        ## can this work over multiple tracks (ie multiple code arrays), or do I need to
+        ## enforce only a single track?
         uns = get_ipython().user_ns
         if self.width == None:
             self.width = intround(uns['SCWIDTH'] * 1000000) # convert from sec to us
@@ -2190,6 +2197,9 @@ class SpikeCorr(object):
     def plot(self, method='mean', inclusive=False, figsize=(20, 6.5)):
         """Plot pairwise spike correlations as a function of time. method can be
         'weighted mean', 'mean', 'median', 'max' or 'min'"""
+        ## can this work over multiple tracks (ie multiple code arrays), or do I need to
+        ## enforce only a single track?
+
         corrs, npairs, t, ylabel = self.sct(method=method, inclusive=inclusive)
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -2235,6 +2245,7 @@ class SpikeCorr(object):
     def si(self, method='mean', inclusive=False, sisource='lfp', kind=None, chani=-1,
            sirange=None, plot=True, layers=False, ms=5, figsize=(7.5, 6.5)):
         """Scatter plot spike correlations vs MUA or LFP synchrony index"""
+        ## TODO: update for multiple recs
         rec = self.r
         uns = get_ipython().user_ns
         t0 = time.time()
@@ -2349,6 +2360,7 @@ class SpikeCorr(object):
 
     def mua(self, method='mean', inclusive=False, smooth=False, figsize=(7.5, 6.5)):
         """Scatter plot spike correlations vs multiunit activity"""
+        ## TODO: update for multiple recs
         corrs, npairs, ct, ylabel = self.sct(method=method, inclusive=inclusive)
         mua, muat, n = self.r.mua(smooth=smooth, plot=False)
         # keep only MUA of all neurons, throw away laminar MUA information (for now at least):
