@@ -1212,8 +1212,7 @@ class Codes(object):
         self.t = codeo.t
         nneurons = len(self.neurons)
         nbins = len(self.c[0]) # all entries in the list should be the same length
-        ## TODO: why not just do self.c = np.vstack(self.c) ???
-        self.c = np.concatenate(self.c).reshape(nneurons, nbins)
+        self.c = np.vstack(self.c)
 
     def syncis(self):
         """Returns synch indices, ie the indices of the bins for which all the
