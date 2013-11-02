@@ -1385,10 +1385,10 @@ class SpikeCorr(object):
         self.npairs = [ len(pair) for pair in pairs ]
 
     def calc_single(self, code, nids):
-        """Calculate one spike correlation value for each cell pair, given code spanning
-        some subset of self.tranges, contrained to torus described by self.R"""
+        """Calculate one spike correlation value for each cell pair, given one code array
+        spanning some subset of self.tranges"""
         nneurons, nbins = code.shape
-        print('nneurons, nbins = ', nneurons, nbins)
+        print('nneurons, nbins = %d, %d' % (nneurons, nbins))
         code = np.float64(code) # prevent int8 overflow somewhere
 
         # precalculate mean and std of each cell's codetrain, rows correspond to nids:
@@ -1611,33 +1611,30 @@ class SpikeCorr(object):
         """Plot PDF of pairwise spike correlations. If limitstats, the stats displayed
         exclude any corr values that fall outside of crange"""
         self.calc()
-        nbins = max(nbins, 2*intround(np.sqrt(self.npairs)))
-        self.nbins = nbins
-        self.density = density
+        corrs = np.hstack(self.corrs) # all pairwise corrs from all tracks
+        npairs = len(corrs)
+        nneurons = sum([ len(nids) for nids in self.nidss ])
+        dtmin = sum([ rec.dtmin for rec in self.recs ])
+        nbins = max(nbins, 2*intround(np.sqrt(npairs)))
 
         # figure out the bin edges:
         if crange != None:
-            bins = np.linspace(start=crange[0], stop=crange[1], num=self.nbins,
+            bins = np.linspace(start=crange[0], stop=crange[1], num=nbins,
                                endpoint=True)
         else: # let np.histogram() figure out the bin edges
-            bins = self.nbins
-        self.n, self.c = np.histogram(self.corrs, bins=bins, density=density)
-        binwidth = self.c[1] - self.c[0] # take width of first bin in self.c
+            bins = nbins
+        n, c = np.histogram(corrs, bins=bins, density=density)
+        binwidth = c[1] - c[0] # take width of first bin in c
 
-        # self.n and self.c are the full values, potentially constrained n and c values
-        # are what are reported and plotted:
+        # potentially constrain n and c values for reporting and plotting:
         if limitstats:
-            corrs = self.corrs[(self.corrs >= crange[0]) * (self.corrs <= crange[1])]
+            corrs = corrs[(corrs >= crange[0]) * (corrs <= crange[1])]
             n, c = np.histogram(corrs, bins=bins, density=density)
-        else:
-            corrs = self.corrs
-            n = self.n
-            c = self.c
-        self.mean = np.mean(corrs)
-        self.median = np.median(corrs)
+        mean = np.mean(corrs)
+        median = np.median(corrs)
         argmode = n.argmax()
-        self.mode = c[argmode] + binwidth / 2 # middle of tallest bin
-        self.stdev = np.std(corrs)
+        mode = c[argmode] + binwidth / 2 # middle of tallest bin
+        stdev = np.std(corrs)
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -1649,7 +1646,7 @@ class SpikeCorr(object):
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         
-        if self.density:
+        if density:
             a.set_ylabel('probability density')
         else:
             a.set_ylabel('count')
@@ -1663,14 +1660,13 @@ class SpikeCorr(object):
                            'stdev = %.3f\n'
                            'tres = %d ms\n'
                            'phase = %d deg\n'
-                           'R = %r um\n'
                            'minrate = %.2f Hz\n'
                            'nneurons = %d\n'
                            'npairs = %d\n'
                            'dt = %d min'
-                           % (self.r.name, self.mean, self.median, self.mode, self.stdev,
-                              uns['CODETRES']//1000, uns['CODEPHASE'], self.R, uns['MINRATE'],
-                              len(self.nids), self.npairs, intround(self.r.dtmin)),
+                           % (self.name, mean, median, mode, stdev,
+                              uns['CODETRES']//1000, uns['CODEPHASE'], uns['MINRATE'],
+                              nneurons, npairs, dtmin),
                            transform = a.transAxes,
                            horizontalalignment='right',
                            verticalalignment='top')
