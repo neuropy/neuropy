@@ -1261,6 +1261,12 @@ class SpikeCorr(object):
         uns = get_ipython().user_ns
         recs, tracks = parse_source(source)
         self.recs, self.tracks = recs, tracks
+
+        # set some kind of representative name:
+        if len(recs) == 1:
+            self.name = recs[0].name
+        else:
+            self.name = ', '.join([ track.absname for track in tracks ])
         
         if tranges != None:
             if len(recs) == 1:
