@@ -110,3 +110,4 @@ BLANKMSEQRIDS = mergeuniquedictvals([BLANKRIDS, MSEQRIDS])
 MOVDRIFTRIDS = mergeuniquedictvals([MOVRIDS, DRIFTRIDS])
 
 NULLDIN = 65535 # integer value in stimulus .din files used as NULL (stimulus off)
+ALPHA = 0.05 # threshold p value for rejecting null hypothesis

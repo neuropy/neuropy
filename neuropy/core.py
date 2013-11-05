@@ -1403,6 +1403,9 @@ class SpikeCorr(object):
         for nii0 in range(nneurons):
             nhigh[nii0] = code[nii0].sum()
         
+        alpha = uns['ALPHA']
+        nrejected = 0
+
         #shift, shiftcorrect = self.shift, self.shiftcorrect
         #if shift and shiftcorrect:
         #    raise ValueError("only one of shift or shiftcorrect can be nonzero")
@@ -1442,12 +1445,26 @@ class SpikeCorr(object):
                 #    scsc = ((c0 * c1sc).mean() - means[ni0] * means[ni1]) / denom
                 #    ## TODO: might also want to try subtracting abs(scsc)?
                 #    sc -= scsc
+                # calculate t value for pearson correlation, see
+                # http://www.vassarstats.net/textbook/ch4apx.html:
+                t = sc / np.sqrt((1 - sc**2)/(nbins - 2))
+                # calculate corresponding two-sided pval = Prob(abs(t)>tt), see
+                # http://docs.scipy.org/doc/scipy/reference/tutorial/stats.html:
+                p = 2*scipy.stats.t.sf(np.abs(t), nbins-1)
+                # tested and compared to scipy.pearsonr, identical results, but above should
+                # be faster because it avoids unnecessarily recomputing means and stdevs:
+                #sc2, p2 = scipy.stats.pearsonr(c0, c1)
+                #print(sc, sc2, p, p2)
+                if p >= alpha:
+                    nrejected += 1
+                    continue
                 corrs.append(sc)
                 pairs.append([nii0, nii1])
                 # take sum of high code counts of pair. Note that taking the mean wouldn't
                 # change results in self.sct(), because it would end up simply normalizing
                 # by half the value
                 counts.append(nhigh[nii0] + nhigh[nii1])
+        print('%d of %d pairs rejected' % (nrejected, nCr(nneurons, 2)))
         corrs = np.asarray(corrs)
         counts = np.asarray(counts)
         pairs = np.asarray(pairs)
@@ -1606,7 +1623,7 @@ class SpikeCorr(object):
         self.f = f
         return self
 
-    def pdf(self, crange=[-0.05, 0.25], figsize=(7.5, 6.5), limitstats=True,
+    def pdf(self, crange=[-0.05, 0.15], figsize=(7.5, 6.5), limitstats=False,
             nbins=30, density=True):
         """Plot PDF of pairwise spike correlations. If limitstats, the stats displayed
         exclude any corr values that fall outside of crange"""
@@ -1663,10 +1680,11 @@ class SpikeCorr(object):
                            'minrate = %.2f Hz\n'
                            'nneurons = %d\n'
                            'npairs = %d\n'
-                           'dt = %d min'
+                           'dt = %d min\n'
+                           'alpha = %.2f'
                            % (self.name, mean, median, mode, stdev,
                               uns['CODETRES']//1000, uns['CODEPHASE'], uns['MINRATE'],
-                              nneurons, npairs, dtmin),
+                              nneurons, npairs, dtmin, uns['ALPHA']),
                            transform = a.transAxes,
                            horizontalalignment='right',
                            verticalalignment='top')
