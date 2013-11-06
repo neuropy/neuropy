@@ -1235,11 +1235,11 @@ class RecordingCode(BaseRecording):
         return corrcoef(code1.c, code2.c)
     '''
     def sc(self, tranges=None, width=None, tres=None, shift=0, shiftcorrect=0,
-           nids=None, R=None):
+           nidskind=None, R=None):
         """Return a SpikeCorr object"""
         sc = SpikeCorr([self], tranges=tranges, width=width, tres=tres,
                        shift=shift, shiftcorrect=shiftcorrect,
-                       nids=nids, R=None)
+                       nidskind=nidskind, R=None)
         # run sc.calc() as late as possible, not here
         return sc
 

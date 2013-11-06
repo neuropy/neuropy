@@ -1257,10 +1257,11 @@ class SpikeCorr(object):
     second spike train by shift ms, or shift it by shiftcorrect ms and subtract the
     correlation from the unshifted value."""
     def __init__(self, source, tranges=None, width=None, tres=None,
-                 shift=0, shiftcorrect=0, nids=None, R=None):
+                 shift=0, shiftcorrect=0, nidskind=None, R=None):
         uns = get_ipython().user_ns
         recs, tracks = parse_source(source)
-        self.recs, self.tracks = recs, tracks
+        nidss = get_nids(recs, tracks, kind=nidskind)
+        self.recs, self.tracks, self.nidss = recs, tracks, nidss
 
         # set some kind of representative name:
         if len(recs) == 1:
@@ -1268,44 +1269,9 @@ class SpikeCorr(object):
         else:
             self.name = ', '.join([ track.absname for track in tracks ])
         
-        if tranges != None:
-            if len(recs) == 1:
-                tranges = recs[0].tranges # use the Recording's trange
-            else: # more than one recording in source:
-                raise ValueError("can't analyze across recordings when tranges selected")
-        #self.tranges = tranges
+        if tranges != None and len(recs) > 1: # more than one recording in source:
+            raise ValueError("can't analyze across recordings when tranges selected")
         
-        if nids == None:
-            nids = 'active'
-        if len(tracks) > 1: # recordings from multiple tracks, collect nids per track
-            if nids == 'active':
-                nidss = [ sorted(track.n) for track in tracks ]
-            elif nids == 'quiet':
-                nidss = [ sorted(track.qn) for track in tracks ]
-            elif nids == 'all':
-                nidss = [ sorted(track.alln) for track in tracks ]
-            else:
-                raise ValueError("can't analyze across tracks when specific nids selected")
-        else: # all recordings from same track
-            track = tracks[0]
-            if nids == 'active':
-                if len(recs) == 1:
-                    nids = sorted(recs[0].n) # single recording's active nids
-                elif len(recs) > 1:
-                    nids = sorted(track.n) # single parent track's active nids
-            elif nids == 'quiet':
-                if len(recs) == 1:
-                    nids = sorted(recs[0].qn) # single recording's quiet nids
-                elif len(recs) > 1:
-                    nids = sorted(track.qn) # single parent track's quiet nids
-            elif nids == 'all':
-                if len(recs) == 1:
-                    nids = sorted(recs[0].alln) # all of single recording's nids
-                elif len(recs) > 1:
-                    nids = sorted(track.alln) # all of single parent track's nids
-            nidss = [ nids ]
-        self.nidss = nidss # list of nids lists
-
         # calculate Ising code matrix (or matrices) once:
         if len(tracks) > 1: # recordings from multiple tracks, collect lists of code arrs
             codes = []
@@ -1315,7 +1281,7 @@ class SpikeCorr(object):
                 trcodes = np.hstack(trcodes)
                 codes.append(trcodes)
         else: # all recordings from same track
-            reccodes = [ rec.codes(nids=nids, tranges=tranges) for rec in recs ]
+            reccodes = [ rec.codes(nids=nidss[0], tranges=tranges) for rec in recs ]
             codes = [ np.hstack(reccode.c for reccode in reccodes) ]
         self.codes = codes # list of Ising code matrices
 
@@ -3859,3 +3825,47 @@ def parse_source(source):
     trackis = np.argsort([ track.absname for track in tracks ])
     tracks = [ tracks[tracki] for tracki in trackis ]
     return recs, tracks
+
+def get_nids(recs, tracks, kind=None):
+    """Given sorted lists of recordings and unique tracks, return lists of sorted nids, one
+    per track, according to value of kind ('active', 'quiet' or 'all'). If kind is 'active' or
+    'quiet', degree of activity in each track is measured across only the recordings specified
+    for that track, not across all recordings in that track"""
+    if kind == None:
+        kind = 'active'
+    validkinds = ['active', 'quiet', 'all']
+    if kind not in validkinds:
+        raise ValueError('kind must be one of %r' % validkinds)
+
+    if kind == 'all':
+        if len(tracks) > 1: # recordings from multiple tracks, collect nids per track
+            nidss = [ sorted(track.alln) for track in tracks ]
+        else: # all recordings from same track
+            if len(recs) == 1:
+                nids = sorted(recs[0].alln) # all of single recording's nids
+            elif len(recs) > 1:
+                nids = sorted(tracks[0].alln) # all of single parent track's nids
+            nidss = [ nids ]
+        return nidss # list of nids lists
+
+    # kind is 'active' or 'quiet'
+    nidss = []
+    uns = get_ipython().user_ns
+    MINRATE = uns['MINRATE']
+    for track in tracks:
+        dtsec = 0.0
+        allnids = np.asarray(sorted(track.alln)) # all nids in this track
+        nspikes = {}.fromkeys(allnids, 0) # nid to nspikes mapping, init each entry to 0
+        for rec in recs:
+            if rec.tr != track: # recording doesn't belong to this track
+                continue
+            for n in rec.alln.values():
+                nspikes[n.id] += n.nspikes
+            dtsec += rec.dtsec
+        rates = np.asarray([ nspikes[nid] / dtsec for nid in allnids ])
+        if kind == 'active':
+            nids = allnids[rates >= MINRATE]
+        else: # kind == 'quiet'
+            nids = allnids[rates < MINRATE]
+        nidss.append(nids)
+    return nidss # list of nids lists
