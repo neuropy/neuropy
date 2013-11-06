@@ -897,7 +897,7 @@ class BaseRecording(object):
         nn = len(nids)
         npairs = nCr(nn, 2)
         corrs = np.zeros(npairs)
-        nbaselinebins = (trange - blrange) / binw
+        blwsec = (trange - blrange) / 1000000
         pairi = -1
         for nii0 in range(nn):
             for nii1 in range(nii0+1, nn):
@@ -907,13 +907,9 @@ class BaseRecording(object):
                 peak = (dts <= binw).sum() / binwsec # coincidence rate, Hz
                 if peak == 0:
                     continue # leave corrs entry as 0
-                #baseline = n0.meanrate * n1.meanrate # expected coincidence rate, Hz^2
-                #baseline = np.sqrt(baseline)
-                # non-coincidence rate, Hz:
-                baseline = (dts > blrange).sum() / (nbaselinebins * binwsec)
+                baseline = (dts > blrange).sum() / blwsec # non-coincidence rate, Hz
                 corrs[pairi] = (peak - baseline) / (peak + baseline)
                 print((nids[nii0], nids[nii1]), peak, baseline, corrs[pairi])
-        #import ipdb; ipdb.set_trace()
         return corrs
 
     def sc_ising_vs_cch(self, ms=5, figsize=(7.5, 6.5)):
