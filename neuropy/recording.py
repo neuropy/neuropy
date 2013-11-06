@@ -877,7 +877,7 @@ class BaseRecording(object):
 
     def sc_cch(self, trange=10000, blrange=1000):
         """Return spike correlations between all cell pairs, calculated from all the
-        delta t's without building an actual CCH. trange and binw are in ms"""
+        delta t's without building an actual CCH. trange and blrange are in ms"""
         uns = get_ipython().user_ns
         binw = uns['CODETRES'] # us, typically 20 ms
         binwsec = binw / 1000000
@@ -907,7 +907,8 @@ class BaseRecording(object):
                     continue # leave corrs entry as 0
                 #baseline = n0.meanrate * n1.meanrate # expected coincidence rate, Hz^2
                 #baseline = np.sqrt(baseline)
-                baseline = (dts > blrange).sum() / nbaselinebins
+                # non-coincidence rate, Hz:
+                baseline = (dts > blrange).sum() / (nbaselinebins * binwsec)
                 corrs[pairi] = (peak - baseline) / (peak + baseline)
                 print((nids[nii0], nids[nii1]), peak, baseline, corrs[pairi])
         #import ipdb; ipdb.set_trace()
