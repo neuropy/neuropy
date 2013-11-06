@@ -20,6 +20,7 @@ from animal import Animal
 from track import Track
 from recording import Recording
 import pool
+from core import nCr, nPr, SpikeCorr
 
 
 def cf():
