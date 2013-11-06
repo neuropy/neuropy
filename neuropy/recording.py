@@ -842,7 +842,9 @@ class BaseRecording(object):
         a.text(0.998, 0.99, '%s' % self.name, color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3)
-
+    '''
+    # gives almost same results as sc_cch, but is less accurate because it extracts
+    # values from a histogram instead of directly from the dts
     def sc_fullcch(self, trange=10000, blrange=1000, binw=None, shiftcorrect=False):
         """Return spike correlations between all cell pairs, calculated from the
         CCH peak relative to baseline. trange and binw are in ms"""
@@ -874,7 +876,7 @@ class BaseRecording(object):
             #print(pairi, peakarea, baselinearea, corrs[pairi])
         #import ipdb; ipdb.set_trace()
         return corrs
-
+    '''
     def sc_cch(self, trange=10000, blrange=1000):
         """Return spike correlations between all cell pairs, calculated from all the
         delta t's without building an actual CCH. trange and blrange are in ms"""
