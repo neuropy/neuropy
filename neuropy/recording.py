@@ -919,8 +919,8 @@ class BaseRecording(object):
         from CCH"""
         sc = self.sc()
         sc.calc()
-        isingsc = sc.corrs
-        cchsc = self.sc_fullcch()
+        isingsc = sc.corrs[0]
+        cchsc = self.sc_cch()
         # plot:
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
