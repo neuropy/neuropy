@@ -3852,6 +3852,7 @@ def get_nids(recs, tracks, kind=None):
     nidss = []
     uns = get_ipython().user_ns
     MINRATE = uns['MINRATE']
+    totaldtsec = 0.0
     for track in tracks:
         dtsec = 0.0
         allnids = np.asarray(sorted(track.alln)) # all nids in this track
@@ -3868,4 +3869,6 @@ def get_nids(recs, tracks, kind=None):
         else: # kind == 'quiet'
             nids = allnids[rates < MINRATE]
         nidss.append(nids)
+        totaldtsec += dtsec
+    print('totaldtsec =', totaldtsec)
     return nidss # list of nids lists
