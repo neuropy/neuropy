@@ -900,13 +900,16 @@ class BaseRecording(object):
         return corrs
     '''
     def sc_cch(self, trange=10000, blrange=1000):
-        """Return spike correlations between all cell pairs, calculated from all the
-        delta t's without building an actual CCH. trange and blrange are in ms"""
+        """Return spike correlations between all cell pairs, calculated from all the delta t's
+        without building an actual CCH. trange is duration over which to calculate spike delta
+        ts, and blrange is time away from t=0 to start calculating baseline. trange and
+        blrange are in ms"""
         uns = get_ipython().user_ns
         binw = uns['CODETRES'] # us, typically 20 ms
-        binwsec = binw / 1000000
+        binwsec = binw / 1000000 # sec
         trange *= 1000 # us
         blrange *= 1000 # us
+        blwsec = (trange - blrange) / 1000000 # baseline width, sec
         assert trange > binw
         assert blrange > binw
         assert trange > blrange
@@ -919,7 +922,6 @@ class BaseRecording(object):
         nn = len(nids)
         npairs = nCr(nn, 2)
         corrs = np.zeros(npairs)
-        blwsec = (trange - blrange) / 1000000
         pairi = -1
         for nii0 in range(nn):
             for nii1 in range(nii0+1, nn):
@@ -930,6 +932,10 @@ class BaseRecording(object):
                 if peak == 0:
                     continue # leave corrs entry as 0
                 baseline = (dts > blrange).sum() / blwsec # non-coincidence rate, Hz
+                ## baseline should be sum of firing rates of the two cells, which gives
+                ## proper expected coincidence rate. I was doing product before which was wrong
+                ## Might still have to do shift correction for periodic stimulus.
+                ## Actually, see Bair1996a which takes sqrt(meanrate1*meanrate2)*peakarea
                 corrs[pairi] = (peak - baseline) / (peak + baseline)
                 print((nids[nii0], nids[nii1]), peak, baseline, corrs[pairi])
         return corrs
