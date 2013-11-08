@@ -20,6 +20,7 @@ from animal import Animal
 from track import Track
 from recording import Recording
 import pool
+import core
 from core import nCr, nPr, SpikeCorr
 
 
