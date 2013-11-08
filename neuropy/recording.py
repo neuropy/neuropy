@@ -687,19 +687,33 @@ class BaseRecording(object):
         a.set_ylabel('neuron count')
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def cch(self, nid0, nid1=None, trange=50, binw=None, rate=False, figsize=(7.5, 6.5)):
+    def cch(self, nid0, nid1=None, trange=50, binw=None, shift=None, nshifts=10,
+            rate=False, figsize=(7.5, 6.5)):
         """Plot cross-correlation histogram given nid0 and nid1. If nid1 is None,
-        calculate autocorrelogram. +/- trange and binw are in ms"""
+        calculate autocorrelogram. +/- trange and binw are in ms. If shift (in ms) is set,
+        calculate the average of +/- nshift CCHs shifted by shift, and
+        then subtract that from the unshifted CCH to get the shift corrected CCH"""
         if nid1 == None:
             nid1 = nid0
         autocorr = nid0 == nid1
         n0 = self.alln[nid0]
         n1 = self.alln[nid1]
-        trange *= 1000 # convert to us
-        trange = np.array([-trange, trange]) # convert to a +/- array, in us
-        dts = util.xcorr(n0.spikes, n1.spikes, trange=trange) # in us
+        calctrange = trange * 1000 # calculation trange, in us
+        if shift:
+            assert nshifts > 0
+            shift *= 1000 # convert to us
+            maxshift = nshifts * shift
+            calctrange = trange + maxshift # expand calculated trange to encompass shifts
+        calctrange = np.array([-calctrange, calctrange]) # convert to a +/- array, in us
+        dts = util.xcorr(n0.spikes, n1.spikes, calctrange) # in us
         if autocorr:
             dts = dts[dts != 0] # remove 0s for autocorr
+        if shift: # calculate dts for shift corrector
+            shiftis = range(-nshifts, nshifts+1)
+            shiftis.remove(0) # don't shift by 0, that's the original which we'll subtract from
+            shifts = np.asarray(shiftis) * shift
+            shiftdts = np.hstack([ dts+s for s in shifts ]) # in us
+            print('shifts =', shifts / 1000)
 
         if not binw:
             nbins = intround(np.sqrt(len(dts))) # good heuristic
@@ -707,13 +721,21 @@ class BaseRecording(object):
             nbins = min(200, nbins) # enforce max nbins
         else:
             binw *= 1000 # convert to us
-            nbins = intround((trange[1] - trange[0]) / binw)
+            nbins = intround(2 * trange / binw)
 
         dts = dts / 1000 # in ms, converts to float64 array
-        trange = trange / 1000 # in ms, converts to float64 array
-        t = np.linspace(start=trange[0], stop=trange[1], num=nbins+1, endpoint=True)
-        n = np.histogram(dts, bins=t, density=False)[0]
+        t = np.linspace(start=-trange, stop=trange, num=nbins+1, endpoint=True)
         binw = t[1] - t[0] # all should be equal width
+        n = np.histogram(dts, bins=t, density=False)[0]
+        if shift: # subtract shift corrector
+            shiftdts = shiftdts / 1000 # in ms, converts to float64 array
+            shiftn = np.histogram(shiftdts, bins=t, density=False)[0] / (nshifts*2)
+            f = pl.figure(figsize=figsize)
+            a = f.add_subplot(111)
+            a.bar(left=t[:-1], height=shiftn, width=binw) # omit last right edge in t
+            a.set_xlim(t[0], t[-1])
+            a.set_xlabel('ISI (ms)')
+            n -= shiftn
         if rate: # normalize by binw and convert to float:
             n = n / binw
         f = pl.figure(figsize=figsize)
