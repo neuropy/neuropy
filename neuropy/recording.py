@@ -720,12 +720,11 @@ class BaseRecording(object):
             nbins = max(20, nbins) # enforce min nbins
             nbins = min(200, nbins) # enforce max nbins
         else:
-            binw *= 1000 # convert to us
             nbins = intround(2 * trange / binw)
 
         dts = dts / 1000 # in ms, converts to float64 array
-        t = np.linspace(start=-trange, stop=trange, num=nbins+1, endpoint=True)
-        binw = t[1] - t[0] # all should be equal width
+        t = np.linspace(start=-trange, stop=trange, num=nbins+1, endpoint=True) # ms
+        binw = t[1] - t[0] # all should be equal width, ms
         n = np.histogram(dts, bins=t, density=False)[0]
         if shift: # subtract shift corrector
             shiftdts = shiftdts / 1000 # in ms, converts to float64 array
