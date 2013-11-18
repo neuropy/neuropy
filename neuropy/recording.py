@@ -733,7 +733,7 @@ class BaseRecording(object):
             a = f.add_subplot(111)
             a.bar(left=t[:-1], height=shiftn, width=binw) # omit last right edge in t
             a.set_xlim(t[0], t[-1])
-            a.set_xlabel('ISI (ms)')
+            a.set_xlabel('spike interval (ms)')
             n -= shiftn
         if rate: # normalize by binw and convert to float:
             n = n / binw
@@ -741,7 +741,7 @@ class BaseRecording(object):
         a = f.add_subplot(111)
         a.bar(left=t[:-1], height=n, width=binw) # omit last right edge in t
         a.set_xlim(t[0], t[-1])
-        a.set_xlabel('ISI (ms)')
+        a.set_xlabel('spike interval (ms)')
         if rate:
             a.set_ylabel('coincidence rate (Hz)')
         else:
