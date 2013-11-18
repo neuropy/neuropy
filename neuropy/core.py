@@ -3677,7 +3677,11 @@ def laminarity(ypos, trackabsname):
     """Return boolean arrays indicating whether depths ypos are superficial, middle,
     or deep layer (or none of the above)"""
     uns = get_ipython().user_ns
-    (sup0, sup1), (mid0, mid1), (deep0, deep1) = uns['LAYERS'][trackabsname]
+    try:
+        (sup0, sup1), (mid0, mid1), (deep0, deep1) = uns['LAYERS'][trackabsname]
+    except KeyError: # trackabsname doesn't exist as key in LAYERS global
+        # set layers such that all cells are considered 'mid'
+        (sup0, sup1), (mid0, mid1), (deep0, deep1) = (0,0), (0, np.inf), (0,0)
     # boolean neuron indices:
     supis = (sup0 <= ypos) * (ypos < sup1) # True values are superficial
     midis = (mid0 <= ypos) * (ypos < mid1) # True values are middle
