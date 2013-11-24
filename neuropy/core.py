@@ -3876,3 +3876,16 @@ def get_nids(recs, tracks, kind=None):
         totaldtsec += dtsec
     print('totaldtsec =', totaldtsec)
     return nidss # list of nids lists
+
+def g(x0, sx, x):
+    """1-D Gaussian"""
+    return np.exp( -(x-x0)**2 / (2*sx**2) )
+
+def g2(x0, y0, sx, sy, x, y):
+    """2-D Gaussian"""
+    arg = -(x-x0)**2 / (2*sx**2) - (y-y0)**2 / (2*sy**2)
+    return np.exp(arg)
+
+def g3(x0, y0, z0, sx, sy, sz, x, y, z):
+    """3-D Gaussian"""
+    return np.exp( -(x-x0)**2 / (2*sx**2) - (y-y0)**2 / (2*sy**2) - (z-z0)**2 / (2*sz**2) )
