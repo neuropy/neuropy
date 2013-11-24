@@ -15,6 +15,7 @@ import os
 
 import matplotlib as mpl
 import pylab as pl
+from pylab import get_current_fig_manager as gcfm
 
 from animal import Animal
 from track import Track
