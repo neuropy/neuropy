@@ -273,7 +273,12 @@ class Movie(Experiment):
             self.ncellswide, = struct.unpack('H', self.f.read(2)) # 'H'== unsigned short int
             self.ncellshigh, = struct.unpack('H', self.f.read(2))
             self.nframes, = struct.unpack('H', self.f.read(2))
-            if self.nframes == 0: # this was used in Cat 15 mseq movies to indicate 2**16 frames, shouldn't really worry about this, cuz we're using slightly modified mseq movies now that don't have the extra frame at the end that the Cat 15 movies had (see comment in Experiment module), and therefore never have a need to indicate 2**16 frames
+            if self.nframes == 0:
+                # this was used in ptc15 mseq movies to indicate 2**16 frames, shouldn't
+                # really worry about this, cuz we're using slightly modified mseq movies now
+                # that don't have the extra frame at the end that the ptc15 movies had (see
+                # comment in Experiment module), and therefore never have a need to indicate
+                # 2**16 frames
                 self.nframes = 2**16
             self.offset = self.f.tell() # header is 11 bytes long
         else: # there's no header at the start of the file, set the file pointer back to the beginning and use these hard coded values:
@@ -283,8 +288,9 @@ class Movie(Experiment):
             self.offset = self.f.tell() # header is 0 bytes long
         self.framesize = self.ncellshigh*self.ncellswide
 
-        # read in all of the frames
-        # maybe check first to see if file is > 1GB, if so, _loadaslist() to prevent trying to allocate one huge piece of contiguous memory and raising a MemoryError, or worse, segfaulting
+        # read in all of the frames. Maybe check first to see if file is > 1GB. If so,
+        # _loadaslist() to prevent trying to allocate one huge piece of contiguous memory and
+        # raising a MemoryError, or worse, segfaulting
         if asarray:
             self._loadasarray(flip=flip)
         else:

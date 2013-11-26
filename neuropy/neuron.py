@@ -653,7 +653,7 @@ class STA(RevCorr):
             """
             In ptc15, we erroneously duplicated the first frame of the mseq movies at the
             end, giving us one more frame (0 to 65535 for mseq32) than we should have had (0
-            to 65534 for mseq32). We're now using the correct movies, but the din for Cat 15
+            to 65534 for mseq32). We're now using the correct movies, but the din for ptc15
             mseq experiments still have those erroneous frame indices (65535 and 16383 for
             mseq32 and mseq16 respectively), so we'll just ignore them for revcorr purposes.
             """

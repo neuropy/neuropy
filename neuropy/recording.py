@@ -143,15 +143,16 @@ class BaseRecording(object):
         if len(sortfdnames) > 0:
             # make last sort the default one
             self.sort = self.sorts[sortfdnames[-1]]
-
+        
         # load all .din as Experiments:
         for expid, fname in enumerate(dinfnames): # expids follow order in dinfnames
             path = os.path.join(self.path, fname)
             experiment = Experiment(path, id=expid, recording=self)
+            #experiment.load_din()
             experiment.load()
             self.e[experiment.id] = experiment
             self.__setattr__('e' + str(experiment.id), experiment) # add shortcut attrib
-
+        
         # load any LFP data from a .lfp.zip file:
         nlfpfiles = len(lfpfnames)
         if nlfpfiles == 0:
@@ -2470,7 +2471,12 @@ class NetstateTriggeredAverage(BaseNetstate):
                 shiftedrcdini = shiftedrcdini[shiftedrcdini >= 0] # remove any -ve valued indices. Is this the most efficient way to do this?
                 shiftedrcdini = shiftedrcdini[shiftedrcdini <= len(e.din)-1] # remove any out of range values
                 frameis = e.din[shiftedrcdini, 1] # get the din values (frame indices) at the rcdini for this timepoint
-                # in Cat 15, we erroneously duplicated the first frame of the mseq movies at the end, giving us one more frame (0 to 65535 for mseq32) than we should have had (0 to 65534 for mseq32). We're now using the correct movies, but the din for Cat 15 mseq experiments still have those erroneous frame indices (65535 and 16383 for mseq32 and mseq16 respectively), so we'll just ignore them for revcorr purposes.
+                # in ptc15, we erroneously duplicated the first frame of the mseq movies at
+                # the end, giving us one more frame (0 to 65535 for mseq32) than we should
+                # have had (0 to 65534 for mseq32). We're now using the correct movies, but
+                # the din for ptc15 mseq experiments still have those erroneous frame
+                # indices (65535 and 16383 for mseq32 and mseq16 respectively), so we'll just
+                # ignore them for revcorr purposes.
                 if movie.oname == 'mseq32':
                     frameis = frameis[frameis != 65535] # remove all occurences of 65535
                 elif movie.oname == 'mseq16':

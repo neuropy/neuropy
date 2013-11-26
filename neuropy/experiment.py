@@ -88,7 +88,7 @@ class BaseExperiment(object):
             # names that were added to the namespace, excluding the 'names1' name itself:
             newnames = [ n2 for n2 in names2 if n2 not in names1 and n2 != 'names1' ]
             try:
-                # dimstim up to Cat 15 didn't have a version, neither did NVS display
+                # dimstim up to ptc15 didn't have a version, neither did NVS display
                 self.__version__ = eval('__version__')
             except NameError:
                 self.__version__ = 0.0
@@ -118,7 +118,7 @@ class BaseExperiment(object):
                 for newname in newnames:
                     # bind each variable in the textheader to oldparams
                     self.oldparams[newname] = eval(newname)
-                self.loadCat15exp()
+                self.loadptc15exp()
         else:
             # use the time difference between the first two din instead
             self.REFRESHTIME = self.din[1, 0] - self.din[0, 0]
@@ -126,7 +126,7 @@ class BaseExperiment(object):
         # add an extra refresh time after last din, that's when screen actually turns off
         self.trange = (self.din[0, 0], self.din[-1, 0] + self.REFRESHTIME)
 
-    def loadCat15exp(self):
+    def loadptc15exp(self):
         ## TODO: - fake a .e dimstim.Experiment object, to replace what used to be the
         ## .stims object for movie experiments
         '''           - self.movie = self.experiment.stims[0]
@@ -145,7 +145,7 @@ class BaseExperiment(object):
         self.I = dictattr() # fake InternalParams object
         self.e.static = dictattr() # fake StaticParams object
         self.e.dynamic = dictattr() # fake DynamicParams object
-        # maps Cat 15 param names to dimstim 0.16 param types and names, wherever possible
+        # maps ptc15 param names to dimstim 0.16 param types and names, wherever possible
         ## TODO: fill in params for experiment types other than Movie??
         _15to16 = {'EYE': ('I', 'EYE'),
                    'PIXPERCM': ('I', 'PIXPERCM'),
@@ -174,11 +174,11 @@ class BaseExperiment(object):
                    'postsweepMsec': ('dynamic', 'postsweepSec'),
                    }
 
-        # collect any Cat 15 movie attribs and add them to self.oldparams
+        # collect any ptc15 movie attribs and add them to self.oldparams
         try:
             # can't really handle more than 1 movie, since dimstim 0.16 doesn't
             assert len(np.unique(self.oldparams.playlist)) == 1
-            # bind it, movie was the only possible stim object anyway in Cat 15
+            # bind it, movie was the only possible stim object anyway in ptc15
             self.movie = self.oldparams.playlist[0]
             # returns dict of name:val pair attribs excluding __ and methods:
             movieparams = self.oldparams[self.movie.oname].__dict__
@@ -187,7 +187,7 @@ class BaseExperiment(object):
             # no playlist, no movies, and therefore no movie attribs to deal with
             pass
 
-        # convert Cat 15 params to dimstim 0.16
+        # convert ptc15 params to dimstim 0.16
         for oldname, val in self.oldparams.items():
             if 'msec' in oldname.lower():
                 val = val / 1000. # convert to sec
@@ -212,7 +212,7 @@ class BaseExperiment(object):
             m = None
 
         if m:
-            # make fake dimstim experiment a Cat15Movie object, bind all of the attribs of
+            # make fake dimstim experiment a ptc15 Movie object, bind all of the attribs of
             # the existing fake dimstim experiment
             old_e = self.e
             self.e = m
@@ -242,7 +242,7 @@ class BaseExperiment(object):
             # after that is the relative path to your base movies folder. Eg, if
             # self.e.moviepath = 'C:\\Desktop\\Movies\\reliability\\e\\single\\', then set
             # self.e.relpath = '\\reliability\\e\\single\\'
-            spath = self.oldparams.moviepath.split('\\') # Cat15 has purely windows seperators
+            spath = self.oldparams.moviepath.split('\\') # ptc15 has purely MS path separators
             matchi = spath.index('Movies')
             relpath = joinpath(spath[matchi+1 ::])
             MOVIEPATH = get_ipython().user_ns['MOVIEPATH']
@@ -255,14 +255,14 @@ class BaseExperiment(object):
             # into it with self.sweeptable['var'][sweepi]
             #self.sweeptable = {[]}
             #vars = self.sweeptable.keys()
-            # need to check if varlist exists, if so use it (we're dealing with Cat 15),
+            # need to check if varlist exists, if so use it (we're dealing with ptc15),
             # if not, use revamped dimstim.SweepTable class
             varvals = {} # init a dictionary that will contain variable values
             for var in m.varlist:
                 # generate dict with var:val entries, to pass to buildSweepTable
                 varvals[var] = eval('m.' + var)
             # pass varlist by reference, dim indices end up being modified:
-            m.sweepTable = self.buildCat15SweepTable(m.varlist, varvals, m.nruns,
+            m.sweepTable = self.buildptc15SweepTable(m.varlist, varvals, m.nruns,
                                                      m.shuffleRuns, m.blankSweep,
                                                      m.shuffleBlankSweeps,
                                                      makeSweepTableText=0)[0]
@@ -272,7 +272,7 @@ class BaseExperiment(object):
                 # generate dict with var:val entries, to pass to buildSweepTable
                 varvals[var] = eval('self.oldparams.' + var)
             # pass varlist by reference, dim indices end up being modified:
-            self.sweepTable = self.buildCat15SweepTable(self.oldparams.varlist, varvals,
+            self.sweepTable = self.buildptc15SweepTable(self.oldparams.varlist, varvals,
                                                         self.oldparams.nruns,
                                                         self.oldparams.shuffleRuns,
                                                         self.oldparams.blankSweep,
@@ -283,9 +283,9 @@ class BaseExperiment(object):
         except AttributeError:
             pass
 
-    def buildCat15SweepTable(self, varlist, varvals, nruns=1, shuffleRuns=0, blankSweep=(0,0),
+    def buildptc15SweepTable(self, varlist, varvals, nruns=1, shuffleRuns=0, blankSweep=(0,0),
                              shuffleBlankSweeps=0, makeSweepTableText=0):
-        """Deprecated: kept only for backward compatibility with Cat 15
+        """Deprecated: kept only for backward compatibility with ptc15
         Builds a sweep table
         Returns: 'sweeptable': a dictionary where each entry (key) is a variable name, followed
                                by its values, one value per unique sweep (ie permutation of dims)
