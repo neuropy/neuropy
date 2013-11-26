@@ -8,10 +8,11 @@ get_ipython().user_ns['VARNAME']
 #from __future__ import print_function
 
 import os
-from core import mergeuniquedictvals
+from core import mergeuniquedictvals, dictattr
 
 DATAPATH = os.path.expanduser('~/data')
 MOVIEPATH = os.path.expanduser('~/data/mov')
+MOVIES = dictattr()
 
 # for each recording, load all Sorts, or just the most recent one?
 LOADALLSORTS = False

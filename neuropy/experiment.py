@@ -20,8 +20,6 @@ from dimstimskeletal import deg2pix, InternalParams, StaticParams, DynamicParams
 from dimstimskeletal import Variable, Variables, Runs, BlankSweeps, Dimension, SweepTable
 from dimstimskeletal import Movie, Grating, Bar, SparseNoise, BlankScreen
 
-_MOVIES = dictattr()
-
 
 class BaseExperiment(object):
     """An experiment corresponds to a single contiguous stimulus session.
@@ -108,10 +106,11 @@ class BaseExperiment(object):
                 # prevent replication of movie frame data in memory
                 if type(self.e) == Movie:
                     fname = os.path.split(self.e.static.fname)[-1] # pathless fname
-                    if fname not in _MOVIES:
+                    uns = get_ipython().user_ns
+                    if fname not in uns['MOVIES']:
                         # add movie experiment, indexed according to movie data file name,
                         # to prevent from ever loading its frames more than once
-                        _MOVIES[fname] = self.e
+                        uns['MOVIES'][fname] = self.e
             else:
                 self.oldparams = dictattr()
                 for name, val in thns.items():
@@ -232,11 +231,12 @@ class BaseExperiment(object):
             self.e.static.fname = m.fname # update fake dimstim experiment's fname too
             # extensionless fname, fname should've been defined in the textheader
             m.name = os.path.splitext(m.fname)[0]
-            if m.name not in _MOVIES:
+            uns = get_ipython().user_ns
+            if m.name not in uns['MOVIES']:
                 # and it very well may not be, cuz the textheader inits movies with no args,
                 # leaving fname==None at first, which prevents it from being added to
-                # _MOVIES
-                _MOVIES[m.name] = m # add m to _MOVIES dictattr
+                # MOVIES
+                uns['MOVIES'][m.name] = m # add m to MOVIES dictattr
             # Search self.e.moviepath string (from textheader) for 'Movies' word. Everything
             # after that is the relative path to your base movies folder. Eg, if
             # self.e.moviepath = 'C:\\Desktop\\Movies\\reliability\\e\\single\\', then set
