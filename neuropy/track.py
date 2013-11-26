@@ -279,6 +279,54 @@ class Track(object):
         f.canvas.draw() # this is needed if a != None when passed as arg
         return a
 
+    def npos(self, inchespermicron=0.007):
+        """Plot (x, y) cell positions over top of polytrode channel positions,
+        to get an idea of how cells are distributed in space. TODO: Color according to depth."""
+        uns = get_ipython().user_ns
+        npos = np.asarray([ neuron.pos for neuron in self.alln.values() ])
+        anpos = np.asarray([ neuron.pos for neuron in self.n.values() ])
+        qnpos = np.asarray([ neuron.pos for neuron in self.qn.values() ])
+        chanpos = self.chanpos
+        chanxs, chanys = chanpos[:, 0], chanpos[:, 1]
+        uchanxs = np.unique(chanxs)
+        xspace = np.diff(uchanxs).max() # max spacing of consecutive unique x chan positions
+        hsw = uns['PTSHANKWIDTHS'][self.pttype] / 2 # half shank width
+        xs = np.hstack((npos[:, 0], chanxs, [-hsw, hsw]))
+        ys = np.hstack((npos[:, 1], chanys))
+        ymin = min(min(ys), 0)
+        xlim = min(xs.min(), uchanxs[0]-xspace/2), max(xs.max(), uchanxs[-1]+xspace/2)
+        ylim = ys.max()+xspace, ymin # inverted y axis
+        
+        figwidth = inchespermicron * np.ptp(xlim) * 2 # make enough space for y axis labels
+        figheight = inchespermicron * np.ptp(ylim)
+        f = pl.figure(figsize=(figwidth, figheight))
+        a = f.add_subplot(111)
+        a.set_frame_on(False)
+        # plot rectangle representing shank width and length, excluding the tip:
+        sl = ylim[0]
+        # starting from bottom left, going clockwise:
+        shankxs = -hsw, -hsw, hsw, hsw
+        shankys = sl, ymin, ymin, sl
+        a.fill(shankxs, shankys, color='lightgrey', ec='none')
+        # plot electrode sites:
+        a.plot(chanpos[:, 0], chanpos[:, 1], 'k.', ms=5)
+        # plot quiet and active cell positions in blue and red, respectively:
+        a.plot(qnpos[:, 0], qnpos[:, 1], 'b.', ec='k', ms=10, alpha=0.6)
+        a.plot(anpos[:, 0], anpos[:, 1], 'r.', ec='k', ms=10, alpha=0.6)
+        a.set_aspect('equal')
+        a.set_xlim(xlim)
+        a.set_ylim(ylim)
+        a.set_xticks(uchanxs)
+        a.set_yticks(np.arange(0, ylim[0], 200))
+        a.xaxis.set_ticks_position('bottom')
+        a.yaxis.set_ticks_position('left')
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        a.set_title(self.absname)
+        #a.set_xlabel('$\mu$m')
+        #a.set_ylabel('$\mu$m')
+        #f.tight_layout(pad=0.3) # resizes contents to figure (not crop figure to contents!)
+
     def scstim(self, method='mean', width=None, tres=None, figsize=(7.5, 6.5)):
         """Scatter plot some summary statistic of spike correlations of each recording,
         classified by the stimulus group each recording falls into. width and tres dictate

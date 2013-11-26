@@ -72,22 +72,30 @@ track.pospdf and sc.pos"""
 LAYERS = {'ptc15.tr7c': [(0, 900), (900, 1100), (1100, 2000)],
           'ptc22.tr1':  [(0, 500), (500,  700), ( 700, 2000)],
           'ptc22.tr2':  [(0, 550), (550,  700), ( 700, 2000)]}
-          
+
+"""Polytrode type to shank width (um) mapping, from NeuroNexus 2008 catalog"""
+PTSHANKWIDTHS = {'uMap54_1a':207, 'uMap54_1b':210, 'uMap54_1c':208,
+                 'uMap54_2a':200, 'uMap54_2b':207}
+
+"""Polytrode type to shank tip length (um) mapping, from NeuroNexus 2008 catalog"""
+PTTIPLENGTHS = {'uMap54_1a':325, 'uMap54_1b':324, 'uMap54_1c':324,
+                'uMap54_2a':324, 'uMap54_2b':324}
+
 """IDs of blankscreen recordings"""
 BLANKRIDS = {'ptc15.tr7c': ['87'],
              'ptc22.tr1':  ['07', '09', '11', '21'],
              'ptc22.tr2':  ['27', '32', '36']}
-             
+
 """IDs of msequence recordings"""
 MSEQRIDS = {'ptc15.tr7c': ['70', '81', '91', '92', '94'],
             'ptc22.tr1':  ['04', '17'],
             'ptc22.tr2':  ['26', '34']}
-            
+
 """IDs of movie recordings"""
 MOVRIDS = {'ptc15.tr7c': ['76', '96'],
            'ptc22.tr1':  ['05', '06', '08', '10', '19', '20'],
            'ptc22.tr2':  ['28', '33']}
-           
+
 """IDs of drift bar recordings"""
 DRIFTRIDS = {'ptc15.tr7c': ['71', '82'],
              'ptc22.tr1':  ['03', '18'],
