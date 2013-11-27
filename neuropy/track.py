@@ -279,7 +279,7 @@ class Track(object):
         f.canvas.draw() # this is needed if a != None when passed as arg
         return a
 
-    def npos(self, inchespermicron=0.007):
+    def npos(self, inchespermicron=0.007, legend=False):
         """Plot (x, y) cell positions over top of polytrode channel positions,
         to get an idea of how cells are distributed in space. TODO: Color according to depth."""
         uns = get_ipython().user_ns
@@ -300,7 +300,7 @@ class Track(object):
         figwidth = inchespermicron * np.ptp(xlim) * 2 # make enough space for y axis labels
         figheight = inchespermicron * np.ptp(ylim)
         f = pl.figure(figsize=(figwidth, figheight))
-        a = f.add_subplot(111)
+        a = f.add_subplot(111, aspect='equal')
         a.set_frame_on(False)
         # plot rectangle representing shank width and length, excluding the tip:
         sl = ylim[0]
@@ -310,18 +310,24 @@ class Track(object):
         a.fill(shankxs, shankys, color='lightgrey', ec='none')
         # plot electrode sites:
         a.plot(chanpos[:, 0], chanpos[:, 1], 'k.', ms=5)
-        # plot quiet and active cell positions in blue and red, respectively:
-        a.plot(qnpos[:, 0], qnpos[:, 1], 'b.', ec='k', ms=10, alpha=0.6)
-        a.plot(anpos[:, 0], anpos[:, 1], 'r.', ec='k', ms=10, alpha=0.6)
-        a.set_aspect('equal')
+        # plot active and quiet cell positions in blue and red, respectively:
+        a.plot(anpos[:, 0], anpos[:, 1], 'r.', ms=10, alpha=0.6, label='active')
+        a.plot(qnpos[:, 0], qnpos[:, 1], 'b.', ms=10, alpha=0.6, label='quiet')
         a.set_xlim(xlim)
         a.set_ylim(ylim)
         a.set_xticks(uchanxs)
         a.set_yticks(np.arange(0, ylim[0], 200))
         a.xaxis.set_ticks_position('bottom')
         a.yaxis.set_ticks_position('left')
+        # put legend to right of the axes:
+        if legend:
+            a.legend(bbox_to_anchor=(2, 0.5), frameon=False)
+        bbox = a.get_position()
+        wh = bbox.width / bbox.height # w:h ratio of axes, includes all ticks and labels?
+        w, h = gcfm().canvas.get_width_height()
+        gcfm().resize(w*wh, h)
         titlestr = lastcmd()
-        gcfm().window.setWindowTitle(titlestr)
+        gcfm().set_window_title(titlestr)
         a.set_title(self.absname)
         #a.set_xlabel('$\mu$m')
         #a.set_ylabel('$\mu$m')
