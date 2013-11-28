@@ -218,19 +218,25 @@ class Track(object):
 
         return a
 
-    def pospdf(self, neurons=None, dim='y', nbins=10, stats=False, a=None, figsize=(7.5, 6.5)):
+    def pospdf(self, neurons='all', dim='y', edges=None, nbins=10, stats=False, labels=True,
+               a=None, figsize=(7.5, 6.5)):
         """Plot PDF of cell positions ('x' or 'y') along the polytrode
         to get an idea of how cells are distributed in space"""
         if neurons == 'all':
             neurons = self.alln.values()
         elif neurons == 'quiet':
             neurons = self.qn.values()
-        else:
+        elif neurons == 'active':
             neurons = self.n.values()
         dimi = {'x':0, 'y':1}[dim]
         p = [ n.pos[dimi] for n in neurons ] # all position values
-        nbins = max(nbins, 2*intround(np.sqrt(self.nneurons)))
-        n, p = np.histogram(p, bins=nbins) # p includes rightmost bin edge
+        if edges != None:
+            nbins = len(edges) - 1
+            bins = edges # assume it includes rightmost bin edge
+        else:
+            nbins = max(nbins, 2*intround(np.sqrt(self.nneurons)))
+            bins = nbins
+        n, p = np.histogram(p, bins=bins) # p includes rightmost bin edge
         binwidth = p[1] - p[0] # take width of first bin in p
 
         if stats:
@@ -256,9 +262,10 @@ class Track(object):
               yerr=None, xerr=None, capsize=3)
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
-        a.set_title(titlestr)
-        a.set_xlabel('neuron %s position (um)' % dim)
-        a.set_ylabel('neuron count')
+        if labels:
+            a.set_title(titlestr)
+            a.set_xlabel('neuron %s position (um)' % dim)
+            a.set_ylabel('neuron count')
 
         if stats:
             # add stuff to top right of plot:
