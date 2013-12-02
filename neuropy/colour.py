@@ -53,7 +53,7 @@ def hex2floatrgb(s):
     return np.float64([r, g, b]) / 255
 
 
-# for plotting on white:
+# use CLUSTERCOLOURS for plotting on white:
 PLOTCOLOURS = [RED, ORANGE, DARKYELLOW, GREEN, CYAN, LIGHTBLUE, VIOLET, MAGENTA, BROWN,
                GREY, BLACK]
 CLUSTERCOLOURS = copy(PLOTCOLOURS)
