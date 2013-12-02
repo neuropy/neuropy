@@ -1,7 +1,12 @@
 """Plot x and y positions of all spikes from each neuron in specified tracks,
-as a function of time. Copy and paste into neuropy console"""
+as a function of time. Copy and paste into neuropy console
 
-## TODO: make figure width proportional to track duration
+TODO:
+    - make figure width proportional to track duration, and figure height proportional
+    to polytrode dimensions
+    - repeat each of these plots with a running average time series line, instead of points,
+    so that all neurons will be visible, regardless of their firing rates
+"""
 
 from colour import CLUSTERCOLOURDICT # for plotting on white
 
@@ -16,21 +21,21 @@ for track, spikefname in zip(tracks, spikefnames):
     spikes = np.load(spikefname) # record array
     nids, ts = sorted(track.alln), spikes['t']
     x0s, y0s = spikes['x0'], spikes['y0']
-    nid2txyc = {}
+    nid2txy = {}
     # collect t, x, y and c for all nids:
-    for nid in nids:
+    for nidi, nid in enumerate(nids):
         sids, = np.where(spikes['nid'] == nid)
         t, x, y = ts[sids], x0s[sids], y0s[sids]
         t = t / 1e6 / 3600 # convert from us to hours
-        c = CLUSTERCOLOURDICT[nid]
-        nid2txyc[nid] = t, x, y, c
+        nid2txy[nid] = t, x, y
     fx = figure()
     ax = gca()
     fy = figure()
     ay = gca()
     # plot data for each nid, one at a time:
-    for nid in nids:
-        t, x, y, c = nid2txyc[nid]
+    for nidi, nid in enumerate(nids):
+        t, x, y = nid2txy[nid]
+        c = CLUSTERCOLOURDICT[nidi] # use nidi to maximize colour alternation
         ax.plot(t, x, '.', ms=1, c=c)
         ay.plot(t, y, '.', ms=1, c=c)
     ax.set_ylim((-100, 100)) # um
