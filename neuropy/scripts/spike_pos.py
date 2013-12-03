@@ -39,12 +39,14 @@ yb = xb+xh+vs # posy bottom
 yh = 8 # posy height
 
 xlbwh, ylbwh = [], []
-spikess, maxts = [], []
+spikess, maxts, xtickss = [], [], []
 for tracki, spikefname in enumerate(spikefnames):
     spikes = np.load(spikefname) # record array
     spikess.append(spikes)
     maxt = spikes['t'].max() / 1e6 / 3600 # convert from us to hours
+    xticks = range(0, intround(maxt), 2) # steps of 2 hours
     maxts.append(maxt)
+    xtickss.append(xticks)
     w = maxt * 1/3 # inches
     xlbwh.append((l, xb, w, xh))
     ylbwh.append((l, yb, w, yh))
@@ -65,7 +67,11 @@ xlbwh[:, [0,2]] /= fw; xlbwh[:, [1,3]] /= fh
 ylbwh[:, [0,2]] /= fw; ylbwh[:, [1,3]] /= fh
 
 xas, yas = [], []
-for tracki, (track, spikes, maxt, yposylim) in enumerate(zip(tracks, spikess, maxts, yposylims)):
+for tracki, track in enumerate(tracks):
+    spikes = spikess[tracki]
+    maxt = maxts[tracki]
+    xticks = xtickss[tracki]
+    yposylim = yposylims[tracki]
     # manually position each axes, one track per column:
     xa = f.add_axes(xlbwh[tracki], axisbg=bg)
     ya = f.add_axes(ylbwh[tracki], axisbg=bg)
@@ -84,6 +90,7 @@ for tracki, (track, spikes, maxt, yposylim) in enumerate(zip(tracks, spikess, ma
     xa.set_ylim(xposylim)
     ya.set_ylim(yposylim)
     ya.invert_yaxis()
+    xa.set_xticks(xticks)
     xa.set_xlabel('time (hours)')
     if tracki == 0:
         xa.set_ylabel('x position ($\mu$m)')
@@ -99,7 +106,7 @@ for tracki, (track, spikes, maxt, yposylim) in enumerate(zip(tracks, spikess, ma
         xa.set_yticklabels([])
         ya.set_yticklabels([])
         
-    ya.set_title(track.absname)
+    ya.set_title(track.absname, y=1.005) # move it up slightly
     xas.append(xa)
     yas.append(ya)
 
