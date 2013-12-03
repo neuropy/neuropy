@@ -253,8 +253,8 @@ class Track(object):
             a.hold(True)
             f = pl.gcf()
 
-        # use CLUSTERCOLOURDICT for familiarity with len 10 1-based id to colour mapping
-        #color = CLUSTERCOLOURDICT[int(self.id)]
+        # use CCWHITEDICT for familiarity with len 10 1-based id to colour mapping
+        #color = CCWHITEDICT[int(self.id)]
         color = 'k'
 
         # exclude rightmost bin edge in p

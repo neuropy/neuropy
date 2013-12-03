@@ -53,13 +53,14 @@ def hex2floatrgb(s):
     return np.float64([r, g, b]) / 255
 
 
-# use CLUSTERCOLOURS for plotting on white:
-PLOTCOLOURS = [RED, ORANGE, DARKYELLOW, GREEN, CYAN, LIGHTBLUE, VIOLET, MAGENTA, BROWN,
-               GREY, BLACK]
-CLUSTERCOLOURS = copy(PLOTCOLOURS)
-CLUSTERCOLOURS.remove(GREY)
-CLUSTERCOLOURSRGB = [ hex2floatrgb(c) for c in CLUSTERCOLOURS ]
+# cluster colours for plotting on a white background:
+CCWHITE = [RED, ORANGE, DARKYELLOW, GREEN, CYAN, LIGHTBLUE, VIOLET, MAGENTA, BLACK, BROWN]
+CCWHITEDICT = ColourDict(colours=CCWHITE)
+CCWHITERGB = [ hex2floatrgb(c) for c in CCWHITE ]
+CCWHITERGBDICT = ColourDict(colours=CCWHITERGB)
 
-#PLOTCOLOURDICT = ColourDict(colours=PLOTCOLOURS)
-CLUSTERCOLOURDICT = ColourDict(colours=CLUSTERCOLOURS)
-CLUSTERCOLOURRGBDICT = ColourDict(colours=CLUSTERCOLOURSRGB)
+# cluster colours for plotting on a black background:
+CCBLACK = [RED, ORANGE, YELLOW, GREEN, CYAN, LIGHTBLUE, VIOLET, MAGENTA, WHITE, BROWN]
+CCBLACKDICT = ColourDict(colours=CCBLACK)
+CCBLACKRGB = [ hex2floatrgb(c) for c in CCBLACK ]
+CCBLACKRGBDICT = ColourDict(colours=CCBLACKRGB)
