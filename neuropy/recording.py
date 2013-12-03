@@ -28,7 +28,7 @@ import core
 from core import (LFP, SpatialPopulationRaster, DensePopulationRaster, Codes, SpikeCorr,
                   binarray2int, nCr, nCrsamples, iterable, entropy_no_sing, lastcmd, intround,
                   tolist, rstrip, dictattr, pmf, TAB)
-from colour import CCWHITEDICT
+from colour import CCWHITEDICT1
 from experiment import Experiment
 from sort import Sort
 from neuron import DummyNeuron
@@ -989,9 +989,9 @@ class BaseRecording(object):
             a.hold(True)
             f = pl.gcf()
 
-        # use CCWHITEDICT for familiarity with len 10 1-based id to colour mapping,
+        # use CCWHITEDICT1 for familiarity with len 10 1-based id to colour mapping,
         # remove any trailing alphas form id:
-        color = CCWHITEDICT[int(self.id.rstrip('bc'))]
+        color = CCWHITEDICT1[int(self.id.rstrip('bc'))]
 
         # exclude rightmost bin edge in p
         a.bar(left=p[:-1], height=n, width=binwidth, bottom=0, color=color, ec=color,

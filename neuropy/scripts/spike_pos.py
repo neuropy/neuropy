@@ -6,7 +6,7 @@ TODO:
     so that all neurons will be visible, regardless of their firing rates
 """
 
-from colour import CCBLACKDICT, CCWHITEDICT # for plotting on black or white
+from colour import CCBLACKDICT0, CCWHITEDICT0 # for plotting on black or white
 
 # define stuff associated with each desired track:
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
@@ -21,9 +21,9 @@ rc['savefig.format'] = 'png' # too many points for pdf
 xposylim = -100, 100 # um
 xposyticks = -50, 0, 50 # um
 bg = 'black'
-CCDICT = CCBLACKDICT
+CCDICT = CCBLACKDICT0
 #bg = 'white'
-#CCDICT = CCWHITEDICT
+#CCDICT = CCWHITEDICT0
 
 
 # posx and posy axes left, bottom, width, height and spacing (inches):

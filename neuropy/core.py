@@ -43,7 +43,7 @@ pyximport.install(build_in_temp=False, inplace=True)
 import util # .pyx file
 
 import filter
-from colour import CCWHITERGBDICT
+from colour import CCWHITERGBDICT1
 
 TAB = '    ' # 4 spaces
 EPOCH = datetime.datetime(1899, 12, 30, 0, 0, 0) # epoch for datetime stamps in .ptcs
@@ -1036,7 +1036,7 @@ class SpatialPopulationRaster(object):
                 else:
                     ypos = nidi
                 y.append(np.tile(ypos, nspikes)) # -ve, distance below top of electrode
-                nc = CCWHITERGBDICT[nid]
+                nc = CCWHITERGBDICT1[nid] # for max colour alternation, use DICT0 and nidi
                 c.append(np.tile(nc, nspikes))
                 # use big points for low rate cells, small points for high rate cells:
                 ms = max(min(10000/nspikes, 50), 5)

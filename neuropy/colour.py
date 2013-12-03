@@ -27,18 +27,20 @@ BLACK = '#000000'
 
 
 class ColourDict(dict):
-    """Just an easy way to cycle through colours given some index,
-    like say a chan id or a neuron id. Better than using a generator,
-    cuz you don't need to keep calling .next(). This is like a dict
-    of infinite length. Copied from spyke.plot"""
-    def __init__(self, colours=None, nocolour=None):
+    """Just an easy way to cycle through colours given some index, like say a chan id or a
+    neuron id. Better than using a generator, because you don't need to keep calling .next().
+    This is like a dict of infinite length. Copied and modified from spyke.plot"""
+    def __init__(self, colours=None, nocolour=None, indexbase=1):
         self.colours = colours
         self.nocolour = nocolour
+        assert indexbase in (0, 1)
+        self.indexbase = indexbase
 
     def __getitem__(self, key):
         if key < 0: # invalid index into self.colours
             return self.nocolour
-        i = key % len(self.colours) - 1 # convert 1-based indices into 0-based
+        # if self.indexbase is 1, convert 1-based indices into 0-based
+        i = key % len(self.colours) - self.indexbase
         return self.colours[i]
 
     def __setitem__(self, key, val):
@@ -55,12 +57,16 @@ def hex2floatrgb(s):
 
 # cluster colours for plotting on a white background:
 CCWHITE = [RED, ORANGE, DARKYELLOW, GREEN, CYAN, LIGHTBLUE, VIOLET, MAGENTA, BLACK, BROWN]
-CCWHITEDICT = ColourDict(colours=CCWHITE)
+CCWHITEDICT0 = ColourDict(colours=CCWHITE, indexbase=0) # use for colouring nidis
+CCWHITEDICT1 = ColourDict(colours=CCWHITE, indexbase=1) # use for colouring nids
 CCWHITERGB = [ hex2floatrgb(c) for c in CCWHITE ]
-CCWHITERGBDICT = ColourDict(colours=CCWHITERGB)
+CCWHITERGBDICT0 = ColourDict(colours=CCWHITERGB, indexbase=0) # use for colouring nidis
+CCWHITERGBDICT1 = ColourDict(colours=CCWHITERGB, indexbase=1) # use for colouring nids
 
 # cluster colours for plotting on a black background:
 CCBLACK = [RED, ORANGE, YELLOW, GREEN, CYAN, LIGHTBLUE, VIOLET, MAGENTA, WHITE, BROWN]
-CCBLACKDICT = ColourDict(colours=CCBLACK)
+CCBLACKDICT0 = ColourDict(colours=CCBLACK, indexbase=0) # use for colouring nidis
+CCBLACKDICT1 = ColourDict(colours=CCBLACK, indexbase=1) # use for colouring nids
 CCBLACKRGB = [ hex2floatrgb(c) for c in CCBLACK ]
-CCBLACKRGBDICT = ColourDict(colours=CCBLACKRGB)
+CCBLACKRGBDICT0 = ColourDict(colours=CCBLACKRGB, indexbase=0) # use for colouring nidis
+CCBLACKRGBDICT1 = ColourDict(colours=CCBLACKRGB, indexbase=1) # use for colouring nids
