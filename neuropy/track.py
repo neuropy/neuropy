@@ -258,8 +258,7 @@ class Track(object):
         color = 'k'
 
         # exclude rightmost bin edge in p
-        a.bar(left=p[:-1], height=n, width=binwidth, bottom=0, color=color, ec=color,
-              yerr=None, xerr=None, capsize=3)
+        a.bar(left=p[:-1], height=n, width=binwidth, bottom=0, color=color, ec=color)
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         if labels:
@@ -288,7 +287,8 @@ class Track(object):
 
     def npos(self, inchespermicron=0.007, legend=False):
         """Plot (x, y) cell positions over top of polytrode channel positions,
-        to get an idea of how cells are distributed in space. TODO: Color according to depth."""
+        to get an idea of how cells are distributed in space. Color active and inactive
+        cells differently"""
         uns = get_ipython().user_ns
         npos = np.asarray([ neuron.pos for neuron in self.alln.values() ])
         anpos = np.asarray([ neuron.pos for neuron in self.n.values() ])
@@ -324,8 +324,8 @@ class Track(object):
         a.set_ylim(ylim)
         a.set_xticks(uchanxs)
         a.set_yticks(np.arange(0, ylim[0], 200))
-        a.xaxis.set_ticks_position('bottom')
-        a.yaxis.set_ticks_position('left')
+        #a.xaxis.set_ticks_position('bottom')
+        #a.yaxis.set_ticks_position('left')
         # put legend to right of the axes:
         if legend:
             a.legend(bbox_to_anchor=(2, 0.5), frameon=False)
