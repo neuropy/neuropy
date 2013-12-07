@@ -1,7 +1,7 @@
 """Generate little histograms of x position of 3 tracks, such that they're to scale with plots
 from track.npos"""
 
-figsize = 1.4, 1.4
+figsize = 1.4, 1.4 # inches
 
 # for 1a 3 column and 2a 2 column probes, with 56 um horizontal spacing
 spacing = 56 # um
@@ -14,6 +14,9 @@ edges = np.arange(ledge, redge+2*binw, binw)
 
 # 2a 2 column probe:
 ptc15.tr7c.pospdf(dim='x', edges=edges, figsize=figsize, labels=False)
+chanxpos = np.unique(ptc15.tr7c.sort.chanpos[:, 0])
+for x in chanxpos:
+    axvline(x=x, c='e', ls='--', marker='none', zorder=-1)
 xticks((-28, 28))
 yticks((0, 45))
 xlim(-80, 80)
@@ -22,6 +25,9 @@ gcfm().set_window_title("ptc15.tr7c.pospdf(dim='x')")
 
 # 1a 3 column probe:
 ptc22.tr1.pospdf(dim='x', edges=edges, figsize=figsize, labels=False)
+chanxpos = np.unique(ptc22.tr1.sort.chanpos[:, 0])
+for x in chanxpos:
+    axvline(x=x, c='e', ls='--', marker=None, zorder=-1)
 xticks((-56, 0, 56))
 yticks((0, 45))
 xlim(-80, 80)
@@ -30,6 +36,9 @@ gcfm().set_window_title("ptc22.tr1.pospdf(dim='x')")
 
 # 1a 3 column probe:
 ptc22.tr2.pospdf(dim='x', edges=edges, figsize=figsize, labels=False)
+chanxpos = np.unique(ptc22.tr2.sort.chanpos[:, 0])
+for x in chanxpos:
+    axvline(x=x, c='e', ls='--', marker=None, zorder=-1)
 xticks((-56, 0, 56))
 yticks((0, 45))
 xlim(-80, 80)
