@@ -1,7 +1,7 @@
 """Generate a histogram of y position of 3 tracks, such that it's to scale with plots
 from track.npos"""
 
-figsize = 1.4, 10.57
+figsize = 1.4, 10.57 # inches
 
 c = 'black'
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
