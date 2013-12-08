@@ -58,7 +58,7 @@ LFPWIDTH = 2 # sec
 LFPTRES = 0.5 # sec
 
 """LFP synchrony index time range windows"""
-LFPSIWIDTH = 10 # sec (2**15 ms)
+LFPSIWIDTH = 10 # sec
 LFPSITRES = 2 # sec
 LFPSILOWBAND = 0.5, 7 # Hz
 LFPSIHIGHBAND = 15, 100 # Hz
