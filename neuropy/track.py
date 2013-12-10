@@ -322,6 +322,16 @@ class Track(object):
         for chan, (x, y) in enumerate(chanpos):
             chanpos[chan, 1] = maxy - y
 
+        if chans == 'nneigh': # generate dict of nearest neighbours indexed by maxchan
+            dm = core.eucd(chanpos) # distance matrix
+            minspace = dm[dm!=0].min()
+            rincl = minspace * 1.1 # inclusion radius
+            nneighs = {}
+            for maxchan, pos in enumerate(chanpos):
+                d = dm[maxchan]
+                nnchans = np.where(d < rincl)[0]
+                nneighs[maxchan] = nnchans
+
         colxs = np.unique(chanpos[:, 0]) # unique column x positions, sorted
         rowys = np.unique(chanpos[:, 1]) # unique row y positions, sorted
         ncols = len(colxs)
@@ -357,16 +367,17 @@ class Track(object):
             colour = ccdict[eval(cindex)]
             neuron = self.alln[nid]
             # ncs (neuron channels) should be 0-based channel IDs:
-            ## TODO: implement nneigh
             if chans == 'max':
                 ncs = [neuron.maxchan]
+            elif chans == 'nneigh':
+                ncs = nneighs[neuron.maxchan]
             elif chans == 'all':
                 ncs = neuron.chans
-            # this should be the case, but isn't enforced in .ptcs spec or .ptcs loading code:
-            assert core.issorted(neuron.chans)
-            # if not, add code here to sort it and the wavedata.
-            # now safe to assume neuron.chans are sorted:
-            ncis = neuron.chans.searchsorted(ncs) # indices into neuron.chans
+            # exclude channels of data within neigh that are missing from wavedata
+            ncs = [ nc for nc in ncs if nc in neuron.chans ]
+            # indices into neuron.chans, use to index into wavedata:
+            ncis = np.hstack([ np.where(neuron.chans == nc)[0] for nc in ncs ])
+            #import pdb; pdb.set_trace()
             wavedata = neuron.wavedata[ncis]
             # much less efficient, but much simpler than spyke code:
             for c, wd in zip(ncs, wavedata):
@@ -394,7 +405,7 @@ class Track(object):
         f.tight_layout(pad=0)
         #f.canvas.toolbar.hide()
         #f.canvas.window().statusBar().hide()
-        f.canvas.set_window_title(self.absname)
+        f.canvas.set_window_title(lastcmd())
 
 
     def npos(self, inchespermicron=0.007, legend=False):
