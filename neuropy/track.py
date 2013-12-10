@@ -285,6 +285,118 @@ class Track(object):
         f.canvas.draw() # this is needed if a != None when passed as arg
         return a
 
+    def templates(self, chans='max', cindex='nidi'):
+        """Plot cell templates in their polytrode layout. chans can be 'max', 'nneigh', 'all'.
+        cindex can be 'nidi' or 'nid', but best to colour cells by nidi to maximize
+        alternation."""
+        from colour import CCBLACKDICT0, CCBLACKDICT1
+        from matplotlib.collections import LineCollection
+
+        HUMPERINCH = 80 # for setting figure size in inches
+        VUMPERINCH = 160 # for setting figure size in inches
+        USPERUM = 15
+        UVPERUM = 3
+        HBORDERUS = 50 # us, horizontal border around chans
+        VBORDERUV = 150 # uV, vertical border around plots
+        HBORDER = HBORDERUS / USPERUM
+        VBORDER = VBORDERUV / UVPERUM
+        BG = 'black'
+        SCALE = 500, 100 # scalebar size in (us, uV)
+        SCALE = SCALE[0]/USPERUM, SCALE[1]/UVPERUM # um
+        SCALEXOFFSET = 2 # um
+        SCALEYOFFSET = 4 # um
+
+        if chans not in ['max', 'nneigh', 'all',]:
+            raise ValueError('unknown chans arg %r' % chans)
+        if cindex == 'nidi':
+            ccdict = CCBLACKDICT0 # use nidi to maximize colour alternation
+        elif cindex == 'nid':
+            ccdict = CCBLACKDICT1 # use nid to have colours that correspond to those in spyke
+        else:
+            raise ValueError('unknown cindex arg %r' % cindex)
+
+        # for mpl, convert probe chanpos to center bottom origin instead of center top,
+        # i.e. invert the y values:
+        chanpos = self.sort.chanpos.copy()
+        maxy = chanpos[:, 1].max()
+        for chan, (x, y) in enumerate(chanpos):
+            chanpos[chan, 1] = maxy - y
+
+        colxs = np.unique(chanpos[:, 0]) # unique column x positions, sorted
+        rowys = np.unique(chanpos[:, 1]) # unique row y positions, sorted
+        ncols = len(colxs)
+        nrows = len(rowys)
+        hspace = (colxs[-1]-colxs[0]) / (ncols-1)
+        vspace = (rowys[-1]-rowys[0]) / (nrows-1)
+
+        # setting figure size actually sets window size, including toolbar and statusbar
+        figwidth = (ncols*hspace + 2*HBORDER) / HUMPERINCH # inches
+        figheight = (nrows*vspace + 2*VBORDER) / VUMPERINCH # inches
+        dpi = mpl.rcParams['figure.dpi']
+        #figwidth = (ncols*hspace) / HUMPERINCH # inches
+        #figheight = (nrows*vspace) / VUMPERINCH # inches
+        figwidth = intround(figwidth * dpi) / dpi # inches, rounded to nearest pixel
+        figheight = intround(figheight * dpi) / dpi # inches, rounded to nearest pixel
+        figsize = figwidth, figheight
+        f = pl.figure(figsize=figsize, facecolor=BG, edgecolor=BG)
+        a = f.add_subplot(111)
+
+        # plot chan lines? maybe just the vertical lines?
+        #for pos in chanpos:
+
+        tres = self.sort.tres # time resolution, in us
+        nts = np.unique([ neuron.nt for neuron in self.alln.values() ])
+        if len(nts) != 1:
+            raise RuntimeError("Not all neuron templates have the same number of timepoints. "
+                               "That's probably bad.")
+        nt = nts[0]
+        ts = np.arange(0, neuron.nt*tres, tres) # time values in us
+
+        nids = sorted(self.alln)
+        for nidi, nid in enumerate(nids):
+            colour = ccdict[eval(cindex)]
+            neuron = self.alln[nid]
+            # ncs (neuron channels) should be 0-based channel IDs:
+            ## TODO: implement nneigh
+            if chans == 'max':
+                ncs = [neuron.maxchan]
+            elif chans == 'all':
+                ncs = neuron.chans
+            # this should be the case, but isn't enforced in .ptcs spec or .ptcs loading code:
+            assert core.issorted(neuron.chans)
+            # if not, add code here to sort it and the wavedata.
+            # now safe to assume neuron.chans are sorted:
+            ncis = neuron.chans.searchsorted(ncs) # indices into neuron.chans
+            wavedata = neuron.wavedata[ncis]
+            # much less efficient, but much simpler than spyke code:
+            for c, wd in zip(ncs, wavedata):
+                x = chanpos[c, 0] + ts / USPERUM # um
+                y = chanpos[c, 1] + wd / UVPERUM # um
+                a.plot(x, y, ls='-', marker=None, lw=1, c=colour)
+
+        a.set_axis_bgcolor(BG)
+        a.set_xlabel('')
+        a.set_ylabel('')
+        a.xaxis.set_ticks([])
+        a.yaxis.set_ticks([]) # if displayed, y ticks would be distance from bottom chan
+
+        a.set_xlim(colxs[0]-HBORDER, colxs[-1]+nt*tres/USPERUM+HBORDER) # um
+        a.set_ylim(rowys[0]-VBORDER, rowys[-1]+VBORDER) # um
+
+        # add scale bars:
+        r, b = a.get_xlim()[1]-SCALEXOFFSET, a.get_ylim()[0]+SCALEYOFFSET # um
+        hbar = (r-SCALE[0], b), (r, b) # um
+        vbar = (r, b), (r, b+SCALE[1]) # um
+        scale = LineCollection([hbar, vbar], lw=1, colors='white', zorder=-1,
+                               antialiased=True, visible=True)
+        a.add_collection(scale) # add to axes' pool of LCs
+
+        f.tight_layout(pad=0)
+        #f.canvas.toolbar.hide()
+        #f.canvas.window().statusBar().hide()
+        f.canvas.set_window_title(self.absname)
+
+
     def npos(self, inchespermicron=0.007, legend=False):
         """Plot (x, y) cell positions over top of polytrode channel positions,
         to get an idea of how cells are distributed in space. Color active and inactive
