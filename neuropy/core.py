@@ -3667,7 +3667,7 @@ def split_tranges(tranges, width, tres):
         t0, t1 = trange
         assert width < (t1 - t0)
         # calculate left and right edges of subtranges that fall within trange:
-        ledges = np.arange(t0, t1-width, tres)
+        ledges = np.arange(t0, t1-tres, tres)
         redges = ledges + width
         subtranges = [ (le, re) for le, re in zip(ledges, redges) ]
         newtranges.append(subtranges)
