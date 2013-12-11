@@ -101,12 +101,12 @@ for tracki, track in enumerate(tracks):
             # bin, using np.nan for empty bins:
             binsx = np.split(sx, ti)[1:] # exclude subarray left of sx[0]
             binsx = np.array([ vals.mean() if len(vals) > 0 else np.nan for vals in binsx ])
-            sxa.plot(bint, binsx, '-', ms=None, lw=1, c=c)
             binx = np.split(x, ti)[1:] # exclude subarray left of x[0]
             binx = np.array([ vals.mean() if len(vals) > 0 else np.nan for vals in binx ])
-            xa.plot(bint, binx, '-', ms=None, lw=1, c=c)
             biny = np.split(y, ti)[1:] # exclude subarray left of y[0]
             biny = np.array([ vals.mean() if len(vals) > 0 else np.nan for vals in biny ])
+            sxa.plot(bint, binsx, '-', ms=None, lw=1, c=c)
+            xa.plot(bint, binx, '-', ms=None, lw=1, c=c)
             ya.plot(bint, biny, '-', ms=None, lw=1, c=c)
             
     sxa.set_xlim(0, maxt)
@@ -119,7 +119,7 @@ for tracki, track in enumerate(tracks):
     sxa.set_xticks(xticks)
     sxa.set_xlabel('time (hours)')
     if tracki == 0:
-        sxa.set_ylabel('$\sigma_{spatial}$ ($\mu$m)')
+        sxa.set_ylabel('spread ($\mu$m)')
         xa.set_ylabel('x position ($\mu$m)')
         ya.set_ylabel('y position ($\mu$m)')
     sxa.set_yticks(sxyticks)
