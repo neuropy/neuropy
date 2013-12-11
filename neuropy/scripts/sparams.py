@@ -142,4 +142,8 @@ for tracki, track in enumerate(tracks):
     xas.append(xa)
     yas.append(ya)
 
-f.canvas.manager.set_window_title('spike_pos')
+if style == 'points':
+    titlestr = 'sparams'
+elif style == 'lines':
+    titlestr = 'sparams_lines'
+f.canvas.manager.set_window_title(titlestr)
