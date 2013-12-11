@@ -1,15 +1,14 @@
-"""Plot x and y positions of all spikes from each neuron in specified tracks,
-as a function of time. Copy and paste into neuropy console
-
-TODO:
-    - repeat each of these plots with a running average time series line, instead of points,
-    so that all neurons will be visible, regardless of their firing rates
-"""
+"""Plot spike paramaters vs. time of all spikes from each neuron in specified tracks. Params
+are sx, x0, y0. Copy and paste into neuropy console"""
 
 from colour import CCBLACKDICT0, CCWHITEDICT0 # for plotting on black or white
 
+# style: 'points' or 'lines'. Binned lines have less detail but better visibility:
+style = 'lines'
+
 # define stuff associated with each desired track:
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
+# .spike files saved by spyke, these are what have all the required spike-level data:
 spikefnames = ['/home/mspacek/data/ptc15/tr7c/track7c.track_2012-08-07_08.59.10.spike',
                '/home/mspacek/data/ptc22/tr1/track1.track_2012-03-02_15.56.59.spike',
                '/home/mspacek/data/ptc22/tr2/track2.track_2012-10-04_11.00.00.spike']
@@ -91,8 +90,25 @@ for tracki, track in enumerate(tracks):
         t, sx, x, y = ts[sids], sxs[sids], x0s[sids], y0s[sids]
         t = t / 1e6 / 3600 # convert from us to hours
         c = CCDICT[nidi] # use nidi to maximize colour alternation
-        xa.plot(t, x, '.', ms=1, c=c)
-        ya.plot(t, y, '.', ms=1, c=c)
+        if style == 'points':
+            sxa.plot(t, sx, '.', ms=1, c=c)
+            xa.plot(t, x, '.', ms=1, c=c)
+            ya.plot(t, y, '.', ms=1, c=c)
+        elif style == 'lines':
+            bint = np.arange(0, t[-1], 10/60) # uniform 10 minute time bins, in hours
+            ti = t.searchsorted(bint)
+            # split each series into values that fall within each bin, then take mean of each
+            # bin, using np.nan for empty bins:
+            binsx = np.split(sx, ti)[1:] # exclude subarray left of sx[0]
+            binsx = np.array([ vals.mean() if len(vals) > 0 else np.nan for vals in binsx ])
+            sxa.plot(bint, binsx, '-', ms=None, lw=1, c=c)
+            binx = np.split(x, ti)[1:] # exclude subarray left of x[0]
+            binx = np.array([ vals.mean() if len(vals) > 0 else np.nan for vals in binx ])
+            xa.plot(bint, binx, '-', ms=None, lw=1, c=c)
+            biny = np.split(y, ti)[1:] # exclude subarray left of y[0]
+            biny = np.array([ vals.mean() if len(vals) > 0 else np.nan for vals in biny ])
+            ya.plot(bint, biny, '-', ms=None, lw=1, c=c)
+            
     sxa.set_xlim(0, maxt)
     xa.set_xlim(0, maxt)
     ya.set_xlim(0, maxt)
