@@ -5,6 +5,8 @@ from colour import CCBLACKDICT0, CCWHITEDICT0 # for plotting on black or white
 
 # style: 'points' or 'lines'. Binned lines have less detail but better visibility:
 style = 'lines'
+bw = 10/60 # bin width for lines style, hours
+tres = 10/60 # bin tres for lines style, hours
 
 # define stuff associated with each desired track:
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
@@ -84,6 +86,10 @@ for tracki, track in enumerate(tracks):
     ya = f.add_axes(ylbwh[tracki], axisbg=bg)
     nids, ts = sorted(track.alln), spikes['t']
     sxs, x0s, y0s = spikes['sx'], spikes['x0'], spikes['y0']
+    if style == 'lines': # generate time bins of bw and tres, in hours:
+        t0 = ts[0] / 1e6 / 3600 # convert from us to hours
+        t1 = ts[-1] / 1e6 / 3600 # convert from us to hours
+        tranges = core.split_tranges([(t0, t1)], bw, tres)
     # plot data for each nid, one at a time:
     for nidi, nid in enumerate(nids):
         sids, = np.where(spikes['nid'] == nid)
@@ -95,16 +101,17 @@ for tracki, track in enumerate(tracks):
             xa.plot(t, x, '.', ms=1, c=c)
             ya.plot(t, y, '.', ms=1, c=c)
         elif style == 'lines':
-            bint = np.arange(0, t[-1], 10/60) # uniform 10 minute time bins, in hours
-            ti = t.searchsorted(bint)
-            # split each series into values that fall within each bin, then take mean of each
-            # bin, using np.nan for empty bins:
-            binsx = np.split(sx, ti)[1:] # exclude subarray left of sx[0]
+            tiranges = t.searchsorted(tranges)
+            # split each series into values that fall within each bin (defined by its trange),
+            # then take mean of each bin, using np.nan for empty bins:
+            binsx = [ sx[tirange[0]:tirange[1]] for tirange in tiranges ]
             binsx = np.array([ vals.mean() if len(vals) > 0 else np.nan for vals in binsx ])
-            binx = np.split(x, ti)[1:] # exclude subarray left of x[0]
-            binx = np.array([ vals.mean() if len(vals) > 0 else np.nan for vals in binx ])
-            biny = np.split(y, ti)[1:] # exclude subarray left of y[0]
+            biny = [ y[tirange[0]:tirange[1]] for tirange in tiranges ]
             biny = np.array([ vals.mean() if len(vals) > 0 else np.nan for vals in biny ])
+            binx = [ x[tirange[0]:tirange[1]] for tirange in tiranges ]
+            binx = np.array([ vals.mean() if len(vals) > 0 else np.nan for vals in binx ])
+            # take left edges of tranges as bin time:
+            bint = tranges[:, 0]
             sxa.plot(bint, binsx, '-', ms=None, lw=1, c=c)
             xa.plot(bint, binx, '-', ms=None, lw=1, c=c)
             ya.plot(bint, biny, '-', ms=None, lw=1, c=c)
