@@ -91,7 +91,7 @@ if __name__ == '__main__':
     rstep = 1/(len(th)-1)
     r = np.arange(0, 1+rstep, rstep)
     a1.plot(th, r, 'b')
-    f.show()
+    f1.show()
 
     f2 = plt.figure()
     a2 = fractional_polar_axes(f2, thlim=(36, 135), rlim=(2,7), step=(15, 1))
