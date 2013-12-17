@@ -62,7 +62,7 @@ def fractional_polar_axes(f, thlim=(0, 180), rlim=(0, 1), step=(30, 0.2),
     auxa.patch = a.patch 
     # this has a side effect that the patch is drawn twice, and possibly over some other
     # artists. So, we decrease the zorder a bit to prevent this:
-    a.patch.zorder=-2
+    a.patch.zorder = -2
 
     # add sector lines for both dimensions:
     thticks = grid_helper.grid_info['lon_info'][0]
