@@ -76,7 +76,7 @@ def fractional_polar_axes(f, thlim=(0, 180), rlim=(0, 1), step=(30, 0.2),
         else:
             ls, lw, color = 'dashed', 1, 'grey'
         # From http://stackoverflow.com/a/19828753/2020363
-        auxa.add_artist(Circle([0, 0], radius=r, ls=ls, lw=lw, color=color, fill=False,
+        auxa.add_artist(plt.Circle([0, 0], radius=r, ls=ls, lw=lw, color=color, fill=False,
                         transform=auxa.transData._b, zorder=-1))
     return auxa
 
