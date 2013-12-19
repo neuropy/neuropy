@@ -826,14 +826,24 @@ class Tune(object):
             fixedsweepis = core.intersect1d(fixedsweepis)
             #print(fixedsweepis)
         # get values for var at all unique sweep indices:
-        vals = self.experiment.sweeptable.data[var]
+        try:
+            vals = self.experiment.sweeptable.data[var]
+        except AttributeError:
+            # something different about ptc15, new bug?. Also, sweeptable values are in a list
+            # instead of an array like for post ptc15. Should be converted to an array
+            # somewhere, so it need not be done here? Also, ptc15 experiments are missing
+            # .s and .d attribs, whose contents seems to be found in .oldparams
+            vals = np.asarray(self.experiment.sweeptable[var])
         if var == 'ori': # correct for orientation offset by adding
             if (vals > 180).any():
                 maxori = 360
             else:
                 maxori = 180
             vals = vals.copy() # don't modify the sweeptable!
-            vals += self.experiment.s.orioff # static parameter
+            try:
+                vals += self.experiment.s.orioff # static parameter
+            except AttributeError: # for ptc15, should be fixed:
+                vals += self.experiment.oldparams['orioff'] # static parameter
             vals %= maxori
         x = np.unique(vals) # x axis
         y = np.zeros(len(x), dtype=int) # spike counts for each variable value
