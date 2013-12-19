@@ -26,17 +26,7 @@ for rec in recs:
     for nid in nids:
         neuron = rec.alln[nid]
         tune = neuron.tune()
-        tune.calc(var='ori')
-        # don't allow oris > 180 deg, otherwise completely direction independent responses
-        # will cancel out, resulting in no apparent tuning. Do this by angle doubling:
-        oris, counts = tune.x % 180, tune.y # deg
-        orisrad = 2 * oris * np.pi/180 # convert from deg to rad
-        x = (counts*np.cos(orisrad)).sum()
-        y = (counts*np.sin(orisrad)).sum()
-        # arctan2 takes sign of x and y into account, then undo the angle doubling:
-        theta = np.arctan2(y, x) / 2 # rad
-        theta = theta * 180 / np.pi + 90 # rad to deg, off by 90 deg for some reason
-        r = np.sqrt(x**2+y**2) / counts.sum() # fraction of total spikes
+        theta, r = tune.pref(var='ori')
         thetas.append(theta)
         rs.append(r)
         depths.append(neuron.pos[1])

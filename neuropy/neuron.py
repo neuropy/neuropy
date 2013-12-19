@@ -846,7 +846,27 @@ class Tune(object):
             for sweepi in sweepis:
                 y[vali] += self.counts[sweepi].sum()
         self.x, self.y = x, y
-        
+
+    def pref(self, var='ori', fixed=None):
+        """Return preferred value of tuning var, as well as its strength relative to all the
+        other possible values of var. Currently only intended for var='ori', but that could
+        change as needed"""
+        if var != 'ori':
+            raise NotImplementedError('preference calc only intended for ori for now')
+        self.calc(var=var, fixed=fixed)
+        # don't allow oris > 180 deg, otherwise completely direction independent responses
+        # will cancel out, resulting in no apparent tuning. Do this by mod 180 and then angle
+        # doubling, although it seems only the angle doubling is really necessary:
+        oris, counts = self.x % 180, self.y # oris in deg
+        orisrad = 2 * oris * np.pi/180 # convert from deg to rad
+        x = (counts*np.cos(orisrad)).sum()
+        y = (counts*np.sin(orisrad)).sum()
+        # arctan2 takes sign of x and y into account, then undo the angle doubling:
+        theta = np.arctan2(y, x) / 2 # rad
+        theta = theta * 180 / np.pi + 90 # rad to deg, off by 90 deg for some reason
+        r = np.sqrt(x**2+y**2) / counts.sum() # fraction of total spikes
+        return theta, r
+
     def plot(self, var='ori', fixed=None):
         """var: string name of variable you want to plot a tuning curve for
         fixed: dict with keys containing names of vars to keep fixed when building tuning
