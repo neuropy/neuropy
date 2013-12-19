@@ -18,7 +18,7 @@ from mpl_toolkits.axisartist.floating_axes import GridHelperCurveLinear, Floatin
 
 
 def fractional_polar_axes(f, thlim=(0, 180), rlim=(0, 1), step=(30, 0.2),
-                          thlabel='theta', rlabel='r'):
+                          thlabel='theta', rlabel='r', ticklabels=True):
     """Return polar axes that adhere to desired theta (in deg) and r limits. steps for theta
     and r are really just hints for the locators."""
     th0, th1 = thlim # deg
@@ -44,13 +44,14 @@ def fractional_polar_axes(f, thlim=(0, 180), rlim=(0, 1), step=(30, 0.2),
     # adjust x axis (theta):
     a.axis["bottom"].set_visible(False)
     a.axis["top"].set_axis_direction("bottom") # tick direction
-    a.axis["top"].toggle(ticklabels=True, label=True)
+    a.axis["top"].toggle(ticklabels=ticklabels, label=bool(thlabel))
     a.axis["top"].major_ticklabels.set_axis_direction("top")
     a.axis["top"].label.set_axis_direction("top")
 
     # adjust y axis (r):
     a.axis["left"].set_axis_direction("bottom") # tick direction
     a.axis["right"].set_axis_direction("top") # tick direction
+    a.axis["left"].toggle(ticklabels=ticklabels, label=bool(rlabel))
 
     # add labels:
     a.axis["top"].label.set_text(thlabel)
@@ -84,7 +85,6 @@ def fractional_polar_axes(f, thlim=(0, 180), rlim=(0, 1), step=(30, 0.2),
 if __name__ == '__main__':
     f1 = plt.figure()
     a1 = fractional_polar_axes(f1)
-
     # example spiral plot:
     thstep = 10
     th = np.arange(0, 180+thstep, thstep) # deg
@@ -95,7 +95,6 @@ if __name__ == '__main__':
 
     f2 = plt.figure()
     a2 = fractional_polar_axes(f2, thlim=(36, 135), rlim=(2,7), step=(15, 1))
-
     # example spiral plot:
     thstep = 10
     th = np.arange(36, 135+thstep, thstep) # deg
@@ -103,3 +102,14 @@ if __name__ == '__main__':
     r = np.arange(2, 7+rstep, rstep)
     a2.plot(th, r, 'r')
     f2.show()
+
+    f3 = plt.figure()
+    a3 = fractional_polar_axes(f3, thlim=(36, 135), rlim=(2,7), step=(15, 1),
+                               thlabel=None, rlabel=None, ticklabels=False)
+    # example spiral plot:
+    thstep = 10
+    th = np.arange(36, 135+thstep, thstep) # deg
+    rstep = (7-2)/(len(th)-1)
+    r = np.arange(2, 7+rstep, rstep)
+    a3.plot(th, r, 'r')
+    f3.show()
