@@ -796,7 +796,7 @@ class Tune(object):
             self.counts[sweepi] = np.diff(spikes.searchsorted(tranges), axis=1).flatten()
         self.done = True
         
-    def plot(self, var='ori', fixed=None):
+    def plot(self, var='ori', fixed=None, plot=True):
         """var: string name of variable you want to plot a tuning curve for
         fixed: dict with keys containing names of vars to keep fixed when building tuning
         curve, and values containing each var's value(s) to fix at
@@ -854,22 +854,22 @@ class Tune(object):
                 print(sweepis)
             for sweepi in sweepis:
                 y[vali] += self.counts[sweepi].sum()
-        # create a new figure:
-        f = pl.figure()
-        a = f.add_subplot(111)
-        a.plot(x, y, 'k.-')
-        a.set_xlabel(var)
-        a.set_ylabel('spike count')
-        titlestr = lastcmd()
-        titlestr += ' nid%d' % self.neuron.id
-        a.set_title(titlestr)
-        f.canvas.window().setWindowTitle(titlestr)
-        a.text(0.99, 0.99, 'peak=(%s, %s)' % (x[y.argmax()], y.max()),
-               transform=a.transAxes,
-               horizontalalignment='right',
-               verticalalignment='top')
-        f.tight_layout(pad=0.3) # crop figure to contents
-        self.f = f
+        if plot:
+            # create a new figure:
+            f = pl.figure()
+            a = f.add_subplot(111)
+            a.plot(x, y, 'k.-')
+            a.set_xlabel(var)
+            a.set_ylabel('spike count')
+            titlestr = lastcmd()
+            titlestr += ' nid%d' % self.neuron.id
+            a.set_title(titlestr)
+            f.canvas.window().setWindowTitle(titlestr)
+            a.text(0.99, 0.99, 'peak=(%s, %s)' % (x[y.argmax()], y.max()),
+                   transform=a.transAxes,
+                   horizontalalignment='right',
+                   verticalalignment='top')
+            f.tight_layout(pad=0.3) # crop figure to contents
         self.x, self.y = x, y
         return self
 
