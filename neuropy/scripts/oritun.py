@@ -26,8 +26,7 @@ for rec in recs:
     for nid in nids:
         neuron = rec.alln[nid]
         tune = neuron.tune()
-        tune.calc()
-        tune.plot(var='ori', plot=False)
+        tune.calc(var='ori')
         # don't allow oris > 180 deg, otherwise completely direction independent responses
         # will cancel out, resulting in no apparent tuning. Do this by angle doubling:
         oris, counts = tune.x % 180, tune.y # deg
@@ -56,7 +55,7 @@ for rec in recs:
     a = fractional_polar_axes(f, thlim=(0, 180), rlim=(0, 1.02),
                               thlabel=None, rlabel=None, ticklabels=False)
     a.scatter(thetas, rs, marker='o', edgecolors=ec, linewidth=1, s=175,
-                   cmap=cm.hot_r, c=depths, zorder=-0.1)
+              cmap=cm.hot_r, c=depths, zorder=-0.1)
     # plot overlapping edges to help distinguish points:
     a.scatter(thetas, rs, marker='o', edgecolors=ec, facecolors='none', linewidth=1, s=175)
     #colorbar(sc)

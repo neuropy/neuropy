@@ -1224,9 +1224,10 @@ class RecordingRaster(BaseRecording):
         for nid in nids:
             n = self.alln[nid]
             tune = n.tune(eid=eid, tdelay=tdelay)
+            tune.calc(var=var, fixed=fixed)
             tunes.append(tune)
             if plot:
-                tune.plot(var=var, fixed=fixed)
+                tune.plot()
         return tunes
 
 class RecordingCode(BaseRecording):

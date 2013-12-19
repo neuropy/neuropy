@@ -757,13 +757,10 @@ class NeuronRevCorr(object):
 
 class Tune(object):
     """Stimulus tuning analysis object"""
-    def __init__(self, neuron=None, experiment=None):
+    def __init__(self, neuron=None, experiment=None, tdelay=None):
+        """tdelay: time delay in us to use between stimulus and response"""
         self.neuron = neuron
         self.experiment = experiment
-        self.done = False # hasn't yet successfully completed its calc() method
-        
-    def calc(self, tdelay=None):
-        """tdelay: time delay in us to use between stimulus and response"""
         spikes = self.neuron.spikes
         din = self.experiment.din
         ndin = len(din)
@@ -794,17 +791,11 @@ class Tune(object):
             # count for that trange. Repeat for all tranges for this sweepi to get
             # array of spike counts, one for each trange.
             self.counts[sweepi] = np.diff(spikes.searchsorted(tranges), axis=1).flatten()
-        self.done = True
+        self.var = None # init
         
-    def plot(self, var='ori', fixed=None, plot=True):
-        """var: string name of variable you want to plot a tuning curve for
-        fixed: dict with keys containing names of vars to keep fixed when building tuning
-        curve, and values containing each var's value(s) to fix at
-        
-        Ex: r71.n[1].tune().plot('phase0', fixed={'ori':138, 'sfreqCycDeg':[0.4, 0.8]})
-        """
-        if not self.done:
-            self.calc(tdelay=self.tdelay)
+    def calc(self, var='ori', fixed=None, force=False):
+        if not force and self.var == var:
+            return # calc was already run with desired var, so results should be fine
         if fixed != None:
             fixedsweepis = []
             for fixedvar, fixedvals in fixed.items():
@@ -854,23 +845,31 @@ class Tune(object):
                 print(sweepis)
             for sweepi in sweepis:
                 y[vali] += self.counts[sweepi].sum()
-        if plot:
-            # create a new figure:
-            f = pl.figure()
-            a = f.add_subplot(111)
-            a.plot(x, y, 'k.-')
-            a.set_xlabel(var)
-            a.set_ylabel('spike count')
-            titlestr = lastcmd()
-            titlestr += ' nid%d' % self.neuron.id
-            a.set_title(titlestr)
-            f.canvas.window().setWindowTitle(titlestr)
-            a.text(0.99, 0.99, 'peak=(%s, %s)' % (x[y.argmax()], y.max()),
-                   transform=a.transAxes,
-                   horizontalalignment='right',
-                   verticalalignment='top')
-            f.tight_layout(pad=0.3) # crop figure to contents
         self.x, self.y = x, y
+        
+    def plot(self, var='ori', fixed=None):
+        """var: string name of variable you want to plot a tuning curve for
+        fixed: dict with keys containing names of vars to keep fixed when building tuning
+        curve, and values containing each var's value(s) to fix at
+        
+        Ex: r71.n[1].tune().plot('phase0', fixed={'ori':138, 'sfreqCycDeg':[0.4, 0.8]})
+        """
+        self.calc(var=var, fixed=fixed)
+        # create a new figure:
+        f = pl.figure()
+        a = f.add_subplot(111)
+        a.plot(self.x, self.y, 'k.-')
+        a.set_xlabel(var)
+        a.set_ylabel('spike count')
+        titlestr = lastcmd()
+        titlestr += ' nid%d' % self.neuron.id
+        a.set_title(titlestr)
+        f.canvas.window().setWindowTitle(titlestr)
+        a.text(0.99, 0.99, 'peak=(%s, %s)' % (self.x[self.y.argmax()], self.y.max()),
+               transform=a.transAxes,
+               horizontalalignment='right',
+               verticalalignment='top')
+        f.tight_layout(pad=0.3) # crop figure to contents
         return self
 
 
@@ -879,8 +878,8 @@ class NeuronTune(object):
     def tune(self, eid=0, tdelay=None):
         """Return stimulus tuning analysis object"""
         experiment = self.sort.r.e[eid] # get experiment from parent recording
-        tuneo = Tune(self, experiment)
-        tuneo.calc(tdelay)
+        tuneo = Tune(self, experiment, tdelay)
+        tuneo.calc()
         return tuneo
 
 
