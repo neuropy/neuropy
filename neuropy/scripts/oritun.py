@@ -43,12 +43,13 @@ for rec in recs:
     allthetas.append(thetas)
     allrs.append(rs)
 
-    # plot tuning strength vs theta, in half polar plot:
+    # plot tuning strength vs theta, in half polar plot, colour by depth, with darker colours
+    # indicating greater depth:
     f = figure()
     a = fractional_polar_axes(f, thlim=(0, 180), rlim=(0, 1.02),
                               thlabel=None, rlabel=None, ticklabels=False)
     a.scatter(thetas, rs, marker='o', edgecolors=ec, linewidth=1, s=175,
-              cmap=cm.hot_r, c=depths, zorder=-0.1)
+              cmap=cm.hot_r, c=depths, vmin=0, vmax=1, zorder=-0.1)
     # plot overlapping edges to help distinguish points:
     a.scatter(thetas, rs, marker='o', edgecolors=ec, facecolors='none', linewidth=1, s=175)
     #colorbar(sc)
@@ -56,11 +57,11 @@ for rec in recs:
     f.canvas.manager.set_window_title(rec.absname)
     f.show()
 
-    # plot depth vs theta:
+    # plot depth vs theta, and colour by r, with lighter colours indicating higher r:
     f = figure(figsize=(4.88, 3))
     fontsize(20)
     scatter(thetas, depths, marker='o', edgecolors=ec, linewidth=0.5, s=50,
-            cmap=cm.hot_r, c=depths, zorder=-0.1)
+            cmap=cm.hot, c=rs, vmin=0, vmax=1, zorder=-0.1)
     # plot overlapping edges to help distinguish points:
     scatter(thetas, depths, marker='o', edgecolors=ec, facecolors='none', linewidth=0.5, s=50)
     xlim(0, 180)
@@ -82,7 +83,7 @@ af = figure()
 aa = fractional_polar_axes(af, thlim=(0, 180), rlim=(0, 1.02),
                            thlabel='orientation preference', rlabel='tuning strength')
 aa.scatter(allthetas, allrs, marker='o', edgecolors=ec, linewidth=0.5, s=25,
-           cmap=cm.hot_r, c=alldepths, zorder=-0.1)
+           cmap=cm.hot_r, c=alldepths, vmin=0, vmax=1, zorder=-0.1)
 # plot overlapping edges to help distinguish points:
 aa.scatter(allthetas, allrs, marker='o', edgecolors=ec, facecolors='none',
            linewidth=0.5, s=25)
