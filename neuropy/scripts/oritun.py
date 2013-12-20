@@ -17,6 +17,7 @@ from scripts.polar_demo import fractional_polar_axes
 # maybe include grating experiments as well, if necessary?
 #recs = [ptc15.tr7c.r71, ptc22.tr1.r03, ptc22.tr1.r18, ptc22.tr2.r25, ptc22.tr2.r31]
 recs = [ptc15.tr7c.r71, ptc22.tr1.r03, ptc22.tr2.r25]
+alpha = 0.01 # p value threshold for significance
 ec = 'gray'
 allthetas, allrs, alldepths = [], [], []
 fs = fontsize() # save original font size
@@ -27,6 +28,8 @@ for rec in recs:
         neuron = rec.alln[nid]
         tune = neuron.tune()
         theta, r, z, p = tune.pref(var='ori')
+        if not p < alpha:
+            continue # neuron doesn't have significant tuning, skip to next one
         thetas.append(theta) # off by 90 deg for some reason
         rs.append(r)
         depths.append(neuron.pos[1])
