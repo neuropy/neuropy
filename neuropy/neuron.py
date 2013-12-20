@@ -855,15 +855,16 @@ class Tune(object):
             raise NotImplementedError('preference calc only intended for ori for now')
         self.calc(var=var, fixed=fixed)
         # don't allow oris > 180 deg, otherwise completely direction independent responses
-        # will cancel out, resulting in no apparent tuning. Do this by mod 180 and then angle
-        # doubling, although it seems only the angle doubling is really necessary:
-        oris, counts = self.x % 180, self.y # oris in deg
-        orisrad = 2 * oris * np.pi/180 # convert from deg to rad
+        # will cancel out, resulting in no apparent tuning. Do this by taking mod 180. Then,
+        # double all the angles for proper vector summation in polar space. In fact, it seems
+        # doubling renders mod by 180 redundant:
+        oris, counts = self.x, self.y # oris in deg
+        orisrad = 2 * oris * np.pi/180 # angle double, convert from deg to rad
         x = (counts*np.cos(orisrad)).sum()
         y = (counts*np.sin(orisrad)).sum()
         # arctan2 takes sign of x and y into account, then undo the angle doubling:
         theta = np.arctan2(y, x) / 2 # rad
-        theta = theta * 180 / np.pi + 90 # rad to deg, off by 90 deg for some reason
+        theta = (theta * 180/np.pi) % 180 # rad to deg, limit to 0 to 180
         r = np.sqrt(x**2+y**2) / counts.sum() # fraction of total spikes
         return theta, r
 

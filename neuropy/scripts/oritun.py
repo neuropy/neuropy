@@ -27,7 +27,7 @@ for rec in recs:
         neuron = rec.alln[nid]
         tune = neuron.tune()
         theta, r = tune.pref(var='ori')
-        thetas.append(theta)
+        thetas.append(theta) # off by 90 deg for some reason
         rs.append(r)
         depths.append(neuron.pos[1])
     thetas = np.asarray(thetas)
