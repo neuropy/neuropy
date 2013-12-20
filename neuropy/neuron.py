@@ -875,7 +875,14 @@ class Tune(object):
         
         Ex: r71.n[1].tune().plot('phase0', fixed={'ori':138, 'sfreqCycDeg':[0.4, 0.8]})
         """
-        self.calc(var=var, fixed=fixed)
+        if var == 'ori':
+            theta, r = self.pref(var=var, fixed=fixed)
+            txt = 'pref=%.2f\nr=%.2f' % (theta, r)
+        else:
+            self.calc(var=var, fixed=fixed)
+            r = self.y.max() / self.y.sum() # fraction of spikes at max
+            txt = 'peak=%.2f\nr=%.2f' % (self.x[self.y.argmax()], r)
+
         # create a new figure:
         f = pl.figure()
         a = f.add_subplot(111)
@@ -886,10 +893,8 @@ class Tune(object):
         titlestr += ' nid%d' % self.neuron.id
         a.set_title(titlestr)
         f.canvas.window().setWindowTitle(titlestr)
-        a.text(0.99, 0.99, 'peak=(%s, %s)' % (self.x[self.y.argmax()], self.y.max()),
-               transform=a.transAxes,
-               horizontalalignment='right',
-               verticalalignment='top')
+        a.text(0.99, 0.99, txt, transform=a.transAxes,
+               horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
         return self
 
