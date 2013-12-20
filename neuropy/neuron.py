@@ -865,8 +865,16 @@ class Tune(object):
         # arctan2 takes sign of x and y into account, then undo the angle doubling:
         theta = np.arctan2(y, x) / 2 # rad
         theta = (theta * 180/np.pi) % 180 # rad to deg, limit to 0 to 180
-        r = np.sqrt(x**2+y**2) / counts.sum() # fraction of total spikes
-        return theta, r
+        n = counts.sum()
+        r = np.sqrt(x**2+y**2) / n # fraction of total spikes
+        # calc significance of r, eq 4.17 From p70 of Statistical Analysis of Circular Data,
+        # by N.I. Fisher, Cambridge University Press, 1993 (1995 paperback edition):
+        # I'm assuming here that n should be the number of spikes, ie the number of data
+        # points used to create all the vectors, not the number of vectors (which in this
+        # application is the number of orientation conditions)
+        z = n * r**2 # z-score
+        p = np.exp(-z) * (1 + (2*z-z**2)/(4*n) - (24*z-132*z**2+76*z**3-9*z**4)/(288*n**2))
+        return theta, r, z, p
 
     def plot(self, var='ori', fixed=None):
         """var: string name of variable you want to plot a tuning curve for
@@ -876,8 +884,11 @@ class Tune(object):
         Ex: r71.n[1].tune().plot('phase0', fixed={'ori':138, 'sfreqCycDeg':[0.4, 0.8]})
         """
         if var == 'ori':
-            theta, r = self.pref(var=var, fixed=fixed)
-            txt = 'pref=%.2f\nr=%.2f' % (theta, r)
+            theta, r, z, p = self.pref(var=var, fixed=fixed)
+            txt = ('pref=%.2f\n'
+                   'r=%.2f\n'
+                   'z=%.2f\n'
+                   'p=%.6f' % (theta, r, z, p))
         else:
             self.calc(var=var, fixed=fixed)
             r = self.y.max() / self.y.sum() # fraction of spikes at max
