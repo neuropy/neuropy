@@ -847,12 +847,17 @@ class Tune(object):
                 y[vali] += self.counts[sweepi].sum()
         self.x, self.y = x, y
 
-    def pref(self, var='ori', fixed=None):
+    def pref(self, var='ori', fixed=None, force=False):
         """Return preferred value of tuning var, as well as its strength relative to all the
         other possible values of var. Currently only intended for var='ori', but that could
         change as needed"""
         if var != 'ori':
             raise NotImplementedError('preference calc only intended for ori for now')
+        if not force and self.var == var:
+            try: # if pref was already run with desired var, saved results should be fine:
+                return self.theta, self.r, self.z, self.p
+            except AttributeError: # first time called
+                pass
         self.calc(var=var, fixed=fixed)
         # don't allow oris > 180 deg, otherwise completely direction independent responses
         # will cancel out, resulting in no apparent tuning. Do this by taking mod 180. Then,
@@ -868,15 +873,17 @@ class Tune(object):
         n = counts.sum()
         r = np.sqrt(x**2+y**2) / n # fraction of total spikes
         # calc significance of r, eq 4.17 From p70 of Statistical Analysis of Circular Data,
-        # by N.I. Fisher, Cambridge University Press, 1993 (1995 paperback edition):
-        # I'm assuming here that n should be the number of spikes, ie the number of data
-        # points used to create all the vectors, not the number of vectors (which in this
-        # application is the number of orientation conditions)
+        # by N.I. Fisher, Cambridge University Press, 1993 (1995 paperback edition). Also, see
+        # Wilkie1983. I'm assuming here that n should be the number of spikes, ie the number
+        # of data points used to create all the vectors, not the number of vectors (which in
+        # this application is the number of orientation conditions). Almost certain this is
+        # correct.
         z = n * r**2 # z-score
         p = np.exp(-z) * (1 + (2*z-z**2)/(4*n) - (24*z-132*z**2+76*z**3-9*z**4)/(288*n**2))
+        self.theta, self.r, self.z, self.p = theta, r, z, p # save for potential future calls
         return theta, r, z, p
 
-    def plot(self, var='ori', fixed=None):
+    def plot(self, var='ori', fixed=None, figsize=(6, 5)):
         """var: string name of variable you want to plot a tuning curve for
         fixed: dict with keys containing names of vars to keep fixed when building tuning
         curve, and values containing each var's value(s) to fix at
