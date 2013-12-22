@@ -902,9 +902,11 @@ class Tune(object):
             txt = 'peak=%.2f\nr=%.2f' % (self.x[self.y.argmax()], r)
 
         # create a new figure:
-        f = pl.figure()
+        f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.plot(self.x, self.y, 'k.-')
+        fontsize = get_ipython().user_ns['fontsize'] # function
+        fs = fontsize() # save original font size
+        a.plot(self.x, self.y, c='e', ls='--', mew=0, mfc='k', ms=10)
         a.set_xlabel(var)
         a.set_ylabel('spike count')
         titlestr = lastcmd()
