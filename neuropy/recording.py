@@ -1210,8 +1210,10 @@ class RecordingRaster(BaseRecording):
             f.tight_layout(pad=0.3) # crop figure to contents
             self.f = f
 
-    def tune(self, nids=None, eid=0, var='ori', fixed=None, tdelay=None, plot=True):
-        """Plot tuning curves for given neurons, based on stimulus info in experiment eid"""
+    def tune(self, nids='all', alpha=0.01, eid=0, var='ori', fixed=None,
+             tdelay=None, plot=True):
+        """Plot tuning curves for given neurons, based on stimulus info in experiment eid.
+        alpha significance threshold only applied when var='ori'"""
         if nids == None:
             nids = sorted(self.n.keys()) # use active neurons
         elif nids == 'quiet':
@@ -1224,7 +1226,12 @@ class RecordingRaster(BaseRecording):
         for nid in nids:
             n = self.alln[nid]
             tune = n.tune(eid=eid, tdelay=tdelay)
-            tune.calc(var=var, fixed=fixed)
+            if var == 'ori':
+                theta, r, z, p = tune.pref(var=var, fixed=fixed)
+                if p >= alpha:
+                    continue # skip this nid
+            else:
+                tune.calc(var=var, fixed=fixed)
             tunes.append(tune)
             if plot:
                 tune.plot()
