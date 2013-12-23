@@ -14,31 +14,40 @@ from __future__ import print_function
 
 from scripts.polar_demo import fractional_polar_axes
 
-# maybe include grating experiments as well, if necessary?
+# maybe include drifting and flashed grating experiments as well, if necessary?
 #recs = [ptc15.tr7c.r71, ptc22.tr1.r03, ptc22.tr1.r18, ptc22.tr2.r25, ptc22.tr2.r31]
-recs = [ptc15.tr7c.r71, ptc22.tr1.r03, ptc22.tr2.r25]
+#recs = [ptc15.tr7c.r71, ptc22.tr1.r03, ptc22.tr2.r25]
+#recs = [ptc15.tr7c.r71]
+#recs = [ptc22.tr1.r03, ptc22.tr1.r18]
+trackrecs = {ptc15.tr7c: [ptc15.tr7c.r71],
+             ptc22.tr1: [ptc22.tr1.r03, ptc22.tr1.r18],
+             ptc22.tr2: [ptc22.tr2.r25, ptc22.tr2.r31]}
 alpha = 0.01 # p value threshold for significance
 ec = 'gray'
 allthetas, allrs, alldepths = [], [], []
 fs = fontsize() # save original font size
-for rec in recs:
-    thetas, rs, depths = [], [], [] # theta in deg, r in fraction of total spikes, depth in um
-    nids = np.array(sorted(rec.alln))
-    for nid in nids:
-        neuron = rec.alln[nid]
-        tune = neuron.tune()
-        theta, r, z, p = tune.pref(var='ori')
-        if not p < alpha:
-            continue # neuron doesn't have significant tuning, skip to next one
-        thetas.append(theta) # off by 90 deg for some reason
-        rs.append(r)
-        depths.append(neuron.pos[1])
-    thetas = np.asarray(thetas)
-    rs = np.asarray(rs)
-    chanmaxdepth = rec.sort.chanpos[:, 1].max()
-    depths = np.asarray(depths)
-    #depths = (chanmaxdepth - depths) / chanmaxdepth # invert and normalize
-    depths /= chanmaxdepth # normalize
+for track, recs in trackrecs.items():
+    thetas, rs, depths = {}, {}, {} # theta in deg, r in fraction of total spikes, depth in um
+    for rec in recs:
+        nids = np.array(sorted(rec.alln))
+        for nid in nids:
+            neuron = rec.alln[nid]
+            tune = neuron.tune()
+            theta, r, z, p = tune.pref(var='ori')
+            if not p < alpha:
+                continue # insignificant tuning, skip to next nid
+            if nid in rs and r <= rs[nid]:
+                continue # skip nid if it's less tuned than same nid from earlier rec
+            thetas[nid] = theta # off by 90 deg for some reason
+            rs[nid] = r
+            depths[nid] = neuron.pos[1]
+    nids = sorted(thetas.keys()) # just the significant ones that were kept
+    thetas = np.asarray([ thetas[nid] for nid in nids ])
+    rs = np.asarray([ rs[nid] for nid in nids ])
+    depths = np.asarray([ depths[nid] for nid in nids ])
+    depths /= depths.max() # normalize by cell of greatest depth
+    #chanmaxdepth = track.sort.chanpos[:, 1].max()
+    #depths /= chanmaxdepth # normalize by channel of maximum depth
     alldepths.append(depths)
     allthetas.append(thetas)
     allrs.append(rs)
@@ -54,7 +63,7 @@ for rec in recs:
     a.scatter(thetas, rs, marker='o', edgecolors=ec, facecolors='none', linewidth=1, s=175)
     #colorbar(sc)
     f.tight_layout(pad=0.3)
-    f.canvas.manager.set_window_title(rec.absname)
+    f.canvas.manager.set_window_title(track.absname)
     f.show()
 
     # plot depth vs theta, and colour by r, with lighter colours indicating higher r:
@@ -71,9 +80,11 @@ for rec in recs:
     #xlabel('orientation preference ($^{\circ}$)')
     #ylabel('normalized depth')
     f.tight_layout(pad=0.3)
-    f.canvas.manager.set_window_title(rec.absname+'_depth')
+    f.canvas.manager.set_window_title(track.absname+'_depth')
     f.show()
     fontsize(fs) # restore
+    print()
+    print('%s: %d of %d neurons' % (track.absname, len(nids), track.nallneurons))
 
 allthetas = np.hstack(allthetas)
 allrs = np.hstack(allrs)
