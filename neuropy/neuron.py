@@ -871,15 +871,18 @@ class Tune(object):
         theta = np.arctan2(y, x) / 2 # rad
         theta = (theta * 180/np.pi) % 180 # rad to deg, limit to 0 to 180
         n = counts.sum()
-        r = np.sqrt(x**2+y**2) / n # fraction of total spikes
-        # calc significance of r, eq 4.17 From p70 of Statistical Analysis of Circular Data,
-        # by N.I. Fisher, Cambridge University Press, 1993 (1995 paperback edition). Also, see
-        # Wilkie1983. I'm assuming here that n should be the number of spikes, ie the number
-        # of data points used to create all the vectors, not the number of vectors (which in
-        # this application is the number of orientation conditions). Almost certain this is
-        # correct.
-        z = n * r**2 # z-score
-        p = np.exp(-z) * (1 + (2*z-z**2)/(4*n) - (24*z-132*z**2+76*z**3-9*z**4)/(288*n**2))
+        if n:
+            r = np.sqrt(x**2+y**2) / n # fraction of total spikes
+            # calc significance of r, eq 4.17 From p70 of Statistical Analysis of Circular Data,
+            # by N.I. Fisher, Cambridge University Press, 1993 (1995 paperback edition). Also, see
+            # Wilkie1983. I'm assuming here that n should be the number of spikes, ie the number
+            # of data points used to create all the vectors, not the number of vectors (which in
+            # this application is the number of orientation conditions). Almost certain this is
+            # correct.
+            z = n * r**2 # critical value
+            p = np.exp(-z) * (1 + (2*z-z**2)/(4*n) - (24*z-132*z**2+76*z**3-9*z**4)/(288*n**2))
+        else: # no spikes
+            theta, r, z, p = 0.0, 0.0, 0.0, 0.0
         self.theta, self.r, self.z, self.p = theta, r, z, p # save for potential future calls
         return theta, r, z, p
 
