@@ -40,7 +40,7 @@ def fontsize(pts=None):
     rc['ytick.labelsize'] = pts
     rc['legend.fontsize'] = pts
     rc['font.size'] = pts
-    print('font size set to %r points' % pts)
+    #print('font size set to %r points' % pts)
 
 ip = get_ipython()
 ip.pdb = True # not sure what the difference is between .pdb and .call_pdb
