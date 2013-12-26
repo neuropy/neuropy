@@ -764,36 +764,24 @@ class Tune(object):
         spikes = self.neuron.spikes
         din = self.experiment.din
         ndin = len(din)
-        sweepis = np.unique(din[:, 1]) # all possible sweep indices
         if tdelay == None:
             if 'flash' in self.experiment.name: # flashgrating or flashbar
                 tdelay = 40000 # akin to a revcorr timepoint for STA
             else:
                 tdelay = 0
         self.tdelay = tdelay
-        # find positions of each sweep index in the din, and generate array of tranges
-        # during which that stimulus condition was on
-        self.tranges = {} # index into using sweepi
+        # find which spike indices the start and end of each sweep trange would fall
+        # between. Take difference between those two spike indices to get spike
+        # count for that trange. Repeat for all tranges for this sweepi to get
+        # array of spike counts, one for each trange.
         self.counts = {} # index into using sweepi
-        for sweepi in sweepis:
-            dinis = np.where(din[:, 1] == sweepi)[0] # screen refresh indices
-            deltaiis = np.where(np.diff(dinis) != 1)[0] # look for non-consecutive values
-            startiis = np.insert(deltaiis+1, 0, 0) # prepend with 0
-            endiis = np.append(deltaiis, len(dinis)-1)
-            rangeiis = np.vstack([startiis, endiis]).T
-            rangeis = dinis[rangeiis]
-            rangeis[:, 1] += 1 # end inclusive
-            rangeis[-1, 1] = min(rangeis[-1, 1], ndin-1) # except for very end
-            tranges = din[rangeis, 0] + tdelay
-            self.tranges[sweepi] = tranges
-            # find which spike indices the start and end of each trange would fall
-            # between. Take difference between those two spike indices to get spike
-            # count for that trange. Repeat for all tranges for this sweepi to get
-            # array of spike counts, one for each trange.
-            self.counts[sweepi] = np.diff(spikes.searchsorted(tranges), axis=1).flatten()
+        for sweepi, tranges in experiment.sweeptranges.items():
+            spikeis = spikes.searchsorted(tranges+tdelay) # include delay
+            self.counts[sweepi] = np.diff(spikeis, axis=1).flatten()
         self.var = None # init
         
     def calc(self, var='ori', fixed=None, force=False):
+        """Calculate the actual tuning curve"""
         if not force and self.var == var:
             return # calc was already run with desired var, so results should be fine
         if fixed != None:

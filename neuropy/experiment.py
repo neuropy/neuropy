@@ -569,6 +569,33 @@ class BaseExperiment(object):
 
         return sweeptable, dimlist, sweeplist, sweeptabletext
 
+    def get_sweeptranges(self):
+        """Find positions of each sweep index in the din, and generate array of tranges
+        during which that stimulus condition was on"""
+        try:
+            return self._sweeptranges # check for cache
+        except AttributeError:
+            pass
+        # build and cache sweeptranges:
+        self._sweeptranges = {} # index into using sweepi
+        din = self.din
+        ndin = len(din)
+        sweepis = np.unique(din[:, 1]) # all possible sweep indices
+        for sweepi in sweepis:
+            dinis = np.where(din[:, 1] == sweepi)[0] # screen refresh indices
+            deltaiis = np.where(np.diff(dinis) != 1)[0] # look for non-consecutive values
+            startiis = np.insert(deltaiis+1, 0, 0) # prepend with 0
+            endiis = np.append(deltaiis, len(dinis)-1)
+            rangeiis = np.vstack([startiis, endiis]).T
+            rangeis = dinis[rangeiis]
+            rangeis[:, 1] += 1 # end inclusive
+            rangeis[-1, 1] = min(rangeis[-1, 1], ndin-1) # except for very end
+            tranges = din[rangeis, 0]
+            self._sweeptranges[sweepi] = tranges
+        return self._sweeptranges
+
+    sweeptranges = property(get_sweeptranges)
+
 
 class ExperimentCode(BaseExperiment):
     """Mix-in class that defines the spike code related experiment methods"""
