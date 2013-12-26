@@ -25,17 +25,6 @@ trackrecs = {ptc15.tr7c: [ptc15.tr7c.r71, ptc15.tr7c.r73, ptc15.tr7c.r85],
 tracknames = sorted([ track.absname for track in trackrecs ])
 tracks = [ eval(trackname) for trackname in tracknames ]
 
-def get_pref(neuron):
-    """For multiprocessing pool"""
-    tune = neuron.tune()
-    theta, r, z, p = tune.pref(var='ori')
-    return theta, r, neuron.pos[1], p
-
-MULTIPROCESS = False
-if MULTIPROCESS:
-    from multiprocessing import Pool, cpu_count
-    pool = Pool(processes=cpu_count())
-
 alpha = 0.01 # p value threshold for significance
 ec = 'gray'
 allnids, allthetas, allrs, alldepths, allps = {}, {}, {}, {}, {}
@@ -46,32 +35,18 @@ for track in tracks:
     for rec in trackrecs[track]:
         nids = np.array(sorted(rec.alln))
         neurons = [ rec.alln[nid] for nid in nids ]
-        if MULTIPROCESS: # use multiple processes, has strange problems with multiple tracks:
-            results = pool.map(get_pref, neurons)
-            # process results:
-            for nid, result in zip(nids, results):
-                theta, r, depth, p = result
-                if not p < alpha:
-                    continue # insignificant tuning, skip to next nid
-                if nid in rs and r <= rs[nid]:
-                    continue # skip nid if it's less tuned than same nid from earlier rec
-                thetas[nid] = theta
-                rs[nid] = r
-                depths[nid] = depth
-                ps[nid] = p
-        else: # use a single process:
-            for nid in nids:
-                neuron = rec.alln[nid]
-                tune = neuron.tune()
-                theta, r, z, p = tune.pref(var='ori')
-                if not p < alpha:
-                    continue # insignificant tuning, skip to next nid
-                if nid in rs and r <= rs[nid]:
-                    continue # skip nid if it's less tuned than same nid from earlier rec
-                thetas[nid] = theta
-                rs[nid] = r
-                depths[nid] = neuron.pos[1]
-                ps[nid] = p
+        for nid in nids:
+            neuron = rec.alln[nid]
+            tune = neuron.tune()
+            theta, r, z, p = tune.pref(var='ori')
+            if not p < alpha:
+                continue # insignificant tuning, skip to next nid
+            if nid in rs and r <= rs[nid]:
+                continue # skip nid if it's less tuned than same nid from earlier rec
+            thetas[nid] = theta
+            rs[nid] = r
+            depths[nid] = neuron.pos[1]
+            ps[nid] = p
         print('%s: %d of %d neurons tuned' % (rec.absname, len(thetas), rec.nallneurons))
     nids = sorted(thetas.keys()) # just the significant ones that were kept
     thetas = np.asarray([ thetas[nid] for nid in nids ])
@@ -118,9 +93,6 @@ for track in tracks:
     f.canvas.manager.set_window_title(track.absname+'_depth')
     fontsize(fs) # restore
     print('%s: %d of %d neurons tuned' % (track.absname, len(nids), track.nallneurons))
-
-if MULTIPROCESS:
-    pool.close()
 
 # create flattened versions:
 nids = np.hstack([ allnids[track.absname] for track in tracks ])
