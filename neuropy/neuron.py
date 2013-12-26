@@ -881,8 +881,8 @@ class Tune(object):
             # correct.
             z = n * r**2 # critical value
             p = np.exp(-z) * (1 + (2*z-z**2)/(4*n) - (24*z-132*z**2+76*z**3-9*z**4)/(288*n**2))
-        else: # no spikes
-            theta, r, z, p = 0.0, 0.0, 0.0, 0.0
+        else: # no spikes, return values representing uniform 0 height distribution
+            theta, r, z, p = 0.0, 0.0, 0.0, 1.0
         self.theta, self.r, self.z, self.p = theta, r, z, p # save for potential future calls
         return theta, r, z, p
 
