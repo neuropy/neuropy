@@ -65,7 +65,7 @@ for track in tracks:
 
     # plot tuning strength vs theta, in half polar plot, colour by depth, with darker colours
     # indicating greater depth:
-    f = figure()
+    f = figure(figsize=(7.5, 6.5))
     a = fractional_polar_axes(f, thlim=(0, 180), rlim=(0, 1.02),
                               thlabel=None, rlabel=None, ticklabels=False)
     a.scatter(thetas, rs, marker='o', edgecolors=ec, linewidth=1, s=175,
@@ -103,7 +103,7 @@ ps = np.hstack([ allps[track.absname] for track in tracks ])
 
 # plot tuning strength vs theta, in half polar plot, colour by depth, with darker colours
 # indicating greater depth:
-f = figure()
+f = figure(figsize=(7.5, 6.5))
 a = fractional_polar_axes(f, thlim=(0, 180), rlim=(0, 1.02),
                           thlabel='orientation preference', rlabel='tuning strength')
 a.scatter(thetas, rs, marker='o', edgecolors=ec, linewidth=0.5, s=25,
@@ -116,7 +116,7 @@ f.tight_layout(pad=0.3)
 f.canvas.manager.set_window_title('all_tracks')
 
 # plot depth vs theta, and colour by r, with lighter colours indicating higher r:
-f = figure(figsize=(4.88, 3))
+f = figure(figsize=(7.5, 3.25))
 scatter(thetas, depths, marker='o', edgecolors=ec, linewidth=0.5, s=25,
         cmap=cm.hot, c=rs, vmin=0, vmax=1, zorder=-0.1)
 # plot overlapping edges to help distinguish points:
@@ -125,8 +125,8 @@ xlim(0, 180)
 xticks([0, 90, 180])
 ylim(1, 0)
 yticks([1, 0.5, 0])
-#xlabel('orientation preference ($^{\circ}$)')
-#ylabel('normalized depth')
+xlabel('orientation preference ($^{\circ}$)')
+ylabel('normalized depth')
 f.tight_layout(pad=0.3)
 f.canvas.manager.set_window_title('all_tracks_depth')
 show()
