@@ -39,7 +39,7 @@ print('%.2f %% total neurons < %.2f Hz' % ((allrates < MINRATE).sum() / n * 100,
 # Figure 2: plot meanrates PDF, distribution as y for modelling
 f2 = figure(2)
 logallrates = np.log10(allrates)
-logmin, logmax = min(logallrates), max(logallrates)
+logmin, logmax, logmean = min(logallrates), max(logallrates), logallrates.mean()
 logstart, logend = np.floor(logmin), np.ceil(logmax)
 edges = np.logspace(logstart, logend, nbins+1) # nbins+1 points in log space
 
@@ -56,10 +56,10 @@ def cost(p, x, y):
     mu, sigma, A = p
     return A * g(mu, sigma, x) - y
 
-logmean = -1
-logsigma = 1
+modellogmean = -1
+modellogsigma = 1
 A = max(y)
-p = logmean, logsigma, A
+p = modellogmean, modellogsigma, A
 result = leastsq(cost, p, args=(logx, y), full_output=True)
 p, cov_p, infodict, mesg, ier = result
 mu, sigma, A = p
@@ -74,8 +74,23 @@ axvline(x=MINRATE, c='e', ls='--', marker=None) # plot threshold
 xscale('log')
 xlabel('mean firing rate (Hz)')
 ylabel('neuron count')
-text(0.98, 0.98, 'log($\mu$) = %.2f\n'
-                 'log($\sigma$) = %.2f' % (mu, sigma),
+# arrow doesn't display correctly on log axis, use annotate instead:
+#arrow(10**logmean, 30, 0, -4, head_width=0.1, head_length=2, length_includes_head=True)
+annotate('', xy=(10**logmean, 26), xycoords='data',
+             xytext=(10**logmean, 29), textcoords='data',
+             arrowprops=dict(fc='k', ec='none', width=1, frac=0.5))
+annotate('', xy=(10**mu, 26), xycoords='data',
+             xytext=(10**mu, 29), textcoords='data',
+             arrowprops=dict(fc='m', ec='none', width=1, frac=0.5))
+text(0.99, 0.98, 'log(mean) = %.2f\n'
+                 'mean = %.2f Hz' % (logmean, 10**logmean),
+                 horizontalalignment='right',
+                 verticalalignment='top',
+                 transform=gca().transAxes,
+                 color='k')
+text(0.99, 0.88, 'log($\mu$) = %.2f\n'
+                 '$\mu$ = %.2f Hz\n'
+                 'log($\sigma$) = %.2f' % (mu, 10**mu, sigma),
                  horizontalalignment='right',
                  verticalalignment='top',
                  transform=gca().transAxes,
