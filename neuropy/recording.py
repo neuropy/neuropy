@@ -1077,8 +1077,8 @@ class RecordingRaster(BaseRecording):
         return PRaster(trange=trange, neurons=neurons, norder=norder, units=units, r=self,
                        size=size, color=color)
 
-    def traster(self, nids=None, eid=0, t0=None, dt=None, blank=True, s=20,
-                figsize=(7.5, None)):
+    def traster(self, nids=None, eid=0, t0=None, dt=None, blank=True, s=20, c=None, title=True,
+                ylabel=True, figsize=(7.5, None)):
         """Create a trial spike raster plot for given neurons, based on stimulus info
         in experiment eid. blank designates whether to include blank frames for trials in
         movie type stimuli"""
@@ -1188,10 +1188,11 @@ class RecordingRaster(BaseRecording):
                 continue
             trials = np.hstack(trials)
             trialis = np.hstack(trialis)
-            if supis[nidi]: c = 'r'
-            elif midis[nidi]: c = 'g'
-            elif deepis[nidi]: c = 'b'
-            else: c = 'y'
+            if c == None:
+                if supis[nidi]: c = 'r'
+                elif midis[nidi]: c = 'g'
+                elif deepis[nidi]: c = 'b'
+                else: c = 'y'
 
             f = pl.figure(figsize=figsize)
             a = f.add_subplot(111)
@@ -1203,10 +1204,12 @@ class RecordingRaster(BaseRecording):
             formatter = mpl.ticker.ScalarFormatter(useOffset=False)
             a.xaxis.set_major_formatter(formatter)
             a.set_xlabel("time (sec)")
-            a.set_ylabel("trial")
+            if ylabel:
+                a.set_ylabel("trial")
             titlestr = lastcmd() + " nid%d nidi%d" % (nid, nidi)
             gcfm().window.setWindowTitle(titlestr)
-            a.set_title(titlestr)
+            if title:
+                a.set_title(titlestr)
             f.tight_layout(pad=0.3) # crop figure to contents
             self.f = f
 
