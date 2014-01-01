@@ -1,6 +1,11 @@
 """Plot mean firing rates of all cells in each track, in descending order, on a log scale.
 Show firing rate threshold as well. Also, plot distribution of mean rates across all cells,
-again on a log scale. Copy and paste into neuropy console"""
+again on a log scale. Run with 'run -i scripts/meanrates.py' or copy and paste into neuropy
+console"""
+
+from __future__ import division
+from __future__ import print_function
+
 
 fontsize(18)
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
@@ -94,3 +99,4 @@ xlabel('neuron rank')
 ylabel('mean firing rate (Hz)')
 gcfm().window.setWindowTitle('meanrates_rank')
 f1.tight_layout(pad=0.3) # crop figure to contents
+show()
