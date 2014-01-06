@@ -1237,7 +1237,7 @@ class RecordingRaster(BaseRecording):
                 tune.calc(var=var, fixed=fixed)
             tunes.append(tune)
             if plot:
-                tune.plot()
+                tune.plot(var=var, fixed=fixed)
         return tunes
 
 class RecordingCode(BaseRecording):
