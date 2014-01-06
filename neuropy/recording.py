@@ -1205,7 +1205,7 @@ class RecordingRaster(BaseRecording):
             a.xaxis.set_major_formatter(formatter)
             a.set_xlabel("time (sec)")
             if ylabel:
-                a.set_ylabel("trial")
+                a.set_ylabel("trial index") # sweep index order, not necessarily temporal order
             titlestr = lastcmd() + " nid%d nidi%d" % (nid, nidi)
             gcfm().window.setWindowTitle(titlestr)
             if title:
