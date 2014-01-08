@@ -889,7 +889,11 @@ class Tune(object):
                    'p=%.6f' % (theta, r, z, p))
         else:
             self.calc(var=var, fixed=fixed)
-            r = self.y.max() / self.y.sum() # fraction of spikes at max
+            ysum = self.y.sum()
+            if ysum != 0:
+                r = self.y.max() / ysum # fraction of spikes at max
+            else:
+                r = 0.0
             txt = 'peak=%.2f\nr=%.2f' % (self.x[self.y.argmax()], r)
 
         # create a new figure:
