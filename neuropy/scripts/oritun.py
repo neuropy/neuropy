@@ -1,13 +1,6 @@
 """Plot orientation preference vs tuning strength and cell position of all oriented cells from
-a number of orientated stimulus recordings. Run with 'run -i scripts/oripop.py' or copy and
-paste into neuropy console.
-
-TODO: for each unique nid in each track, go through all driftbar and drift/flash grating
-recordings and use the ori tuning from the earliest recording, or perhaps from the recording
-that provides the strongest tuning. Need to do as much as possible to keep n as close to total
-n in the track as possible
-
-"""
+a number of orientated stimulus recordings. Run with 'run -i scripts/oritun.py' or copy and
+paste into neuropy console."""
 
 from __future__ import division
 from __future__ import print_function
