@@ -1095,6 +1095,10 @@ class RecordingRaster(BaseRecording):
             trialtype = 'dinrange' # one trial for every cycle of din values
         else:
             trialtype = 'dinval' # one trial per block of identical din values
+        if c == 'bwg': # black and white ticks on grey, for corresponding drift bar stimulus
+            assert trialtype == 'dinval'
+            brightness = e.sweeptable.data['brightness'] # indexed into using sweepis
+            assert len(np.unique(brightness)) == 2
         din = e.din
         times = din[:, 0] # times of every screen refresh
         sweepis = din[:, 1] # sweep indices of every screen refresh
@@ -1144,7 +1148,7 @@ class RecordingRaster(BaseRecording):
             t1s = times[i1s]
             tranges = np.column_stack((t0s, t1s))
         elif trialtype == 'dinval':
-            t0s, t1s = [], []
+            t0s, t1s, trangesweepis = [], [], []
             for sweepi in usweepis: # ordered by sweepi
                 i, = np.where(sweepis == sweepi) # screen refresh indices
                 # indices into i of start of each trange, prepend i with a value (-2)
@@ -1157,10 +1161,14 @@ class RecordingRaster(BaseRecording):
                 i1s = i[i1is]
                 t0s.append(times[i0s])
                 t1s.append(times[i1s])
+                assert len(i0is) == len(i1is)
+                ntranges = len(i0is) # number of tranges for this sweepi
+                trangesweepis.append(np.tile(sweepi, ntranges))
                 # each sweepi's tranges could also be saved into a dict, indexed by sweepi,
                 # as in the tuning curve code
             t0s = np.hstack(t0s)
             t1s = np.hstack(t1s)
+            trangesweepis = np.hstack(trangesweepis) # sweepi of every trange
             tranges = np.column_stack((t0s, t1s))
         dts = t1s - t0s
         maxdt = max(dts) # max trial duration
@@ -1189,6 +1197,20 @@ class RecordingRaster(BaseRecording):
             cs = c
             cmap = None
             axisbg = 'w'
+            if c == 'bwg':
+                # generate list of colors representing light and dark driftbar trials:
+                axisbg = 'e'
+                cmap = mpl.cm.gray
+                cs = []
+                for trialis, ts in zip(trialiss, tss):
+                    nspikes = len(ts)
+                    #assert nspikes == len(trialis)
+                    triali = trialis[0]
+                    #assert (trialis == triali).all()
+                    sweepi = trangesweepis[triali]
+                    b = brightness[sweepi] # 0s and 1s, one value per trial
+                    cs.append(np.tile(b, nspikes)) # build array of one value per spike
+                cs = np.hstack(cs)
             ts = np.hstack(tss)
             trialis = np.hstack(trialiss)
             if cs == None:
