@@ -1096,8 +1096,8 @@ class RecordingRaster(BaseRecording):
         else:
             trialtype = 'dinval' # one trial per block of identical din values
         din = e.din
-        times = din[:, 0] # sweep times
-        sweepis = din[:, 1] # sweep indices
+        times = din[:, 0] # times of every screen refresh
+        sweepis = din[:, 1] # sweep indices of every screen refresh
         uns = get_ipython().user_ns
         NULLDIN = uns['NULLDIN']
         # find unique sweep indices, excluding NULLDIN
@@ -1170,33 +1170,36 @@ class RecordingRaster(BaseRecording):
         nn = len(nids)
         ntrials = len(tranges)
         figsize = figsize[0], 1 + ntrials / 36 # ~1/36th vertical inch per trial
-        for nidi, nid in enumerate(nids):
+        for nidi, nid in enumerate(nids): # one figure per neuron
             spikes = self.alln[nid].spikes
-            trials = []
-            trialis = []
+            tss = []
+            trialiss = []
             for triali, trange in enumerate(tranges):
                 si0, si1 = spikes.searchsorted(trange)
-                # slice out spikes that fall within trials, make them relative to start of
-                # each trial, convert from us to sec
+                # slice out spikes that fall within tranges of this trial, make them
+                # relative to start of each trial, convert from us to sec
                 ts = (spikes[si0:si1] - trange[0]) / 1e6
                 nspikes = len(ts)
                 if nspikes == 0: # no spikes for this neuron for this trial
                     continue
-                trials.append(ts) # x values for this trial
-                trialis.append(np.tile(triali+1, nspikes)) # 1-based y values for this trial
-            if len(trials) == 0: # no spikes for this neuron for this experiment
+                tss.append(ts) # x values for this trial
+                trialiss.append(np.tile(triali, nspikes)) # 0-based y values for this trial
+            if len(tss) == 0: # no spikes for this neuron for this experiment
                 continue
-            trials = np.hstack(trials)
-            trialis = np.hstack(trialis)
-            if c == None:
-                if supis[nidi]: c = 'r'
-                elif midis[nidi]: c = 'g'
-                elif deepis[nidi]: c = 'b'
-                else: c = 'y'
+            cs = c
+            cmap = None
+            axisbg = 'w'
+            ts = np.hstack(tss)
+            trialis = np.hstack(trialiss)
+            if cs == None:
+                if supis[nidi]: cs = 'r'
+                elif midis[nidi]: cs = 'g'
+                elif deepis[nidi]: cs = 'b'
+                else: cs = 'y'
 
             f = pl.figure(figsize=figsize)
-            a = f.add_subplot(111)
-            a.scatter(trials, trialis, marker='|', c=c, s=s)
+            a = f.add_subplot(111, axisbg=axisbg)
+            a.scatter(ts, trialis+1, marker='|', c=cs, s=s, cmap=cmap) # plot 1-based trialis
             a.set_xlim(0, maxdt / 1e6) # sec
             # -1 inverts the y axis, +1 ensures last trial is fully visible:
             a.set_ylim(ntrials+1, -1)
