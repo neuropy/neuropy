@@ -813,7 +813,7 @@ class Tune(object):
             # somewhere, so it need not be done here? Also, ptc15 experiments are missing
             # .s and .d attribs, whose contents seems to be found in .oldparams
             vals = np.asarray(self.experiment.sweeptable[var])
-        if var == 'ori': # correct for orientation offset by adding
+        if var == 'ori': # correct for orientation offset by adding it to ori vals
             if (vals > 180).any():
                 maxori = 360
             else:
@@ -834,6 +834,7 @@ class Tune(object):
             for sweepi in sweepis:
                 y[vali] += self.counts[sweepi].sum()
         self.x, self.y = x, y
+        self.peak = x[y.argmax()]
 
     def pref(self, var='ori', fixed=None, force=False):
         """Return preferred value of tuning var, as well as its strength relative to all the
@@ -894,7 +895,7 @@ class Tune(object):
                 r = self.y.max() / ysum # fraction of spikes at max
             else:
                 r = 0.0
-            txt = 'peak=%.2f\nr=%.2f' % (self.x[self.y.argmax()], r)
+            txt = 'peak=%.2f\nr=%.2f' % (self.peak, r)
 
         # create a new figure:
         f = pl.figure(figsize=figsize)
