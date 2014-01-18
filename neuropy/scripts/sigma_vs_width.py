@@ -105,16 +105,18 @@ ylabel('voltage ($\mu$V)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('waveforms')
 tight_layout(pad=0.3)
-'''
+
 # scatter plot sigma vs dt
 figure(figsize=(3, 3))
-plot(dts, sigmas, '.')
+plot(dts, sigmas, 'k.')
+xticks([0, 100, 200, 300, 400])
+yticks(np.arange(0, 100+20, 20))
 xlabel('interpeak interval ($\mu$s)')
 ylabel('$\sigma$ ($\mu$m)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma vs dt')
 tight_layout(pad=0.3)
-
+'''
 # scatter plot sigma vs fwhm
 figure(figsize=(3, 3))
 plot(fwhms, sigmas, '.')
@@ -165,6 +167,9 @@ tight_layout(pad=0.3)
 # scatter plot duration vs dt
 figure(figsize=(3, 3))
 plot(dts, durations, 'k.')
+x = array([0, 400])
+y = 1.0*x + 140 # dividing line between the two clusters
+plot(x, y, 'e--')
 xlim(xmin=0)
 xticks([0, 100, 200, 300, 400])
 yticks([0, 200, 400, 600, 800])
