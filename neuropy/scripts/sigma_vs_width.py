@@ -1,10 +1,23 @@
-"""Scatter plot spatial sigma vs inter-peak interval, or FWHM of template characteristic peak"""
+"""Scatter plot spatial sigma vs various measures of spike width. Run from within neuropy
+using `run -i scripts/sigma_vs_width.py`"""
+
+## TODO: separate cells according to straight line in duration vs interpeak interval plot,
+## should provide cleaner separation than just splitting by duration at 350 us
 
 import scipy
 from pylab import get_current_fig_manager as gcfm
 from core import intround
 
+# fractional position along waveform to assume characteristic peak is roughly aligned to:
+alignf = 0.4
+newtres = 1 # tres to interpolate to, in us
+absslopethresh = 0.4 # uV/us
+tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2] # need to be loaded ahead of time
+#tracknames = [ track.absname for track in tracks ]
+
 def calc_t(nt, tres):
+    """Generate original and desired interpolated timebases t0 and t1, as well as initial
+    guess for where the alignment point is in t1"""
     tend = nt*tres
     t0 = np.arange(0, tend, tres)
     t1 = np.arange(0, tend-tres, newtres)
@@ -29,23 +42,17 @@ def argfwhm(a, exti, fraction=0.5):
     # return rightmost of left indices, and leftmost of right indices:
     return lis[-1], ris[0]
 
-# fractional position along waveform to assume characteristic peak is roughly aligned to:
-alignf = 0.4
-newtres = 1 # tres to interpolate to, in us
-absslopethresh = 0.4 # uV/us
-tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2] # need to be loaded ahead of time
-tracknames = [ track.absname for track in tracks ]
-
 nt = 50
 tres = 20
 t0, t1, aligni = calc_t(nt, tres) # initial guess, for speed
 sigmas = []
 waves = []
-dts = []
-fwhms = []
+dts = [] # interpeak interval
+fwhms = [] # full-width half max values
 slopes = []
-durations = []
-figure() # init fig for waveform plots
+durations = [] # spike duration, measured by time between slope threshold crossings
+
+# collect maxchan waveforms and calculate various measures of waveform duration:
 for track in tracks:
     if tres != track.tres: # recalculate timepoints
         tres = track.tres
@@ -59,10 +66,9 @@ for track in tracks:
         sigmas.append(n.sigma)
         maxchani = n.chans.searchsorted(n.maxchan)
         wave = n.wavedata[maxchani]
-        # interpolate waveforms for higher rez dt:
+        # interpolate waveforms from original t0 timebase to higher rez t1 timebase:
         wave = scipy.interpolate.spline(t0, wave, t1)
         waves.append(wave)
-        plot(t1, wave, '-', lw=1) # overplot all waveforms
         t0i, t1i = wave.argmax(), wave.argmin()
         dt = abs(t0i - t1i) * newtres
         dts.append(dt) # dt between biggest max and min peaks
@@ -89,131 +95,150 @@ for track in tracks:
         # extremum in each waveform. Looking at the overplotted waveforms, that, strangely,
         # is where I see the most dichotomy. Not so much in the first peak.
 
-# label the wave plots
-xlabel('t (us)')
-ylabel('voltage (uV)')
-title('tracks: %r' % tracknames)
+# plot unclassified maxchan waveforms:
+figure(figsize=(3, 3))
+for wave in waves:
+    plot(t1, wave, '-', lw=1) # overplot all waveforms
+yticks(np.arange(-200, 200+100, 100))
+xlabel('t ($\mu$s)')
+ylabel('voltage ($\mu$V)')
+#title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('waveforms')
 tight_layout(pad=0.3)
-
+'''
 # scatter plot sigma vs dt
-figure()
+figure(figsize=(3, 3))
 plot(dts, sigmas, '.')
-xlabel('dt (us)')
-ylabel('sigma (um)')
-title('tracks: %r' % tracknames)
+xlabel('interpeak interval ($\mu$s)')
+ylabel('$\sigma$ ($\mu$m)')
+#title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma vs dt')
 tight_layout(pad=0.3)
 
 # scatter plot sigma vs fwhm
-figure()
+figure(figsize=(3, 3))
 plot(fwhms, sigmas, '.')
-xlabel('FWHM (us)')
-ylabel('sigma (um)')
-title('tracks: %r' % tracknames)
+xlabel('FWHM ($\mu$s)')
+ylabel('$\sigma$ ($\mu$m)')
+#title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma vs fwhm')
 tight_layout(pad=0.3)
 
 # scatter plot sigma vs slope
-figure()
+figure(figsize=(3, 3))
 plot(slopes, sigmas, '.')
-xlabel('slope (uv/us)')
-ylabel('sigma (um)')
-title('tracks: %r' % tracknames)
+xlabel('slope ($\mu$V/$\mu$s)')
+ylabel('$\sigma$ ($\mu$m)')
+#title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma vs slope')
 tight_layout(pad=0.3)
-
+'''
 # scatter plot sigma vs duration
-figure()
-plot(durations, sigmas, '.')
-xlabel('duration (us)')
-ylabel('sigma (um)')
-title('tracks: %r' % tracknames)
+figure(figsize=(3, 3))
+plot(durations, sigmas, 'k.')
+ylim(ymin=0)
+xticks([0, 200, 400, 600, 800])
+xlabel('duration ($\mu$s)')
+ylabel('$\sigma$ ($\mu$m)')
+#title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma vs duration')
 tight_layout(pad=0.3)
-
+'''
 # scatter plot fwhm vs dt
-figure()
+figure(figsize=(3, 3))
 plot(dts, fwhms, '.')
-xlabel('dt (us)')
-ylabel('FWHM (us)')
-title('tracks: %r' % tracknames)
+xlabel('interpeak interval ($\mu$s)')
+ylabel('FWHM ($\mu$s)')
+#title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('fwhm vs dt')
 tight_layout(pad=0.3)
 
 # scatter plot slope vs dt
-figure()
+figure(figsize=(3, 3))
 plot(dts, slopes, '.')
-xlabel('dt (us)')
-ylabel('slope (uv/us)')
-title('tracks: %r' % tracknames)
+xlabel('interpeak interval ($\mu$s)')
+ylabel('slope ($\mu$V/$\mu$s)')
+#title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('slope vs dt')
 tight_layout(pad=0.3)
-
+'''
 # scatter plot duration vs dt
-figure()
-plot(dts, durations, '.')
-xlabel('dt (us)')
-ylabel('duration (us)')
-title('tracks: %r' % tracknames)
+figure(figsize=(3, 3))
+plot(dts, durations, 'k.')
+xlim(xmin=0)
+xticks([0, 100, 200, 300, 400])
+yticks([0, 200, 400, 600, 800])
+xlabel('interpeak interval ($\mu$s)')
+ylabel('duration ($\mu$s)')
+#title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('duration vs dt')
 tight_layout(pad=0.3)
-
+'''
 # scatter plot duration vs slope
-figure()
+figure(figsize=(3, 3))
 plot(slopes, durations, '.')
-xlabel('slope (uV/us)')
-ylabel('duration (us)')
-title('tracks: %r' % tracknames)
+xlabel('slope ($\mu$V/$\mu$s)')
+ylabel('duration ($\mu$s)')
+#title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('duration vs slope')
 tight_layout(pad=0.3)
 
 # scatter plot slope vs fwhm
-figure()
+figure(figsize=(3, 3))
 plot(fwhms, slopes, '.')
-xlabel('FWHM (us)')
-ylabel('slope (uv/us)')
-title('tracks: %r' % tracknames)
+xlabel('FWHM ($\mu$s)')
+ylabel('slope ($\mu$V/$\mu$s)')
+#title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('slope vs fwhm')
 tight_layout(pad=0.3)
-
+'''
 # plot sigma distribution
-figure()
-hist(sigmas, bins=30)
-xlabel('sigma (um)')
-title('tracks: %r' % tracknames)
+figure(figsize=(3, 3))
+hist(sigmas, bins=15, fc='k')
+xlim(xmin=0)
+xticks([0, 25, 50, 75, 100])
+xlabel('$\sigma$ ($\mu$m)')
+ylabel('neuron count')
+#title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma distrib')
 tight_layout(pad=0.3)
 
 # plot dt distribution
-figure()
-hist(dts, bins=30)
-xlabel('dt (us)')
-title('tracks: %r' % tracknames)
+figure(figsize=(3, 3))
+hist(dts, bins=30, fc='k')
+xlim(xmin=0)
+xticks([0, 100, 200, 300, 400])
+xlabel('interpeak interval ($\mu$s)')
+ylabel('neuron count')
+#title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('dt distrib')
 tight_layout(pad=0.3)
-
+'''
 # plot fwhm distribution
-figure()
+figure(figsize=(3, 3))
 hist(fwhms, bins=30)
-xlabel('FWHM (us)')
-title('tracks: %r' % tracknames)
+xlabel('FWHM ($\mu$s)')
+ylabel('neuron count')
+#title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('fwhm distrib')
 tight_layout(pad=0.3)
 
 # plot slope distribution
-figure()
+figure(figsize=(3, 3))
 hist(slopes, bins=30)
-xlabel('slope (uV/us)')
-title('tracks: %r' % tracknames)
+xlabel('slope ($\mu$V/$\mu$s)')
+ylabel('neuron count')
+#title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('slope distrib')
 tight_layout(pad=0.3)
-
+'''
 # plot duration distribution
-figure()
-hist(durations, bins=30)
-xlabel('duration (us)')
-title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+figure(figsize=(3, 3))
+hist(durations, bins=30,fc='k')
+xticks([0, 200, 400, 600, 800])
+xlabel('duration ($\mu$s)')
+ylabel('neuron count')
+#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
 gcfm().window.setWindowTitle('duration distrib')
 tight_layout(pad=0.3)
 
@@ -223,32 +248,35 @@ fastis = np.asarray(durations) <= 350
 slowis = np.asarray(durations) > 350
 waves = np.asarray(waves)
 
-figure()
+# plot classified (fast and slow) waveforms:
+figure(figsize=(3, 3))
 for wave in waves[slowis]:
     plot(t1, wave, 'r-', lw=1)
 for wave in waves[fastis]:
     plot(t1, wave, 'g-', lw=1)
-xlabel('t (us)')
-ylabel('voltage (uV)')
-title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+yticks(np.arange(-200, 200+100, 100))
+xlabel('t ($\mu$s)')
+ylabel('voltage ($\mu$V)')
+#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
 gcfm().window.setWindowTitle('slow and fast waveforms')
 tight_layout(pad=0.3)
 '''
-figure()
+figure(figsize=(3, 3))
 for wave in waves[slowis]:
     plot(t1, wave, 'r-', lw=1)
-xlabel('t (us)')
-ylabel('voltage (uV)')
+xlabel('t ($\mu$s)')
+ylabel('voltage ($\mu$V)')
 title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
 gcfm().window.setWindowTitle('slow waveforms')
 tight_layout(pad=0.3)
 
-figure()
+figure(figsize=(3, 3))
 for wave in waves[fastis]:
     plot(t1, wave, 'g-', lw=1)
-xlabel('t (us)')
-ylabel('voltage (uV)')
+xlabel('t ($\mu$s)')
+ylabel('voltage ($\mu$V)')
 title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
 gcfm().window.setWindowTitle('fast waveforms')
 tight_layout(pad=0.3)
 '''
+show()
