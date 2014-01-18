@@ -1081,7 +1081,8 @@ class RecordingRaster(BaseRecording):
                 ylabel=True, figsize=(7.5, None)):
         """Create a trial spike raster plot for given neurons, based on stimulus info
         in experiment eid. blank designates whether to include blank frames for trials in
-        movie type stimuli"""
+        movie type stimuli. Use c='bwg' to plot black and white bars on a grey background
+        for black and white drifting bar trials"""
         if nids == None:
             nids = sorted(self.n.keys()) # use active neurons
         elif nids == 'quiet':
