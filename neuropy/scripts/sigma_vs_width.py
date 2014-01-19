@@ -1,8 +1,6 @@
-"""Scatter plot spatial sigma vs various measures of spike width. Run from within neuropy
+"""Scatter plot various combinations of spatial sigma and temporal measures of spikes. Also
+plot distributions and waveforms, as separated by shape thresholds. Run from within neuropy
 using `run -i scripts/sigma_vs_width.py`"""
-
-## TODO: separate cells according to straight line in duration vs interpeak interval plot,
-## should provide cleaner separation than just splitting by duration at 350 us
 
 import scipy
 from pylab import get_current_fig_manager as gcfm
@@ -12,6 +10,7 @@ from core import intround
 alignf = 0.4
 newtres = 1 # tres to interpolate to, in us
 absslopethresh = 0.4 # uV/us
+durationthresh = 350 # duration separation threshold
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2] # need to be loaded ahead of time
 #tracknames = [ track.absname for track in tracks ]
 
@@ -47,7 +46,7 @@ tres = 20
 t0, t1, aligni = calc_t(nt, tres) # initial guess, for speed
 sigmas = []
 waves = []
-dts = [] # interpeak interval
+ipis = [] # interpeak intervals
 fwhms = [] # full-width half max values
 slopes = []
 durations = [] # spike duration, measured by time between slope threshold crossings
@@ -70,8 +69,8 @@ for track in tracks:
         wave = scipy.interpolate.spline(t0, wave, t1)
         waves.append(wave)
         t0i, t1i = wave.argmax(), wave.argmin()
-        dt = abs(t0i - t1i) * newtres
-        dts.append(dt) # dt between biggest max and min peaks
+        ipi = abs(t0i - t1i) * newtres
+        ipis.append(ipi) # interval between biggest max and min peaks
         extis = argextrema(wave) # indices of all local extrema
         exti = extis[abs(extis - aligni).argmin()] # extremum closest to aligni
         li, ri = argfwhm(wave, exti, fraction=0.5)
@@ -95,31 +94,35 @@ for track in tracks:
         # extremum in each waveform. Looking at the overplotted waveforms, that, strangely,
         # is where I see the most dichotomy. Not so much in the first peak.
 
+sigmas = np.hstack(sigmas)
+ipis = np.hstack(ipis)
+durations = np.hstack(durations)
+
 # plot unclassified maxchan waveforms:
 figure(figsize=(3, 3))
 for wave in waves:
     plot(t1, wave, '-', lw=1) # overplot all waveforms
 yticks(np.arange(-200, 200+100, 100))
-xlabel('t ($\mu$s)')
+xlabel('time ($\mu$s)')
 ylabel('voltage ($\mu$V)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('waveforms')
 tight_layout(pad=0.3)
 
-# scatter plot sigma vs dt
+# scatter plot sigma vs ipi
 figure(figsize=(3, 3))
-plot(dts, sigmas, 'k.')
+plot(ipis, sigmas, 'k.')
 xticks([0, 100, 200, 300, 400])
 yticks(np.arange(0, 100+20, 20))
 xlabel('interpeak interval ($\mu$s)')
 ylabel('$\sigma$ ($\mu$m)')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('sigma vs dt')
+gcfm().window.setWindowTitle('sigma vs ipi')
 tight_layout(pad=0.3)
-'''
+
 # scatter plot sigma vs fwhm
 figure(figsize=(3, 3))
-plot(fwhms, sigmas, '.')
+plot(fwhms, sigmas, 'k.')
 xlabel('FWHM ($\mu$s)')
 ylabel('$\sigma$ ($\mu$m)')
 #title('tracks: %r' % tracknames)
@@ -128,13 +131,13 @@ tight_layout(pad=0.3)
 
 # scatter plot sigma vs slope
 figure(figsize=(3, 3))
-plot(slopes, sigmas, '.')
+plot(slopes, sigmas, 'k.')
 xlabel('slope ($\mu$V/$\mu$s)')
 ylabel('$\sigma$ ($\mu$m)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma vs slope')
 tight_layout(pad=0.3)
-'''
+
 # scatter plot sigma vs duration
 figure(figsize=(3, 3))
 plot(durations, sigmas, 'k.')
@@ -145,43 +148,49 @@ ylabel('$\sigma$ ($\mu$m)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma vs duration')
 tight_layout(pad=0.3)
-'''
-# scatter plot fwhm vs dt
+
+# scatter plot fwhm vs ipi
 figure(figsize=(3, 3))
-plot(dts, fwhms, '.')
+plot(ipis, fwhms, 'k.')
 xlabel('interpeak interval ($\mu$s)')
 ylabel('FWHM ($\mu$s)')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('fwhm vs dt')
+gcfm().window.setWindowTitle('fwhm vs ipi')
 tight_layout(pad=0.3)
 
-# scatter plot slope vs dt
+# scatter plot slope vs ipi
 figure(figsize=(3, 3))
-plot(dts, slopes, '.')
+plot(ipis, slopes, 'k.')
 xlabel('interpeak interval ($\mu$s)')
 ylabel('slope ($\mu$V/$\mu$s)')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('slope vs dt')
+gcfm().window.setWindowTitle('slope vs ipi')
 tight_layout(pad=0.3)
-'''
-# scatter plot duration vs dt
+
+# scatter plot duration vs ipi
 figure(figsize=(3, 3))
-plot(dts, durations, 'k.')
+
+# equation for dividing line between the two clusters
 x = array([0, 400])
-y = 1.0*x + 140 # dividing line between the two clusters
-plot(x, y, 'e--')
+y = 1.0*x + 140
+durationthreshes = 1.0*ipis + 140
+fastis = np.asarray(durations) <= durationthreshes
+slowis = np.asarray(durations) > durationthreshes
+plot(ipis[slowis], durations[slowis], 'b.')
+plot(ipis[fastis], durations[fastis], 'r.')
+plot(x, y, 'e--') # plot dividing line
 xlim(xmin=0)
 xticks([0, 100, 200, 300, 400])
 yticks([0, 200, 400, 600, 800])
 xlabel('interpeak interval ($\mu$s)')
 ylabel('duration ($\mu$s)')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('duration vs dt')
+gcfm().window.setWindowTitle('duration vs ipi')
 tight_layout(pad=0.3)
-'''
+
 # scatter plot duration vs slope
 figure(figsize=(3, 3))
-plot(slopes, durations, '.')
+plot(slopes, durations, 'k.')
 xlabel('slope ($\mu$V/$\mu$s)')
 ylabel('duration ($\mu$s)')
 #title('tracks: %r' % tracknames)
@@ -190,13 +199,13 @@ tight_layout(pad=0.3)
 
 # scatter plot slope vs fwhm
 figure(figsize=(3, 3))
-plot(fwhms, slopes, '.')
+plot(fwhms, slopes, 'k.')
 xlabel('FWHM ($\mu$s)')
 ylabel('slope ($\mu$V/$\mu$s)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('slope vs fwhm')
 tight_layout(pad=0.3)
-'''
+
 # plot sigma distribution
 figure(figsize=(3, 3))
 hist(sigmas, bins=15, fc='k')
@@ -208,20 +217,20 @@ ylabel('neuron count')
 gcfm().window.setWindowTitle('sigma distrib')
 tight_layout(pad=0.3)
 
-# plot dt distribution
+# plot ipi distribution
 figure(figsize=(3, 3))
-hist(dts, bins=30, fc='k')
+hist(ipis, bins=30, fc='k')
 xlim(xmin=0)
 xticks([0, 100, 200, 300, 400])
 xlabel('interpeak interval ($\mu$s)')
 ylabel('neuron count')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('dt distrib')
+gcfm().window.setWindowTitle('ipi distrib')
 tight_layout(pad=0.3)
-'''
+
 # plot fwhm distribution
 figure(figsize=(3, 3))
-hist(fwhms, bins=30)
+hist(fwhms, bins=30, fc='k')
 xlabel('FWHM ($\mu$s)')
 ylabel('neuron count')
 #title('tracks: %r' % tracknames)
@@ -230,16 +239,16 @@ tight_layout(pad=0.3)
 
 # plot slope distribution
 figure(figsize=(3, 3))
-hist(slopes, bins=30)
+hist(slopes, bins=30, fc='k')
 xlabel('slope ($\mu$V/$\mu$s)')
 ylabel('neuron count')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('slope distrib')
 tight_layout(pad=0.3)
-'''
+
 # plot duration distribution
 figure(figsize=(3, 3))
-hist(durations, bins=30,fc='k')
+hist(durations, bins=30, fc='k')
 xticks([0, 200, 400, 600, 800])
 xlabel('duration ($\mu$s)')
 ylabel('neuron count')
@@ -247,41 +256,58 @@ ylabel('neuron count')
 gcfm().window.setWindowTitle('duration distrib')
 tight_layout(pad=0.3)
 
-# separate fast vs slow waveforms using trough at 350 us in duration distrib, given
-# absslopethresh = 0.4:
-fastis = np.asarray(durations) <= 350
-slowis = np.asarray(durations) > 350
+# plot waveforms classified by dividing line in duration vs ipi plot:
 waves = np.asarray(waves)
-
-# plot classified (fast and slow) waveforms:
 figure(figsize=(3, 3))
 for wave in waves[slowis]:
-    plot(t1, wave, 'r-', lw=1)
+    plot(t1, wave, 'b-', lw=1)
 for wave in waves[fastis]:
-    plot(t1, wave, 'g-', lw=1)
+    plot(t1, wave, 'r-', lw=1)
 yticks(np.arange(-200, 200+100, 100))
-xlabel('t ($\mu$s)')
+xlabel('time ($\mu$s)')
 ylabel('voltage ($\mu$V)')
 #title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
-gcfm().window.setWindowTitle('slow and fast waveforms')
+gcfm().window.setWindowTitle('waveformsep duration vs ipi')
 tight_layout(pad=0.3)
-'''
+
+# plot slow waveforms separately:
 figure(figsize=(3, 3))
 for wave in waves[slowis]:
-    plot(t1, wave, 'r-', lw=1)
-xlabel('t ($\mu$s)')
+    plot(t1, wave, 'b-', lw=1)
+yticks(np.arange(-200, 200+100, 100))
+slow_ymax = ylim()[1]
+xlabel('time ($\mu$s)')
 ylabel('voltage ($\mu$V)')
-title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
 gcfm().window.setWindowTitle('slow waveforms')
 tight_layout(pad=0.3)
 
+# plot fast waveforms separately:
 figure(figsize=(3, 3))
 for wave in waves[fastis]:
-    plot(t1, wave, 'g-', lw=1)
-xlabel('t ($\mu$s)')
+    plot(t1, wave, 'r-', lw=1)
+ylim(ymax=slow_ymax)
+yticks(np.arange(-200, 200+100, 100))
+xlabel('time ($\mu$s)')
 ylabel('voltage ($\mu$V)')
-title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
 gcfm().window.setWindowTitle('fast waveforms')
 tight_layout(pad=0.3)
-'''
+
+# plot waveforms classified by durationthresh:
+fastis = np.asarray(durations) <= durationthresh
+slowis = np.asarray(durations) > durationthresh
+waves = np.asarray(waves)
+figure(figsize=(3, 3))
+for wave in waves[slowis]:
+    plot(t1, wave, 'b-', lw=1)
+for wave in waves[fastis]:
+    plot(t1, wave, 'r-', lw=1)
+yticks(np.arange(-200, 200+100, 100))
+xlabel('time ($\mu$s)')
+ylabel('voltage ($\mu$V)')
+#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+gcfm().window.setWindowTitle('waveformsep durationthresh=%s' % durationthresh)
+tight_layout(pad=0.3)
+
 show()
