@@ -218,6 +218,16 @@ ylabel('neuron count')
 gcfm().window.setWindowTitle('sigma distrib')
 tight_layout(pad=0.3)
 
+# plot duration distribution
+figure(figsize=(3, 3))
+hist(durations, bins=nbins, fc='k')
+xticks([0, 200, 400, 600, 800])
+xlabel('duration ($\mu$s)')
+ylabel('neuron count')
+#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+gcfm().window.setWindowTitle('duration distrib')
+tight_layout(pad=0.3)
+
 # plot ipi distribution
 figure(figsize=(3, 3))
 hist(ipis, bins=nbins, fc='k')
@@ -232,6 +242,7 @@ tight_layout(pad=0.3)
 # plot fwhm distribution
 figure(figsize=(3, 3))
 hist(fwhms, bins=nbins, fc='k')
+xticks([0, 50, 100, 150, 200])
 xlabel('FWHM ($\mu$s)')
 ylabel('neuron count')
 #title('tracks: %r' % tracknames)
@@ -244,16 +255,6 @@ hist(maxslopes, bins=nbins, fc='k')
 xlabel('maximum slope ($\mu$V/$\mu$s)')
 ylabel('neuron count')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('slope distrib')
-tight_layout(pad=0.3)
-
-# plot duration distribution
-figure(figsize=(3, 3))
-hist(durations, bins=30, fc='k')
-xticks([0, 200, 400, 600, 800])
-xlabel('duration ($\mu$s)')
-ylabel('neuron count')
-#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
 gcfm().window.setWindowTitle('maxslope distrib')
 tight_layout(pad=0.3)
 
