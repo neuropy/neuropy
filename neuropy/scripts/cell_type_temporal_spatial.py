@@ -11,6 +11,7 @@ alignf = 0.4
 newtres = 1 # tres to interpolate to, in us
 absslopethresh = 0.4 # uV/us
 durationthresh = 350 # duration separation threshold
+nbins = 20
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2] # need to be loaded ahead of time
 #tracknames = [ track.absname for track in tracks ]
 
@@ -48,7 +49,7 @@ sigmas = []
 waves = []
 ipis = [] # interpeak intervals
 fwhms = [] # full-width half max values
-slopes = []
+maxslopes = [] # maximum abs slopes of each neuron
 durations = [] # spike duration, measured by time between slope threshold crossings
 
 # collect maxchan waveforms and calculate various measures of waveform duration:
@@ -78,7 +79,7 @@ for track in tracks:
         fwhms.append(fwhm)
         absslope = abs(np.diff(wave)) / newtres # uV/us
         maxabsslope = max(absslope)
-        slopes.append(maxabsslope)
+        maxslopes.append(maxabsslope)
         # another way to measure waveform duration is to see over what duration the abs(slope)
         # is greater than something close to 0. Starting from each end, at what timepoint does
         # the slope exceed this minimum threshold? Difference between timepoints is duration
@@ -131,11 +132,11 @@ tight_layout(pad=0.3)
 
 # scatter plot sigma vs slope
 figure(figsize=(3, 3))
-plot(slopes, sigmas, 'k.')
-xlabel('slope ($\mu$V/$\mu$s)')
+plot(maxslopes, sigmas, 'k.')
+xlabel('maximum slope ($\mu$V/$\mu$s)')
 ylabel('$\sigma$ ($\mu$m)')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('sigma vs slope')
+gcfm().window.setWindowTitle('sigma vs maxslope')
 tight_layout(pad=0.3)
 
 # scatter plot sigma vs duration
@@ -160,11 +161,11 @@ tight_layout(pad=0.3)
 
 # scatter plot slope vs ipi
 figure(figsize=(3, 3))
-plot(ipis, slopes, 'k.')
+plot(ipis, maxslopes, 'k.')
 xlabel('interpeak interval ($\mu$s)')
-ylabel('slope ($\mu$V/$\mu$s)')
+ylabel('maximum slope ($\mu$V/$\mu$s)')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('slope vs ipi')
+gcfm().window.setWindowTitle('maxslope vs ipi')
 tight_layout(pad=0.3)
 
 # scatter plot duration vs ipi
@@ -190,25 +191,25 @@ tight_layout(pad=0.3)
 
 # scatter plot duration vs slope
 figure(figsize=(3, 3))
-plot(slopes, durations, 'k.')
-xlabel('slope ($\mu$V/$\mu$s)')
+plot(maxslopes, durations, 'k.')
+xlabel('maximum slope ($\mu$V/$\mu$s)')
 ylabel('duration ($\mu$s)')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('duration vs slope')
+gcfm().window.setWindowTitle('duration vs maxslope')
 tight_layout(pad=0.3)
 
 # scatter plot slope vs fwhm
 figure(figsize=(3, 3))
-plot(fwhms, slopes, 'k.')
+plot(fwhms, maxslopes, 'k.')
 xlabel('FWHM ($\mu$s)')
-ylabel('slope ($\mu$V/$\mu$s)')
+ylabel('maximum slope ($\mu$V/$\mu$s)')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('slope vs fwhm')
+gcfm().window.setWindowTitle('maxslope vs fwhm')
 tight_layout(pad=0.3)
 
 # plot sigma distribution
 figure(figsize=(3, 3))
-hist(sigmas, bins=15, fc='k')
+hist(sigmas, bins=nbins, fc='k')
 xlim(xmin=0)
 xticks([0, 25, 50, 75, 100])
 xlabel('$\sigma$ ($\mu$m)')
@@ -219,7 +220,7 @@ tight_layout(pad=0.3)
 
 # plot ipi distribution
 figure(figsize=(3, 3))
-hist(ipis, bins=30, fc='k')
+hist(ipis, bins=nbins, fc='k')
 xlim(xmin=0)
 xticks([0, 100, 200, 300, 400])
 xlabel('interpeak interval ($\mu$s)')
@@ -230,7 +231,7 @@ tight_layout(pad=0.3)
 
 # plot fwhm distribution
 figure(figsize=(3, 3))
-hist(fwhms, bins=30, fc='k')
+hist(fwhms, bins=nbins, fc='k')
 xlabel('FWHM ($\mu$s)')
 ylabel('neuron count')
 #title('tracks: %r' % tracknames)
@@ -239,8 +240,8 @@ tight_layout(pad=0.3)
 
 # plot slope distribution
 figure(figsize=(3, 3))
-hist(slopes, bins=30, fc='k')
-xlabel('slope ($\mu$V/$\mu$s)')
+hist(maxslopes, bins=nbins, fc='k')
+xlabel('maximum slope ($\mu$V/$\mu$s)')
 ylabel('neuron count')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('slope distrib')
@@ -253,7 +254,7 @@ xticks([0, 200, 400, 600, 800])
 xlabel('duration ($\mu$s)')
 ylabel('neuron count')
 #title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
-gcfm().window.setWindowTitle('duration distrib')
+gcfm().window.setWindowTitle('maxslope distrib')
 tight_layout(pad=0.3)
 
 # plot waveforms classified by dividing line in duration vs ipi plot:
