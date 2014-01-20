@@ -103,6 +103,7 @@ durations = np.hstack(durations)
 figure(figsize=(3, 3))
 for wave in waves:
     plot(t1, wave, '-', lw=1) # overplot all waveforms
+xticks([0, 200, 400, 600, 800])
 yticks(np.arange(-200, 200+100, 100))
 xlabel('time ($\mu$s)')
 ylabel('voltage ($\mu$V)')
@@ -170,7 +171,6 @@ tight_layout(pad=0.3)
 
 # scatter plot duration vs ipi
 figure(figsize=(3, 3))
-
 # equation for dividing line between the two clusters
 x = array([0, 400])
 y = 1.0*x + 140
@@ -187,6 +187,17 @@ xlabel('interpeak interval ($\mu$s)')
 ylabel('duration ($\mu$s)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('duration vs ipi')
+tight_layout(pad=0.3)
+
+# scatter plot duration vs fwhm
+figure(figsize=(3, 3))
+plot(fwhms, durations, 'k.')
+xticks([0, 50, 100, 150, 200])
+yticks([0, 200, 400, 600, 800])
+xlabel('FWHM ($\mu$s)')
+ylabel('duration ($\mu$s)')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('duration vs fwhm')
 tight_layout(pad=0.3)
 
 # scatter plot duration vs slope
@@ -265,6 +276,7 @@ for wave in waves[slowis]:
     plot(t1, wave, 'b-', lw=1)
 for wave in waves[fastis]:
     plot(t1, wave, 'r-', lw=1)
+xticks([0, 200, 400, 600, 800])
 yticks(np.arange(-200, 200+100, 100))
 xlabel('time ($\mu$s)')
 ylabel('voltage ($\mu$V)')
@@ -276,6 +288,7 @@ tight_layout(pad=0.3)
 figure(figsize=(3, 3))
 for wave in waves[slowis]:
     plot(t1, wave, 'b-', lw=1)
+xticks([0, 200, 400, 600, 800])
 yticks(np.arange(-200, 200+100, 100))
 slow_ymax = ylim()[1]
 xlabel('time ($\mu$s)')
@@ -289,6 +302,7 @@ figure(figsize=(3, 3))
 for wave in waves[fastis]:
     plot(t1, wave, 'r-', lw=1)
 ylim(ymax=slow_ymax)
+xticks([0, 200, 400, 600, 800])
 yticks(np.arange(-200, 200+100, 100))
 xlabel('time ($\mu$s)')
 ylabel('voltage ($\mu$V)')
@@ -305,6 +319,7 @@ for wave in waves[slowis]:
     plot(t1, wave, 'b-', lw=1)
 for wave in waves[fastis]:
     plot(t1, wave, 'r-', lw=1)
+xticks([0, 200, 400, 600, 800])
 yticks(np.arange(-200, 200+100, 100))
 xlabel('time ($\mu$s)')
 ylabel('voltage ($\mu$V)')
