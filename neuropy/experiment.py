@@ -744,7 +744,7 @@ class STCs(RevCorrs):
 
 class ExperimentRevCorr(BaseExperiment):
     """Mix-in class that defines the reverse correlation related experiment methods"""
-    def sta(self, neurons=None, **kwargs):
+    def sta(self, neurons=None, trange=None, nt=10):
         """Return an STAs RevCorrs object"""
         if neurons == None:
             # no Neurons were passed, use all the Neurons from the default Sort for this
@@ -761,13 +761,12 @@ class ExperimentRevCorr(BaseExperiment):
                 neurons = [ self.r.n[ni] for ni in toiter(neurons) ]
             except KeyError: # neurons is probably a list of Neuron objects
                 pass
-        staso = STAs(neurons=neurons, experiment=self, **kwargs) # init a new STAs object
-        staso.calc()
-        return staso
-    sta.__doc__ += '\n\n**kwargs:\n'
-    sta.__doc__ += getargstr(STAs.__init__)
+        # init a new STAs object
+        stas = STAs(neurons=neurons, experiment=self, trange=trange, nt=nt)
+        stas.calc()
+        return stas
 
-    def stc(self, neurons=None, **kwargs):
+    def stc(self, neurons=None, trange=None, nt=10):
         """Returns an STCs RevCorrs object"""
         if neurons == None:
             # no neurons were passed, use all the neurons from the default sort for this
@@ -784,11 +783,9 @@ class ExperimentRevCorr(BaseExperiment):
                 neurons = [ self.r.n[ni] for ni in tolist(neurons) ]
             except KeyError: # neurons is probably a list of Neuron objects
                 pass
-        stcso = STCs(neurons=neurons, experiment=self, **kwargs) # init a new STCs object
-        stcso.calc()
+        stcs = STCs(neurons=neurons, experiment=self, trange=trange, nt=nt)
+        stcs.calc()
         return stcso
-    stc.__doc__ += '\n\n**kwargs:\n'
-    stc.__doc__ += getargstr(STCs.__init__)
 
 
 class Experiment(ExperimentRevCorr,

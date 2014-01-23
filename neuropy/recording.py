@@ -1025,15 +1025,26 @@ class BaseRecording(object):
 
 class RecordingRevCorr(BaseRecording):
     """Mix-in class that defines reverse correlation related Recording methods"""
-    def sta(self, **kwargs):
-        assert len(self.e) == 1
-        e = self.e[0]
-        return e.sta(**kwargs)
+    def nids2neurons(self, nids):
+        if nids == None:
+            nids = sorted(self.n.keys()) # use active neurons
+        elif nids == 'quiet':
+            nids = sorted(self.qn.keys()) # use quiet neurons
+        elif nids == 'all':
+            nids = sorted(self.alln.keys()) # use all neurons
+        else:
+            nids = tolist(nids) # use specified neurons
+        neurons = [ self.alln[nid] for nid in nids ]
 
-    def stc(self, **kwargs):
-        assert len(self.e) == 1
-        e = self.e[0]
-        return e.stc(**kwargs)
+    def sta(self, nids='all', eid=0, trange=None, nt=10):
+        neurons = self.nids2neurons(nids)
+        e = self.e[eid]
+        return e.sta(neurons=neurons, trange=trange, nt=nt)
+
+    def stc(self, nids='all', eid=0, trange=None, nt=10):
+        neurons = self.nids2neurons(nids)
+        e = self.e[eid]
+        return e.stc(neurons=neurons, trange=trange, nt=nt)
 
 
 class RecordingRaster(BaseRecording):
