@@ -672,17 +672,30 @@ class ExperimentRate(BaseExperiment):
 
 class RevCorrs(object):
     """Base class for doing reverse correlation of multiple neurons to a simulus"""
-    def __init__(self, neurons=None, experiment=None, trange=None, nt=10):
-        self.neurons = neurons
+    def __init__(self, nids=None, experiment=None, trange=None, nt=10):
         self.experiment = experiment
+        self.nids, self.neurons = self.parse_nids(nids)
         if trange == None:
-            self.trange = self.experiment.trange
-        else:
-            self.trange = trange
+            trange = self.experiment.trange
+        self.trange = trange
         self.nt = nt # number of revcorr timepoints
         self.tis = range(0, nt, 1) # revcorr timepoint indices
         self.ts = [ intround(ti * self.experiment.e.dynamic.sweepSec * 1000)
                     for ti in self.tis ] # revcorr timepoint values, in ms
+
+    def parse_nids(self, nids):
+        """Convert list of nids to list of neurons"""
+        r = self.experiment.r
+        if nids == None:
+            nids = sorted(r.n.keys()) # use active neurons
+        elif nids == 'quiet':
+            nids = sorted(r.qn.keys()) # use quiet neurons
+        elif nids == 'all':
+            nids = sorted(r.alln.keys()) # use all neurons
+        else:
+            nids = tolist(nids) # use specified nids
+        neurons = [ r.alln[nid] for nid in nids ]
+        return nids, neurons
 
     def plot(self, interp='nearest', normed=True, title='RevCorrWindow', scale=2.0):
         """Plots the RFs as bitmaps in a window. normed = 'global'|True|False"""
@@ -705,8 +718,7 @@ class RevCorrs(object):
             rf *= 255 # scale up to 8 bit values
             rf = rf.round().astype(np.uint8) # downcast from float to uint8
             rfs.append(rf)
-        nids = [ neuron.id for neuron in self.neurons ]
-        win = RevCorrWindow(title=title, rfs=rfs, nids=nids, ts=self.ts, scale=scale)
+        win = RevCorrWindow(title=title, rfs=rfs, nids=self.nids, ts=self.ts, scale=scale)
         win.show()
         return win # necessary in IPython
 
@@ -744,46 +756,15 @@ class STCs(RevCorrs):
 
 class ExperimentRevCorr(BaseExperiment):
     """Mix-in class that defines the reverse correlation related experiment methods"""
-    def sta(self, neurons=None, trange=None, nt=10):
+    def sta(self, nids=None, trange=None, nt=10):
         """Return an STAs RevCorrs object"""
-        if neurons == None:
-            # no Neurons were passed, use all the Neurons from the default Sort for this
-            # experiment's Recording
-            keyvals = self.r.n.items() # get key val pairs in a list of tuples
-            keyvals.sort() # make sure they're sorted by key
-            neurons = []
-            for key, val in keyvals:
-                neurons.append(val)
-        else:
-            try:
-                # assume neurons is a Neuron id or list of Neuron ids, get the associated
-                # Neuron objects from the default Sort for this experiment's Recording
-                neurons = [ self.r.n[ni] for ni in toiter(neurons) ]
-            except KeyError: # neurons is probably a list of Neuron objects
-                pass
-        # init a new STAs object
-        stas = STAs(neurons=neurons, experiment=self, trange=trange, nt=nt)
+        stas = STAs(nids=nids, experiment=self, trange=trange, nt=nt)
         stas.calc()
         return stas
 
-    def stc(self, neurons=None, trange=None, nt=10):
+    def stc(self, nids=None, trange=None, nt=10):
         """Returns an STCs RevCorrs object"""
-        if neurons == None:
-            # no neurons were passed, use all the neurons from the default sort for this
-            # experiment's recording
-            keyvals = self.r.n.items() # get key val pairs in a list of tuples
-            keyvals.sort() # make sure they're sorted by key
-            neurons = []
-            for key, val in keyvals:
-                neurons.append(val)
-        else:
-            try:
-                # assume neurons is a neuron id or list of neuron ids, get the associated
-                # neuron objects from the default sort for this experiment's recording
-                neurons = [ self.r.n[ni] for ni in tolist(neurons) ]
-            except KeyError: # neurons is probably a list of Neuron objects
-                pass
-        stcs = STCs(neurons=neurons, experiment=self, trange=trange, nt=nt)
+        stcs = STCs(nids=nids, experiment=self, trange=trange, nt=nt)
         stcs.calc()
         return stcso
 
