@@ -1035,6 +1035,7 @@ class RecordingRevCorr(BaseRecording):
         else:
             nids = tolist(nids) # use specified neurons
         neurons = [ self.alln[nid] for nid in nids ]
+        return neurons
 
     def sta(self, nids='all', eid=0, trange=None, nt=10):
         neurons = self.nids2neurons(nids)
