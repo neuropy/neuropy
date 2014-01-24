@@ -614,7 +614,7 @@ class RevCorr(object):
         self.rcdini = self.experiment.din[:, 0].searchsorted(spikes) - 1
         #self.din = self.experiment.din[rcdini, 1] # get the din (frame indices) at the rcdini
 
-    def plot(self, interp='nearest', normed=True, title='RevCorrWindow', scale=2.0):
+    def plot(self, normed=True, title='RevCorrWindow', scale=2.0):
         """Plot the spatiotemporal RF as bitmaps in a custom (non MPL) Qt window"""
         # create a copy to manipulate for display purposes, (nt, width, height):
         rf = self.rf.copy()
@@ -674,9 +674,8 @@ class STA(RevCorr):
             #self.rf[ti] = mean_accum2(frames, frameis)
         self.done = True
 
-    def plot(self, interp='nearest', normed=True, scale=2.0):
-        win = RevCorr.plot(self, interp=interp, normed=normed, title=lastcmd(),
-                           scale=scale)
+    def plot(self, normed=True, scale=2.0):
+        win = RevCorr.plot(self, normed=normed, title=lastcmd(), scale=scale)
         return win # necessary in IPython
     plot.__doc__ = RevCorr.plot.__doc__
 

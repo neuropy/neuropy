@@ -2540,7 +2540,7 @@ class NetstateTriggeredAverage(BaseNetstate):
         pd.Destroy()
         return self
 
-    def plot(self, intcode=None, nt=10, ti0=-4, interp='nearest', normed=True, scale=2.0):
+    def plot(self, intcode=None, nt=10, ti0=-4, normed=True, scale=2.0):
         """Plots the spatiotemporal RF as bitmaps in a wx.Frame"""
         try:
             self.rf

@@ -697,7 +697,7 @@ class RevCorrs(object):
         neurons = [ r.alln[nid] for nid in nids ]
         return nids, neurons
 
-    def plot(self, interp='nearest', normed=True, title='RevCorrWindow', scale=2.0):
+    def plot(self, normed=True, title='RevCorrWindow', scale=2.0):
         """Plots the RFs as bitmaps in a window. normed = 'global'|True|False"""
         rfs = [] # list of receptive fields to pass to ReceptiveFieldFrame object
         if normed == 'global': # normalize across all timepoints for all neurons
@@ -731,9 +731,8 @@ class STAs(RevCorrs):
             stao = neuron.sta(experiment=self.experiment, trange=self.trange, nt=self.nt)
             self.stas.append(stao)
 
-    def plot(self, interp='nearest', normed=True, scale=2.0):
-        win = RevCorrs.plot(self, interp=interp, normed=normed,
-                            title=lastcmd(), scale=scale)
+    def plot(self, normed=True, scale=2.0):
+        win = RevCorrs.plot(self, normed=normed, title=lastcmd(), scale=scale)
         return win # necessary in IPython
     plot.__doc__ = RevCorrs.plot.__doc__
 
@@ -747,10 +746,8 @@ class STCs(RevCorrs):
             stco = neuron.stc(experiment=self.experiment, trange=self.trange, nt=self.nt)
             self.stcs.append(stco)
 
-    def plot(self, interp='nearest', normed=True, scale=2.0):
-        super(STCs, self).plot(interp=interp, normed=normed,
-                               title=lastcmd(),
-                               scale=scale)
+    def plot(self, normed=True, scale=2.0):
+        super(STCs, self).plot(normed=normed, title=lastcmd(), scale=scale)
     plot.__doc__ = RevCorrs.plot.__doc__
 
 
