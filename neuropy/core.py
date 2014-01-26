@@ -34,6 +34,7 @@ from scipy.stats import linregress
 
 import matplotlib as mpl
 import matplotlib.cm
+import matplotlib.pyplot as plt
 import pylab as pl
 from pylab import get_current_fig_manager as gcfm
 from matplotlib.collections import LineCollection
@@ -2491,6 +2492,118 @@ class RevCorrWindow(NeuropyWindow):
         self.setWindowTitle(title)
         #palette = QPalette(QColor(255, 255, 255))
         #self.setPalette(palette) # set white background, or perhaps more
+
+def mplrevcorr(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2, dpi=100):
+    """MPL version of RevCorrWindow, good for saving RFs to a file. This one uses figimage to
+    prevent image resampling. It seems that for this to save to file correctly, you need to
+    explicitly set the output file to have the same DPI as the figure:
+
+    gcf().savefig('filename.png', dpi=gcf().dpi)
+    Saving to PDF seems buggy. Use PNG instead.
+
+    Do bbox_inches='tight', pad_inches=0 do anything? Don't seem to...
+    """
+    # spacing (inches):
+    lm, rm = 0.5, 0 # left and right margins
+    tm, bm = 0.2, 0 # top and bottom margins
+    vs, hs = 0.04, 0.04 # vertical and horizontal spacing
+    w, h = np.asarray(rfs[0][0].shape) * scale # in pixels
+    #w, h = 32*scale, 32*scale # data width and height, assumed for now
+    #assert w == h
+    # number of inches in to get one screen pixel per image pixel:
+    winch = w / dpi # width in inches
+    hinch = h / dpi # height in inches
+    rfw, rfh = winch, hinch # rf width and height, in inches
+
+    # size the figure:
+    nn = len(nids)
+    nt = len(ts)
+    fw = lm + nt*rfw + (nt-1)*hs + rm # inches
+    fh = tm + nn*rfh + (nn-1)*vs + bm # inches
+    #print(fw, fh)
+    f = plt.figure(figsize=(fw, fh), dpi=dpi)
+
+    maxni = nn - 1
+    # place time labels along top:
+    y = (bm + nn*(rfh + vs)) / fh
+    for ti, t in enumerate(ts):
+        x = (lm + ti*(rfw + hs)) / fw
+        plt.figtext(x, y, str(t)+' ms')
+    # plot each row, with its nid label
+    x = (lm - hs) / fw # right edge of text measured from left, normalized
+    ims = []
+    for ni, nid in enumerate(nids):
+        rf = rfs[ni]
+        # center of text measured from bottom, normalized:
+        y = (bm + (maxni-ni)*(rfh+vs) + rfh/2) / fh
+        plt.figtext(x, y, 'n'+str(nid),
+                    verticalalignment='center', horizontalalignment='right')
+        vmin, vmax = rf.min(), rf.max()
+        for ti, t in enumerate(ts):
+            # x and y pos of rf, in pixels:
+            x0 = (lm + ti*(rfw+hs)) * dpi
+            y0 = (bm + (maxni-ni)*(rfh+vs)) * dpi
+            #data = np.uint8(np.random.randint(0, 255, size=(32, 32)))
+            data = rf[ti]
+            if scale != 1:
+                data = data.repeat(scale, axis=0).repeat(scale, axis=1)
+            im = plt.figimage(data, x0, y0, origin='upper', cmap=mpl.cm.jet_r,
+                              vmin=vmin, vmax=vmax)
+            ims.append(im)
+            #a.set_axis_off() # disable axes lines, ticks and labels
+
+    gcfm().window.setWindowTitle(title)
+    return ims
+
+def mplrevcorraxes(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2.0):
+    """MPL version of RevCorrWindow, good for saving RFs to a file. This one uses one axes per
+    RF, which is a bit slow. If the figure is sized exactly right, then there should be no
+    resampling effects of the images. It seems that for this to save to file correctly, you
+    need to explicitly set the output file to have the same DPI as the figure:
+
+    gcf().savefig('filename.pdf', dpi=gcf().dpi)
+    """
+    # spacing (inches):
+    lm, rm = 0, 0 # left and right margins
+    tm, bm = 0, 0 # top and bottom margins
+    vs, hs = 0.05, 0.05 # vertical and horizontal spacing
+    # default is 80 dpi, and default RF image size is 32x32, so 32/80 = 0.4 inches needed
+    # for 1 screen pixel per image pixel. So size rfw and rfh by multiple of 0.4?
+    w, h = rfs[0][0].shape
+    #w, h = 32, 32 # data width and height, assumed for now
+    assert w == h
+    # number of inches in to get one screen pixel per image pixel:
+    basesize = w / mpl.rcParams['figure.dpi']
+    rfw, rfh = basesize*scale, basesize*scale # rf width and height
+
+    # size the figure:
+    nn = len(nids)
+    nt = len(ts)
+    fw = lm + nt*rfw + (nt-1)*hs + rm # inches
+    fh = tm + nn*rfh + (nn-1)*vs + bm # inches
+    f = plt.figure(figsize=(fw, fh))
+
+    # place time labels along top
+    #for ti, t in enumerate(ts):
+    #    label = QtGui.QLabel(str(t))
+    #    layout.addWidget(label, 0, ti+1)
+    # plot each row, with its nid label
+    maxni = nn - 1
+    for ni, nid in enumerate(nids):
+        rf = rfs[ni]
+        vmin, vmax = rf.min(), rf.max()
+        for ti, t in enumerate(ts):
+            # left bottom width and height of rf, in fractional figure units:
+            lbwh = (lm + ti*(rfw+hs))/fw, (bm + (maxni-ni)*(rfh+vs))/fh, rfw/fw, rfh/fh
+            a = f.add_axes(lbwh, axisbg='w')
+            a.set_axis_off() # disable axes lines, ticks and labels
+            data = rf[ti]
+            #data = np.uint8(np.random.randint(0, 255, size=(32, 32)))
+            im = a.imshow(data, interpolation='nearest', cmap=mpl.cm.jet_r,
+                          aspect='equal', origin='upper',
+                          extent=[0, data.shape[1], 0, data.shape[0]])
+
+    gcfm().window.setWindowTitle(title)
 
 '''
 class NetstateReceptiveFieldFrame(ReceptiveFieldFrame):

@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib as mpl
 
 import core
-from core import getargstr, TAB, rstrip, dictattr, intround, toiter
+from core import getargstr, TAB, rstrip, dictattr, intround, toiter, tolist
 from core import joinpath, lastcmd
 from core import Codes, RevCorrWindow
 import neuron
@@ -697,7 +697,7 @@ class RevCorrs(object):
         neurons = [ r.alln[nid] for nid in nids ]
         return nids, neurons
 
-    def plot(self, normed=True, title='RevCorrWindow', scale=2.0):
+    def plot(self, normed=True, title='RevCorrWindow', scale=2.0, MPL=False):
         """Plots the RFs as bitmaps in a window. normed = 'global'|True|False"""
         rfs = [] # list of receptive fields to pass to ReceptiveFieldFrame object
         if normed == 'global': # normalize across all timepoints for all neurons
@@ -718,9 +718,12 @@ class RevCorrs(object):
             rf *= 255 # scale up to 8 bit values
             rf = rf.round().astype(np.uint8) # downcast from float to uint8
             rfs.append(rf)
-        win = RevCorrWindow(title=title, rfs=rfs, nids=self.nids, ts=self.ts, scale=scale)
-        win.show()
-        return win # necessary in IPython
+        if MPL:
+            core.mplrevcorr(title=title, rfs=rfs, nids=self.nids, ts=self.ts, scale=scale, dpi=MPL)
+        else:
+            win = RevCorrWindow(title=title, rfs=rfs, nids=self.nids, ts=self.ts, scale=scale)
+            win.show()
+            return win # necessary in IPython
 
 class STAs(RevCorrs):
     """Just a container class for multiple Neuron.STA objects. The plot() method is unique
@@ -731,8 +734,8 @@ class STAs(RevCorrs):
             stao = neuron.sta(experiment=self.experiment, trange=self.trange, nt=self.nt)
             self.stas.append(stao)
 
-    def plot(self, normed=True, scale=2.0):
-        win = RevCorrs.plot(self, normed=normed, title=lastcmd(), scale=scale)
+    def plot(self, normed=True, scale=2.0, MPL=False):
+        win = RevCorrs.plot(self, normed=normed, title=lastcmd(), scale=scale, MPL=MPL)
         return win # necessary in IPython
     plot.__doc__ = RevCorrs.plot.__doc__
 
@@ -746,8 +749,8 @@ class STCs(RevCorrs):
             stco = neuron.stc(experiment=self.experiment, trange=self.trange, nt=self.nt)
             self.stcs.append(stco)
 
-    def plot(self, normed=True, scale=2.0):
-        super(STCs, self).plot(normed=normed, title=lastcmd(), scale=scale)
+    def plot(self, normed=True, scale=2.0, MPL=False):
+        super(STCs, self).plot(normed=normed, title=lastcmd(), scale=scale, MPL=MPL)
     plot.__doc__ = RevCorrs.plot.__doc__
 
 
