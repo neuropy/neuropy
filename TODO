@@ -1,5 +1,7 @@
 TODO:
 
+- rename nneurons to nn, nqneurons to nqn, nallneurons to nalln
+
 - to speed up loading of tracks, build experiment sweeptables only when necessary for >=0.16 (for ptc15, check what exactly in loadptc15exp slows things down)
 
 - add NVS's spikespecgram and stlfp

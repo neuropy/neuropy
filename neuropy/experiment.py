@@ -719,7 +719,8 @@ class RevCorrs(object):
             rf = rf.round().astype(np.uint8) # downcast from float to uint8
             rfs.append(rf)
         if MPL:
-            core.mplrevcorr(title=title, rfs=rfs, nids=self.nids, ts=self.ts, scale=scale, dpi=MPL)
+            core.mplrevcorr(title=title, rfs=rfs, nids=self.nids, ts=self.ts, scale=scale,
+                            dpi=MPL)
         else:
             win = RevCorrWindow(title=title, rfs=rfs, nids=self.nids, ts=self.ts, scale=scale)
             win.show()

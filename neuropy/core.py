@@ -2511,6 +2511,8 @@ def mplrevcorr(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2, dpi
     #w, h = 32*scale, 32*scale # data width and height, assumed for now
     #assert w == h
     # number of inches in to get one screen pixel per image pixel:
+    if dpi == True:
+        dpi = 100
     winch = w / dpi # width in inches
     hinch = h / dpi # height in inches
     rfw, rfh = winch, hinch # rf width and height, in inches
