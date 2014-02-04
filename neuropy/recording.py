@@ -1075,12 +1075,12 @@ class RecordingRaster(BaseRecording):
         return PRaster(trange=trange, neurons=neurons, norder=norder, units=units, r=self,
                        size=size, color=color)
 
-    def traster(self, nids=None, eid=0, t0=None, dt=None, blank=True, s=20, c=None, title=True,
-                ylabel=True, figsize=(7.5, None)):
-        """Create a trial spike raster plot for given neurons, based on stimulus info
-        in experiment eid. blank designates whether to include blank frames for trials in
-        movie type stimuli. Use c='bwg' to plot black and white bars on a grey background
-        for black and white drifting bar trials"""
+    def traster(self, nids=None, sweepis=None, eid=0, t0=None, dt=None, blank=True, s=20,
+                c=None, title=True, ylabel=True, figsize=(7.5, None)):
+        """Create a trial spike raster plot for each given neuron. for the designated sweep
+        indices, based on stimulus info in experiment eid. blank designates whether to include
+        blank frames for trials in movie type stimuli. Use c='bwg' to plot black and white
+        bars on a grey background for black and white drifting bar trials"""
         if nids == None:
             nids = sorted(self.n.keys()) # use active neurons
         elif nids == 'quiet':
@@ -1098,39 +1098,44 @@ class RecordingRaster(BaseRecording):
             assert trialtype == 'dinval'
             brightness = e.sweeptable.data['brightness'] # indexed into using sweepis
             assert len(np.unique(brightness)) == 2
+            
         din = e.din
-        times = din[:, 0] # times of every screen refresh
-        sweepis = din[:, 1] # sweep indices of every screen refresh
+        alltimes = din[:, 0] # times of every screen refresh
+        allsweepis = din[:, 1] # sweep indices of every screen refresh
         uns = get_ipython().user_ns
         NULLDIN = uns['NULLDIN']
-        # find unique sweep indices, excluding NULLDIN
-        usweepis = np.unique(sweepis)
-        usweepis = usweepis[usweepis != NULLDIN]
+        if sweepis == None: # find unique sweep indices, excluding NULLDIN:
+            sweepis = np.unique(allsweepis)
+            sweepis = sweepis[sweepis != NULLDIN]
+        else: # use only exactly the sweepis specified, but keep them sorted:
+            assert trialtype == 'dinval'
+            sweepis = np.sort(sweepis)
+
         # find tranges of all trials, either manually based on t0 & dt, or automatically
         # based on trialtype:
         if dt != None:
             # assume all trials of equal length dt, starting from t0
             dt *= 1000000 # convert from sec to us
             if t0 == None:
-                t0i = np.where(sweepis != NULLDIN)[0][0] # first non-NULL sweepi in din
-                t0 = times[t0i] # in us
+                t0i = np.where(allsweepis != NULLDIN)[0][0] # first non-NULL sweepi in din
+                t0 = alltimes[t0i] # in us
             else:
                 t0 *= 1000000 # convert from sec to us
-            tlast = times[-1]
+            tlast = alltimes[-1]
             t0s = np.arange(t0, tlast-dt, dt)
             t1s = np.arange(t0+dt, tlast, dt)
             assert (t1s - t0s == dt).all()
             tranges = np.column_stack((t0s, t1s))
         elif trialtype == 'dinrange':
-            sw0, sw1 = usweepis[0], usweepis[-1] # first and last sweep index in each trial
-            i0s, = np.where(sweepis == sw0) # screen refresh indices for sw0
+            sw0, sw1 = sweepis[0], sweepis[-1] # first and last sweep index in each trial
+            i0s, = np.where(allsweepis == sw0) # screen refresh indices for sw0
             # indices into i0s of start of each trange, prepend i0s with a value (-2)
             # guaranteed to be non-consecutive with the first value in i0s:
             i0is, = np.where(np.diff(np.hstack(([-2], i0s))) != 1)
             i0s = i0s[i0is]
-            t0s = times[i0s]
+            t0s = alltimes[i0s]
             if not blank:
-                i1s, = np.where(sweepis == sw1) # screen refresh indices for sw1
+                i1s, = np.where(allsweepis == sw1) # screen refresh indices for sw1
                 # indices into i1s of end of each trange, append i1s with a value (-2)
                 # guaranteed to be non-consecutive with the last value in i1s:
                 i1is, = np.where(np.diff(np.hstack((i1s, [-2]))) != 1)
@@ -1144,12 +1149,12 @@ class RecordingRaster(BaseRecording):
                 maxdi1 = max(di1s)
                 # append one more index interval to end of i1s
                 i1s = np.hstack((i1s, [i1s[-1]+maxdi1]))
-            t1s = times[i1s]
+            t1s = alltimes[i1s]
             tranges = np.column_stack((t0s, t1s))
         elif trialtype == 'dinval':
             t0s, t1s, trangesweepis = [], [], []
-            for sweepi in usweepis: # ordered by sweepi
-                i, = np.where(sweepis == sweepi) # screen refresh indices
+            for sweepi in sweepis: # ordered by sweepi
+                i, = np.where(allsweepis == sweepi) # screen refresh indices
                 # indices into i of start of each trange, prepend i with a value (-2)
                 # guaranteed to be non-consecutive with the first value in i:
                 i0is, = np.where(np.diff(np.hstack(([-2], i))) != 1)
@@ -1158,8 +1163,8 @@ class RecordingRaster(BaseRecording):
                 i1is, = np.where(np.diff(np.hstack((i, [-2]))) != 1)
                 i0s = i[i0is]
                 i1s = i[i1is]
-                t0s.append(times[i0s])
-                t1s.append(times[i1s])
+                t0s.append(alltimes[i0s])
+                t1s.append(alltimes[i1s])
                 assert len(i0is) == len(i1is)
                 ntranges = len(i0is) # number of tranges for this sweepi
                 trangesweepis.append(np.tile(sweepi, ntranges))
