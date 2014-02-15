@@ -151,8 +151,11 @@ for tracki, track in enumerate(tracks):
     xa.set_ylim(xposylim)
     ya.set_ylim(yposylim)
     ya.invert_yaxis()
-    vppa.set_xlabel('time (hours)')
+    vppa.set_xticks(xticks)
     sxa.set_xticks(xticks)
+    xa.set_xticks(xticks)
+    ya.set_xticks(xticks)
+    vppa.set_xlabel('time (hours)')
     if tracki == 0:
         vppa.set_ylabel('$V_{pp}$ ($\mu$V)')
         sxa.set_ylabel('$\sigma$ ($\mu$m)')
