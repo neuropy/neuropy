@@ -2493,7 +2493,8 @@ class RevCorrWindow(NeuropyWindow):
         #palette = QPalette(QColor(255, 255, 255))
         #self.setPalette(palette) # set white background, or perhaps more
 
-def mplrevcorr(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2, dpi=100):
+def mplrevcorr(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2, dpi=100,
+               margins=True):
     """MPL version of RevCorrWindow, good for saving RFs to a file. This one uses figimage to
     prevent image resampling. It seems that for this to save to file correctly, you need to
     explicitly set the output file to have the same DPI as the figure:
@@ -2504,8 +2505,8 @@ def mplrevcorr(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2, dpi
     Do bbox_inches='tight', pad_inches=0 do anything? Don't seem to...
     """
     # spacing (inches):
-    lm, rm = 0.5, 0 # left and right margins
-    tm, bm = 0.2, 0 # top and bottom margins
+    lm, rm = 0.5*margins, 0 # left and right margins
+    tm, bm = 0.2*margins, 0 # top and bottom margins
     vs, hs = 0.04, 0.04 # vertical and horizontal spacing
     w, h = np.asarray(rfs[0][0].shape) * scale # in pixels
     #w, h = 32*scale, 32*scale # data width and height, assumed for now
@@ -2528,9 +2529,10 @@ def mplrevcorr(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2, dpi
     maxni = nn - 1
     # place time labels along top:
     y = (bm + nn*(rfh + vs)) / fh
-    for ti, t in enumerate(ts):
-        x = (lm + ti*(rfw + hs)) / fw
-        plt.figtext(x, y, str(t)+' ms')
+    if margins:
+        for ti, t in enumerate(ts):
+            x = (lm + ti*(rfw + hs)) / fw
+            plt.figtext(x, y, str(t)+' ms')
     # plot each row, with its nid label
     x = (lm - hs) / fw # right edge of text measured from left, normalized
     ims = []
@@ -2538,8 +2540,9 @@ def mplrevcorr(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2, dpi
         rf = rfs[ni]
         # center of text measured from bottom, normalized:
         y = (bm + (maxni-ni)*(rfh+vs) + rfh/2) / fh
-        plt.figtext(x, y, 'n'+str(nid),
-                    verticalalignment='center', horizontalalignment='right')
+        if margins:
+            plt.figtext(x, y, 'n'+str(nid),
+                        verticalalignment='center', horizontalalignment='right')
         vmin, vmax = rf.min(), rf.max()
         for ti, t in enumerate(ts):
             # x and y pos of rf, in pixels:

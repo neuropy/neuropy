@@ -697,7 +697,7 @@ class RevCorrs(object):
         neurons = [ r.alln[nid] for nid in nids ]
         return nids, neurons
 
-    def plot(self, normed=True, title='RevCorrWindow', scale=2.0, MPL=False):
+    def plot(self, normed=True, title='RevCorrWindow', scale=2.0, MPL=False, margins=True):
         """Plots the RFs as bitmaps in a window. normed = 'global'|True|False"""
         rfs = [] # list of receptive fields to pass to ReceptiveFieldFrame object
         if normed == 'global': # normalize across all timepoints for all neurons
@@ -720,7 +720,7 @@ class RevCorrs(object):
             rfs.append(rf)
         if MPL:
             core.mplrevcorr(title=title, rfs=rfs, nids=self.nids, ts=self.ts, scale=scale,
-                            dpi=MPL)
+                            dpi=MPL, margins=margins)
         else:
             win = RevCorrWindow(title=title, rfs=rfs, nids=self.nids, ts=self.ts, scale=scale)
             win.show()
@@ -735,8 +735,9 @@ class STAs(RevCorrs):
             stao = neuron.sta(experiment=self.experiment, trange=self.trange, nt=self.nt)
             self.stas.append(stao)
 
-    def plot(self, normed=True, scale=2.0, MPL=False):
-        win = RevCorrs.plot(self, normed=normed, title=lastcmd(), scale=scale, MPL=MPL)
+    def plot(self, normed=True, scale=2.0, MPL=False, margins=True):
+        win = RevCorrs.plot(self, normed=normed, title=lastcmd(), scale=scale, MPL=MPL,
+                            margins=margins)
         return win # necessary in IPython
     plot.__doc__ = RevCorrs.plot.__doc__
 
