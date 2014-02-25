@@ -100,6 +100,17 @@ class Track(object):
         # create a TrackSort with TrackNeurons:
         self.sort = TrackSort(self)
         self.sort.load()
+        # load RF type for each cell, should be one big dict indexed by nid:
+        rftypefname = os.path.join(self.path, self.absname + '.rftype')
+        try:
+            with open(rftypefname, 'r') as f:
+                rftypestr = f.read()
+            rftypes = eval(rftypestr)
+            for nid, rftype in rftypes.items():
+                self.alln[nid].rftype = rftype
+        except IOError: # no absname.rftype file denoting RF type of each cell
+            pass
+
         # one way of calculating self.trange:
         #tranges = np.asarray([ n.trange for n in self.alln.values() ])
         #self.trange = min(tranges[:, 0]), max(tranges[:, 1])
