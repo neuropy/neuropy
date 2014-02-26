@@ -419,14 +419,12 @@ class Track(object):
         f.canvas.set_window_title(lastcmd())
 
 
-    def npos(self, inchespermicron=0.007, legend=False):
+    def npos(self, inchespermicron=0.007, colour='active', legend=False):
         """Plot (x, y) cell positions over top of polytrode channel positions,
         to get an idea of how cells are distributed in space. Color active and inactive
         cells differently"""
         uns = get_ipython().user_ns
         npos = np.asarray([ neuron.pos for neuron in self.alln.values() ])
-        anpos = np.asarray([ neuron.pos for neuron in self.n.values() ])
-        qnpos = np.asarray([ neuron.pos for neuron in self.qn.values() ])
         chanpos = self.chanpos
         chanxs, chanys = chanpos[:, 0], chanpos[:, 1]
         uchanxs = np.unique(chanxs)
@@ -438,7 +436,7 @@ class Track(object):
         xlim = min(xs.min(), uchanxs[0]-xspace/2), max(xs.max(), uchanxs[-1]+xspace/2)
         ylim = ys.max()+xspace, ymin # inverted y axis
         
-        figwidth = inchespermicron * np.ptp(xlim) * 2 # make enough space for y axis labels
+        figwidth = inchespermicron * np.ptp(xlim) * 2 + legend # make space for y axis labels
         figheight = inchespermicron * np.ptp(ylim)
         f = pl.figure(figsize=(figwidth, figheight))
         a = f.add_subplot(111, aspect='equal')
@@ -451,9 +449,36 @@ class Track(object):
         a.fill(shankxs, shankys, color='lightgrey', ec='none')
         # plot electrode sites:
         a.plot(chanpos[:, 0], chanpos[:, 1], 'k.', ms=5)
-        # plot active and quiet cell positions in blue and red, respectively:
-        a.plot(anpos[:, 0], anpos[:, 1], 'r.', ms=10, alpha=0.6, label='active')
-        a.plot(qnpos[:, 0], qnpos[:, 1], 'b.', ms=10, alpha=0.6, label='quiet')
+        if colour == 'active':
+            # plot active and quiet cell positions in red and blue, respectively:
+            anpos = np.asarray([ neuron.pos for neuron in self.n.values() ])
+            qnpos = np.asarray([ neuron.pos for neuron in self.qn.values() ])
+            na = len(anpos)
+            nq = len(qnpos)
+            # layer in inverse order of importance:
+            if na: a.plot(qnpos[:, 0], qnpos[:, 1], 'b.', ms=10, alpha=0.6, label='quiet')
+            if nq: a.plot(anpos[:, 0], anpos[:, 1], 'r.', ms=10, alpha=0.6, label='active')
+        elif colour == 'rftype':
+            # plot simple, complex, LGN afferent and None in red, blue, green and grey
+            spos = np.asarray([ neuron.pos for neuron in self.n.values()
+                                if neuron.rftype == 'simple' ])
+            cpos = np.asarray([ neuron.pos for neuron in self.n.values()
+                                if neuron.rftype == 'complex' ])
+            Lpos = np.asarray([ neuron.pos for neuron in self.n.values()
+                                if neuron.rftype == 'LGN' ])
+            Npos = np.asarray([ neuron.pos for neuron in self.n.values()
+                                if neuron.rftype == None ])
+            ns = len(spos)
+            nc = len(cpos)
+            nL = len(Lpos)
+            nN = len(Npos)
+            # layer in inverse order of importance:
+            if nN: a.plot(Npos[:, 0], Npos[:, 1], 'e.', ms=10, alpha=0.6, label='unknown')
+            if nL: a.plot(Lpos[:, 0], Lpos[:, 1], 'g.', ms=10, alpha=0.6, label='LGN')
+            if nc: a.plot(cpos[:, 0], cpos[:, 1], 'b.', ms=10, alpha=0.6, label='complex')
+            if ns: a.plot(spos[:, 0], spos[:, 1], 'r.', ms=10, alpha=0.6, label='simple')
+        else:
+            raise RuntimeError("unknown colour kwarg %r" % colour)
         a.set_xlim(xlim)
         a.set_ylim(ylim)
         a.set_xticks(uchanxs)
@@ -462,7 +487,7 @@ class Track(object):
         #a.yaxis.set_ticks_position('left')
         # put legend to right of the axes:
         if legend:
-            a.legend(bbox_to_anchor=(2, 0.5), frameon=False)
+            a.legend(bbox_to_anchor=(2.2, 0.5), frameon=False)
         bbox = a.get_position()
         wh = bbox.width / bbox.height # w:h ratio of axes, includes all ticks and labels?
         w, h = gcfm().canvas.get_width_height()
