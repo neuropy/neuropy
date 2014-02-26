@@ -448,7 +448,7 @@ class Track(object):
         xlim = min(xs.min(), uchanxs[0]-xspace/2), max(xs.max(), uchanxs[-1]+xspace/2)
         ylim = ys.max()+xspace, ymin # inverted y axis
         
-        figwidth = inchespermicron * np.ptp(xlim) * 2 + legend # make space for y axis labels
+        figwidth = inchespermicron * np.ptp(xlim) * 2 + 2*legend # make space for y axis labels
         figheight = inchespermicron * np.ptp(ylim)
         f = pl.figure(figsize=(figwidth, figheight))
         a = f.add_subplot(111, aspect='equal')
@@ -510,7 +510,7 @@ class Track(object):
         #a.yaxis.set_ticks_position('left')
         # put legend to right of the axes:
         if legend:
-            a.legend(bbox_to_anchor=(2.2, 0.5), frameon=False)
+            a.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
         bbox = a.get_position()
         wh = bbox.width / bbox.height # w:h ratio of axes, includes all ticks and labels?
         w, h = gcfm().canvas.get_width_height()
