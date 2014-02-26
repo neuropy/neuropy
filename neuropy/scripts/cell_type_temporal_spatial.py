@@ -1,6 +1,6 @@
 """Scatter plot various combinations of spatial sigma and temporal measures of spikes. Also
 plot distributions and waveforms, as separated by shape thresholds. Run from within neuropy
-using `run -i scripts/sigma_vs_width.py`"""
+using `run -i scripts/cell_type_temporal_spatial.py`"""
 
 import scipy
 from pylab import get_current_fig_manager as gcfm
@@ -51,9 +51,12 @@ ipis = [] # interpeak intervals
 fwhms = [] # full-width half max values
 maxslopes = [] # maximum abs slopes of each neuron
 durations = [] # spike duration, measured by time between slope threshold crossings
+allnids = []
+splitis = [] # indices which demarcate neurons from different tracks in allnids
 
 # collect maxchan waveforms and calculate various measures of waveform duration:
 for track in tracks:
+    splitis.append(len(allnids))
     if tres != track.tres: # recalculate timepoints
         tres = track.tres
         t0, t1, aligni = calc_t(nt, tres)
@@ -90,7 +93,8 @@ for track in tracks:
             duration = 0
         else:
             duration = (flatis[-1] - flatis[0]) * newtres
-        durations.append(duration)        
+        durations.append(duration)
+        allnids.append(nid)
         # or as an alternative to using absslopethresh, measure the fwhm of the last
         # extremum in each waveform. Looking at the overplotted waveforms, that, strangely,
         # is where I see the most dichotomy. Not so much in the first peak.
@@ -98,6 +102,9 @@ for track in tracks:
 sigmas = np.hstack(sigmas)
 ipis = np.hstack(ipis)
 durations = np.hstack(durations)
+allnids = np.hstack(allnids)
+nn = len(allnids)
+splitis.append(nn)
 
 # plot unclassified maxchan waveforms:
 figure(figsize=(3, 3))
@@ -188,6 +195,17 @@ ylabel('duration ($\mu$s)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('duration vs ipi')
 tight_layout(pad=0.3)
+spiketype = np.zeros(nn, dtype='|S4') # 4 character string array
+spiketype[slowis] = 'slow'
+spiketype[fastis] = 'fast'
+assert not np.any(spiketype == '') # check for any empty entries
+sts = {}
+for tracki, track in enumerate(tracks):
+    nii0, nii1 = splitis[tracki], splitis[tracki+1]
+    nids = allnids[nii0:nii1]
+    st = spiketype[nii0:nii1]
+    d = dict(zip(nids, st))
+    sts[track.absname] = d # can manually print these out and save to .spiketype file
 
 # scatter plot duration vs fwhm
 figure(figsize=(3, 3))
@@ -310,9 +328,9 @@ ylabel('voltage ($\mu$V)')
 gcfm().window.setWindowTitle('fast waveforms')
 tight_layout(pad=0.3)
 
-# plot waveforms classified by durationthresh:
-fastis = np.asarray(durations) <= durationthresh
-slowis = np.asarray(durations) > durationthresh
+# plot waveforms classified only by durationthresh (in us):
+fastis = durations <= durationthresh
+slowis = durations > durationthresh
 waves = np.asarray(waves)
 figure(figsize=(3, 3))
 for wave in waves[slowis]:
