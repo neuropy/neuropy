@@ -489,6 +489,17 @@ class Track(object):
             if nL: a.plot(Lpos[:, 0], Lpos[:, 1], 'g.', ms=10, alpha=0.6, label='LGN afferent')
             if nc: a.plot(cpos[:, 0], cpos[:, 1], 'b.', ms=10, alpha=0.6, label='complex')
             if ns: a.plot(spos[:, 0], spos[:, 1], 'r.', ms=10, alpha=0.6, label='simple')
+        elif colour == 'spiketype':
+            # plot slow and fast in blue and red:
+            spos = np.asarray([ neuron.pos for neuron in self.alln.values()
+                                if neuron.spiketype == 'slow' ])
+            fpos = np.asarray([ neuron.pos for neuron in self.alln.values()
+                                if neuron.spiketype == 'fast' ])
+            ns = len(spos)
+            nf = len(fpos)
+            # layer in inverse order of importance:
+            if nf: a.plot(fpos[:, 0], fpos[:, 1], 'r.', ms=10, alpha=0.6, label='fast')
+            if ns: a.plot(spos[:, 0], spos[:, 1], 'b.', ms=10, alpha=0.6, label='slow')
         else:
             raise RuntimeError("unknown colour kwarg %r" % colour)
         a.set_xlim(xlim)
