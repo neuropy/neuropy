@@ -111,6 +111,17 @@ class Track(object):
                 self.alln[nid].rftype = rftype
         except IOError: # no absname.rftype file denoting RF type of each cell
             pass
+        # load spike type for each cell, should be one big dict indexed by nid:
+        spiketypefname = os.path.join(self.path, self.absname + '.spiketype')
+        try:
+            with open(spiketypefname, 'r') as f:
+                spiketypestr = f.read()
+            spiketypes = eval(spiketypestr)
+            for nid, spiketype in spiketypes.items():
+                assert spiketype in ['slow', 'fast']
+                self.alln[nid].spiketype = spiketype
+        except IOError: # no absname.spiketype file denoting RF type of each cell
+            pass
 
         # one way of calculating self.trange:
         #tranges = np.asarray([ n.trange for n in self.alln.values() ])
