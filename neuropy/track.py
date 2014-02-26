@@ -107,6 +107,7 @@ class Track(object):
                 rftypestr = f.read()
             rftypes = eval(rftypestr)
             for nid, rftype in rftypes.items():
+                assert rftype in ['simple', 'complex', 'LGN', None]
                 self.alln[nid].rftype = rftype
         except IOError: # no absname.rftype file denoting RF type of each cell
             pass
@@ -459,14 +460,14 @@ class Track(object):
             if na: a.plot(qnpos[:, 0], qnpos[:, 1], 'b.', ms=10, alpha=0.6, label='quiet')
             if nq: a.plot(anpos[:, 0], anpos[:, 1], 'r.', ms=10, alpha=0.6, label='active')
         elif colour == 'rftype':
-            # plot simple, complex, LGN afferent and None in red, blue, green and grey
-            spos = np.asarray([ neuron.pos for neuron in self.n.values()
+            # plot simple, complex, LGN afferent and None in red, blue, green and grey:
+            spos = np.asarray([ neuron.pos for neuron in self.alln.values()
                                 if neuron.rftype == 'simple' ])
-            cpos = np.asarray([ neuron.pos for neuron in self.n.values()
+            cpos = np.asarray([ neuron.pos for neuron in self.alln.values()
                                 if neuron.rftype == 'complex' ])
-            Lpos = np.asarray([ neuron.pos for neuron in self.n.values()
+            Lpos = np.asarray([ neuron.pos for neuron in self.alln.values()
                                 if neuron.rftype == 'LGN' ])
-            Npos = np.asarray([ neuron.pos for neuron in self.n.values()
+            Npos = np.asarray([ neuron.pos for neuron in self.alln.values()
                                 if neuron.rftype == None ])
             ns = len(spos)
             nc = len(cpos)
@@ -474,7 +475,7 @@ class Track(object):
             nN = len(Npos)
             # layer in inverse order of importance:
             if nN: a.plot(Npos[:, 0], Npos[:, 1], 'e.', ms=10, alpha=0.6, label='unknown')
-            if nL: a.plot(Lpos[:, 0], Lpos[:, 1], 'g.', ms=10, alpha=0.6, label='LGN')
+            if nL: a.plot(Lpos[:, 0], Lpos[:, 1], 'g.', ms=10, alpha=0.6, label='LGN afferent')
             if nc: a.plot(cpos[:, 0], cpos[:, 1], 'b.', ms=10, alpha=0.6, label='complex')
             if ns: a.plot(spos[:, 0], spos[:, 1], 'r.', ms=10, alpha=0.6, label='simple')
         else:
