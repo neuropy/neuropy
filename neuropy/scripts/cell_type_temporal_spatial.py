@@ -9,7 +9,8 @@ from core import intround
 # fractional position along waveform to assume characteristic peak is roughly aligned to:
 alignf = 0.4
 newtres = 1 # tres to interpolate to, in us
-absslopethresh = 0.4 # uV/us
+absslopethresh = 0.3 # uV/us
+nabsslopethresh = 0.003 # for normalized waveforms, 1/us
 durationthresh = 350 # duration separation threshold
 nbins = 20
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2] # need to be loaded ahead of time
@@ -47,10 +48,15 @@ tres = 20
 t0, t1, aligni = calc_t(nt, tres) # initial guess, for speed
 sigmas = []
 waves = []
+nwaves = [] # peak-to-peak normalized waveforms
 ipis = [] # interpeak intervals
 fwhms = [] # full-width half max values
-maxslopes = [] # maximum abs slopes of each neuron
+maxslopes = [] # maximum abs slopes of each waveform
+maxnslopes = [] # maximum abs slopes of each normalized waveform
 durations = [] # spike duration, measured by time between slope threshold crossings
+ndurations = [] # spike duration measured from normalized waveforms
+slopeiss = [] # start and end timepoint indices used for calculating durations
+nslopeiss = [] # start and end timepoint indices used for calculating ndurations
 allnids = []
 splitis = [] # indices which demarcate neurons from different tracks in allnids
 
@@ -72,6 +78,8 @@ for track in tracks:
         # interpolate waveforms from original t0 timebase to higher rez t1 timebase:
         wave = scipy.interpolate.spline(t0, wave, t1)
         waves.append(wave)
+        nwave = wave / wave.ptp() # normalize peak-to-peak amplitudes
+        nwaves.append(nwave)
         t0i, t1i = wave.argmax(), wave.argmin()
         ipi = abs(t0i - t1i) * newtres
         ipis.append(ipi) # interval between biggest max and min peaks
@@ -81,31 +89,49 @@ for track in tracks:
         fwhm = abs(li - ri) * newtres
         fwhms.append(fwhm)
         absslope = abs(np.diff(wave)) / newtres # uV/us
-        maxabsslope = max(absslope)
-        maxslopes.append(maxabsslope)
+        maxslopes.append(max(absslope))
+        nabsslope = abs(np.diff(nwave)) / newtres # 1/us
+        maxnslopes.append(max(nabsslope))        
         # another way to measure waveform duration is to see over what duration the abs(slope)
         # is greater than something close to 0. Starting from each end, at what timepoint does
         # the slope exceed this minimum threshold? Difference between timepoints is duration
         # of waveform
-        flatis = np.where(absslope > absslopethresh)[0]
-        if len(flatis) < 2:
+        slopeis = np.where(absslope > absslopethresh)[0]
+        if len(slopeis) < 2:
             # exclude cells whose slope isn't above threshold for at least two timepoints:
             duration = 0
+            slopeiss.append([0, 0])
         else:
-            duration = (flatis[-1] - flatis[0]) * newtres
+            duration = (slopeis[-1] - slopeis[0]) * newtres
+            slopeiss.append([slopeis[0], slopeis[-1]])
         durations.append(duration)
+        # repeat for normalized waveforms:
+        nslopeis = np.where(nabsslope > nabsslopethresh)[0]
+        if len(nslopeis) < 2:
+            # exclude cells whose slope isn't above threshold for at least two timepoints:
+            nduration = 0
+            nslopeiss.append([0, 0])
+        else:
+            nduration = (nslopeis[-1] - nslopeis[0]) * newtres
+            nslopeiss.append([nslopeis[0], nslopeis[-1]])
+        ndurations.append(nduration)
         allnids.append(nid)
         # or as an alternative to using absslopethresh, measure the fwhm of the last
         # extremum in each waveform. Looking at the overplotted waveforms, that, strangely,
         # is where I see the most dichotomy. Not so much in the first peak.
 
+waves = np.asarray(waves)
+nwaves = np.asarray(nwaves)
 sigmas = np.hstack(sigmas)
 ipis = np.hstack(ipis)
 durations = np.hstack(durations)
+ndurations = np.hstack(ndurations)
+slopeiss = np.vstack(slopeiss)
+nslopeiss = np.vstack(nslopeiss)
 allnids = np.hstack(allnids)
 nn = len(allnids)
 splitis.append(nn)
-
+'''
 # plot unclassified maxchan waveforms:
 figure(figsize=(3, 3))
 for wave in waves:
@@ -175,7 +201,7 @@ ylabel('maximum slope ($\mu$V/$\mu$s)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('maxslope vs ipi')
 tight_layout(pad=0.3)
-
+'''
 # scatter plot duration vs ipi
 figure(figsize=(3, 3))
 # equation for dividing line between the two clusters
@@ -207,6 +233,26 @@ for tracki, track in enumerate(tracks):
     d = dict(zip(nids, st))
     sts[track.absname] = d # can manually print these out and save to .spiketype file
 
+# scatter plot nduration vs ipi
+figure(figsize=(3, 3))
+# equation for dividing line between the two clusters
+x = array([0, 400])
+y = 1.0*x + 140
+ndurationthreshes = 1.0*ipis + 140
+nfastis = np.asarray(ndurations) <= ndurationthreshes
+nslowis = np.asarray(ndurations) > ndurationthreshes
+plot(ipis[nslowis], ndurations[nslowis], 'b.')
+plot(ipis[nfastis], ndurations[nfastis], 'r.')
+plot(x, y, 'e--') # plot dividing line
+xlim(xmin=0)
+xticks([0, 100, 200, 300, 400])
+yticks([0, 200, 400, 600, 800])
+xlabel('interpeak interval ($\mu$s)')
+ylabel('nduration ($\mu$s)')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('nduration vs ipi')
+tight_layout(pad=0.3)
+'''
 # scatter plot duration vs fwhm
 figure(figsize=(3, 3))
 plot(fwhms, durations, 'k.')
@@ -277,8 +323,8 @@ ylabel('neuron count')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('fwhm distrib')
 tight_layout(pad=0.3)
-
-# plot slope distribution
+'''
+# plot maxslope distribution
 figure(figsize=(3, 3))
 hist(maxslopes, bins=nbins, fc='k')
 xlabel('maximum slope ($\mu$V/$\mu$s)')
@@ -287,19 +333,14 @@ ylabel('neuron count')
 gcfm().window.setWindowTitle('maxslope distrib')
 tight_layout(pad=0.3)
 
-# plot waveforms classified by dividing line in duration vs ipi plot:
-waves = np.asarray(waves)
+# plot maxnslope distribution
 figure(figsize=(3, 3))
-for wave in waves[slowis]:
-    plot(t1, wave, 'b-', lw=1)
-for wave in waves[fastis]:
-    plot(t1, wave, 'r-', lw=1)
-xticks([0, 200, 400, 600, 800])
-yticks(np.arange(-200, 200+100, 100))
-xlabel('time ($\mu$s)')
-ylabel('voltage ($\mu$V)')
-#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
-gcfm().window.setWindowTitle('waveformsep duration vs ipi')
+hist(maxnslopes, bins=nbins, fc='k')
+xticks([0, 0.01, 0.02])
+xlabel('maximum normalized slope (1/$\mu$s)')
+ylabel('neuron count')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('maxnslope distrib')
 tight_layout(pad=0.3)
 
 # plot slow waveforms separately:
@@ -314,7 +355,7 @@ ylabel('voltage ($\mu$V)')
 #title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
 gcfm().window.setWindowTitle('slow waveforms')
 tight_layout(pad=0.3)
-
+'''
 # plot fast waveforms separately:
 figure(figsize=(3, 3))
 for wave in waves[fastis]:
@@ -327,7 +368,62 @@ ylabel('voltage ($\mu$V)')
 #title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
 gcfm().window.setWindowTitle('fast waveforms')
 tight_layout(pad=0.3)
+'''
+# plot waveforms classified by dividing line in duration vs ipi plot:
+figure(figsize=(3, 3))
+for wave in waves[slowis]:
+    plot(t1, wave, 'b-', lw=1)
+for wave in waves[fastis]:
+    plot(t1, wave, 'r-', lw=1)
+xticks([0, 200, 400, 600, 800])
+yticks(np.arange(-200, 200+100, 100))
+xlabel('time ($\mu$s)')
+ylabel('voltage ($\mu$V)')
+#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+gcfm().window.setWindowTitle('waveformsep duration vs ipi')
+tight_layout(pad=0.3)
 
+# plot slow waveforms classified by nduration vs ipi plot:
+figure(figsize=(3, 3))
+for wave in waves[nslowis]:
+    plot(t1, wave, 'b-', lw=1)
+xticks([0, 200, 400, 600, 800])
+yticks(np.arange(-200, 200+100, 100))
+slow_ymax = ylim()[1]
+xlabel('time ($\mu$s)')
+ylabel('voltage ($\mu$V)')
+#title('tracks: %r, nabsslopethresh=%.3f' % (tracknames, nabsslopethresh))
+gcfm().window.setWindowTitle('slow nduration waveforms')
+tight_layout(pad=0.3)
+'''
+# plot fast normalized waveforms separately:
+figure(figsize=(3, 3))
+for nwave in nwaves[nfastis]:
+    plot(t1, nwave, 'r-', lw=1)
+ylim(ymax=slow_ymax)
+xticks([0, 200, 400, 600, 800])
+yticks([-1, -0.5, 0, 0.5, 1])
+xlabel('time ($\mu$s)')
+ylabel('normalized voltage')
+#title('tracks: %r, nabsslopethresh=%.3f' % (tracknames, nabsslopethresh))
+gcfm().window.setWindowTitle('fast normalized waveforms')
+tight_layout(pad=0.3)
+'''
+# plot unnormalized waveforms classified by dividing line in nduration vs ipi plot:
+figure(figsize=(3, 3))
+for wave in waves[nslowis]:
+    plot(t1, wave, 'b-', lw=1)
+for wave in waves[nfastis]:
+    plot(t1, wave, 'r-', lw=1)
+xticks([0, 200, 400, 600, 800])
+yticks(np.arange(-200, 200+100, 100))
+xlabel('time ($\mu$s)')
+ylabel('voltage ($\mu$V)')
+#title('tracks: %r, nabsslopethresh=%.3f' % (tracknames, nabsslopethresh))
+gcfm().window.setWindowTitle('waveformsep nduration vs ipi')
+tight_layout(pad=0.3)
+
+'''
 # plot waveforms classified only by durationthresh (in us):
 fastis = durations <= durationthresh
 slowis = durations > durationthresh
@@ -344,5 +440,25 @@ ylabel('voltage ($\mu$V)')
 #title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
 gcfm().window.setWindowTitle('waveformsep durationthresh=%s' % durationthresh)
 tight_layout(pad=0.3)
+'''
+
+# this code reveals which timepoints are considered part of the duration of the spike,
+# as defined by first and last slope threshold crossings. For better visibility, overplot
+# just the first few waveforms of the 245 in total:
+figure()
+n = 5
+for i in range(n):
+    plot(waves[i], 'b')
+    x = np.arange(slopeiss[i,0], slopeiss[i,1], 1)
+    y = waves[i, slopeiss[i,0]:slopeiss[i,1]]
+    plot(x, y, 'r')
+gcfm().window.setWindowTitle("artifactual duration bimodality")
+
+# The problem with duration is that it induces an artifactual bimodality: it either includes
+# only the first phase of a spike, or both phases. This leads to bimodailty in the measured
+# duration, even if the underlying waveforms don't have that bimodality. It's simply noise
+# in the slope that the threshold is using to somewhat randomly assign cells to the slow
+# and fast group. Using a threshold in retrospect was dangerous, because that imposes
+# a nonlinearity, which would be best avoided prior to clustering.
 
 show()
