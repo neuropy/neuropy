@@ -31,15 +31,29 @@ def argextrema(a):
     return np.diff(np.sign(np.diff(a))).nonzero()[0] + 1
 
 def argfwhm(a, exti, fraction=0.5):
-    """Find timepoints of full width half max (or whatever fraction is) around extremum exti
-    in 1D array a"""
-    a = abs(a)
+    """Find timepoints of full width half max (or whatever fraction is) around extremum
+    at index exti in 1D array a"""
+    #a = abs(a)
     fm = a[exti] * fraction # fraction of max
     d = a - fm
     lis = np.diff(np.sign(d[:exti])).nonzero()[0]
     ris = np.diff(np.sign(d[exti:])).nonzero()[0] + exti + 1
     assert len(lis) > 0
-    assert len(ris) > 0
+    if not len(ris) > 0:
+        # linearly extrapolate right edge of a until it falls below 0
+        # find slope from last two points:
+        m = a[-1] - a[-2]
+        assert m < 0 # if it isn't -ve, we'll never find the end of this extremum
+        n = ceil(abs(a[-1] / m)) # number of points to extrapolate to get to 0
+        y = m * np.arange(n) + a[-1] # extrapolated points
+        a = np.hstack([a, y]) # extrapolated points concatenated to end of a
+        # now try again:
+        d = a - fm
+        lis = np.diff(np.sign(d[:exti])).nonzero()[0]
+        ris = np.diff(np.sign(d[exti:])).nonzero()[0] + exti + 1
+        assert len(lis) > 0
+        assert len(ris) > 0
+        #import pdb; pdb.set_trace()
     # return rightmost of left indices, and leftmost of right indices:
     return lis[-1], ris[0]
 
@@ -51,6 +65,7 @@ waves = []
 nwaves = [] # peak-to-peak normalized waveforms
 ipis = [] # interpeak intervals
 fwhms = [] # full-width half max values
+fwhm2s = [] # full-width half max values of 2nd peak
 maxslopes = [] # maximum abs slopes of each waveform
 maxnslopes = [] # maximum abs slopes of each normalized waveform
 durations = [] # spike duration, measured by time between slope threshold crossings
@@ -78,16 +93,27 @@ for track in tracks:
         # interpolate waveforms from original t0 timebase to higher rez t1 timebase:
         wave = scipy.interpolate.spline(t0, wave, t1)
         waves.append(wave)
+        figure()
+        plot(wave)
         nwave = wave / wave.ptp() # normalize peak-to-peak amplitudes
         nwaves.append(nwave)
         t0i, t1i = wave.argmax(), wave.argmin()
+        #plot(t0i, wave[t0i], 'r.')
+        #plot(t1i, wave[t1i], 'r.')
         ipi = abs(t0i - t1i) * newtres
         ipis.append(ipi) # interval between biggest max and min peaks
         extis = argextrema(wave) # indices of all local extrema
-        exti = extis[abs(extis - aligni).argmin()] # extremum closest to aligni
+        extii = abs(extis - aligni).argmin() # extremum closest to aligni
+        exti = extis[extii] # index of extremum closest to aligni
         li, ri = argfwhm(wave, exti, fraction=0.5)
         fwhm = abs(li - ri) * newtres
         fwhms.append(fwhm)
+        # find index of extremum to the right of the one closest to aligni, or if the one
+        # closest to aligni is already the rightmost, use that one:
+        exti = extis[min(extii+1, len(extis)-1)]
+        li, ri = argfwhm(wave, exti, fraction=0.5) # FWHM of 2nd extremum
+        fwhm2 = abs(li - ri) * newtres
+        fwhm2s.append(fwhm2)
         absslope = abs(np.diff(wave)) / newtres # uV/us
         maxslopes.append(max(absslope))
         nabsslope = abs(np.diff(nwave)) / newtres # 1/us
@@ -116,14 +142,23 @@ for track in tracks:
             nslopeiss.append([nslopeis[0], nslopeis[-1]])
         ndurations.append(nduration)
         allnids.append(nid)
-        # or as an alternative to using absslopethresh, measure the fwhm of the last
+        # - as an alternative to using absslopethresh, measure the fwhm of the last
         # extremum in each waveform. Looking at the overplotted waveforms, that, strangely,
         # is where I see the most dichotomy. Not so much in the first peak.
+        # - try taking sum of slopes, or sum of 2nd derivatives, across entire waveform
+        # - plot Vpp
+        # - best of all might be to find the time between inflection points around the later of
+        # the two biggest peaks. However, this really would require using longer waveforms
+        # to ensure the inflection point after the second peak is found. Or, just estimate
+        # it manually for the few templates that don't have one. Also, might require some
+        # smoothing to get around the occasional noise in the slope
 
 waves = np.asarray(waves)
 nwaves = np.asarray(nwaves)
 sigmas = np.hstack(sigmas)
 ipis = np.hstack(ipis)
+fwhms = np.hstack(fwhms)
+fwhm2s = np.hstack(fwhm2s)
 durations = np.hstack(durations)
 ndurations = np.hstack(ndurations)
 slopeiss = np.vstack(slopeiss)
@@ -183,16 +218,46 @@ ylabel('$\sigma$ ($\mu$m)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma vs duration')
 tight_layout(pad=0.3)
-
+'''
+'''
 # scatter plot fwhm vs ipi
 figure(figsize=(3, 3))
 plot(ipis, fwhms, 'k.')
 xlabel('interpeak interval ($\mu$s)')
 ylabel('FWHM ($\mu$s)')
-#title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('fwhm vs ipi')
 tight_layout(pad=0.3)
 
+# scatter plot fwhm2 vs ipi
+figure(figsize=(3, 3))
+plot(ipis, fwhm2s, 'k.')
+xlabel('interpeak interval ($\mu$s)')
+ylabel('FWHM2 ($\mu$s)')
+gcfm().window.setWindowTitle('fwhm2 vs ipi')
+tight_layout(pad=0.3)
+
+# scatter plot fwhm2 vs fwhm
+figure(figsize=(3, 3))
+plot(fwhms, fwhm2s, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+xlabel('FWHM ($\mu$s)')
+ylabel('FWHM2 ($\mu$s)')
+gcfm().window.setWindowTitle('fwhm2 vs fwhm')
+tight_layout(pad=0.3)
+
+# scatter plot sumfwhm vs ipi
+figure(figsize=(3, 3))
+plot(ipis, fwhms+fwhm2s, 'k.')
+xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+xlabel('interpeak interval ($\mu$s)')
+ylabel('sum(FWHM) ($\mu$s)')
+gcfm().window.setWindowTitle('sum(fwhm) vs ipi')
+tight_layout(pad=0.3)
+'''
+
+'''
 # scatter plot slope vs ipi
 figure(figsize=(3, 3))
 plot(ipis, maxslopes, 'k.')
@@ -201,7 +266,7 @@ ylabel('maximum slope ($\mu$V/$\mu$s)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('maxslope vs ipi')
 tight_layout(pad=0.3)
-'''
+
 # scatter plot duration vs ipi
 figure(figsize=(3, 3))
 # equation for dividing line between the two clusters
@@ -252,7 +317,7 @@ ylabel('nduration ($\mu$s)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('nduration vs ipi')
 tight_layout(pad=0.3)
-'''
+
 # scatter plot duration vs fwhm
 figure(figsize=(3, 3))
 plot(fwhms, durations, 'k.')
@@ -302,7 +367,8 @@ ylabel('neuron count')
 #title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
 gcfm().window.setWindowTitle('duration distrib')
 tight_layout(pad=0.3)
-
+'''
+'''
 # plot ipi distribution
 figure(figsize=(3, 3))
 hist(ipis, bins=nbins, fc='k')
@@ -323,6 +389,17 @@ ylabel('neuron count')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('fwhm distrib')
 tight_layout(pad=0.3)
+
+# plot fwhm2 distribution
+figure(figsize=(3, 3))
+hist(fwhm2s, bins=nbins, fc='k')
+#xticks([0, 50, 100, 150, 200])
+xlabel('FWHM2 ($\mu$s)')
+ylabel('neuron count')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('fwhm2 distrib')
+tight_layout(pad=0.3)
+'''
 '''
 # plot maxslope distribution
 figure(figsize=(3, 3))
@@ -355,7 +432,7 @@ ylabel('voltage ($\mu$V)')
 #title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
 gcfm().window.setWindowTitle('slow waveforms')
 tight_layout(pad=0.3)
-'''
+
 # plot fast waveforms separately:
 figure(figsize=(3, 3))
 for wave in waves[fastis]:
@@ -368,7 +445,7 @@ ylabel('voltage ($\mu$V)')
 #title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
 gcfm().window.setWindowTitle('fast waveforms')
 tight_layout(pad=0.3)
-'''
+
 # plot waveforms classified by dividing line in duration vs ipi plot:
 figure(figsize=(3, 3))
 for wave in waves[slowis]:
@@ -395,7 +472,7 @@ ylabel('voltage ($\mu$V)')
 #title('tracks: %r, nabsslopethresh=%.3f' % (tracknames, nabsslopethresh))
 gcfm().window.setWindowTitle('slow nduration waveforms')
 tight_layout(pad=0.3)
-'''
+
 # plot fast normalized waveforms separately:
 figure(figsize=(3, 3))
 for nwave in nwaves[nfastis]:
@@ -408,7 +485,7 @@ ylabel('normalized voltage')
 #title('tracks: %r, nabsslopethresh=%.3f' % (tracknames, nabsslopethresh))
 gcfm().window.setWindowTitle('fast normalized waveforms')
 tight_layout(pad=0.3)
-'''
+
 # plot unnormalized waveforms classified by dividing line in nduration vs ipi plot:
 figure(figsize=(3, 3))
 for wave in waves[nslowis]:
@@ -423,7 +500,6 @@ ylabel('voltage ($\mu$V)')
 gcfm().window.setWindowTitle('waveformsep nduration vs ipi')
 tight_layout(pad=0.3)
 
-'''
 # plot waveforms classified only by durationthresh (in us):
 fastis = durations <= durationthresh
 slowis = durations > durationthresh
@@ -441,7 +517,7 @@ ylabel('voltage ($\mu$V)')
 gcfm().window.setWindowTitle('waveformsep durationthresh=%s' % durationthresh)
 tight_layout(pad=0.3)
 '''
-
+'''
 # this code reveals which timepoints are considered part of the duration of the spike,
 # as defined by first and last slope threshold crossings. For better visibility, overplot
 # just the first few waveforms of the 245 in total:
@@ -460,5 +536,5 @@ gcfm().window.setWindowTitle("artifactual duration bimodality")
 # in the slope that the threshold is using to somewhat randomly assign cells to the slow
 # and fast group. Using a threshold in retrospect was dangerous, because that imposes
 # a nonlinearity, which would be best avoided prior to clustering.
-
+'''
 show()
