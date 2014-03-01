@@ -2,27 +2,30 @@
 plot distributions and waveforms, as separated by shape thresholds. Run from within neuropy
 using `run -i scripts/cell_type_temporal_spatial.py`"""
 
+from __future__ import division
+
 import scipy
 from pylab import get_current_fig_manager as gcfm
 from core import intround
 
-# fractional position along waveform to assume characteristic peak is roughly aligned to:
-alignf = 0.4
+plotwaves = False
+
+# waveform timepoint to assume characteristic peak is roughly aligned to:
+alignt = 400 # us
 newtres = 1 # tres to interpolate to, in us
 absslopethresh = 0.3 # uV/us
 nabsslopethresh = 0.003 # for normalized waveforms, 1/us
 durationthresh = 350 # duration separation threshold
-nbins = 20
+nbins = 30
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2] # need to be loaded ahead of time
-#tracknames = [ track.absname for track in tracks ]
 
-def calc_t(nt, tres):
+def calc_t(nt, tres, newtres):
     """Generate original and desired interpolated timebases t0 and t1, as well as initial
     guess for where the alignment point is in t1"""
     tend = nt*tres
     t0 = np.arange(0, tend, tres)
     t1 = np.arange(0, tend-tres, newtres)
-    aligni = intround(alignf * len(t1))
+    aligni = abs(t1 - alignt).argmin()
     return t0, t1, aligni
 
 def argextrema(a):
@@ -59,7 +62,7 @@ def argfwhm(a, exti, fraction=0.5):
 
 nt = 50
 tres = 20
-t0, t1, aligni = calc_t(nt, tres) # initial guess, for speed
+t0, t1, aligni = calc_t(nt, tres, newtres) # initial guess, for speed
 sigmas = []
 waves = []
 nwaves = [] # peak-to-peak normalized waveforms
@@ -80,13 +83,13 @@ for track in tracks:
     splitis.append(len(allnids))
     if tres != track.tres: # recalculate timepoints
         tres = track.tres
-        t0, t1, aligni = calc_t(nt, tres)
+        t0, t1, aligni = calc_t(nt, tres, newtres)
     nids = sorted(track.alln)
     for nid in nids:
         n = track.alln[nid]
         if nt != n.nt: # recalculate timepoints
             nt = n.nt
-            t0, t1, aligni = calc_t(nt, tres)
+            t0, t1, aligni = calc_t(nt, tres, newtres)
         sigmas.append(n.sigma)
         maxchani = n.chans.searchsorted(n.maxchan)
         wave = n.wavedata[maxchani]
