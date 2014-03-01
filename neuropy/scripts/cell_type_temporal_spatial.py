@@ -33,6 +33,19 @@ def argextrema(a):
     Taken from http://stackoverflow.com/a/9667121/2020363"""
     return np.diff(np.sign(np.diff(a))).nonzero()[0] + 1
 
+def arg0xextrema(a):
+    """Return indices of biggest extrema between edges and 0 crossings in 1D array a"""
+    zcis = np.where(np.diff(np.sign(a)) != 0)[0] # zero crossing indices
+    edgeis = np.hstack([0, zcis, len(a)-1]) # add left and right edges
+    extis = []
+    for edgei0, edgei1 in zip(edgeis[:-1], edgeis[1:]):
+        segment = a[edgei0:edgei1]
+        segmentextis = argextrema(segment)
+        if len(segmentextis) > 0: # start and end segments might not have any extrema
+            maxsegmentextii = abs(segment[segmentextis]).argmax()
+            extis.append(segmentextis[maxsegmentextii] + edgei0)
+    return hstack(extis)
+
 def argfwhm(a, exti, fraction=0.5):
     """Find timepoints of full width half max (or whatever fraction is) around extremum
     at index exti in 1D array a"""
@@ -46,9 +59,10 @@ def argfwhm(a, exti, fraction=0.5):
         # linearly extrapolate right edge of a until it falls below 0
         # find slope from last two points:
         m = a[-1] - a[-2]
-        assert m < 0 # if it isn't -ve, we'll never find the end of this extremum
-        n = ceil(abs(a[-1] / m)) # number of points to extrapolate to get to 0
-        y = m * np.arange(n) + a[-1] # extrapolated points
+        b = a[-1]
+        assert b * m < 0 # heading towards 0? or we'll never find the end of this extremum
+        n = ceil(abs(b / m)) # number of points to extrapolate to get to 0
+        y = m * np.arange(n) + b # extrapolated points
         a = np.hstack([a, y]) # extrapolated points concatenated to end of a
         # now try again:
         d = a - fm
@@ -66,15 +80,17 @@ t0, t1, aligni = calc_t(nt, tres, newtres) # initial guess, for speed
 sigmas = []
 waves = []
 nwaves = [] # peak-to-peak normalized waveforms
+fwhm0s = [] # full-width half max values of primary peak
+fwhm1s = [] # full-width half max values of secondary peak
 ipis = [] # interpeak intervals
-fwhms = [] # full-width half max values
-fwhm2s = [] # full-width half max values of 2nd peak
-maxslopes = [] # maximum abs slopes of each waveform
-maxnslopes = [] # maximum abs slopes of each normalized waveform
-durations = [] # spike duration, measured by time between slope threshold crossings
-ndurations = [] # spike duration measured from normalized waveforms
-slopeiss = [] # start and end timepoint indices used for calculating durations
-nslopeiss = [] # start and end timepoint indices used for calculating ndurations
+duration2s = [] # start of primary to end of secondary peak
+ai0s, ai1s, aais = [], [], []
+#maxslopes = [] # maximum abs slopes of each waveform
+#maxnslopes = [] # maximum abs slopes of each normalized waveform
+#durations = [] # spike duration, measured by time between slope threshold crossings
+#ndurations = [] # spike duration measured from normalized waveforms
+#slopeiss = [] # start and end timepoint indices used for calculating durations
+#nslopeiss = [] # start and end timepoint indices used for calculating ndurations
 allnids = []
 splitis = [] # indices which demarcate neurons from different tracks in allnids
 
@@ -96,27 +112,54 @@ for track in tracks:
         # interpolate waveforms from original t0 timebase to higher rez t1 timebase:
         wave = scipy.interpolate.spline(t0, wave, t1)
         waves.append(wave)
-        figure()
-        plot(wave)
         nwave = wave / wave.ptp() # normalize peak-to-peak amplitudes
         nwaves.append(nwave)
-        t0i, t1i = wave.argmax(), wave.argmin()
-        #plot(t0i, wave[t0i], 'r.')
-        #plot(t1i, wave[t1i], 'r.')
-        ipi = abs(t0i - t1i) * newtres
-        ipis.append(ipi) # interval between biggest max and min peaks
-        extis = argextrema(wave) # indices of all local extrema
+        extis = arg0xextrema(wave) # indices of biggest peaks between 0 crossings and edges
         extii = abs(extis - aligni).argmin() # extremum closest to aligni
-        exti = extis[extii] # index of extremum closest to aligni
-        li, ri = argfwhm(wave, exti, fraction=0.5)
-        fwhm = abs(li - ri) * newtres
-        fwhms.append(fwhm)
-        # find index of extremum to the right of the one closest to aligni, or if the one
-        # closest to aligni is already the rightmost, use that one:
-        exti = extis[min(extii+1, len(extis)-1)]
-        li, ri = argfwhm(wave, exti, fraction=0.5) # FWHM of 2nd extremum
-        fwhm2 = abs(li - ri) * newtres
-        fwhm2s.append(fwhm2)
+        exti0 = extis[extii] # index of extremum closest to aligni, assume main extremum
+
+        # find index of extremum to the right of the one closest to aligni. If the one
+        # closest to aligni is already the rightmost, make that one the secondary, and the one
+        # to its left the primary:
+        try:
+            exti1 = extis[extii+1]
+        except IndexError:
+            exti1 = exti0 # make old primary the new secondary
+            # set new primary to be the one to the left, hopefully without another IndexError:
+            exti0 = extis[extii-1]
+        li0, ri0 = argfwhm(wave, exti0, fraction=0.5)
+        li1, ri1 = argfwhm(wave, exti1, fraction=0.75) # 0.75 seems to give max fwhm1 bimodality
+        fwhm0 = (ri0 - li0) * newtres
+        fwhm1 = (ri1 - li1) * newtres
+        #t0i, t1i = wave.argmax(), wave.argmin() # previously used biggest peaks for ipi
+        ipi = (exti1 - exti0) * newtres # interval between primary and secondary peaks
+        duration2 = (ri1 - li0) * newtres # start of primary to end of secondary peak
+        ai0 = (ri0 - exti0) / (exti0 - li0) # asymmetry index of primary peak
+        ai1 = (ri1 - exti1) / (exti1 - li1) # asymmetry index of secondary peak
+        V0, V1 = abs(wave[exti0]), abs(wave[exti1])
+        aai = (V0 - V1)/(V0 + V1) # amplitude asymmetry index
+        fwhm0s.append(fwhm0)
+        fwhm1s.append(fwhm1)
+        ipis.append(ipi)
+        duration2s.append(duration2)
+        ai0s.append(ai0)
+        ai1s.append(ai1)
+        aais.append(aai)
+        if plotwaves:
+            figure()
+            plot(wave, 'k')
+            # plot fwhm of primary and secondary peaks:
+            nit = len(t1) # number of interpolated timepoints
+            minri0 = min(ri0, nit)
+            minri1 = min(ri1, nit)
+            plot(np.arange(li0, minri0), wave[li0:minri0], 'r')
+            plot(np.arange(li1, minri1), wave[li1:minri1], 'b')
+            # plot points used for ipi:
+            plot(exti0, wave[exti0], 'g', ms=10)
+            plot(exti1, wave[exti1], 'g', ms=10)
+            titlestr = 'wave %d (%s)' % (len(fwhm0s)-1, track.absname + '.n%d' % nid)
+            gcfm().window.setWindowTitle(titlestr)
+        '''
         absslope = abs(np.diff(wave)) / newtres # uV/us
         maxslopes.append(max(absslope))
         nabsslope = abs(np.diff(nwave)) / newtres # 1/us
@@ -144,6 +187,7 @@ for track in tracks:
             nduration = (nslopeis[-1] - nslopeis[0]) * newtres
             nslopeiss.append([nslopeis[0], nslopeis[-1]])
         ndurations.append(nduration)
+        '''
         allnids.append(nid)
         # - as an alternative to using absslopethresh, measure the fwhm of the last
         # extremum in each waveform. Looking at the overplotted waveforms, that, strangely,
@@ -159,13 +203,16 @@ for track in tracks:
 waves = np.asarray(waves)
 nwaves = np.asarray(nwaves)
 sigmas = np.hstack(sigmas)
+fwhm0s = np.hstack(fwhm0s)
+fwhm1s = np.hstack(fwhm1s)
 ipis = np.hstack(ipis)
-fwhms = np.hstack(fwhms)
-fwhm2s = np.hstack(fwhm2s)
-durations = np.hstack(durations)
-ndurations = np.hstack(ndurations)
-slopeiss = np.vstack(slopeiss)
-nslopeiss = np.vstack(nslopeiss)
+duration2s = np.hstack(duration2s)
+ai0s = np.hstack(ai0s)
+ai1s = np.hstack(ai1s)
+aais = np.hstack(aais)
+#ndurations = np.hstack(ndurations)
+#slopeiss = np.vstack(slopeiss)
+#nslopeiss = np.vstack(nslopeiss)
 allnids = np.hstack(allnids)
 nn = len(allnids)
 splitis.append(nn)
@@ -181,11 +228,12 @@ ylabel('voltage ($\mu$V)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('waveforms')
 tight_layout(pad=0.3)
-
+'''
+'''
 # scatter plot sigma vs ipi
 figure(figsize=(3, 3))
 plot(ipis, sigmas, 'k.')
-xticks([0, 100, 200, 300, 400])
+#xticks([0, 100, 200, 300, 400])
 yticks(np.arange(0, 100+20, 20))
 xlabel('interpeak interval ($\mu$s)')
 ylabel('$\sigma$ ($\mu$m)')
@@ -193,13 +241,22 @@ ylabel('$\sigma$ ($\mu$m)')
 gcfm().window.setWindowTitle('sigma vs ipi')
 tight_layout(pad=0.3)
 
-# scatter plot sigma vs fwhm
+# scatter plot sigma vs fwhm0
 figure(figsize=(3, 3))
 plot(fwhms, sigmas, 'k.')
-xlabel('FWHM ($\mu$s)')
+xlabel('FWHM0 ($\mu$s)')
 ylabel('$\sigma$ ($\mu$m)')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('sigma vs fwhm')
+gcfm().window.setWindowTitle('sigma vs fwhm0')
+tight_layout(pad=0.3)
+
+# scatter plot sigma vs fwhm1
+figure(figsize=(3, 3))
+plot(fwhms, sigmas, 'k.')
+xlabel('FWHM1 ($\mu$s)')
+ylabel('$\sigma$ ($\mu$m)')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('sigma vs fwhm1')
 tight_layout(pad=0.3)
 
 # scatter plot sigma vs slope
@@ -211,56 +268,56 @@ ylabel('$\sigma$ ($\mu$m)')
 gcfm().window.setWindowTitle('sigma vs maxslope')
 tight_layout(pad=0.3)
 
-# scatter plot sigma vs duration
+# scatter plot sigma vs duration2
 figure(figsize=(3, 3))
-plot(durations, sigmas, 'k.')
+plot(duration2s, sigmas, 'k.')
 ylim(ymin=0)
-xticks([0, 200, 400, 600, 800])
-xlabel('duration ($\mu$s)')
+#xticks([0, 200, 400, 600, 800])
+xlabel('duration2 ($\mu$s)')
 ylabel('$\sigma$ ($\mu$m)')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('sigma vs duration')
+gcfm().window.setWindowTitle('sigma vs duration2')
 tight_layout(pad=0.3)
 '''
 '''
-# scatter plot fwhm vs ipi
+# scatter plot fwhm0 vs ipi
 figure(figsize=(3, 3))
-plot(ipis, fwhms, 'k.')
+plot(ipis, fwhm0s, 'k.')
 xlabel('interpeak interval ($\mu$s)')
-ylabel('FWHM ($\mu$s)')
-gcfm().window.setWindowTitle('fwhm vs ipi')
+ylabel('FWHM0 ($\mu$s)')
+gcfm().window.setWindowTitle('fwhm0 vs ipi')
+tight_layout(pad=0.3)
+'''
+'''
+# scatter plot fwhm1 vs ipi
+figure(figsize=(3, 3))
+plot(ipis, fwhm1s, 'k.')
+xlabel('interpeak interval ($\mu$s)')
+ylabel('FWHM1 ($\mu$s)')
+gcfm().window.setWindowTitle('fwhm1 vs ipi')
 tight_layout(pad=0.3)
 
-# scatter plot fwhm2 vs ipi
+# scatter plot fwhm1 vs fwhm0
 figure(figsize=(3, 3))
-plot(ipis, fwhm2s, 'k.')
-xlabel('interpeak interval ($\mu$s)')
-ylabel('FWHM2 ($\mu$s)')
-gcfm().window.setWindowTitle('fwhm2 vs ipi')
-tight_layout(pad=0.3)
-
-# scatter plot fwhm2 vs fwhm
-figure(figsize=(3, 3))
-plot(fwhms, fwhm2s, 'k.')
+plot(fwhm0s, fwhm1s, 'k.')
 #xticks([0, 50, 100, 150, 200])
 #yticks([0, 200, 400, 600, 800])
-xlabel('FWHM ($\mu$s)')
-ylabel('FWHM2 ($\mu$s)')
-gcfm().window.setWindowTitle('fwhm2 vs fwhm')
+xlabel('FWHM0 ($\mu$s)')
+ylabel('FWHM1 ($\mu$s)')
+gcfm().window.setWindowTitle('fwhm1 vs fwhm0')
 tight_layout(pad=0.3)
-
+'''
+'''
 # scatter plot sumfwhm vs ipi
 figure(figsize=(3, 3))
-plot(ipis, fwhms+fwhm2s, 'k.')
-xticks([0, 50, 100, 150, 200])
+plot(ipis, fwhm0s+fwhm1s, 'k.')
+#xticks([0, 50, 100, 150, 200])
 #yticks([0, 200, 400, 600, 800])
 xlabel('interpeak interval ($\mu$s)')
 ylabel('sum(FWHM) ($\mu$s)')
 gcfm().window.setWindowTitle('sum(fwhm) vs ipi')
 tight_layout(pad=0.3)
-'''
 
-'''
 # scatter plot slope vs ipi
 figure(figsize=(3, 3))
 plot(ipis, maxslopes, 'k.')
@@ -269,7 +326,19 @@ ylabel('maximum slope ($\mu$V/$\mu$s)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('maxslope vs ipi')
 tight_layout(pad=0.3)
-
+'''
+'''
+# scatter plot duration2 vs ipi
+figure(figsize=(3, 3))
+plot(ipis, duration2s, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+xlabel('interpeak interval ($\mu$s)')
+ylabel('duration2 ($\mu$s)')
+gcfm().window.setWindowTitle('duration2 vs ipi')
+tight_layout(pad=0.3)
+'''
+'''
 # scatter plot duration vs ipi
 figure(figsize=(3, 3))
 # equation for dividing line between the two clusters
@@ -320,18 +389,156 @@ ylabel('nduration ($\mu$s)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('nduration vs ipi')
 tight_layout(pad=0.3)
-
-# scatter plot duration vs fwhm
+'''
+'''
+# scatter plot duration2 vs fwhm0
 figure(figsize=(3, 3))
-plot(fwhms, durations, 'k.')
-xticks([0, 50, 100, 150, 200])
-yticks([0, 200, 400, 600, 800])
-xlabel('FWHM ($\mu$s)')
-ylabel('duration ($\mu$s)')
+plot(fwhm0s, duration2s, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+xlabel('FWHM0 ($\mu$s)')
+ylabel('duration2 ($\mu$s)')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('duration vs fwhm')
+gcfm().window.setWindowTitle('duration2 vs fwhm0')
 tight_layout(pad=0.3)
 
+# scatter plot duration2 vs fwhm1
+figure(figsize=(3, 3))
+plot(fwhm1s, duration2s, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+xlabel('FWHM1 ($\mu$s)')
+ylabel('duration2 ($\mu$s)')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('duration2 vs fwhm1')
+tight_layout(pad=0.3)
+
+# scatter plot duration2 vs aai
+figure(figsize=(3, 3))
+plot(aais, duration2s, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+xlabel('aai')
+ylabel('duration2 ($\mu$s)')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('duration2 vs aai')
+tight_layout(pad=0.3)
+
+# scatter plot sumfwhm vs aai
+figure(figsize=(3, 3))
+plot(aais, fwhm0s+fwhm1s, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+xlabel('aai')
+ylabel('sum(FWHM) ($\mu$s)')
+gcfm().window.setWindowTitle('sum(fwhm) vs aai')
+tight_layout(pad=0.3)
+'''
+# scatter plot fwhm1 vs aai
+figure(figsize=(3, 3))
+# equation for dividing line
+x = array([-0.4, 0.4])
+y = -1000*x + 400
+fwhm1threshes = -1000*aais + 400
+fastis = np.asarray(fwhm1s) <= fwhm1threshes
+slowis = np.asarray(fwhm1s) > fwhm1threshes
+plot(aais[slowis], fwhm1s[slowis], 'b.')
+plot(aais[fastis], fwhm1s[fastis], 'r.')
+plot(x, y, 'e--') # plot dividing line
+
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+xlabel('aai')
+ylabel('FWHM1 ($\mu$s)')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('fwhm1 vs aai')
+tight_layout(pad=0.3)
+'''
+# scatter plot fwhm1 vs ai1
+figure(figsize=(3, 3))
+plot(ai1s, fwhm1s, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+xlabel('ai1')
+ylabel('FWHM1 ($\mu$s)')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('fwhm1 vs ai1')
+tight_layout(pad=0.3)
+
+# scatter plot fwhm1 vs ai1 vs aai
+f = figure(figsize=(3, 3))
+a = f.add_subplot(111, projection='3d')
+a.plot(aais, ai1s, fwhm1s, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+a.set_xlabel('aai')
+a.set_ylabel('ai1')
+a.set_zlabel('fwhm1')
+gcfm().window.setWindowTitle('fwhm1 vs ai1 vs aai')
+tight_layout(pad=0.3)
+
+# scatter plot fwhm1 vs fwhm0 vs aai
+f = figure(figsize=(3, 3))
+a = f.add_subplot(111, projection='3d')
+a.plot(aais, fwhm0s, fwhm1s, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+a.set_xlabel('aai')
+a.set_ylabel('fwhm0')
+a.set_zlabel('fwhm1')
+gcfm().window.setWindowTitle('fwhm1 vs fwhm0 vs aai')
+tight_layout(pad=0.3)
+
+# scatter plot fwhm1 vs duration2 vs aai
+f = figure(figsize=(3, 3))
+a = f.add_subplot(111, projection='3d')
+a.plot(aais, duration2s, fwhm1s, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+a.set_xlabel('aai')
+a.set_ylabel('duration2')
+a.set_zlabel('fwhm1')
+gcfm().window.setWindowTitle('fwhm1 vs duration2 vs aai')
+tight_layout(pad=0.3)
+
+# scatter plot fwhm1 vs ipi vs aai
+f = figure(figsize=(3, 3))
+a = f.add_subplot(111, projection='3d')
+a.plot(aais, ipis, fwhm1s, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+a.set_xlabel('aai')
+a.set_ylabel('ipi')
+a.set_zlabel('fwhm1')
+gcfm().window.setWindowTitle('fwhm1 vs ipi vs aai')
+tight_layout(pad=0.3)
+
+# scatter plot fwhm1 vs sigma vs aai
+f = figure(figsize=(3, 3))
+a = f.add_subplot(111, projection='3d')
+a.plot(aais, sigmas, fwhm1s, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+a.set_xlabel('aai')
+a.set_ylabel('sigma')
+a.set_zlabel('fwhm1')
+gcfm().window.setWindowTitle('fwhm1 vs sigma vs aai')
+tight_layout(pad=0.3)
+'''
+'''
+# scatter plot ipi vs aai
+figure(figsize=(3, 3))
+plot(aais, ipis, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+xlabel('aai')
+ylabel('ipi ($\mu$s)')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('ipi vs aai')
+tight_layout(pad=0.3)
+'''
+
+'''
 # scatter plot duration vs slope
 figure(figsize=(3, 3))
 plot(maxslopes, durations, 'k.')
@@ -361,46 +568,107 @@ ylabel('neuron count')
 gcfm().window.setWindowTitle('sigma distrib')
 tight_layout(pad=0.3)
 
-# plot duration distribution
+# plot duration2 distribution
 figure(figsize=(3, 3))
-hist(durations, bins=nbins, fc='k')
-xticks([0, 200, 400, 600, 800])
-xlabel('duration ($\mu$s)')
+hist(duration2s, bins=nbins, fc='k')
+#xticks([0, 200, 400, 600, 800])
+xlabel('duration2 ($\mu$s)')
 ylabel('neuron count')
 #title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
-gcfm().window.setWindowTitle('duration distrib')
+gcfm().window.setWindowTitle('duration2 distrib')
 tight_layout(pad=0.3)
-'''
-'''
+
 # plot ipi distribution
 figure(figsize=(3, 3))
 hist(ipis, bins=nbins, fc='k')
 xlim(xmin=0)
-xticks([0, 100, 200, 300, 400])
+#xticks([0, 100, 200, 300, 400])
 xlabel('interpeak interval ($\mu$s)')
 ylabel('neuron count')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('ipi distrib')
 tight_layout(pad=0.3)
 
-# plot fwhm distribution
+# plot fwhm0 distribution
 figure(figsize=(3, 3))
-hist(fwhms, bins=nbins, fc='k')
-xticks([0, 50, 100, 150, 200])
-xlabel('FWHM ($\mu$s)')
+hist(fwhm0s, bins=nbins, fc='k')
+#xticks([0, 50, 100, 150, 200])
+xlabel('FWHM0 ($\mu$s)')
 ylabel('neuron count')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('fwhm distrib')
+gcfm().window.setWindowTitle('fwhm0 distrib')
+tight_layout(pad=0.3)
+'''
+# plot fwhm1 distribution
+figure(figsize=(3, 3))
+hist(fwhm1s, bins=nbins, fc='k')
+#xticks([0, 50, 100, 150, 200])
+xlabel('FWHM1 ($\mu$s)')
+ylabel('neuron count')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('fwhm1 distrib')
+tight_layout(pad=0.3)
+'''
+# plot ai0 distribution
+figure(figsize=(3, 3))
+hist(ai0s, bins=nbins, fc='k')
+#xticks([0, 50, 100, 150, 200])
+xlabel('ai0')
+ylabel('neuron count')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('ai0 distrib')
+tight_layout(pad=0.3)
+'''
+'''
+# plot ai1 distribution
+figure(figsize=(3, 3))
+hist(ai1s, bins=nbins, fc='k')
+#xticks([0, 50, 100, 150, 200])
+xlabel('ai1')
+ylabel('neuron count')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('ai1 distrib')
 tight_layout(pad=0.3)
 
-# plot fwhm2 distribution
+# plot aai distribution
 figure(figsize=(3, 3))
-hist(fwhm2s, bins=nbins, fc='k')
+hist(aais, bins=nbins, fc='k')
 #xticks([0, 50, 100, 150, 200])
-xlabel('FWHM2 ($\mu$s)')
+xlabel('aai')
 ylabel('neuron count')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('fwhm2 distrib')
+gcfm().window.setWindowTitle('aai distrib')
+tight_layout(pad=0.3)
+'''
+'''
+# plot ffwhm distribution
+figure(figsize=(3, 3))
+hist(fwhm1s/fwhm0s, bins=nbins, fc='k')
+#xticks([0, 50, 100, 150, 200])
+xlabel('fFWHM ($\mu$s)')
+ylabel('neuron count')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('ffwhm distrib')
+tight_layout(pad=0.3)
+
+# plot dfwhm distribution
+figure(figsize=(3, 3))
+hist(fwhm1s-fwhm0s, bins=nbins, fc='k')
+#xticks([0, 50, 100, 150, 200])
+xlabel('dFWHM ($\mu$s)')
+ylabel('neuron count')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('dfwhm distrib')
+tight_layout(pad=0.3)
+
+# plot aifwhm distribution
+figure(figsize=(3, 3))
+hist((fwhm1s-fwhm0s)/(fwhm0s+fwhm1s), bins=nbins, fc='k')
+#xticks([0, 50, 100, 150, 200])
+xlabel('aiFWHM ($\mu$s)')
+ylabel('neuron count')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('aifwhm distrib')
 tight_layout(pad=0.3)
 '''
 '''
