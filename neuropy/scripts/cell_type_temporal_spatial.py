@@ -84,6 +84,7 @@ fwhm0s = [] # full-width half max values of primary peak
 fwhm1s = [] # full-width half max values of secondary peak
 ipis = [] # interpeak intervals
 duration2s = [] # start of primary to end of secondary peak
+# primary peak asymmetry index, secondary peak asymmetry index, amplitude asymmetry index
 ai0s, ai1s, aais = [], [], []
 #maxslopes = [] # maximum abs slopes of each waveform
 #maxnslopes = [] # maximum abs slopes of each normalized waveform
@@ -127,8 +128,10 @@ for track in tracks:
             exti1 = exti0 # make old primary the new secondary
             # set new primary to be the one to the left, hopefully without another IndexError:
             exti0 = extis[extii-1]
+        # 0.75 seems to give max fwhm1 bimodality, but 0.5 gives best overall clusterability
+        # in fwhm1 vs aai space
         li0, ri0 = argfwhm(wave, exti0, fraction=0.5)
-        li1, ri1 = argfwhm(wave, exti1, fraction=0.75) # 0.75 seems to give max fwhm1 bimodality
+        li1, ri1 = argfwhm(wave, exti1, fraction=0.5)
         fwhm0 = (ri0 - li0) * newtres
         fwhm1 = (ri1 - li1) * newtres
         #t0i, t1i = wave.argmax(), wave.argmin() # previously used biggest peaks for ipi
@@ -436,15 +439,49 @@ tight_layout(pad=0.3)
 '''
 # scatter plot fwhm1 vs aai
 figure(figsize=(3, 3))
-# equation for dividing line
-x = array([-0.4, 0.4])
-y = -1000*x + 400
-fwhm1threshes = -1000*aais + 400
-fastis = np.asarray(fwhm1s) <= fwhm1threshes
-slowis = np.asarray(fwhm1s) > fwhm1threshes
-plot(aais[slowis], fwhm1s[slowis], 'b.')
+def f0(x):
+    """Dividing curve 0"""
+    return -400*x + 330
+#def f1(x):
+    #"""Dividing curve 1"""
+    #return -2300*(x-0.44)**2 + 260
+def f1(x):
+    """Dividing curve 1"""
+    return 3000*x - 575
+def f2(x):
+    """Dividing curve 1"""
+    return 150*x + 185
+def f3(x):
+    """Dividing curve 3"""
+    return -5000*x + 3000
+
+x0 = array([-0.2, 0.266])
+y0 = f0(x0)
+#x1 = np.arange(0.2, 0.6, 0.01)
+x1 = array([0.2, 0.266])
+y1 = f1(x1)
+x2 = array([0.266, 0.8])
+y2 = f2(x2)
+x3 = array([0.46, 0.546])
+y3 = f3(x3)
+f0aais = f0(aais) # calculate these once
+f1aais = f1(aais)
+f2aais = f2(aais)
+f3aais = f3(aais)
+fastis = (fwhm1s < f0aais) * (fwhm1s > f1aais)
+slowis = (fwhm1s > f0aais) * (fwhm1s > f2aais) * (fwhm1s < f3aais)
+fastasymis = (fwhm1s < f1aais) * (fwhm1s < f2aais)
+slowasymis = (fwhm1s > f2aais) * (fwhm1s > f3aais)
+
 plot(aais[fastis], fwhm1s[fastis], 'r.')
-plot(x, y, 'e--') # plot dividing line
+plot(aais[slowis], fwhm1s[slowis], 'b.')
+plot(aais[fastasymis], fwhm1s[fastasymis], 'g.')
+plot(aais[slowasymis], fwhm1s[slowasymis], 'e.')
+plot(x0, y0, 'e--') # plot dividing curve 0
+plot(x1, y1, 'e--') # plot dividing curve 1
+plot(x2, y2, 'e--') # plot dividing curve 1
+plot(x3, y3, 'e--') # plot dividing curve 1
+ylim(ymax=800) # cuts a couple points off top, but makes the rest more visible
 
 #xticks([0, 50, 100, 150, 200])
 #yticks([0, 200, 400, 600, 800])
@@ -599,9 +636,9 @@ ylabel('neuron count')
 gcfm().window.setWindowTitle('fwhm0 distrib')
 tight_layout(pad=0.3)
 '''
-# plot fwhm1 distribution
+# plot fwhm1 distribution, cut off values above 800 for display
 figure(figsize=(3, 3))
-hist(fwhm1s, bins=nbins, fc='k')
+hist(fwhm1s[fwhm1s < 800], bins=nbins, fc='k')
 #xticks([0, 50, 100, 150, 200])
 xlabel('FWHM1 ($\mu$s)')
 ylabel('neuron count')
@@ -690,25 +727,11 @@ ylabel('neuron count')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('maxnslope distrib')
 tight_layout(pad=0.3)
-
-# plot slow waveforms separately:
-figure(figsize=(3, 3))
-for wave in waves[slowis]:
-    plot(t1, wave, 'b-', lw=1)
-xticks([0, 200, 400, 600, 800])
-yticks(np.arange(-200, 200+100, 100))
-slow_ymax = ylim()[1]
-xlabel('time ($\mu$s)')
-ylabel('voltage ($\mu$V)')
-#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
-gcfm().window.setWindowTitle('slow waveforms')
-tight_layout(pad=0.3)
-
-# plot fast waveforms separately:
+'''
+# plot fast waveforms:
 figure(figsize=(3, 3))
 for wave in waves[fastis]:
     plot(t1, wave, 'r-', lw=1)
-ylim(ymax=slow_ymax)
 xticks([0, 200, 400, 600, 800])
 yticks(np.arange(-200, 200+100, 100))
 xlabel('time ($\mu$s)')
@@ -717,27 +740,66 @@ ylabel('voltage ($\mu$V)')
 gcfm().window.setWindowTitle('fast waveforms')
 tight_layout(pad=0.3)
 
-# plot waveforms classified by dividing line in duration vs ipi plot:
+# plot slow waveforms:
 figure(figsize=(3, 3))
 for wave in waves[slowis]:
     plot(t1, wave, 'b-', lw=1)
-for wave in waves[fastis]:
-    plot(t1, wave, 'r-', lw=1)
 xticks([0, 200, 400, 600, 800])
 yticks(np.arange(-200, 200+100, 100))
 xlabel('time ($\mu$s)')
 ylabel('voltage ($\mu$V)')
 #title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
-gcfm().window.setWindowTitle('waveformsep duration vs ipi')
+gcfm().window.setWindowTitle('slow waveforms')
 tight_layout(pad=0.3)
 
+# plot fast asymmetric waveforms:
+figure(figsize=(3, 3))
+for wave in waves[fastasymis]:
+    plot(t1, wave, 'g-', lw=1)
+xticks([0, 200, 400, 600, 800])
+yticks(np.arange(-200, 200+100, 100))
+xlabel('time ($\mu$s)')
+ylabel('voltage ($\mu$V)')
+#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+gcfm().window.setWindowTitle('fast asymmetric waveforms')
+tight_layout(pad=0.3)
+
+# plot slow asymmetric waveforms:
+figure(figsize=(3, 3))
+for wave in waves[slowasymis]:
+    plot(t1, wave, 'e-', lw=1)
+xticks([0, 200, 400, 600, 800])
+yticks(np.arange(-200, 200+100, 100))
+xlabel('time ($\mu$s)')
+ylabel('voltage ($\mu$V)')
+#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+gcfm().window.setWindowTitle('slow asymmetric waveforms')
+tight_layout(pad=0.3)
+
+# plot fast, slow, fastasym and slowasym waveforms:
+figure(figsize=(3, 3))
+for wave in waves[fastis]:
+    plot(t1, wave, 'r-', lw=1)
+for wave in waves[slowis]:
+    plot(t1, wave, 'b-', lw=1)
+for wave in waves[fastasymis]:
+    plot(t1, wave, 'g-', lw=1)
+for wave in waves[slowasymis]:
+    plot(t1, wave, 'e-', lw=1)
+xticks([0, 200, 400, 600, 800])
+yticks(np.arange(-200, 200+100, 100))
+xlabel('time ($\mu$s)')
+ylabel('voltage ($\mu$V)')
+#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+gcfm().window.setWindowTitle('all waveforms')
+tight_layout(pad=0.3)
+'''
 # plot slow waveforms classified by nduration vs ipi plot:
 figure(figsize=(3, 3))
 for wave in waves[nslowis]:
     plot(t1, wave, 'b-', lw=1)
 xticks([0, 200, 400, 600, 800])
 yticks(np.arange(-200, 200+100, 100))
-slow_ymax = ylim()[1]
 xlabel('time ($\mu$s)')
 ylabel('voltage ($\mu$V)')
 #title('tracks: %r, nabsslopethresh=%.3f' % (tracknames, nabsslopethresh))
@@ -748,7 +810,6 @@ tight_layout(pad=0.3)
 figure(figsize=(3, 3))
 for nwave in nwaves[nfastis]:
     plot(t1, nwave, 'r-', lw=1)
-ylim(ymax=slow_ymax)
 xticks([0, 200, 400, 600, 800])
 yticks([-1, -0.5, 0, 0.5, 1])
 xlabel('time ($\mu$s)')
