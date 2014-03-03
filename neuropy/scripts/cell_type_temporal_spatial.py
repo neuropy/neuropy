@@ -13,10 +13,10 @@ plotwaves = False
 # waveform timepoint to assume characteristic peak is roughly aligned to:
 alignt = 400 # us
 newtres = 1 # tres to interpolate to, in us
-absslopethresh = 0.3 # uV/us
+absslopethresh = 0.4 # uV/us
 nabsslopethresh = 0.003 # for normalized waveforms, 1/us
 durationthresh = 350 # duration separation threshold
-nbins = 30
+nbins = 20
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2] # need to be loaded ahead of time
 
 def calc_t(nt, tres, newtres):
@@ -80,8 +80,8 @@ t0, t1, aligni = calc_t(nt, tres, newtres) # initial guess, for speed
 sigmas = []
 waves = []
 nwaves = [] # peak-to-peak normalized waveforms
-fwhm0s = [] # full-width half max values of primary peak
-fwhm1s = [] # full-width half max values of secondary peak
+fwhm1s = [] # full-width half max values of primary peak
+fwhm2s = [] # full-width half max values of secondary peak
 ipis = [] # interpeak intervals
 duration2s = [] # start of primary to end of secondary peak
 # primary peak asymmetry index, secondary peak asymmetry index, amplitude asymmetry index
@@ -94,6 +94,7 @@ ai0s, ai1s, aais = [], [], []
 #nslopeiss = [] # start and end timepoint indices used for calculating ndurations
 allnids = []
 splitis = [] # indices which demarcate neurons from different tracks in allnids
+nswaps = 0
 
 # collect maxchan waveforms and calculate various measures of waveform duration:
 for track in tracks:
@@ -128,12 +129,13 @@ for track in tracks:
             exti1 = exti0 # make old primary the new secondary
             # set new primary to be the one to the left, hopefully without another IndexError:
             exti0 = extis[extii-1]
-        # 0.75 seems to give max fwhm1 bimodality, but 0.5 gives best overall clusterability
-        # in fwhm1 vs aai space
+            nswaps += 1
+        # 0.75 seems to give max fwhm2 bimodality, but 0.5 gives best overall clusterability
+        # in fwhm2 vs aai space
         li0, ri0 = argfwhm(wave, exti0, fraction=0.5)
         li1, ri1 = argfwhm(wave, exti1, fraction=0.5)
-        fwhm0 = (ri0 - li0) * newtres
-        fwhm1 = (ri1 - li1) * newtres
+        fwhm1 = (ri0 - li0) * newtres
+        fwhm2 = (ri1 - li1) * newtres
         #t0i, t1i = wave.argmax(), wave.argmin() # previously used biggest peaks for ipi
         ipi = (exti1 - exti0) * newtres # interval between primary and secondary peaks
         duration2 = (ri1 - li0) * newtres # start of primary to end of secondary peak
@@ -141,8 +143,8 @@ for track in tracks:
         ai1 = (ri1 - exti1) / (exti1 - li1) # asymmetry index of secondary peak
         V0, V1 = abs(wave[exti0]), abs(wave[exti1])
         aai = (V0 - V1)/(V0 + V1) # amplitude asymmetry index
-        fwhm0s.append(fwhm0)
         fwhm1s.append(fwhm1)
+        fwhm2s.append(fwhm2)
         ipis.append(ipi)
         duration2s.append(duration2)
         ai0s.append(ai0)
@@ -160,7 +162,7 @@ for track in tracks:
             # plot points used for ipi:
             plot(exti0, wave[exti0], 'g', ms=10)
             plot(exti1, wave[exti1], 'g', ms=10)
-            titlestr = 'wave %d (%s)' % (len(fwhm0s)-1, track.absname + '.n%d' % nid)
+            titlestr = 'wave %d (%s)' % (len(fwhm1s)-1, track.absname + '.n%d' % nid)
             gcfm().window.setWindowTitle(titlestr)
         '''
         absslope = abs(np.diff(wave)) / newtres # uV/us
@@ -206,13 +208,14 @@ for track in tracks:
 waves = np.asarray(waves)
 nwaves = np.asarray(nwaves)
 sigmas = np.hstack(sigmas)
-fwhm0s = np.hstack(fwhm0s)
 fwhm1s = np.hstack(fwhm1s)
+fwhm2s = np.hstack(fwhm2s)
 ipis = np.hstack(ipis)
 duration2s = np.hstack(duration2s)
 ai0s = np.hstack(ai0s)
 ai1s = np.hstack(ai1s)
 aais = np.hstack(aais)
+#durations = np.hstack(durations)
 #ndurations = np.hstack(ndurations)
 #slopeiss = np.vstack(slopeiss)
 #nslopeiss = np.vstack(nslopeiss)
@@ -244,15 +247,6 @@ ylabel('$\sigma$ ($\mu$m)')
 gcfm().window.setWindowTitle('sigma vs ipi')
 tight_layout(pad=0.3)
 
-# scatter plot sigma vs fwhm0
-figure(figsize=(3, 3))
-plot(fwhms, sigmas, 'k.')
-xlabel('FWHM0 ($\mu$s)')
-ylabel('$\sigma$ ($\mu$m)')
-#title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('sigma vs fwhm0')
-tight_layout(pad=0.3)
-
 # scatter plot sigma vs fwhm1
 figure(figsize=(3, 3))
 plot(fwhms, sigmas, 'k.')
@@ -260,6 +254,15 @@ xlabel('FWHM1 ($\mu$s)')
 ylabel('$\sigma$ ($\mu$m)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma vs fwhm1')
+tight_layout(pad=0.3)
+
+# scatter plot sigma vs fwhm2
+figure(figsize=(3, 3))
+plot(fwhms, sigmas, 'k.')
+xlabel('FWHM2 ($\mu$s)')
+ylabel('$\sigma$ ($\mu$m)')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('sigma vs fwhm2')
 tight_layout(pad=0.3)
 
 # scatter plot sigma vs slope
@@ -283,15 +286,6 @@ gcfm().window.setWindowTitle('sigma vs duration2')
 tight_layout(pad=0.3)
 '''
 '''
-# scatter plot fwhm0 vs ipi
-figure(figsize=(3, 3))
-plot(ipis, fwhm0s, 'k.')
-xlabel('interpeak interval ($\mu$s)')
-ylabel('FWHM0 ($\mu$s)')
-gcfm().window.setWindowTitle('fwhm0 vs ipi')
-tight_layout(pad=0.3)
-'''
-'''
 # scatter plot fwhm1 vs ipi
 figure(figsize=(3, 3))
 plot(ipis, fwhm1s, 'k.')
@@ -299,21 +293,30 @@ xlabel('interpeak interval ($\mu$s)')
 ylabel('FWHM1 ($\mu$s)')
 gcfm().window.setWindowTitle('fwhm1 vs ipi')
 tight_layout(pad=0.3)
-
-# scatter plot fwhm1 vs fwhm0
+'''
+'''
+# scatter plot fwhm2 vs ipi
 figure(figsize=(3, 3))
-plot(fwhm0s, fwhm1s, 'k.')
+plot(ipis, fwhm2s, 'k.')
+xlabel('interpeak interval ($\mu$s)')
+ylabel('FWHM2 ($\mu$s)')
+gcfm().window.setWindowTitle('fwhm2 vs ipi')
+tight_layout(pad=0.3)
+
+# scatter plot fwhm2 vs fwhm1
+figure(figsize=(3, 3))
+plot(fwhm1s, fwhm2s, 'k.')
 #xticks([0, 50, 100, 150, 200])
 #yticks([0, 200, 400, 600, 800])
-xlabel('FWHM0 ($\mu$s)')
-ylabel('FWHM1 ($\mu$s)')
-gcfm().window.setWindowTitle('fwhm1 vs fwhm0')
+xlabel('FWHM1 ($\mu$s)')
+ylabel('FWHM2 ($\mu$s)')
+gcfm().window.setWindowTitle('fwhm2 vs fwhm1')
 tight_layout(pad=0.3)
 '''
 '''
 # scatter plot sumfwhm vs ipi
 figure(figsize=(3, 3))
-plot(ipis, fwhm0s+fwhm1s, 'k.')
+plot(ipis, fwhm1s+fwhm2s, 'k.')
 #xticks([0, 50, 100, 150, 200])
 #yticks([0, 200, 400, 600, 800])
 xlabel('interpeak interval ($\mu$s)')
@@ -353,14 +356,15 @@ slowis = np.asarray(durations) > durationthreshes
 plot(ipis[slowis], durations[slowis], 'b.')
 plot(ipis[fastis], durations[fastis], 'r.')
 plot(x, y, 'e--') # plot dividing line
-xlim(xmin=0)
+xlim(0, 400)
 xticks([0, 100, 200, 300, 400])
 yticks([0, 200, 400, 600, 800])
 xlabel('interpeak interval ($\mu$s)')
-ylabel('duration ($\mu$s)')
+ylabel('slope-based duration ($\mu$s)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('duration vs ipi')
 tight_layout(pad=0.3)
+
 # export spiketype:
 spiketype = np.zeros(nn, dtype='|S4') # 4 character string array
 spiketype[slowis] = 'slow'
@@ -395,17 +399,6 @@ gcfm().window.setWindowTitle('nduration vs ipi')
 tight_layout(pad=0.3)
 '''
 '''
-# scatter plot duration2 vs fwhm0
-figure(figsize=(3, 3))
-plot(fwhm0s, duration2s, 'k.')
-#xticks([0, 50, 100, 150, 200])
-#yticks([0, 200, 400, 600, 800])
-xlabel('FWHM0 ($\mu$s)')
-ylabel('duration2 ($\mu$s)')
-#title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('duration2 vs fwhm0')
-tight_layout(pad=0.3)
-
 # scatter plot duration2 vs fwhm1
 figure(figsize=(3, 3))
 plot(fwhm1s, duration2s, 'k.')
@@ -415,6 +408,17 @@ xlabel('FWHM1 ($\mu$s)')
 ylabel('duration2 ($\mu$s)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('duration2 vs fwhm1')
+tight_layout(pad=0.3)
+
+# scatter plot duration2 vs fwhm2
+figure(figsize=(3, 3))
+plot(fwhm2s, duration2s, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+xlabel('FWHM2 ($\mu$s)')
+ylabel('duration2 ($\mu$s)')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('duration2 vs fwhm2')
 tight_layout(pad=0.3)
 
 # scatter plot duration2 vs aai
@@ -430,7 +434,7 @@ tight_layout(pad=0.3)
 
 # scatter plot sumfwhm vs aai
 figure(figsize=(3, 3))
-plot(aais, fwhm0s+fwhm1s, 'k.')
+plot(aais, fwhm1s+fwhm2s, 'k.')
 #xticks([0, 50, 100, 150, 200])
 #yticks([0, 200, 400, 600, 800])
 xlabel('aai')
@@ -438,7 +442,7 @@ ylabel('sum(FWHM) ($\mu$s)')
 gcfm().window.setWindowTitle('sum(fwhm) vs aai')
 tight_layout(pad=0.3)
 '''
-# scatter plot fwhm1 vs aai
+# scatter plot fwhm2 vs aai
 figure(figsize=(3, 3))
 def f0(x):
     """Dividing curve 0"""
@@ -468,15 +472,15 @@ f0aais = f0(aais) # calculate these once
 f1aais = f1(aais)
 f2aais = f2(aais)
 f3aais = f3(aais)
-fastis = (fwhm1s < f0aais) * (fwhm1s > f1aais)
-slowis = (fwhm1s > f0aais) * (fwhm1s > f2aais) * (fwhm1s < f3aais)
-fastasymis = (fwhm1s < f1aais) * (fwhm1s < f2aais)
-slowasymis = (fwhm1s > f2aais) * (fwhm1s > f3aais)
+fastis = (fwhm2s < f0aais) * (fwhm2s > f1aais)
+slowis = (fwhm2s > f0aais) * (fwhm2s > f2aais) * (fwhm2s < f3aais)
+fastasymis = (fwhm2s < f1aais) * (fwhm2s < f2aais)
+slowasymis = (fwhm2s > f2aais) * (fwhm2s > f3aais)
 
-plot(aais[fastis], fwhm1s[fastis], 'r.')
-plot(aais[slowis], fwhm1s[slowis], 'b.')
-plot(aais[fastasymis], fwhm1s[fastasymis], 'g.')
-plot(aais[slowasymis], fwhm1s[slowasymis], 'e.')
+plot(aais[fastis], fwhm2s[fastis], 'r.')
+plot(aais[slowis], fwhm2s[slowis], 'b.')
+plot(aais[fastasymis], fwhm2s[fastasymis], 'g.')
+plot(aais[slowasymis], fwhm2s[slowasymis], 'e.')
 plot(x0, y0, 'e--') # plot dividing curve 0
 plot(x1, y1, 'e--') # plot dividing curve 1
 plot(x2, y2, 'e--') # plot dividing curve 1
@@ -485,9 +489,9 @@ ylim(ymax=700) # cuts a couple points off top, but makes the rest more visible
 xticks([-0.4, 0, 0.4, 0.8])
 yticks([0, 200, 400, 600])
 xlabel('amplitude asymmetry')
-ylabel('FWHM1 ($\mu$s)')
+ylabel('FWHM2 ($\mu$s)')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('fwhm1 vs aai')
+gcfm().window.setWindowTitle('fwhm2 vs aai')
 tight_layout(pad=0.3)
 
 # export spiketype:
@@ -507,75 +511,75 @@ for tracki, track in enumerate(tracks):
 
 
 '''
-# scatter plot fwhm1 vs ai1
+# scatter plot fwhm2 vs ai1
 figure(figsize=(3, 3))
-plot(ai1s, fwhm1s, 'k.')
+plot(ai1s, fwhm2s, 'k.')
 #xticks([0, 50, 100, 150, 200])
 #yticks([0, 200, 400, 600, 800])
 xlabel('ai1')
-ylabel('FWHM1 ($\mu$s)')
+ylabel('FWHM2 ($\mu$s)')
 #title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('fwhm1 vs ai1')
+gcfm().window.setWindowTitle('fwhm2 vs ai1')
 tight_layout(pad=0.3)
 
-# scatter plot fwhm1 vs ai1 vs aai
+# scatter plot fwhm2 vs ai1 vs aai
 f = figure(figsize=(3, 3))
 a = f.add_subplot(111, projection='3d')
-a.plot(aais, ai1s, fwhm1s, 'k.')
+a.plot(aais, ai1s, fwhm2s, 'k.')
 #xticks([0, 50, 100, 150, 200])
 #yticks([0, 200, 400, 600, 800])
 a.set_xlabel('aai')
 a.set_ylabel('ai1')
-a.set_zlabel('fwhm1')
-gcfm().window.setWindowTitle('fwhm1 vs ai1 vs aai')
+a.set_zlabel('fwhm2')
+gcfm().window.setWindowTitle('fwhm2 vs ai1 vs aai')
 tight_layout(pad=0.3)
 
-# scatter plot fwhm1 vs fwhm0 vs aai
+# scatter plot fwhm2 vs fwhm1 vs aai
 f = figure(figsize=(3, 3))
 a = f.add_subplot(111, projection='3d')
-a.plot(aais, fwhm0s, fwhm1s, 'k.')
+a.plot(aais, fwhm1s, fwhm2s, 'k.')
 #xticks([0, 50, 100, 150, 200])
 #yticks([0, 200, 400, 600, 800])
 a.set_xlabel('aai')
-a.set_ylabel('fwhm0')
-a.set_zlabel('fwhm1')
-gcfm().window.setWindowTitle('fwhm1 vs fwhm0 vs aai')
+a.set_ylabel('fwhm1')
+a.set_zlabel('fwhm2')
+gcfm().window.setWindowTitle('fwhm2 vs fwhm1 vs aai')
 tight_layout(pad=0.3)
 
-# scatter plot fwhm1 vs duration2 vs aai
+# scatter plot fwhm2 vs duration2 vs aai
 f = figure(figsize=(3, 3))
 a = f.add_subplot(111, projection='3d')
-a.plot(aais, duration2s, fwhm1s, 'k.')
+a.plot(aais, duration2s, fwhm2s, 'k.')
 #xticks([0, 50, 100, 150, 200])
 #yticks([0, 200, 400, 600, 800])
 a.set_xlabel('aai')
 a.set_ylabel('duration2')
-a.set_zlabel('fwhm1')
-gcfm().window.setWindowTitle('fwhm1 vs duration2 vs aai')
+a.set_zlabel('fwhm2')
+gcfm().window.setWindowTitle('fwhm2 vs duration2 vs aai')
 tight_layout(pad=0.3)
 
-# scatter plot fwhm1 vs ipi vs aai
+# scatter plot fwhm2 vs ipi vs aai
 f = figure(figsize=(3, 3))
 a = f.add_subplot(111, projection='3d')
-a.plot(aais, ipis, fwhm1s, 'k.')
+a.plot(aais, ipis, fwhm2s, 'k.')
 #xticks([0, 50, 100, 150, 200])
 #yticks([0, 200, 400, 600, 800])
 a.set_xlabel('aai')
 a.set_ylabel('ipi')
-a.set_zlabel('fwhm1')
-gcfm().window.setWindowTitle('fwhm1 vs ipi vs aai')
+a.set_zlabel('fwhm2')
+gcfm().window.setWindowTitle('fwhm2 vs ipi vs aai')
 tight_layout(pad=0.3)
 
-# scatter plot fwhm1 vs sigma vs aai
+# scatter plot fwhm2 vs sigma vs aai
 f = figure(figsize=(3, 3))
 a = f.add_subplot(111, projection='3d')
-a.plot(aais, sigmas, fwhm1s, 'k.')
+a.plot(aais, sigmas, fwhm2s, 'k.')
 #xticks([0, 50, 100, 150, 200])
 #yticks([0, 200, 400, 600, 800])
 a.set_xlabel('aai')
 a.set_ylabel('sigma')
-a.set_zlabel('fwhm1')
-gcfm().window.setWindowTitle('fwhm1 vs sigma vs aai')
+a.set_zlabel('fwhm2')
+gcfm().window.setWindowTitle('fwhm2 vs sigma vs aai')
 tight_layout(pad=0.3)
 '''
 '''
@@ -621,6 +625,16 @@ ylabel('neuron count')
 gcfm().window.setWindowTitle('sigma distrib')
 tight_layout(pad=0.3)
 
+# plot duration distribution
+figure(figsize=(3, 3))
+hist(durations, bins=nbins, fc='k')
+xticks([0, 200, 400, 600, 800])
+xlabel('slope-based duration ($\mu$s)')
+ylabel('neuron count')
+#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+gcfm().window.setWindowTitle('duration distrib')
+tight_layout(pad=0.3)
+
 # plot duration2 distribution
 figure(figsize=(3, 3))
 hist(duration2s, bins=nbins, fc='k')
@@ -631,35 +645,35 @@ ylabel('neuron count')
 gcfm().window.setWindowTitle('duration2 distrib')
 tight_layout(pad=0.3)
 
-# plot ipi distribution
+# plot ipi distribution, exclude the few outliers > 400 us
 figure(figsize=(3, 3))
-hist(ipis, bins=nbins, fc='k')
+hist(ipis[ipis<=400], bins=nbins, fc='k')
 xlim(xmin=0)
-#xticks([0, 100, 200, 300, 400])
+xticks([0, 100, 200, 300, 400])
 xlabel('interpeak interval ($\mu$s)')
 ylabel('neuron count')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('ipi distrib')
 tight_layout(pad=0.3)
-
-# plot fwhm0 distribution
-figure(figsize=(3, 3))
-hist(fwhm0s, bins=nbins, fc='k')
-#xticks([0, 50, 100, 150, 200])
-xlabel('FWHM0 ($\mu$s)')
-ylabel('neuron count')
-#title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('fwhm0 distrib')
-tight_layout(pad=0.3)
 '''
-# plot fwhm1 distribution, cut off values above 700 for display
+# plot fwhm1 distribution
 figure(figsize=(3, 3))
-hist(fwhm1s[fwhm1s < 700], bins=nbins, fc='k')
-xticks([0, 200, 400, 600])
+hist(fwhm1s, bins=nbins, fc='k')
+xticks([0, 50, 100, 150, 200])
 xlabel('FWHM1 ($\mu$s)')
 ylabel('neuron count')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('fwhm1 distrib')
+tight_layout(pad=0.3)
+
+# plot fwhm2 distribution, cut off values above 700 for display
+figure(figsize=(3, 3))
+hist(fwhm2s[fwhm2s < 700], bins=nbins, fc='k')
+xticks([0, 200, 400, 600])
+xlabel('FWHM2 ($\mu$s)')
+ylabel('neuron count')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('fwhm2 distrib')
 tight_layout(pad=0.3)
 '''
 # plot ai0 distribution
@@ -682,21 +696,20 @@ ylabel('neuron count')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('ai1 distrib')
 tight_layout(pad=0.3)
-
+'''
 # plot aai distribution
 figure(figsize=(3, 3))
 hist(aais, bins=nbins, fc='k')
-#xticks([0, 50, 100, 150, 200])
-xlabel('aai')
+xticks([-0.4, 0, 0.4, 0.8])
+xlabel('amplitude asymmetry')
 ylabel('neuron count')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('aai distrib')
 tight_layout(pad=0.3)
 '''
-'''
 # plot ffwhm distribution
 figure(figsize=(3, 3))
-hist(fwhm1s/fwhm0s, bins=nbins, fc='k')
+hist(fwhm2s/fwhm1s, bins=nbins, fc='k')
 #xticks([0, 50, 100, 150, 200])
 xlabel('fFWHM ($\mu$s)')
 ylabel('neuron count')
@@ -706,7 +719,7 @@ tight_layout(pad=0.3)
 
 # plot dfwhm distribution
 figure(figsize=(3, 3))
-hist(fwhm1s-fwhm0s, bins=nbins, fc='k')
+hist(fwhm2s-fwhm1s, bins=nbins, fc='k')
 #xticks([0, 50, 100, 150, 200])
 xlabel('dFWHM ($\mu$s)')
 ylabel('neuron count')
@@ -716,15 +729,14 @@ tight_layout(pad=0.3)
 
 # plot aifwhm distribution
 figure(figsize=(3, 3))
-hist((fwhm1s-fwhm0s)/(fwhm0s+fwhm1s), bins=nbins, fc='k')
+hist((fwhm2s-fwhm1s)/(fwhm1s+fwhm2s), bins=nbins, fc='k')
 #xticks([0, 50, 100, 150, 200])
 xlabel('aiFWHM ($\mu$s)')
 ylabel('neuron count')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('aifwhm distrib')
 tight_layout(pad=0.3)
-'''
-'''
+
 # plot maxslope distribution
 figure(figsize=(3, 3))
 hist(maxslopes, bins=nbins, fc='k')
