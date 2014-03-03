@@ -361,6 +361,7 @@ ylabel('duration ($\mu$s)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('duration vs ipi')
 tight_layout(pad=0.3)
+# export spiketype:
 spiketype = np.zeros(nn, dtype='|S4') # 4 character string array
 spiketype[slowis] = 'slow'
 spiketype[fastis] = 'fast'
@@ -454,7 +455,6 @@ def f2(x):
 def f3(x):
     """Dividing curve 3"""
     return -5000*x + 3000
-
 x0 = array([-0.2, 0.266])
 y0 = f0(x0)
 #x1 = np.arange(0.2, 0.6, 0.01)
@@ -481,15 +481,31 @@ plot(x0, y0, 'e--') # plot dividing curve 0
 plot(x1, y1, 'e--') # plot dividing curve 1
 plot(x2, y2, 'e--') # plot dividing curve 1
 plot(x3, y3, 'e--') # plot dividing curve 1
-ylim(ymax=800) # cuts a couple points off top, but makes the rest more visible
-
-#xticks([0, 50, 100, 150, 200])
-#yticks([0, 200, 400, 600, 800])
-xlabel('aai')
+ylim(ymax=700) # cuts a couple points off top, but makes the rest more visible
+xticks([-0.4, 0, 0.4, 0.8])
+yticks([0, 200, 400, 600])
+xlabel('amplitude asymmetry')
 ylabel('FWHM1 ($\mu$s)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('fwhm1 vs aai')
 tight_layout(pad=0.3)
+
+# export spiketype:
+spiketype = np.zeros(nn, dtype='|S8') # 8 character string array
+spiketype[fastis] = 'fast'
+spiketype[slowis] = 'slow'
+spiketype[fastasymis] = 'fastasym'
+spiketype[slowasymis] = 'slowasym'
+assert not np.any(spiketype == '') # check for any empty entries
+sts = {}
+for tracki, track in enumerate(tracks):
+    nii0, nii1 = splitis[tracki], splitis[tracki+1]
+    nids = allnids[nii0:nii1]
+    st = spiketype[nii0:nii1]
+    d = dict(zip(nids, st))
+    sts[track.absname] = d # can manually print these out and save to .spiketype file
+
+
 '''
 # scatter plot fwhm1 vs ai1
 figure(figsize=(3, 3))
@@ -636,10 +652,10 @@ ylabel('neuron count')
 gcfm().window.setWindowTitle('fwhm0 distrib')
 tight_layout(pad=0.3)
 '''
-# plot fwhm1 distribution, cut off values above 800 for display
+# plot fwhm1 distribution, cut off values above 700 for display
 figure(figsize=(3, 3))
-hist(fwhm1s[fwhm1s < 800], bins=nbins, fc='k')
-#xticks([0, 50, 100, 150, 200])
+hist(fwhm1s[fwhm1s < 700], bins=nbins, fc='k')
+xticks([0, 200, 400, 600])
 xlabel('FWHM1 ($\mu$s)')
 ylabel('neuron count')
 #title('tracks: %r' % tracknames)
@@ -732,6 +748,7 @@ tight_layout(pad=0.3)
 figure(figsize=(3, 3))
 for wave in waves[fastis]:
     plot(t1, wave, 'r-', lw=1)
+ylim(ymax=250)
 xticks([0, 200, 400, 600, 800])
 yticks(np.arange(-200, 200+100, 100))
 xlabel('time ($\mu$s)')
@@ -744,6 +761,7 @@ tight_layout(pad=0.3)
 figure(figsize=(3, 3))
 for wave in waves[slowis]:
     plot(t1, wave, 'b-', lw=1)
+ylim(ymax=250)
 xticks([0, 200, 400, 600, 800])
 yticks(np.arange(-200, 200+100, 100))
 xlabel('time ($\mu$s)')
@@ -756,6 +774,7 @@ tight_layout(pad=0.3)
 figure(figsize=(3, 3))
 for wave in waves[fastasymis]:
     plot(t1, wave, 'g-', lw=1)
+ylim(ymax=250)
 xticks([0, 200, 400, 600, 800])
 yticks(np.arange(-200, 200+100, 100))
 xlabel('time ($\mu$s)')
@@ -768,6 +787,7 @@ tight_layout(pad=0.3)
 figure(figsize=(3, 3))
 for wave in waves[slowasymis]:
     plot(t1, wave, 'e-', lw=1)
+ylim(ymax=250)
 xticks([0, 200, 400, 600, 800])
 yticks(np.arange(-200, 200+100, 100))
 xlabel('time ($\mu$s)')
@@ -786,6 +806,7 @@ for wave in waves[fastasymis]:
     plot(t1, wave, 'g-', lw=1)
 for wave in waves[slowasymis]:
     plot(t1, wave, 'e-', lw=1)
+ylim(ymax=250)
 xticks([0, 200, 400, 600, 800])
 yticks(np.arange(-200, 200+100, 100))
 xlabel('time ($\mu$s)')

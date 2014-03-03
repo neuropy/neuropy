@@ -118,7 +118,7 @@ class Track(object):
                 spiketypestr = f.read()
             spiketypes = eval(spiketypestr)
             for nid, spiketype in spiketypes.items():
-                assert spiketype in ['slow', 'fast']
+                assert spiketype in ['fast', 'slow', 'fastasym', 'slowasym']
                 self.alln[nid].spiketype = spiketype
         except IOError: # no absname.spiketype file denoting RF type of each cell
             pass
@@ -432,9 +432,9 @@ class Track(object):
 
 
     def npos(self, inchespermicron=0.007, colour='active', legend=False):
-        """Plot (x, y) cell positions over top of polytrode channel positions,
-        to get an idea of how cells are distributed in space. Color active and inactive
-        cells differently"""
+        """Plot (x, y) cell positions over top of polytrode channel positions, to get an idea
+        of how cells are distributed in space. Color cells by 'active', 'rftype' or
+        'spiketype'."""
         uns = get_ipython().user_ns
         npos = np.asarray([ neuron.pos for neuron in self.alln.values() ])
         chanpos = self.chanpos
@@ -448,7 +448,7 @@ class Track(object):
         xlim = min(xs.min(), uchanxs[0]-xspace/2), max(xs.max(), uchanxs[-1]+xspace/2)
         ylim = ys.max()+xspace, ymin # inverted y axis
         
-        figwidth = inchespermicron * np.ptp(xlim) * 2 + 2*legend # make space for y axis labels
+        figwidth = inchespermicron * np.ptp(xlim) * 2 + 3*legend # make space for y axis labels
         figheight = inchespermicron * np.ptp(ylim)
         f = pl.figure(figsize=(figwidth, figheight))
         a = f.add_subplot(111, aspect='equal')
@@ -490,16 +490,26 @@ class Track(object):
             if nc: a.plot(cpos[:, 0], cpos[:, 1], 'b.', ms=10, alpha=0.6, label='complex')
             if ns: a.plot(spos[:, 0], spos[:, 1], 'r.', ms=10, alpha=0.6, label='simple')
         elif colour == 'spiketype':
-            # plot slow and fast in blue and red:
-            spos = np.asarray([ neuron.pos for neuron in self.alln.values()
-                                if neuron.spiketype == 'slow' ])
+            # plot fast, slow, fastasym and slowasym in red, blue, green and grey:
             fpos = np.asarray([ neuron.pos for neuron in self.alln.values()
                                 if neuron.spiketype == 'fast' ])
-            ns = len(spos)
+            spos = np.asarray([ neuron.pos for neuron in self.alln.values()
+                                if neuron.spiketype == 'slow' ])
+            fapos = np.asarray([ neuron.pos for neuron in self.alln.values()
+                                 if neuron.spiketype == 'fastasym' ])
+            sapos = np.asarray([ neuron.pos for neuron in self.alln.values()
+                                 if neuron.spiketype == 'slowasym' ])
             nf = len(fpos)
-            # layer in inverse order of importance:
+            ns = len(spos)
+            nfa = len(fapos)
+            nsa = len(sapos)
+            # layer in inverse order of frequency:
             if nf: a.plot(fpos[:, 0], fpos[:, 1], 'r.', ms=10, alpha=0.6, label='fast')
             if ns: a.plot(spos[:, 0], spos[:, 1], 'b.', ms=10, alpha=0.6, label='slow')
+            if nfa: a.plot(fapos[:, 0], fapos[:, 1], 'g.', ms=10, alpha=0.6,
+                           label='fast asymmetric')
+            if nsa: a.plot(sapos[:, 0], sapos[:, 1], 'e.', ms=10, alpha=0.6,
+                           label='slow asymmetric')
         else:
             raise RuntimeError("unknown colour kwarg %r" % colour)
         a.set_xlim(xlim)
@@ -510,7 +520,7 @@ class Track(object):
         #a.yaxis.set_ticks_position('left')
         # put legend to right of the axes:
         if legend:
-            a.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
+            a.legend(loc='center left', bbox_to_anchor=(1.2, 0.5), frameon=False)
         bbox = a.get_position()
         wh = bbox.width / bbox.height # w:h ratio of axes, includes all ticks and labels?
         w, h = gcfm().canvas.get_width_height()
