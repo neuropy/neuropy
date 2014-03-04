@@ -6,9 +6,10 @@ from __future__ import print_function
 
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2] # need to be loaded ahead of time
 bw = 5
-bins = np.arange(0, 100+bw, bw)
+xmax = 110
+bins = np.arange(0, xmax+bw, bw)
 alltracksbw = 4
-alltracksbins = np.arange(0, 100+alltracksbw, alltracksbw)
+alltracksbins = np.arange(0, xmax+alltracksbw, alltracksbw)
 
 sigmas = []
 for track in tracks:
@@ -16,10 +17,10 @@ for track in tracks:
     sigmas.append(tracksigmas)
     figure(figsize=(3, 3))
     hist(tracksigmas, fc='k', bins=bins)
-    xlim(xmax=110)
+    xlim(xmax=xmax)
     ylim(ymax=20)
-    yticks((0, 10, 20))
     xticks((0, 25, 50, 75, 100))
+    yticks((0, 10, 20))
     xlabel('$\sigma$ ($\mu$m)')
     ylabel('neuron count')
     gcfm().window.setWindowTitle(track.absname)
@@ -28,7 +29,7 @@ for track in tracks:
 sigmas = np.hstack(sigmas)
 figure(figsize=(3, 3))
 hist(sigmas, fc='k', bins=alltracksbins)
-xlim(xmax=110)
+xlim(xmax=xmax)
 #ylim(ymax=40)
 xticks((0, 25, 50, 75, 100))
 yticks((0, 20, 40))
