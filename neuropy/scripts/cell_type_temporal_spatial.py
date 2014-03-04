@@ -246,25 +246,42 @@ ylabel('$\sigma$ ($\mu$m)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma vs ipi')
 tight_layout(pad=0.3)
-
+'''
 # scatter plot sigma vs fwhm1
 figure(figsize=(3, 3))
-plot(fwhms, sigmas, 'k.')
+plot(fwhm1s, sigmas, 'k.')
+xticks([0, 50, 100, 150, 200])
+yticks([0, 25, 50, 75, 100])
 xlabel('FWHM1 ($\mu$s)')
 ylabel('$\sigma$ ($\mu$m)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma vs fwhm1')
 tight_layout(pad=0.3)
 
-# scatter plot sigma vs fwhm2
+# scatter plot sigma vs fwhm2, cutoff fwhm2 values above 700 for display
 figure(figsize=(3, 3))
-plot(fwhms, sigmas, 'k.')
+ii = fwhm2s < 700
+plot(fwhm2s[ii], sigmas[ii], 'k.')
+xticks([0, 200, 400, 600])
+yticks([0, 25, 50, 75, 100])
 xlabel('FWHM2 ($\mu$s)')
 ylabel('$\sigma$ ($\mu$m)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma vs fwhm2')
 tight_layout(pad=0.3)
 
+# scatter plot sigma vs aai
+figure(figsize=(3, 3))
+plot(aais, sigmas, 'k.')
+xticks([-0.4, 0, 0.4, 0.8])
+yticks([0, 25, 50, 75, 100])
+xlabel('amplitude asymmetry')
+ylabel('$\sigma$ ($\mu$m)')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('sigma vs aai')
+tight_layout(pad=0.3)
+
+'''
 # scatter plot sigma vs slope
 figure(figsize=(3, 3))
 plot(maxslopes, sigmas, 'k.')
@@ -605,16 +622,16 @@ ylabel('duration ($\mu$s)')
 gcfm().window.setWindowTitle('duration vs maxslope')
 tight_layout(pad=0.3)
 
-# scatter plot slope vs fwhm
+# scatter plot slope vs fwhm1
 figure(figsize=(3, 3))
-plot(fwhms, maxslopes, 'k.')
+plot(fwhm1s, maxslopes, 'k.')
 xlabel('FWHM ($\mu$s)')
 ylabel('maximum slope ($\mu$V/$\mu$s)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('maxslope vs fwhm')
 tight_layout(pad=0.3)
 
-# plot sigma distribution
+# plot sigma distribution, although better to use cell_type_sigma_distrib.py
 figure(figsize=(3, 3))
 hist(sigmas, bins=nbins, fc='k')
 xlim(xmin=0)
