@@ -85,7 +85,7 @@ fwhm2s = [] # full-width half max values of secondary peak
 ipis = [] # interpeak intervals
 duration2s = [] # start of primary to end of secondary peak
 # primary peak asymmetry index, secondary peak asymmetry index, amplitude asymmetry index
-ai0s, ai1s, aais = [], [], []
+ai1s, ai2s, aais = [], [], []
 #maxslopes = [] # maximum abs slopes of each waveform
 #maxnslopes = [] # maximum abs slopes of each normalized waveform
 #durations = [] # spike duration, measured by time between slope threshold crossings
@@ -118,50 +118,64 @@ for track in tracks:
         nwaves.append(nwave)
         extis = arg0xextrema(wave) # indices of biggest peaks between 0 crossings and edges
         extii = abs(extis - aligni).argmin() # extremum closest to aligni
-        exti0 = extis[extii] # index of extremum closest to aligni, assume main extremum
+        exti1 = extis[extii] # index of extremum closest to aligni, assume main extremum
 
         # find index of extremum to the right of the one closest to aligni. If the one
         # closest to aligni is already the rightmost, make that one the secondary, and the one
         # to its left the primary:
         try:
-            exti1 = extis[extii+1]
+            exti2 = extis[extii+1]
         except IndexError:
-            exti1 = exti0 # make old primary the new secondary
+            exti2 = exti1 # make old primary the new secondary
             # set new primary to be the one to the left, hopefully without another IndexError:
-            exti0 = extis[extii-1]
+            exti1 = extis[extii-1]
             nswaps += 1
         # 0.75 seems to give max fwhm2 bimodality, but 0.5 gives best overall clusterability
         # in fwhm2 vs aai space
-        li0, ri0 = argfwhm(wave, exti0, fraction=0.5)
         li1, ri1 = argfwhm(wave, exti1, fraction=0.5)
-        fwhm1 = (ri0 - li0) * newtres
-        fwhm2 = (ri1 - li1) * newtres
-        #t0i, t1i = wave.argmax(), wave.argmin() # previously used biggest peaks for ipi
-        ipi = (exti1 - exti0) * newtres # interval between primary and secondary peaks
-        duration2 = (ri1 - li0) * newtres # start of primary to end of secondary peak
-        ai0 = (ri0 - exti0) / (exti0 - li0) # asymmetry index of primary peak
-        ai1 = (ri1 - exti1) / (exti1 - li1) # asymmetry index of secondary peak
-        V0, V1 = abs(wave[exti0]), abs(wave[exti1])
-        aai = (V0 - V1)/(V0 + V1) # amplitude asymmetry index
+        li2, ri2 = argfwhm(wave, exti2, fraction=0.5)
+        fwhm1 = (ri1 - li1) * newtres
+        fwhm2 = (ri2 - li2) * newtres
+        #ti1, ti2 = wave.argmax(), wave.argmin() # previously used biggest peaks for ipi
+        ipi = (exti2 - exti1) * newtres # interval between primary and secondary peaks
+        duration2 = (ri2 - li1) * newtres # start of primary to end of secondary peak
+        ext1medt, ext2medt = (li1 + ri1)/2, (li2 + ri2)/2
+        ext1width, ext2width = ri1 - li1, ri2 - li2
+        # new measure of peak temporal asymmetry: time between mode and median, normalized
+        # by peak width:
+        ai1 = (exti1 - ext1medt) / ext1width
+        ai2 = (exti2 - ext2medt) / ext2width
+        #ext1wave, ext2wave = wave[li1:ri1], wave[li2:ri2]
+        #ext1mean, ext2mean = ext1wave.mean(), ext2wave.mean()
+        #ext1med, ext2med = np.median(ext1wave), np.median(ext2wave)
+        #ext1std, ext2std = ext1wave.std(), ext2wave.std()
+        # nonparametric skew, not really what I want:
+        #ai1 = (ext1mean - ext1med) / ext1std
+        #ai2 = (ext2mean - ext2med) / ext2std
+        # old measure of peak temporal asymmetry:
+        #ai1 = (ri1 - exti1) / (exti1 - li1) # asymmetry index of primary peak
+        #ai2 = (ri2 - exti2) / (exti2 - li2) # asymmetry index of secondary peak
+        V1, V2 = abs(wave[exti1]), abs(wave[exti2])
+        aai = (V1 - V2)/(V1 + V2) # amplitude asymmetry index
         fwhm1s.append(fwhm1)
         fwhm2s.append(fwhm2)
         ipis.append(ipi)
         duration2s.append(duration2)
-        ai0s.append(ai0)
         ai1s.append(ai1)
+        ai2s.append(ai2)
         aais.append(aai)
         if plotwaves:
             figure()
             plot(wave, 'k')
             # plot fwhm of primary and secondary peaks:
             nit = len(t1) # number of interpolated timepoints
-            minri0 = min(ri0, nit)
             minri1 = min(ri1, nit)
-            plot(np.arange(li0, minri0), wave[li0:minri0], 'r')
-            plot(np.arange(li1, minri1), wave[li1:minri1], 'b')
+            minri2 = min(ri2, nit)
+            plot(np.arange(li1, minri1), wave[li1:minri1], 'r')
+            plot(np.arange(li2, minri2), wave[li2:minri2], 'b')
             # plot points used for ipi:
-            plot(exti0, wave[exti0], 'g', ms=10)
             plot(exti1, wave[exti1], 'g', ms=10)
+            plot(exti2, wave[exti2], 'g', ms=10)
             titlestr = 'wave %d (%s)' % (len(fwhm1s)-1, track.absname + '.n%d' % nid)
             gcfm().window.setWindowTitle(titlestr)
         '''
@@ -212,8 +226,8 @@ fwhm1s = np.hstack(fwhm1s)
 fwhm2s = np.hstack(fwhm2s)
 ipis = np.hstack(ipis)
 duration2s = np.hstack(duration2s)
-ai0s = np.hstack(ai0s)
 ai1s = np.hstack(ai1s)
+ai2s = np.hstack(ai2s)
 aais = np.hstack(aais)
 #durations = np.hstack(durations)
 #ndurations = np.hstack(ndurations)
@@ -500,8 +514,8 @@ plot(aais[fastasymis], fwhm2s[fastasymis], 'g.')
 plot(aais[slowasymis], fwhm2s[slowasymis], 'e.')
 plot(x0, y0, 'e--') # plot dividing curve 0
 plot(x1, y1, 'e--') # plot dividing curve 1
-plot(x2, y2, 'e--') # plot dividing curve 1
-plot(x3, y3, 'e--') # plot dividing curve 1
+plot(x2, y2, 'e--') # plot dividing curve 2
+plot(x3, y3, 'e--') # plot dividing curve 3
 ylim(ymax=700) # cuts a couple points off top, but makes the rest more visible
 xticks([-0.4, 0, 0.4, 0.8])
 yticks([0, 200, 400, 600])
@@ -539,6 +553,21 @@ ylabel('FWHM2 ($\mu$s)')
 gcfm().window.setWindowTitle('fwhm2 vs ai1')
 tight_layout(pad=0.3)
 
+# scatter plot fwhm2 vs ai2
+figure(figsize=(3, 3))
+plot(ai2s, fwhm2s, 'k.')
+xticks(np.arange(-0.3, 0.1, 0.1))
+#yticks([0, 200, 400, 600, 800])
+xlabel('ai2')
+ylabel('FWHM2 ($\mu$s)')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('fwhm2 vs ai2')
+tight_layout(pad=0.3)
+'''
+'''
+# required for 3D plots:
+from mpl_toolkits.mplot3d import Axes3D
+
 # scatter plot fwhm2 vs ai1 vs aai
 f = figure(figsize=(3, 3))
 a = f.add_subplot(111, projection='3d')
@@ -551,6 +580,19 @@ a.set_zlabel('fwhm2')
 gcfm().window.setWindowTitle('fwhm2 vs ai1 vs aai')
 tight_layout(pad=0.3)
 
+# scatter plot fwhm2 vs ai2 vs aai
+f = figure(figsize=(3, 3))
+a = f.add_subplot(111, projection='3d')
+a.plot(aais, ai2s, fwhm2s, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+a.set_xlabel('aai')
+a.set_ylabel('ai2')
+a.set_zlabel('fwhm2')
+gcfm().window.setWindowTitle('fwhm2 vs ai2 vs aai')
+tight_layout(pad=0.3)
+'''
+'''
 # scatter plot fwhm2 vs fwhm1 vs aai
 f = figure(figsize=(3, 3))
 a = f.add_subplot(111, projection='3d')
@@ -692,18 +734,7 @@ ylabel('neuron count')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('fwhm2 distrib')
 tight_layout(pad=0.3)
-'''
-# plot ai0 distribution
-figure(figsize=(3, 3))
-hist(ai0s, bins=nbins, fc='k')
-#xticks([0, 50, 100, 150, 200])
-xlabel('ai0')
-ylabel('neuron count')
-#title('tracks: %r' % tracknames)
-gcfm().window.setWindowTitle('ai0 distrib')
-tight_layout(pad=0.3)
-'''
-'''
+
 # plot ai1 distribution
 figure(figsize=(3, 3))
 hist(ai1s, bins=nbins, fc='k')
@@ -713,7 +744,17 @@ ylabel('neuron count')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('ai1 distrib')
 tight_layout(pad=0.3)
-'''
+
+# plot ai2 distribution
+figure(figsize=(3, 3))
+hist(ai2s, bins=nbins, fc='k')
+xticks(np.arange(-0.3, 0.1, 0.1))
+xlabel('ai2')
+ylabel('neuron count')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('ai2 distrib')
+tight_layout(pad=0.3)
+
 # plot aai distribution
 figure(figsize=(3, 3))
 hist(aais, bins=nbins, fc='k')
