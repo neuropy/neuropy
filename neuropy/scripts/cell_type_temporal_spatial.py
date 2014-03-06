@@ -734,7 +734,7 @@ ylabel('neuron count')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('fwhm2 distrib')
 tight_layout(pad=0.3)
-
+'''
 # plot ai1 distribution
 figure(figsize=(3, 3))
 hist(ai1s, bins=nbins, fc='k')
@@ -754,7 +754,7 @@ ylabel('neuron count')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('ai2 distrib')
 tight_layout(pad=0.3)
-
+'''
 # plot aai distribution
 figure(figsize=(3, 3))
 hist(aais, bins=nbins, fc='k')
