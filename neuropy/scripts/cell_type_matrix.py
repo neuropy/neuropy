@@ -19,7 +19,7 @@ for track in tracks:
 figure(figsize=(3.25, 3))
 imshow(m, origin='upper', cmap='gray')
 xticks(np.arange(4), ['fast', 'slow', 'fast asym', 'slow asym'], rotation=90)
-yticks(np.arange(4), ['simple', 'complex', 'LGN afferent', 'unknown'])
+yticks(np.arange(4), ['simple', 'complex', 'LGN aff', 'unknown'])
 colorbar(ticks=[0, m.max()], label='neuron count')
 gcfm().window.setWindowTitle('rftype vs spiketype')
 tight_layout(pad=1)

@@ -78,6 +78,7 @@ nt = 50
 tres = 20
 t0, t1, aligni = calc_t(nt, tres, newtres) # initial guess, for speed
 sigmas = []
+rftypes = []
 waves = []
 nwaves = [] # peak-to-peak normalized waveforms
 fwhm1s = [] # full-width half max values of primary peak
@@ -109,6 +110,7 @@ for track in tracks:
             nt = n.nt
             t0, t1, aligni = calc_t(nt, tres, newtres)
         sigmas.append(n.sigma)
+        rftypes.append(str(n.rftype)) # convert None to string for searching in array
         maxchani = n.chans.searchsorted(n.maxchan)
         wave = n.wavedata[maxchani]
         # interpolate waveforms from original t0 timebase to higher rez t1 timebase:
@@ -222,6 +224,7 @@ for track in tracks:
 waves = np.asarray(waves)
 nwaves = np.asarray(nwaves)
 sigmas = np.hstack(sigmas)
+rftypes = np.hstack(rftypes)
 fwhm1s = np.hstack(fwhm1s)
 fwhm2s = np.hstack(fwhm2s)
 ipis = np.hstack(ipis)
@@ -261,6 +264,7 @@ ylabel('$\sigma$ ($\mu$m)')
 gcfm().window.setWindowTitle('sigma vs ipi')
 tight_layout(pad=0.3)
 '''
+'''
 # scatter plot sigma vs fwhm1
 figure(figsize=(3, 3))
 plot(fwhm1s, sigmas, 'k.')
@@ -294,7 +298,7 @@ ylabel('$\sigma$ ($\mu$m)')
 #title('tracks: %r' % tracknames)
 gcfm().window.setWindowTitle('sigma vs aai')
 tight_layout(pad=0.3)
-
+'''
 '''
 # scatter plot sigma vs slope
 figure(figsize=(3, 3))
@@ -541,6 +545,31 @@ for tracki, track in enumerate(tracks):
     sts[track.absname] = d # can manually print these out and save to .spiketype file
 
 
+# scatter plot fwhm2 vs aai, but colour by rftype
+figure(figsize=(3, 3))
+simpleis = rftypes == 'simple'
+complexis = rftypes == 'complex'
+lgnis = rftypes == 'LGN'
+unknownis = rftypes == 'None'
+plot(aais[simpleis], fwhm2s[simpleis], 'r.')
+plot(aais[complexis], fwhm2s[complexis], 'b.')
+plot(aais[lgnis], fwhm2s[lgnis], 'g.')
+plot(aais[unknownis], fwhm2s[unknownis], 'e.')
+plot(x0, y0, 'e--') # plot dividing curve 0
+plot(x1, y1, 'e--') # plot dividing curve 1
+plot(x2, y2, 'e--') # plot dividing curve 2
+plot(x3, y3, 'e--') # plot dividing curve 3
+ylim(ymax=700) # cuts a couple points off top, but makes the rest more visible
+xticks([-0.4, 0, 0.4, 0.8])
+yticks([0, 200, 400, 600])
+xlabel('amplitude asymmetry')
+ylabel('FWHM2 ($\mu$s)')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('fwhm2 vs aai coloured by rftype')
+tight_layout(pad=0.3)
+
+
+
 '''
 # scatter plot fwhm2 vs ai1
 figure(figsize=(3, 3))
@@ -642,6 +671,17 @@ gcfm().window.setWindowTitle('fwhm2 vs sigma vs aai')
 tight_layout(pad=0.3)
 '''
 '''
+# scatter plot ipi vs fwhm2
+figure(figsize=(3, 3))
+plot(fwhm2s, ipis, 'k.')
+#xticks([0, 50, 100, 150, 200])
+#yticks([0, 200, 400, 600, 800])
+xlabel('FWHM2 ($\mu$s)')
+ylabel('ipi ($\mu$s)')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('ipi vs fwhm2')
+tight_layout(pad=0.3)
+
 # scatter plot ipi vs aai
 figure(figsize=(3, 3))
 plot(aais, ipis, 'k.')
@@ -696,7 +736,7 @@ tight_layout(pad=0.3)
 
 # plot duration2 distribution
 figure(figsize=(3, 3))
-hist(duration2s, bins=nbins, fc='k')
+hist(duration2s[duration2s < 800], bins=nbins, fc='k')
 #xticks([0, 200, 400, 600, 800])
 xlabel('duration2 ($\mu$s)')
 ylabel('neuron count')
@@ -884,6 +924,109 @@ ylabel('voltage ($\mu$V)')
 #title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
 gcfm().window.setWindowTitle('all waveforms')
 tight_layout(pad=0.3)
+
+# plot simple waveforms:
+figure(figsize=(3, 3))
+for wave in waves[simpleis]:
+    plot(t1, wave, 'r-', lw=1)
+ylim(ymax=250)
+xticks([0, 200, 400, 600, 800])
+yticks(np.arange(-200, 200+100, 100))
+xlabel('time ($\mu$s)')
+ylabel('voltage ($\mu$V)')
+gcfm().window.setWindowTitle('simple waveforms')
+tight_layout(pad=0.3)
+
+# plot complex waveforms:
+figure(figsize=(3, 3))
+for wave in waves[complexis]:
+    plot(t1, wave, 'b-', lw=1)
+ylim(ymax=250)
+xticks([0, 200, 400, 600, 800])
+yticks(np.arange(-200, 200+100, 100))
+xlabel('time ($\mu$s)')
+ylabel('voltage ($\mu$V)')
+gcfm().window.setWindowTitle('complex waveforms')
+tight_layout(pad=0.3)
+
+# plot LGN waveforms:
+figure(figsize=(3, 3))
+for wave in waves[lgnis]:
+    plot(t1, wave, 'g-', lw=1)
+ylim(ymax=250)
+xticks([0, 200, 400, 600, 800])
+yticks(np.arange(-200, 200+100, 100))
+xlabel('time ($\mu$s)')
+ylabel('voltage ($\mu$V)')
+#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+gcfm().window.setWindowTitle('LGN waveforms')
+tight_layout(pad=0.3)
+
+# plot unknown waveforms:
+figure(figsize=(3, 3))
+for wave in waves[unknownis]:
+    plot(t1, wave, 'e-', lw=1)
+ylim(ymax=250)
+xticks([0, 200, 400, 600, 800])
+yticks(np.arange(-200, 200+100, 100))
+xlabel('time ($\mu$s)')
+ylabel('voltage ($\mu$V)')
+#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+gcfm().window.setWindowTitle('unknown waveforms')
+tight_layout(pad=0.3)
+
+# plot simplex, complex, LGN and unknown RF type waveforms:
+figure(figsize=(3, 3))
+for wave in waves[simpleis]:
+    plot(t1, wave, 'r-', lw=1)
+for wave in waves[unknownis]:
+    plot(t1, wave, 'e-', lw=1)
+for wave in waves[complexis]:
+    plot(t1, wave, 'b-', lw=1)
+for wave in waves[lgnis]:
+    plot(t1, wave, 'g-', lw=1)
+ylim(ymax=250)
+xticks([0, 200, 400, 600, 800])
+yticks(np.arange(-200, 200+100, 100))
+xlabel('time ($\mu$s)')
+ylabel('voltage ($\mu$V)')
+#title('tracks: %r, absslopethresh=%.1f' % (tracknames, absslopethresh))
+gcfm().window.setWindowTitle('all waveforms coloured by rftype')
+tight_layout(pad=0.3)
+
+# plot histograms of Vpp for simple, complex, LGN and unknown RF type
+figure(figsize=(3, 3))
+#hist(waves[simpleis].ptp(axis=1), bins=nbins, fc='r', ec='r')
+bins = np.arange(0, 450+25, 25)
+ec='k'
+hist(waves[simpleis].ptp(axis=1), bins=bins, fc='r', ec=ec)
+hist(waves[unknownis].ptp(axis=1), bins=bins, fc='e', ec=ec)
+hist(waves[complexis].ptp(axis=1), bins=bins, fc='b', ec=ec)
+hist(waves[lgnis].ptp(axis=1), bins=bins, fc='g', ec=ec)
+ymin, ymax = ylim()
+y = 25
+dy = -5
+hw = 15
+hl = 2.5
+arrow(waves[simpleis].ptp(axis=1).mean(), y, 0, dy, color='r',
+      head_width=hw, head_length=hl, length_includes_head=True)
+arrow(waves[unknownis].ptp(axis=1).mean(), y, 0, dy, color='e',
+      head_width=hw, head_length=hl, length_includes_head=True)
+arrow(waves[complexis].ptp(axis=1).mean(), y, 0, dy, color='b',
+      head_width=hw, head_length=hl, length_includes_head=True)
+arrow(waves[lgnis].ptp(axis=1).mean(), y, 0, dy, color='g',
+      head_width=hw, head_length=hl, length_includes_head=True)
+#vlines(waves[simpleis].ptp(axis=1).mean(), ymin=ymin, ymax=ymax, colors='r', linestyles='--')
+#vlines(waves[complexis].ptp(axis=1).mean(), ymin=ymin, ymax=ymax, colors='b', linestyles='--')
+#vlines(waves[unknownis].ptp(axis=1).mean(), ymin=ymin, ymax=ymax, colors='e', linestyles='--')
+#vlines(waves[lgnis].ptp(axis=1).mean(), ymin=ymin, ymax=ymax, colors='g', linestyles='--')
+xlim(xmax=450)
+xticks([0, 200, 400])
+xlabel('$V_{pp}$ ($\mu$V)')
+ylabel('neuron count')
+gcfm().window.setWindowTitle('rftype_Vpp_distrib')
+tight_layout(pad=0.3)
+
 '''
 # plot slow waveforms classified by nduration vs ipi plot:
 figure(figsize=(3, 3))
