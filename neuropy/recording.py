@@ -1181,7 +1181,8 @@ class RecordingRaster(BaseRecording):
         supis, midis, deepis = core.laminarity(ypos, self.tr.absname)
         nn = len(nids)
         ntrials = len(tranges)
-        figsize = figsize[0], 1 + ntrials / 36 # ~1/36th vertical inch per trial
+        if figsize[1] == None: # replace None with calculated height
+            figsize = figsize[0], 1 + ntrials / 36 # ~1/36th vertical inch per trial
         for nidi, nid in enumerate(nids): # one figure per neuron
             spikes = self.alln[nid].spikes
             tss = []
