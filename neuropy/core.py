@@ -715,13 +715,13 @@ class LFP(object):
             hlines = [0]
         # calculate some metric of each column, ie each width:
         if kind == 'L/(L+H)':
-            si = lP/(hP + lP)
+            si = lP/(lP + hP)
         elif kind == 'L/H':
             si = lP/hP
-        if kind == 'nLH':
+        elif kind == 'nLH':
             t = Pt
             si = (lP - hP) / (lP + hP)
-            ylabel = 'LFP (L - H / L + H)'
+            ylabel = 'LFP (L - H) / (L + H)'
         elif kind == 'cv':
             si = binhP.std(axis=1) / binhP.mean(axis=1)
             ylim = 0, 2
