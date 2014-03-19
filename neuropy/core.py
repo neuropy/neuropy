@@ -480,6 +480,73 @@ class LFP(object):
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
+
+    def psd(self, t0=None, t1=None, f0=0.1, f1=100, p0=None, p1=None, chanis=-1,
+            width=None, tres=None, cm=None, colorbar=False, figsize=(5, 5)):
+        """Plot power spectral density from t0 to t1 in sec, from f0 to f1 in Hz, and clip
+        power values from p0 to p1 in dB, based on channel index chani of LFP data. chanis=0
+        uses most superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1,
+        take mean of specified chanis. width and tres are in sec."""
+        uns = get_ipython().user_ns
+        self.get_data()
+        ts = self.get_tssec() # full set of timestamps, in sec
+        if t0 == None:
+            t0, t1 = ts[0], ts[-1] # full duration
+        if t1 == None:
+            t1 = t0 + 10 # 10 sec window
+        if width == None:
+            width = uns['LFPWIDTH'] # sec
+        if tres == None:
+            tres = uns['LFPTRES'] # sec
+        assert tres <= width
+        NFFT = intround(width * self.sampfreq)
+        noverlap = intround(NFFT - tres * self.sampfreq)
+        t0i, t1i = ts.searchsorted((t0, t1))
+        #ts = ts[t0i:t1i] # constrained set of timestamps, in sec
+        data = self.data[:, t0i:t1i] # slice data
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        if iterable(chanis):
+            data = data[chanis].mean(axis=0) # take mean of data on chanis
+        else:
+            data = data[chanis] # get single row of data at chanis
+        #data = filter.notch(data)[0] # remove 60 Hz mains noise
+        # convert data from uV to mV. I think P is in mV^2?:
+        P, freqs = mpl.mlab.psd(data/1e3, NFFT=NFFT, Fs=self.sampfreq, noverlap=noverlap)
+        # keep only freqs between f0 and f1:
+        if f0 == None:
+            f0 = freqs[0]
+        if f1 == None:
+            f1 = freqs[-1]
+        lo, hi = freqs.searchsorted([f0, f1])
+        P, freqs = P[lo:hi], freqs[lo:hi]
+        # check for and replace zero power values (ostensibly due to gaps in recording)
+        # before attempting to convert to dB:
+        zis = np.where(P == 0.0) # row and column indices where P has zero power
+        if len(zis[0]) > 0: # at least one hit
+            P[zis] = np.finfo(np.float64).max # temporarily replace zeros with max float
+            minnzval = P.min() # get minimum nonzero value
+            P[zis] = minnzval # replace with min nonzero values
+        P = 10. * np.log10(P) # convert power to dB wrt 1 mV^2?
+        # for better visualization, clip power values to within (p0, p1) dB
+        if p0 != None:
+            P[P < p0] = p0
+        if p1 != None:
+            P[P > p1] = p1
+        #self.P = P
+        a.plot(freqs, P, 'k-')
+        a.autoscale(enable=True, tight=True)
+        a.axis('tight')
+        a.set_xlabel("frequency (Hz)")
+        a.set_ylabel("power (dB)")
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        a.set_title(titlestr)
+        a.text(0.998, 0.99, '%s' % self.r.name, color='k', transform=a.transAxes,
+               horizontalalignment='right', verticalalignment='top')
+        f.tight_layout(pad=0.3) # crop figure to contents
+        self.f = f
+        return P, freqs
         
     def specgram(self, t0=None, t1=None, f0=0.1, f1=100, p0=-60, p1=None, chanis=-1,
                  width=None, tres=None, cm=None, colorbar=False, figsize=(20, 6.5)):
