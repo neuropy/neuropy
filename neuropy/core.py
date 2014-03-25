@@ -680,7 +680,9 @@ class LFP(object):
         return b, a
 
     def si(self, kind=None, chani=-1, width=None, tres=None,
-           lfpwidth=None, lfptres=None, lowband=None, highband=None, plot=True):
+           lfpwidth=None, lfptres=None, lowband=None, highband=None, plot=True,
+           showxlabel=True, showylabel=True, showtitle=True, showtext=True,
+           figsize=(20, 6.5), swapaxes=False):
         """Calculate an LFP synchrony index, using potentially overlapping windows of
         width and tres, in sec, from the LFP spectrogram, itself composed of bins of
         lfpwidth and lfptres. Options for kind are:
@@ -906,8 +908,10 @@ class LFP(object):
         else:
             raise ValueError('unknown kind %r' % kind)
         if plot:
-            self.si_plot(t, si, t0=0, t1=t[-1], ylim=ylim, ylabel=ylabel, title=lastcmd(),
-                         text=self.r.name, hlines=hlines)
+            self.si_plot(t, si, t0=0, t1=t[-1], ylim=ylim, showxlabel=showxlabel,
+                         showylabel=showylabel, ylabel=ylabel, showtitle=showtitle,
+                         title=lastcmd(), showtext=showtext, text=self.r.name, hlines=hlines,
+                         figsize=figsize, swapaxes=swapaxes)
         #np.seterr(**old_settings) # restore old settings
         return si, t # t are midpoints of bins, from start of acquisition
     '''
@@ -952,8 +956,10 @@ class LFP(object):
             self.si_plot(t, r, t0, t1, ylabel, title=lastcmd(), text=self.r.name)
         return r, t
     '''
-    def si_plot(self, t, si, t0=None, t1=None, ylim=None, ylabel=None, title=None, text=None,
-                hlines=[0], figsize=(20, 6.5)):
+    def si_plot(self, t, si, t0=None, t1=None, ylim=None, ylabel=None,
+                showxlabel=True, showylabel=True, showtitle=True,
+                title=None, showtext=True, text=None, hlines=[0], figsize=(20, 6.5),
+                swapaxes=False):
         """Plot synchrony index as a function of time, with hopefully the same
         temporal scale as some of the other plots in self"""
         if figsize == None:
@@ -962,24 +968,42 @@ class LFP(object):
         else:
             f = pl.figure(figsize=figsize)
             a = f.add_subplot(111)
-        # underplot horizontal lines:
-        for hline in hlines:
-            a.axhline(y=hline, c='e', ls='--', marker=None)
-        a.plot(t, si, 'k-')
-        a.set_xlabel("time (sec)")
+
+        xlim = t0, t1
+        xlabel = "time (sec)"
         if ylabel == None:
             ylabel = "synchrony index (AU?)"
-        a.set_xlim(t0, t1) # low/high limits are unchanged if None
+
+        if swapaxes:
+            t, si = si, t # swap t and si
+            xlim, ylim = ylim, xlim
+            ylim = ylim[1], ylim[0] # swap new ylimits so t=0 is at top
+            xlabel, ylabel = ylabel, xlabel # swap labels
+            showxlabel, showylabel = showylabel, showxlabel # swap flags
+            # underplot vertical lines:
+            for hline in hlines:
+                a.axvline(x=hline, c='e', ls='--', marker=None)
+        else:
+            # underplot horizontal lines:
+            for hline in hlines:
+                a.axhline(y=hline, c='e', ls='--', marker=None)
+
+        a.plot(t, si, 'k-')
+        a.set_xlim(xlim) # low/high limits are unchanged if None
         a.set_ylim(ylim)
-        a.set_ylabel(ylabel)
+        if showxlabel:
+            a.set_xlabel(xlabel)
+        if showylabel:
+            a.set_ylabel(ylabel)
         #a.autoscale(axis='x', enable=True, tight=True)
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
         if title:
             gcfm().window.setWindowTitle(title)
-            a.set_title(title)
-        if text:
+            if showtitle:
+                a.set_title(title)
+        if showtext:
             a.text(0.998, 0.01, '%s' % text, color='k', transform=a.transAxes,
                    horizontalalignment='right', verticalalignment='bottom')
         f.tight_layout(pad=0.3) # crop figure to contents
