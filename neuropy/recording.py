@@ -1075,8 +1075,8 @@ class RecordingRaster(BaseRecording):
         return PRaster(trange=trange, neurons=neurons, norder=norder, units=units, r=self,
                        size=size, color=color)
 
-    def traster(self, nids=None, sweepis=None, eid=0, t0=None, dt=None, blank=True, s=20,
-                c=None, title=True, ylabel=True, figsize=(7.5, None)):
+    def traster(self, nids=None, sweepis=None, eid=0, t0=None, dt=None, blank=True,
+                marker='|', s=20, c=None, title=True, ylabel=True, figsize=(7.5, None)):
         """Create a trial spike raster plot for each given neuron. for the designated sweep
         indices, based on stimulus info in experiment eid. blank designates whether to include
         blank frames for trials in movie type stimuli. Use c='bwg' to plot black and white
@@ -1226,7 +1226,8 @@ class RecordingRaster(BaseRecording):
 
             f = pl.figure(figsize=figsize)
             a = f.add_subplot(111, axisbg=axisbg)
-            a.scatter(ts, trialis+1, marker='|', c=cs, s=s, cmap=cmap) # plot 1-based trialis
+            # plot 1-based trialis:
+            a.scatter(ts, trialis+1, marker=marker, c=cs, s=s, cmap=cmap)
             a.set_xlim(0, maxdt / 1e6) # sec
             # -1 inverts the y axis, +1 ensures last trial is fully visible:
             a.set_ylim(ntrials+1, -1)
@@ -1236,6 +1237,8 @@ class RecordingRaster(BaseRecording):
             a.set_xlabel("time (sec)")
             if ylabel:
                 a.set_ylabel("trial index") # sweep index order, not necessarily temporal order
+            else:
+                a.set_yticks([]) # turn off y ticks
             titlestr = lastcmd() + " nid%d nidi%d" % (nid, nidi)
             gcfm().window.setWindowTitle(titlestr)
             if title:
