@@ -1075,12 +1075,13 @@ class RecordingRaster(BaseRecording):
         return PRaster(trange=trange, neurons=neurons, norder=norder, units=units, r=self,
                        size=size, color=color)
 
-    def traster(self, nids=None, sweepis=None, eid=0, t0=None, dt=None, blank=True,
+    def traster(self, nids=None, sweepis=None, eids=None, natonlyexps=False,
+                t0=None, dt=None, blank=True,
                 marker='|', s=20, c=None, title=True, ylabel=True, figsize=(7.5, None)):
         """Create a trial spike raster plot for each given neuron. for the designated sweep
-        indices, based on stimulus info in experiment eid. blank designates whether to include
-        blank frames for trials in movie type stimuli. Use c='bwg' to plot black and white
-        bars on a grey background for black and white drifting bar trials"""
+        indices, based on stimulus info in experiments eids. blank designates whether to
+        include blank frames for trials in movie type stimuli. Use c='bwg' to plot black and
+        white bars on a grey background for black and white drifting bar trials"""
         if nids == None:
             nids = sorted(self.n.keys()) # use active neurons
         elif nids == 'quiet':
@@ -1089,19 +1090,58 @@ class RecordingRaster(BaseRecording):
             nids = sorted(self.alln.keys()) # use all neurons
         else:
             nids = tolist(nids) # use specified neurons
-        e = self.e[eid]
-        if type(e.e) == Movie: # movie stimulus, each frame is a sweep
+
+        if eids == None:
+            eids = sorted(self.e) # all eids, assume they're all comparable
+            if natonlyexps:
+                eids = [ eid for eid in eids if self.e[eid].e.name[0] == 'n' ]
+                print('nat eids: %s' % eids)
+        e0 = self.e[eids[0]]
+        if type(e0.e) == Movie: # movie stimulus, each frame is a sweep
             trialtype = 'dinrange' # one trial for every cycle of din values
         else:
             trialtype = 'dinval' # one trial per block of identical din values
         if c == 'bwg': # black and white ticks on grey, for corresponding drift bar stimulus
             assert trialtype == 'dinval'
-            brightness = e.sweeptable.data['brightness'] # indexed into using sweepis
+            brightness = e0.sweeptable.data['brightness'] # indexed into using sweepis
             assert len(np.unique(brightness)) == 2
-            
-        din = e.din
+
+        dins = [ self.e[eid].din for eid in eids ]
+        din0 = dins[0]
+        nrefreshes = len(din0)
+        rtime = np.diff(din0[:, 0]).mean() # refresh time, us
+        dinis = np.cumsum([ len(din) for din in dins ]) # indices into din denoting exp ends
+        din = np.vstack(dins) # din from all experiments, concatenated together
         alltimes = din[:, 0] # times of every screen refresh
         allsweepis = din[:, 1] # sweep indices of every screen refresh
+
+        # deal with ptc15 movies:
+        if trialtype == 'dinrange' and self.tr.animal.name == 'ptc15':
+            # replace uninformative ptc15 repeat movie din values with ones that make
+            # the repeats explicit, assuming trial (sweep) length dt:
+            if dt == None:
+                # default to nearly 5 sec trial length (due to slight > 200 Hz refresh rate)
+                dt = 4.998 # s
+            dt *= 1000000 # convert from sec to us
+            nrt = intround(dt / rtime) # number of refreshes per trial
+            ntrials = intround(nrefreshes / nrt) # number of trials
+            # number of refreshes per movie frame:
+            nrf = np.unique(np.diff(np.where(np.diff(din0[:, 1]) == 1)[0]))
+            assert len(nrf) == 1 # nrf value should be consistent across all frames
+            nrf = nrf[0] # pull it out of the array
+            nft = intround(nrt / nrf) # number of frames per trial
+            sweepis = np.arange(nft)
+            sweepis = np.repeat(sweepis, nrf)
+            sweepis = np.tile(sweepis, ntrials)
+            assert len(sweepis) == len(din0)
+            # make sure all experiments are same length:
+            assert len(allsweepis) == len(sweepis) * len(eids)
+            allsweepis = np.tile(sweepis, len(eids))
+            blank = False # trigger not blank clause below
+            sweepis = None # reset so that NULLDIN search is triggered below
+            dt = None # reset so that dinrange code is triggered below
+
+        # filter sweepis:
         uns = get_ipython().user_ns
         NULLDIN = uns['NULLDIN']
         if sweepis == None: # find unique sweep indices, excluding NULLDIN:
@@ -1124,7 +1164,7 @@ class RecordingRaster(BaseRecording):
             tlast = alltimes[-1]
             t0s = np.arange(t0, tlast-dt, dt)
             t1s = np.arange(t0+dt, tlast, dt)
-            assert (t1s - t0s == dt).all()
+            assert (t1s - t0s == dt).all() # can fail for float dt
             tranges = np.column_stack((t0s, t1s))
         elif trialtype == 'dinrange':
             sw0, sw1 = sweepis[0], sweepis[-1] # first and last sweep index in each trial
@@ -1147,8 +1187,8 @@ class RecordingRaster(BaseRecording):
                 i1s = i0s[1:] # missing one more at end at this point
                 di1s = np.diff(i1s)
                 maxdi1 = max(di1s)
-                # append one more index interval to end of i1s
-                i1s = np.hstack((i1s, [i1s[-1]+maxdi1]))
+                # append one more index interval to end of i1s, subtract 1 to stay in bounds
+                i1s = np.hstack((i1s, [i1s[-1]+maxdi1-1]))
             t1s = alltimes[i1s]
             tranges = np.column_stack((t0s, t1s))
         elif trialtype == 'dinval':
@@ -1176,13 +1216,13 @@ class RecordingRaster(BaseRecording):
             tranges = np.column_stack((t0s, t1s))
         dts = t1s - t0s
         maxdt = max(dts) # max trial duration
-        # depth of nids from top of electrode
-        ypos = np.array([ self.alln[nid].pos[1] for nid in nids ])
-        supis, midis, deepis = core.laminarity(ypos, self.tr.absname)
-        nn = len(nids)
+
+        # plot figures:
         ntrials = len(tranges)
         if figsize[1] == None: # replace None with calculated height
             figsize = figsize[0], 1 + ntrials / 36 # ~1/36th vertical inch per trial
+        ypos = np.array([ self.alln[nid].pos[1] for nid in nids ]) # nid vertical depths
+        supis, midis, deepis = core.laminarity(ypos, self.tr.absname) # laminar flags
         for nidi, nid in enumerate(nids): # one figure per neuron
             spikes = self.alln[nid].spikes
             tss = []
@@ -1228,7 +1268,11 @@ class RecordingRaster(BaseRecording):
             a = f.add_subplot(111, axisbg=axisbg)
             # plot 1-based trialis:
             a.scatter(ts, trialis+1, marker=marker, c=cs, s=s, cmap=cmap)
-            a.set_xlim(0, maxdt / 1e6) # sec
+            xmin, xmax = a.set_xlim(0, maxdt / 1e6) # sec
+            if len(dinis) > 1:
+                # assume nrt was defined above
+                exptrialis = intround(dinis[:-1] / nrt) # trialis separating experiments
+                a.hlines(y=exptrialis, xmin=xmin, xmax=xmax, colors='e', linestyles='dashed')
             # -1 inverts the y axis, +1 ensures last trial is fully visible:
             a.set_ylim(ntrials+1, -1)
             # turn off annoying "+2.41e3" type offset on x axis:
