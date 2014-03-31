@@ -459,9 +459,8 @@ class LFP(object):
         # add offsets:
         for chanii, chani in enumerate(chanis):
             chan = self.chans[chani]
-            xpos, ypos = self.chanpos[chan]
-            #segments[chani, :, 0] += xpos
-            segments[chanii, :, 1] -= ypos # vertical distance below top of probe
+            ypos = self.chanpos[chan][1]
+            segments[chanii, :, 1] += ypos # vertical distance below top of probe
         if yunits == 'mm':
             segments[:, :, 1] /= 1000
         lc = LineCollection(segments, linewidth=1, linestyle='-', colors='k',
@@ -470,6 +469,7 @@ class LFP(object):
         a = f.add_subplot(111)
         a.add_collection(lc) # add to axes' pool of LCs
         a.autoscale(enable=True, tight=True)
+        a.invert_yaxis()
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
