@@ -556,7 +556,8 @@ class LFP(object):
         return P, freqs
         
     def specgram(self, t0=None, t1=None, f0=0.1, f1=100, p0=-60, p1=None, chanis=-1,
-                 width=None, tres=None, cm=None, colorbar=False, figsize=(20, 6.5)):
+                 width=None, tres=None, cm=None, colorbar=False, title=True,
+                 figsize=(20, 6.5)):
         """Plot a spectrogram from t0 to t1 in sec, from f0 to f1 in Hz, and clip power values
         from p0 to p1 in dB, based on channel index chani of LFP data. chanis=0 uses most
         superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, take mean of
@@ -631,9 +632,10 @@ class LFP(object):
         a.set_ylabel("frequency (Hz)")
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
-        a.set_title(titlestr)
-        a.text(0.998, 0.99, '%s' % self.r.name, color='w', transform=a.transAxes,
-               horizontalalignment='right', verticalalignment='top')
+        if title:
+            a.set_title(titlestr)
+            a.text(0.998, 0.99, '%s' % self.r.name, color='w', transform=a.transAxes,
+                   horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
         if colorbar:
             f.colorbar(im, pad=0) # creates big whitespace to the right for some reason
