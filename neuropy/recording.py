@@ -1082,8 +1082,9 @@ class RecordingRaster(BaseRecording):
                 marker='|', s=20, c=None, title=True, ylabel=True, figsize=(7.5, None)):
         """Create a trial spike raster plot for each given neuron. for the designated sweep
         indices, based on stimulus info in experiments eids. blank designates whether to
-        include blank frames for trials in movie type stimuli. Use c='bwg' to plot black and
-        white bars on a grey background for black and white drifting bar trials"""
+        include blank frames for trials in movie type stimuli. Use c='dual' to overplot two
+        neurons' rasters in different colours. Use c='bwg' to plot black and white bars on a
+        grey background for black and white drifting bar trials"""
         if nids == None:
             nids = sorted(self.n.keys()) # use active neurons
         elif nids == 'quiet':
@@ -1103,7 +1104,10 @@ class RecordingRaster(BaseRecording):
             trialtype = 'dinrange' # one trial for every cycle of din values
         else:
             trialtype = 'dinval' # one trial per block of identical din values
-        if c == 'bwg': # black and white ticks on grey, for corresponding drift bar stimulus
+        if c == 'dual':
+            assert len(nids) == 2
+            dualcount = -1
+        elif c == 'bwg': # black and white ticks on grey, for corresponding drift bar stimulus
             assert trialtype == 'dinval'
             brightness = e0.sweeptable.data['brightness'] # indexed into using sweepis
             assert len(np.unique(brightness)) == 2
@@ -1241,10 +1245,18 @@ class RecordingRaster(BaseRecording):
                 trialiss.append(np.tile(triali, nspikes)) # 0-based y values for this trial
             if len(tss) == 0: # no spikes for this neuron for this experiment
                 continue
-            cs = c
+
             cmap = None
             axisbg = 'w'
-            if c == 'bwg':
+            if c == None:
+                if supis[nidi]: cs = 'r'
+                elif midis[nidi]: cs = 'g'
+                elif deepis[nidi]: cs = 'b'
+                else: cs = 'y'
+            elif c == 'dual':
+                dualcount += 1
+                cs = ['r', 'b'][dualcount]
+            elif c == 'bwg':
                 # generate list of colors representing light and dark driftbar trials:
                 axisbg = 'e'
                 cmap = mpl.cm.gray
@@ -1258,15 +1270,15 @@ class RecordingRaster(BaseRecording):
                     b = brightness[sweepi] # 0s and 1s, one value per trial
                     cs.append(np.tile(b, nspikes)) # build array of one value per spike
                 cs = np.hstack(cs)
+            else:
+                cs = c
             ts = np.hstack(tss)
             trialis = np.hstack(trialiss)
-            if cs == None:
-                if supis[nidi]: cs = 'r'
-                elif midis[nidi]: cs = 'g'
-                elif deepis[nidi]: cs = 'b'
-                else: cs = 'y'
 
-            f = pl.figure(figsize=figsize)
+            if c == 'dual' and dualcount > 0:
+                pass # don't make a second figure in dual neuron overplot mode
+            else:
+                f = pl.figure(figsize=figsize)
             a = f.add_subplot(111, axisbg=axisbg)
             # plot 1-based trialis:
             a.scatter(ts, trialis+1, marker=marker, c=cs, s=s, cmap=cmap)
@@ -1285,7 +1297,9 @@ class RecordingRaster(BaseRecording):
                 a.set_ylabel("trial index") # sweep index order, not necessarily temporal order
             else:
                 a.set_yticks([]) # turn off y ticks
-            titlestr = lastcmd() + " nid%d nidi%d" % (nid, nidi)
+            titlestr = lastcmd()
+            if c != 'dual':
+                titlestr += " nid%d nidi%d" % (nid, nidi)
             gcfm().window.setWindowTitle(titlestr)
             if title:
                 a.set_title(titlestr)
@@ -1308,6 +1322,7 @@ class RecordingRaster(BaseRecording):
         for nid in nids:
             n = self.alln[nid]
             tune = n.tune(eid=eid, tdelay=tdelay)
+            #in ['ori', 'phase0']: # test circular variables for significance
             if var == 'ori':
                 theta, r, z, p = tune.pref(var=var, fixed=fixed)
                 if p >= alpha:
