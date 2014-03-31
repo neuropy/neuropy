@@ -25,7 +25,7 @@ for trackname in tracknames:
     imshow(m[trackname], origin='upper', cmap='gray')
     xticks(np.arange(4), ['fast', 'slow', 'fast asym', 'slow asym'], rotation=90)
     yticks(np.arange(4), ['simple', 'complex', 'LGN aff', 'unknown'])
-    colorbar(ticks=[0, m[trackname].max()], label='neuron count')
+    colorbar(ticks=[m[trackname].min(), m[trackname].max()], label='neuron count')
     gcfm().window.setWindowTitle(trackname + ' rftype vs spiketype')
     tight_layout(pad=1)
 
