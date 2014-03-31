@@ -1032,7 +1032,7 @@ class DensePopulationRaster(object):
     """Population spike raster plot, with dense vertical spacing according to neuron depth
     rank, and colour proportional to neuron depth"""
     def __init__(self, trange=None, neurons=None, norder=None, units='sec', r=None,
-                 size=None, color=None, figsize=(20, None)):
+                 size=None, color=None, title=True, figsize=(20, None)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
         is displayed in time units of units"""
         assert len(trange) == 2
@@ -1097,14 +1097,16 @@ class DensePopulationRaster(object):
             a.set_ylabel("neuron order")
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
-        titlestr += ' (%s)' % r.name
-        a.set_title(titlestr)
-        # add pseudo legend of coloured text:
-        tmax = a.get_xlim()[1]
-        #rainbow_text(a, 0.905*tmax, -1.5, ['superficial', 'middle', 'deep'], ['r', 'g', 'b'])
-        a.text(0.908*tmax, -1.5, 'superficial', color='r')
-        a.text(0.952*tmax, -1.5, 'middle', color='g')
-        a.text(0.980*tmax, -1.5, 'deep', color='b')
+        if title:
+            titlestr += ' (%s)' % r.name
+            a.set_title(titlestr)
+            # add pseudo legend of coloured text:
+            tmax = a.get_xlim()[1]
+            #rainbow_text(a, 0.905*tmax, -1.5, ['superficial', 'middle', 'deep'],
+            #             ['r', 'g', 'b'])
+            a.text(0.908*tmax, -1.5, 'superficial', color='r')
+            a.text(0.952*tmax, -1.5, 'middle', color='g')
+            a.text(0.980*tmax, -1.5, 'deep', color='b')
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
 
@@ -1113,7 +1115,7 @@ class SpatialPopulationRaster(object):
     """Population spike raster plot, with vertical spacing proportional to neuron depth,
     colour representing neuron id, and point size inversely proportional to spike rate."""
     def __init__(self, trange=None, neurons=None, norder=None, units='sec', r=None,
-                 size=None, color=None, figsize=(20, 6.5)):
+                 size=None, color=None, title=True, figsize=(20, 6.5)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
         is displayed in time units of units"""
         assert len(trange) == 2
@@ -1180,8 +1182,9 @@ class SpatialPopulationRaster(object):
             a.set_ylabel("neuron order")
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
-        titlestr += ' (%s)' % r.name
-        a.set_title(titlestr)
+        if title:
+            titlestr += ' (%s)' % r.name
+            a.set_title(titlestr)
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
     '''

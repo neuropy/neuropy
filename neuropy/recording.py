@@ -1036,8 +1036,8 @@ class RecordingRevCorr(BaseRecording):
 
 class RecordingRaster(BaseRecording):
     """Mix-in class that defines the raster related Recording methods"""
-    def praster(self, t0=None, t1=None, neurons=None, norder=None, dense=True,
-                size=None, color=None, units='sec'):
+    def praster(self, t0=None, t1=None, neurons=None, norder=None, kind='dense',
+                size=None, color=None, units='sec', title=True, figsize=(20, None)):
         """Create a dense or spatial population spike raster plot. For the spatial population
         raster, the neurons are spaced vertically according to their actual spacing, whereas
         for the dense they all have equal dense spacing. neurons can be None, 'quiet', 'all',
@@ -1068,12 +1068,14 @@ class RecordingRaster(BaseRecording):
         if norder == True:
             nids = sorted(neurons)
             norder = self.sc(nids=nids).norder()
-        if dense:
+        if kind == 'dense':
             PRaster = DensePopulationRaster
-        else:
+        elif kind == 'spatial':
             PRaster = SpatialPopulationRaster
+        else:
+            raise ValueError("unknown kind %r" % kind)
         return PRaster(trange=trange, neurons=neurons, norder=norder, units=units, r=self,
-                       size=size, color=color)
+                       size=size, color=color, title=title, figsize=figsize)
 
     def traster(self, nids=None, sweepis=None, eids=None, natonlyexps=False,
                 t0=None, dt=None, blank=True,
