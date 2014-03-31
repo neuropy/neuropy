@@ -62,7 +62,7 @@ LFPSIWIDTH = 10 # sec
 LFPSITRES = 2 # sec
 LFPSILOWBAND = 0.5, 7 # Hz
 LFPSIHIGHBAND = 15, 100 # Hz
-LFPSIKIND = 'n3stdmed'
+LFPSIKIND = 'L/(L+H)'#'n3stdmed'
 
 """List of sorted track IDs"""
 TRACKS = ['ptc15.tr7c', 'ptc22.tr1', 'ptc22.tr2']
