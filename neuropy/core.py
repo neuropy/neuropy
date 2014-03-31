@@ -432,7 +432,8 @@ class LFP(object):
         """Return full set of timestamps, in sec"""
         return np.arange(self.t0/1e6, self.t1/1e6, self.tres/1e6)
 
-    def plot(self, t0=None, t1=None, chanis=None, figsize=(20, 6.5)):
+    def plot(self, t0=None, t1=None, chanis=None, gain=1, yunits='um', title=True,
+             figsize=(20, 6.5)):
         """Plot chanis of LFP data between t0 and t1 in sec"""
         self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
@@ -447,7 +448,7 @@ class LFP(object):
         chanis = tolist(chanis)
         nchans = len(chanis)
         # grab desired channels and time range, and AD values to uV:
-        data = self.data[chanis][:, t0i:t1i] * self.uVperAD * self.PLOTGAIN
+        data = self.data[chanis][:, t0i:t1i] * self.uVperAD * self.PLOTGAIN * gain
         nt = len(ts)
         assert nt == data.shape[1]
         x = np.tile(ts, nchans)
@@ -461,6 +462,8 @@ class LFP(object):
             xpos, ypos = self.chanpos[chan]
             #segments[chani, :, 0] += xpos
             segments[chanii, :, 1] -= ypos # vertical distance below top of probe
+        if yunits == 'mm':
+            segments[:, :, 1] /= 1000
         lc = LineCollection(segments, linewidth=1, linestyle='-', colors='k',
                             antialiased=True, visible=True)
         f = pl.figure(figsize=figsize)
@@ -471,12 +474,16 @@ class LFP(object):
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
         a.set_xlabel("time (sec)")
-        a.set_ylabel("depth (um)")
+        if yunits == 'um':
+            a.set_ylabel("depth ($\mu$m)")
+        elif yunits == 'mm':
+            a.set_ylabel("depth (mm)")
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
-        a.set_title(titlestr)
-        a.text(0.998, 0.99, '%s' % self.r.name, transform=a.transAxes,
-               horizontalalignment='right', verticalalignment='top')
+        if title:
+            a.set_title(titlestr)
+            a.text(0.998, 0.99, '%s' % self.r.name, transform=a.transAxes,
+                   horizontalalignment='right', verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
