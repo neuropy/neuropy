@@ -1077,18 +1077,19 @@ class RecordingRaster(BaseRecording):
         return PRaster(trange=trange, neurons=neurons, norder=norder, units=units, r=self,
                        size=size, color=color, title=title, figsize=figsize)
 
-    def traster(self, nids=None, sweepis=None, eids=None, natexps=False,
-                t0=None, dt=None, blank=True, plotpsth=False, binw=0.1, tres=0.01,
+    def traster(self, nids=None, overlap=False, sweepis=None, eids=None, natexps=False,
+                t0=None, dt=None, blank=True, plotpsth=False, binw=0.02, tres=0.005,
                 marker='|', s=20, c=None, title=True, ylabel=True,
                 figsize=(7.5, None), psthfigsize=None):
-        """Create a trial spike raster plot for each given neuron. For the designated sweep
-        indices, based on stimulus info in experiments eids. natexps controls whether only
-        natural scene movies are considered in ptc15 multiexperiment recordings. t0 and dt
-        manually designate trial tranges. blank controls whether to include blank frames for
-        trials in movie type stimuli. plotpsth, binw and tres control corresponding PSTH
-        plots. c controls color. Use c='dual' to overplot two neurons' rasters in different
-        colours. Use c='bwg' to plot black and white bars on a grey background for black and
-        white drifting bar trials"""
+        """Create a trial spike raster plot for each given neuron ('all' and 'quiet' are valid
+        values), one figure for each neuron, or overlapping using different colours in a
+        single figure. For the designated sweep indices, based on stimulus info in experiments
+        eids. natexps controls whether only natural scene movies are considered in ptc15
+        multiexperiment recordings. t0 and dt manually designate trial tranges. blank controls
+        whether to include blank frames for trials in movie type stimuli. plotpsth, binw and
+        tres control corresponding PSTH plots. c controls color, and can be a single value, a
+        list of len(nids), or use c='bwg' to plot black and white bars on a grey background
+        for black and white drifting bar trials"""
         if nids == None:
             nids = sorted(self.n.keys()) # use active neurons
         elif nids == 'quiet':
@@ -1097,6 +1098,7 @@ class RecordingRaster(BaseRecording):
             nids = sorted(self.alln.keys()) # use all neurons
         else:
             nids = tolist(nids) # use specified neurons
+        nn = len(nids)
 
         if eids == None:
             eids = sorted(self.e) # all eids, assume they're all comparable
@@ -1108,13 +1110,15 @@ class RecordingRaster(BaseRecording):
             trialtype = 'dinrange' # one trial for every cycle of din values
         else:
             trialtype = 'dinval' # one trial per block of identical din values
-        if c == 'dual':
-            assert len(nids) == 2
-            dualcount = -1
-        elif c == 'bwg': # black and white ticks on grey, for corresponding drift bar stimulus
+        if c == 'bwg': # black and white ticks on grey, for corresponding drift bar stimulus
             assert trialtype == 'dinval'
             brightness = e0.sweeptable.data['brightness'] # indexed into using sweepis
             assert len(np.unique(brightness)) == 2
+        elif c != None and overlap:
+            if len(c) == 1:
+                c = [c] * nn # repeat the single colour specifier nn times
+            else:
+                assert len(c) == nn # one specified colour per neuron
 
         dins = [ self.e[eid].din for eid in eids ]
         din0 = dins[0]
@@ -1224,11 +1228,11 @@ class RecordingRaster(BaseRecording):
             t1s = np.hstack(t1s)
             trangesweepis = np.hstack(trangesweepis) # sweepi of every trange
             tranges = np.column_stack((t0s, t1s))
+        ntrials = len(tranges)
         dts = t1s - t0s
         maxdt = max(dts) # max trial duration
 
         # plot figures:
-        ntrials = len(tranges)
         if figsize[1] == None: # replace None with calculated height
             figsize = figsize[0], 1 + ntrials / 36 # ~1/36th vertical inch per trial
         ypos = np.array([ self.alln[nid].pos[1] for nid in nids ]) # nid vertical depths
@@ -1253,41 +1257,43 @@ class RecordingRaster(BaseRecording):
             # figure out colours:
             cmap = None
             axisbg = 'w'
-            if c == None:
-                if supis[nidi]: cs = 'r'
-                elif midis[nidi]: cs = 'g'
-                elif deepis[nidi]: cs = 'b'
-                else: cs = 'y'
-            elif c == 'dual':
-                dualcount += 1
-                cs = ['r', 'b'][dualcount]
-            elif c == 'bwg':
-                # generate list of colors representing light and dark driftbar trials:
-                axisbg = 'e'
-                cmap = mpl.cm.gray
-                cs = []
-                for trialis, ts in zip(trialiss, tss):
-                    nspikes = len(ts)
-                    #assert nspikes == len(trialis)
-                    triali = trialis[0]
-                    #assert (trialis == triali).all()
-                    sweepi = trangesweepis[triali]
-                    b = brightness[sweepi] # 0s and 1s, one value per trial
-                    cs.append(np.tile(b, nspikes)) # build array of one value per spike
-                cs = np.hstack(cs)
+            if overlap:
+                if c == None:
+                    cs = ['r', 'b', 'g', 'y', 'm', 'c', 'e', 'k'][nidi]
+                else: # use provided list of colours to index into
+                    cs = c[nidi]
             else:
-                cs = c
+                if c == None: # color raster by cell layer
+                    if supis[nidi]: cs = 'r'
+                    elif midis[nidi]: cs = 'g'
+                    elif deepis[nidi]: cs = 'b'
+                    else: cs = 'y'
+                elif c == 'bwg': # color raster by light and dark driftbar trials:
+                    axisbg = 'e'
+                    cmap = mpl.cm.gray
+                    cs = []
+                    for trialis, ts in zip(trialiss, tss):
+                        nspikes = len(ts)
+                        #assert nspikes == len(trialis)
+                        triali = trialis[0]
+                        #assert (trialis == triali).all()
+                        sweepi = trangesweepis[triali]
+                        b = brightness[sweepi] # 0s and 1s, one value per trial
+                        cs.append(np.tile(b, nspikes)) # build array of one value per spike
+                    cs = np.hstack(cs)
+                else: # use provided list of colours to index into
+                    cs = c[nidi]
 
             # convert spike times and trial indices to flat arrays and rename:
             ts = np.hstack(tss) # sorted by time in each trial, but not overall
             trialis = np.hstack(trialiss)
 
             # create trial raster plot:
-            if c == 'dual' and dualcount > 0:
-                pass # don't make a second figure in dual neuron overplot mode
+            if overlap and nidi > 0:
+                pass # don't make a second figure and axes in neuron overplot mode
             else:
                 f = pl.figure(figsize=figsize)
-            a = f.add_subplot(111, axisbg=axisbg)
+                a = f.add_subplot(111, axisbg=axisbg)
             # plot 1-based trialis:
             a.scatter(ts, trialis+1, marker=marker, c=cs, s=s, cmap=cmap)
             xmin, xmax = a.set_xlim(0, maxdt / 1e6) # sec
@@ -1306,7 +1312,7 @@ class RecordingRaster(BaseRecording):
             else:
                 a.set_yticks([]) # turn off y ticks
             titlestr = lastcmd()
-            if c != 'dual':
+            if not overlap:
                 titlestr += " nid%d nidi%d" % (nid, nidi)
             gcfm().window.setWindowTitle(titlestr)
             if title:
@@ -1333,7 +1339,7 @@ class RecordingRaster(BaseRecording):
                 else:
                     pa.set_yticks([]) # turn off y ticks
                 titlestr = lastcmd() + ' PSTH'
-                if c != 'dual':
+                if not overlap:
                     titlestr += " nid%d nidi%d" % (nid, nidi)
                 gcfm().window.setWindowTitle(titlestr)
                 if title:
