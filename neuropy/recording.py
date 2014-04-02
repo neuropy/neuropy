@@ -1103,6 +1103,7 @@ class RecordingRaster(BaseRecording):
         if eids == None:
             eids = sorted(self.e) # all eids, assume they're all comparable
             if natexps: # assume ptc15, only include natural scene movie experiments
+                assert self.tr.absname == 'ptc15.tr7c'
                 eids = [ eid for eid in eids if self.e[eid].e.name[0] == 'n' ]
                 print('nat eids: %s' % eids)
         e0 = self.e[eids[0]]
