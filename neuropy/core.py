@@ -3882,8 +3882,8 @@ def sample_uquadratic(a=0, b=1, size=None):
     return inverse_uquadratic_cdf(x, a, b)
 
 def split_tranges(tranges, width, tres):
-    """Split up tranges into lots of smaller ones, with width and tres. Usually,
-    tres < width, but this also works for width < tres.
+    """Split up tranges into lots of smaller (typically overlapping) tranges, with width and
+    tres. Usually, tres < width, but this also works for width < tres.
     Test with:
 
     print(split_tranges([(0,100)], 1, 10))
@@ -3902,7 +3902,7 @@ def split_tranges(tranges, width, tres):
         # calculate left and right edges of subtranges that fall within trange:
         # This is tricky: find maximum left edge such that the corresponding maximum right
         # edge goes as close as possible to t1 without exceeding it:
-        tend = (t1-width+tres)//tres*tres # there might be a nicer way, but this works
+        tend = (t1-width+tres) // tres*tres # there might be a nicer way, but this works
         ledges = np.arange(t0, tend, tres)
         redges = ledges + width
         subtranges = [ (le, re) for le, re in zip(ledges, redges) ]

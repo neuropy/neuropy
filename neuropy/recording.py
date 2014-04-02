@@ -1077,14 +1077,18 @@ class RecordingRaster(BaseRecording):
         return PRaster(trange=trange, neurons=neurons, norder=norder, units=units, r=self,
                        size=size, color=color, title=title, figsize=figsize)
 
-    def traster(self, nids=None, sweepis=None, eids=None, natonlyexps=False,
-                t0=None, dt=None, blank=True,
-                marker='|', s=20, c=None, title=True, ylabel=True, figsize=(7.5, None)):
-        """Create a trial spike raster plot for each given neuron. for the designated sweep
-        indices, based on stimulus info in experiments eids. blank designates whether to
-        include blank frames for trials in movie type stimuli. Use c='dual' to overplot two
-        neurons' rasters in different colours. Use c='bwg' to plot black and white bars on a
-        grey background for black and white drifting bar trials"""
+    def traster(self, nids=None, sweepis=None, eids=None, natexps=False,
+                t0=None, dt=None, blank=True, plotpsth=False, binw=0.1, tres=0.01,
+                marker='|', s=20, c=None, title=True, ylabel=True,
+                figsize=(7.5, None), psthfigsize=None):
+        """Create a trial spike raster plot for each given neuron. For the designated sweep
+        indices, based on stimulus info in experiments eids. natexps controls whether only
+        natural scene movies are considered in ptc15 multiexperiment recordings. t0 and dt
+        manually designate trial tranges. blank controls whether to include blank frames for
+        trials in movie type stimuli. plotpsth, binw and tres control corresponding PSTH
+        plots. c controls color. Use c='dual' to overplot two neurons' rasters in different
+        colours. Use c='bwg' to plot black and white bars on a grey background for black and
+        white drifting bar trials"""
         if nids == None:
             nids = sorted(self.n.keys()) # use active neurons
         elif nids == 'quiet':
@@ -1096,7 +1100,7 @@ class RecordingRaster(BaseRecording):
 
         if eids == None:
             eids = sorted(self.e) # all eids, assume they're all comparable
-            if natonlyexps:
+            if natexps: # assume ptc15, only include natural scene movie experiments
                 eids = [ eid for eid in eids if self.e[eid].e.name[0] == 'n' ]
                 print('nat eids: %s' % eids)
         e0 = self.e[eids[0]]
@@ -1246,6 +1250,7 @@ class RecordingRaster(BaseRecording):
             if len(tss) == 0: # no spikes for this neuron for this experiment
                 continue
 
+            # figure out colours:
             cmap = None
             axisbg = 'w'
             if c == None:
@@ -1272,9 +1277,12 @@ class RecordingRaster(BaseRecording):
                 cs = np.hstack(cs)
             else:
                 cs = c
-            ts = np.hstack(tss)
+
+            # convert spike times and trial indices to flat arrays and rename:
+            ts = np.hstack(tss) # sorted by time in each trial, but not overall
             trialis = np.hstack(trialiss)
 
+            # create trial raster plot:
             if c == 'dual' and dualcount > 0:
                 pass # don't make a second figure in dual neuron overplot mode
             else:
