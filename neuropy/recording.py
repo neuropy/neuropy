@@ -1330,9 +1330,13 @@ class RecordingRaster(BaseRecording):
                 psth = (tsiranges[:, 1] - tsiranges[:, 0]) / binw
                 if psthfigsize == None:
                     psthfigsize = figsize
-                pf = pl.figure(figsize=psthfigsize)
-                pa = pf.add_subplot(111, axisbg=axisbg)
-                pa.plot(midbins, psth, 'k-')
+                if overlap and nidi > 0:
+                    pass # don't make a second figure and axes in neuron overplot mode
+                else:
+                    pf = pl.figure(figsize=psthfigsize)
+                    pa = pf.add_subplot(111)
+                pa.plot(midbins, psth, c=cs, ls='-', marker=None)
+                pa.set_xlim(xmin, xmax)
                 pa.set_xlabel("time (sec)")
                 if ylabel:
                     pa.set_ylabel("firing rate (Hz)")
