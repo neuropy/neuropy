@@ -1312,7 +1312,33 @@ class RecordingRaster(BaseRecording):
             if title:
                 a.set_title(titlestr)
             f.tight_layout(pad=0.3) # crop figure to contents
-            self.f = f
+
+            # plot PSTH:
+            if plotpsth:
+                # generate potentially overlapping bins:
+                bins = core.split_tranges([(xmin, xmax)], binw, tres)
+                midbins = bins.mean(axis=1)
+                ts.sort() # important!
+                tsiranges = ts.searchsorted(bins) # indices into ts for each bin
+                # number of spikes in each bin normalized by bin width:
+                psth = (tsiranges[:, 1] - tsiranges[:, 0]) / binw
+                if psthfigsize == None:
+                    psthfigsize = figsize
+                pf = pl.figure(figsize=psthfigsize)
+                pa = pf.add_subplot(111, axisbg=axisbg)
+                pa.plot(midbins, psth, 'k-')
+                pa.set_xlabel("time (sec)")
+                if ylabel:
+                    pa.set_ylabel("firing rate (Hz)")
+                else:
+                    pa.set_yticks([]) # turn off y ticks
+                titlestr = lastcmd() + ' PSTH'
+                if c != 'dual':
+                    titlestr += " nid%d nidi%d" % (nid, nidi)
+                gcfm().window.setWindowTitle(titlestr)
+                if title:
+                    pa.set_title(titlestr)
+                pf.tight_layout(pad=0.3) # crop figure to contents
 
     def tune(self, nids='all', alpha=0.01, eid=0, var='ori', fixed=None,
              tdelay=None, plot=True):
