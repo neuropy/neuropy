@@ -689,7 +689,7 @@ class BaseRecording(object):
         f.tight_layout(pad=0.3) # crop figure to contents
 
     def cch(self, nid0, nid1=None, trange=50, binw=None, shift=None, nshifts=10,
-            rate=False, figsize=(7.5, 6.5)):
+            rate=False, norm=False, c='k', title=True, figsize=(7.5, 6.5)):
         """Plot cross-correlation histogram given nid0 and nid1. If nid1 is None,
         calculate autocorrelogram. +/- trange and binw are in ms. If shift (in ms) is set,
         calculate the average of +/- nshift CCHs shifted by shift, and
@@ -736,21 +736,26 @@ class BaseRecording(object):
             a.set_xlim(t[0], t[-1])
             a.set_xlabel('spike interval (ms)')
             n -= shiftn
-        if rate: # normalize by binw and convert to float:
+        if norm: # normalize and convert to float:
+            n = n / n.max()
+        elif rate: # normalize by binw and convert to float:
             n = n / binw
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.bar(left=t[:-1], height=n, width=binw) # omit last right edge in t
+        a.bar(left=t[:-1], height=n, width=binw, color=c, ec=c) # omit last right edge in t
         a.set_xlim(t[0], t[-1])
         a.set_xlabel('spike interval (ms)')
-        if rate:
+        if norm:
+            a.set_ylabel('coincidence rate (AU)')
+            a.set_yticks([0, 1])
+        elif rate:
             a.set_ylabel('coincidence rate (Hz)')
         else:
             a.set_ylabel('count')
-        #a.set_title('n%d spikes relative to n%d spikes' % (self.n1.id, self.n0.id))
-        title = lastcmd() + ', binwidth: %.2f ms' % binw
-        a.set_title(title)
-        gcfm().window.setWindowTitle(title)
+        if title:
+            a.set_title('spike times of n%d wrt n%d' % (self.n1.id, self.n0.id))
+        wtitlestr = lastcmd()# + ', binw=%.1f ms' % binw
+        gcfm().window.setWindowTitle(wtitlestr)
         f.tight_layout(pad=0.3) # crop figure to contents
 
     def collectcchs(self, nids, trange, bins, shiftcorrect=False, nshifts=50, normalize=False):
