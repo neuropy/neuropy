@@ -1083,7 +1083,7 @@ class RecordingRaster(BaseRecording):
                        size=size, color=color, title=title, figsize=figsize)
 
     def traster(self, nids=None, overlap=False, sweepis=None, eids=None, natexps=False,
-                t0=None, dt=None, blank=True, plotpsth=False, binw=0.02, tres=0.005,
+                t0=None, dt=None, blank=True, plotpsth=False, binw=0.02, tres=0.005, norm=True,
                 marker='|', s=20, c=None, title=True, ylabel=True,
                 figsize=(7.5, None), psthfigsize=None):
         """Create a trial spike raster plot for each given neuron ('all' and 'quiet' are valid
@@ -1334,6 +1334,8 @@ class RecordingRaster(BaseRecording):
                 tsiranges = ts.searchsorted(bins) # indices into ts for each bin
                 # number of spikes in each bin normalized by bin width:
                 psth = (tsiranges[:, 1] - tsiranges[:, 0]) / binw
+                if norm:
+                    psth = psth / psth.max() # ensure float division
                 if psthfigsize == None:
                     psthfigsize = figsize
                 if overlap and nidi > 0:
@@ -1345,7 +1347,11 @@ class RecordingRaster(BaseRecording):
                 pa.set_xlim(xmin, xmax)
                 pa.set_xlabel("time (sec)")
                 if ylabel:
-                    pa.set_ylabel("firing rate (Hz)")
+                    if norm:
+                        pa.set_ylabel("firing rate (AU)")
+                        pa.set_yticks([0, 1])
+                    else:
+                        pa.set_ylabel("firing rate (Hz)")
                 else:
                     pa.set_yticks([]) # turn off y ticks
                 titlestr = lastcmd() + ' PSTH'
