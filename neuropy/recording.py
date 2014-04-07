@@ -1083,18 +1083,18 @@ class RecordingRaster(BaseRecording):
                        size=size, color=color, title=title, figsize=figsize)
 
     def traster(self, nids=None, overlap=False, sweepis=None, eids=None, natexps=False,
-                t0=None, dt=None, blank=True, plotpsth=False, binw=0.02, tres=0.005, norm=True,
-                marker='|', s=20, c=None, title=True, ylabel=True,
+                t0=None, dt=None, blank=True, plot=True, psth=False, binw=0.02,
+                tres=0.005, norm=True, marker='|', s=20, c=None, title=False, ylabel=True,
                 figsize=(7.5, None), psthfigsize=None):
         """Create a trial spike raster plot for each given neuron ('all' and 'quiet' are valid
         values), one figure for each neuron, or overlapping using different colours in a
         single figure. For the designated sweep indices, based on stimulus info in experiments
         eids. natexps controls whether only natural scene movies are considered in ptc15
         multiexperiment recordings. t0 and dt manually designate trial tranges. blank controls
-        whether to include blank frames for trials in movie type stimuli. plotpsth, binw and
-        tres control corresponding PSTH plots. c controls color, and can be a single value, a
-        list of len(nids), or use c='bwg' to plot black and white bars on a grey background
-        for black and white drifting bar trials"""
+        whether to include blank frames for trials in movie type stimuli. psth, binw and tres
+        control corresponding PSTH plots and return value. c controls color, and can be a
+        single value, a list of len(nids), or use c='bwg' to plot black and white bars on a
+        grey background for black and white drifting bar trials"""
         if nids == None:
             nids = sorted(self.n.keys()) # use active neurons
         elif nids == 'quiet':
@@ -1237,32 +1237,46 @@ class RecordingRaster(BaseRecording):
         ntrials = len(tranges)
         dts = t1s - t0s
         maxdt = max(dts) # max trial duration
+        xmin, xmax = 0, maxdt / 1e6 # sec
 
-        # plot figures:
+        # for each nid, collect its raster points and colours, and optionally its PSTH:
+        tss, trialiss, css = [], [], []
         if figsize[1] == None: # replace None with calculated height
             figsize = figsize[0], 1 + ntrials / 36 # ~1/36th vertical inch per trial
+        if psth:
+            psths = []
+            # generate potentially overlapping bins:
+            bins = core.split_tranges([(xmin, xmax)], binw, tres)
+            midbins = bins.mean(axis=1)
+            if psthfigsize == None:
+                psthfigsize = figsize
         ypos = np.array([ self.alln[nid].pos[1] for nid in nids ]) # nid vertical depths
         supis, midis, deepis = core.laminarity(ypos, self.tr.absname) # laminar flags
-        for nidi, nid in enumerate(nids): # one figure per neuron
+        cmap = None
+        axisbg = 'w'
+        if c == 'bwg':
+            cmap = mpl.cm.gray
+            axisbg = 'e'
+        # nid loop:
+        for nidi, nid in enumerate(nids):
+            # collect raster points:
             spikes = self.alln[nid].spikes
-            tss = []
-            trialiss = []
+            ts = []
+            trialis = []
             for triali, trange in enumerate(tranges):
                 si0, si1 = spikes.searchsorted(trange)
                 # slice out spikes that fall within tranges of this trial, make them
                 # relative to start of each trial, convert from us to sec
-                ts = (spikes[si0:si1] - trange[0]) / 1e6
-                nspikes = len(ts)
+                t = (spikes[si0:si1] - trange[0]) / 1e6
+                nspikes = len(t)
                 if nspikes == 0: # no spikes for this neuron for this trial
                     continue
-                tss.append(ts) # x values for this trial
-                trialiss.append(np.tile(triali, nspikes)) # 0-based y values for this trial
-            if len(tss) == 0: # no spikes for this neuron for this experiment
+                ts.append(t) # x values for this trial
+                trialis.append(np.tile(triali, nspikes)) # 0-based y values for this trial
+            if len(ts) == 0: # no spikes for this neuron for this experiment
                 continue
 
-            # figure out colours:
-            cmap = None
-            axisbg = 'w'
+            # collect raster colours:
             if overlap:
                 if c == None:
                     cs = ['r', 'b', 'g', 'y', 'm', 'c', 'e', 'k'][nidi]
@@ -1275,34 +1289,58 @@ class RecordingRaster(BaseRecording):
                     elif deepis[nidi]: cs = 'b'
                     else: cs = 'y'
                 elif c == 'bwg': # color raster by light and dark driftbar trials:
-                    axisbg = 'e'
-                    cmap = mpl.cm.gray
                     cs = []
-                    for trialis, ts in zip(trialiss, tss):
-                        nspikes = len(ts)
-                        #assert nspikes == len(trialis)
-                        triali = trialis[0]
-                        #assert (trialis == triali).all()
-                        sweepi = trangesweepis[triali]
+                    for triali, t in zip(trialis, ts):
+                        nspikes = len(t)
+                        assert nspikes == len(triali)
+                        triali0 = triali[0]
+                        assert (triali == triali0).all()
+                        sweepi = trangesweepis[triali0]
                         b = brightness[sweepi] # 0s and 1s, one value per trial
                         cs.append(np.tile(b, nspikes)) # build array of one value per spike
                     cs = np.hstack(cs)
                 else: # use provided list of colours to index into
                     cs = c[nidi]
 
-            # convert spike times and trial indices to flat arrays and rename:
-            ts = np.hstack(tss) # sorted by time in each trial, but not overall
-            trialis = np.hstack(trialiss)
+            # convert spike times and trial indices to flat arrays:
+            ts = np.hstack(ts) # sorted by time in each trial, but not overall
+            trialis = np.hstack(trialis)
 
+            # save:
+            tss.append(ts)
+            trialiss.append(trialis)
+            css.append(cs)
+
+            if psth:
+                ts = np.sort(ts) # create a sorted copy, so as not to disturb order in tss
+                # indices into sorted ts for each bin:
+                tsiranges = ts.searchsorted(bins)
+                # number of spikes in each bin normalized by bin width:
+                thispsth = (tsiranges[:, 1] - tsiranges[:, 0]) / binw
+                if norm:
+                    thispsth = thispsth / thispsth.max() # ensure float division
+                psths.append(thispsth) # save
+
+        if not plot:
+            if psth:
+                return midbins, psths
+            else:
+                print('That was useless!')
+                return
+
+        # plot raster and PSTH figures:
+        for nidi, nid in enumerate(nids):
             # create trial raster plot:
             if overlap and nidi > 0:
                 pass # don't make a second figure and axes in neuron overplot mode
             else:
                 f = pl.figure(figsize=figsize)
                 a = f.add_subplot(111, axisbg=axisbg)
+            # unpack:
+            ts, trialis, cs = tss[nidi], trialiss[nidi], css[nidi]
             # plot 1-based trialis:
             a.scatter(ts, trialis+1, marker=marker, c=cs, s=s, cmap=cmap)
-            xmin, xmax = a.set_xlim(0, maxdt / 1e6) # sec
+            a.set_xlim(xmin, xmax)
             if len(dinis) > 1:
                 # assume nrt was defined above
                 exptrialis = intround(dinis[:-1] / nrt) # trialis separating experiments
@@ -1326,24 +1364,13 @@ class RecordingRaster(BaseRecording):
             f.tight_layout(pad=0.3) # crop figure to contents
 
             # plot PSTH:
-            if plotpsth:
-                # generate potentially overlapping bins:
-                bins = core.split_tranges([(xmin, xmax)], binw, tres)
-                midbins = bins.mean(axis=1)
-                ts.sort() # important!
-                tsiranges = ts.searchsorted(bins) # indices into ts for each bin
-                # number of spikes in each bin normalized by bin width:
-                psth = (tsiranges[:, 1] - tsiranges[:, 0]) / binw
-                if norm:
-                    psth = psth / psth.max() # ensure float division
-                if psthfigsize == None:
-                    psthfigsize = figsize
+            if psth:
                 if overlap and nidi > 0:
                     pass # don't make a second figure and axes in neuron overplot mode
                 else:
                     pf = pl.figure(figsize=psthfigsize)
                     pa = pf.add_subplot(111)
-                pa.plot(midbins, psth, c=cs, ls='-', marker=None)
+                pa.plot(midbins, psths[nidi], c=cs, ls='-', marker=None)
                 pa.set_xlim(xmin, xmax)
                 pa.set_xlabel("time (sec)")
                 if ylabel:
