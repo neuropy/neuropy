@@ -1323,7 +1323,7 @@ class RecordingRaster(BaseRecording):
 
         if not plot:
             if psth:
-                return midbins, psths
+                return midbins, np.asarray(psths)
             else:
                 print('That was useless!')
                 return
