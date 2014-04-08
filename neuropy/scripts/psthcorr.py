@@ -16,7 +16,6 @@ if common:
     nids = ptc15.tr7c.get_nids(['74', '95b']) # sorted
     nn = len(nids)
     npairs = nCr(nn, 2)
-    psthss = []
 
 for rec in ptc15tr7crecs:
     if not common:
@@ -26,16 +25,10 @@ for rec in ptc15tr7crecs:
     nidticks = np.arange(0, nn, 10)
     midbins, psths = rec.traster(nids=nids, natexps=True, plot=False, psth=True, binw=0.02,
                                  tres=0.005, norm=True)
-    psthss.append(psths)
     rho = np.corrcoef(psths) # defaults to bias=1
-    #rho[np.diag_indices(nn)] = 0.0 # null the diagonal
-    '''
-    rho2 = np.zeros((npairs, npairs)) # init rho matrix
-    for nii0 in range(nn):
-        for nii1 in range(nii0+1, nn):
-            psths[nii0]
-    '''
+
     # plot rho matrix:
+    #rho[np.diag_indices(nn)] = 0.0 # null the diagonal
     figure(figsize=figsize)
     imshow(rho, vmin=-1, vmax=1, cmap='jet') # cmap='gray' is too bland
     xticks(nidticks)
