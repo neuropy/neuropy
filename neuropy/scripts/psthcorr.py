@@ -6,6 +6,7 @@ from __future__ import division
 figsize = (3, 3)
 common = False # use common set of active nids within a recording list?
 showcolorbar = False # show colorbar
+sepbinw = 200 # separation bin width, um
 
 ptc15tr7crecs = [ptc15.tr7c.r74, ptc15.tr7c.r95b]
 ptc22tr2recs  = [ptc22.tr2.r33, ptc22.tr2.r28] # 28 is a 5 min movie
@@ -39,11 +40,37 @@ for rec in ptc15tr7crecs:
     tight_layout(pad=0.3)
 
     # plot rho histogram:
-    # pull out lower triangle (below diagonal), upper would work just as well:
-    rhol = rho[np.tril_indices(nn, -1)]
+    lti = np.tril_indices(nn, -1) # lower triangle (below diagonal) indices
+    rhol = rho[lti]
     figure(figsize=figsize)
-    hist(rhol.flatten(), bins=30, color='k')
+    hist(rhol, bins=30, color='k')
     gcfm().window.setWindowTitle(rec.absname + '_rho_hist')
+    tight_layout(pad=0.3)
+
+    # plot rho vs separation:
+    seps = []
+    for nidii0, nidii1 in np.asarray(lti).T:
+        sep = dist(rec.n[nids[nidii0]].pos, rec.n[nids[nidii1]].pos)
+        seps.append(sep)
+    seps = np.hstack(seps)
+    figure(figsize=figsize)
+    # scatter plot:
+    plot(seps, rhol, 'k.')
+    # bin seps and plot mean rho in each bin:
+    sortis = np.argsort(seps)
+    seps = seps[sortis]
+    rhos = rhol[sortis]
+    sepbins = np.arange(0, seps.max()+sepbinw, sepbinw) # left edges
+    sepis = seps.searchsorted(sepbins)
+    sepmeans = []
+    rhomeans = []
+    for sepi0, sepi1 in zip(sepis[:-1], sepis[1:]): # iterate over sepbins
+        sepmeans.append(seps[sepi0:sepi1].mean()) # average sep of all points in this bin
+        rhomeans.append(rhos[sepi0:sepi1].mean()) # average rho of all points in this bin
+    plot(sepmeans, rhomeans, 'r.-')
+    septicks = np.arange(0, seps.max()+500, 500)
+    xticks(septicks)
+    gcfm().window.setWindowTitle(rec.absname + '_rho_sep')
     tight_layout(pad=0.3)
 
 show()
