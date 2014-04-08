@@ -3193,12 +3193,16 @@ def toiter(x):
         return [x]
 
 def tolist(x):
-    """Convert to list. If input is a dict, returns its values. If it's already a list,
-    returns it. Otherwise, input is returned in a list. TODO: this can probably be replaced
-    by np.atleast_1d"""
-    if type(x) == dict:
+    """Convert to list. If input is a dict, return its values. If it's an array, convert it to
+    a list (NOTE: this new feature, as of 2014-04-07, hasn't been widely tested in all places
+    where tolist() is called). If it's already a list, return it. Otherwise, return input in a
+    list. A little different from np.atleast_1d."""
+    tx = type(x)
+    if tx == dict:
         return list(x.values())
-    elif type(x) == list:
+    elif tx == np.ndarray:
+        return list(x)
+    elif tx == list:
         return x
     else:
         return [x] # stick it in a list
