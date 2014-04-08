@@ -10,8 +10,10 @@ spiketype2int = {'fast':0, 'slow':1, 'fastasym':2, 'slowasym':3}
 rftype2int = {'simple':4, 'complex':5, 'LGN':6, None: 7}
 
 
-# this is kind of a hack, should really use .nsresp or something text files per track,
-# analogous to .spiketype and .rftype files:
+"""
+Lists of cells that respond reliably. This is kind of a hack, should really make an .nsresp
+file for every track, analogous to .spiketype and .rftype files:
+"""
 ns = {}
 
 ns['ptc15.tr7c'] = [4, 33, 50, 63, 64, 85, 87, 91, 93, 116, 138, 145, 148, 161, 180, 185, 190,
@@ -45,7 +47,7 @@ for trackname in tracknames:
     imshow(m[trackname], origin='upper', cmap='gray')
     xticks(np.arange(8), ['fast', 'slow', 'fast\nasym', 'slow\nasym',
                           'simple', 'complex', 'LGN\naff', 'unknown'])
-    yticks(np.arange(2), ['no', 'yes'])
+    yticks(np.arange(2), ['unreliable', 'reliable'])
     colorbar(ticks=[m[trackname].min(), m[trackname].max()], label='neuron count')
     gcfm().window.setWindowTitle(trackname + ' cell type vs nsresponse')
     tight_layout(pad=1)
@@ -59,7 +61,7 @@ for trackname in tracknames:
         imshow(m[trackname][:, y0:y1], origin='upper', cmap='gray')
         xticks(np.arange(4), ['fast', 'slow', 'fast\nasym', 'slow\nasym',
                               'simple', 'complex', 'LGN\naff', 'unknown'][y0:y1])
-        yticks(np.arange(2), ['no', 'yes'])
+        yticks(np.arange(2), ['unreliable', 'reliable'])
         colorbar(ticks=[m[trackname][:, y0:y1].min(), m[trackname][:, y0:y1].max()],
                         label='neuron count')
     gcfm().window.setWindowTitle(trackname + ' cell type vs nsresponse split')
