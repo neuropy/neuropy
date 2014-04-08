@@ -13,18 +13,13 @@ ptc22tr2recs  = [ptc22.tr2.r33, ptc22.tr2.r28] # 28 is a 5 min movie
 #synched = [ptc22.tr1.r08s, ptc22.tr1.r10s]
 #desynched = [ptc22.tr1.r08d, ptc22.tr1.r10d]
 
-if common:
-    nids = ptc15.tr7c.get_nids(['74', '95b']) # sorted
+def psthcorr(rec, nids=None, natexps=False):
+    if nids == None:
+        nids = sorted(rec.n)
     nn = len(nids)
     npairs = nCr(nn, 2)
-
-for rec in ptc15tr7crecs:
-    if not common:
-        nids = sorted(rec.n)
-        nn = len(nids)
-        npairs = nCr(nn, 2)
     nidticks = np.arange(0, nn, 10)
-    midbins, psths = rec.traster(nids=nids, natexps=True, plot=False, psth=True, binw=0.02,
+    midbins, psths = rec.traster(nids=nids, natexps=natexps, plot=False, psth=True, binw=0.02,
                                  tres=0.005, norm=True)
     rho = np.corrcoef(psths) # defaults to bias=1
 
@@ -72,5 +67,13 @@ for rec in ptc15tr7crecs:
     xticks(septicks)
     gcfm().window.setWindowTitle(rec.absname + '_rho_sep')
     tight_layout(pad=0.3)
+
+
+nids = None
+if common:
+    nids = ptc15.tr7c.get_nids(['74', '95b']) # sorted
+for rec in ptc15tr7crecs:
+    psthcorr(rec, nids=nids, natexps=True)
+
 
 show()
