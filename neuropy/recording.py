@@ -1245,7 +1245,6 @@ class RecordingRaster(BaseRecording):
 
         # for each nid, collect its raster points and colours, and optionally its PSTH:
         tss, trialiss, css = [], [], []
-        rmnids = [] # nids to remove from returned nids due to not having spikes
         if figsize[1] == None: # replace None with calculated height
             figsize = figsize[0], 1 + ntrials / 36 # ~1/36th vertical inch per trial
         if psth:
@@ -1283,9 +1282,9 @@ class RecordingRaster(BaseRecording):
                 ts.append(t) # x values for this trial
                 trialis.append(np.tile(triali, nspikes)) # 0-based y values for this trial
             if len(ts) == 0: # no spikes for this neuron for this experiment
-                #raise ValueError("n%d has no spikes, maybe due to strange?" % nid)
-                rmnids.append(nid)
-                continue
+                raise ValueError("n%d has no spikes, maybe due to use of eids or natexps or "
+                                 "strange?" % nid)
+                #continue
 
             # collect raster colours:
             if overlap:
@@ -1334,9 +1333,7 @@ class RecordingRaster(BaseRecording):
 
         if not plot:
             if psth:
-                ## TODO: returning a modified nids seems like a bad idea, should just raise:
-                nids = np.setdiff1d(nids, rmnids) # remove rmnids from nids
-                return midbins, np.asarray(psths), nids
+                return midbins, np.asarray(psths)
             else:
                 print('That was useless!')
                 return

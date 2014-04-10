@@ -30,8 +30,8 @@ arrays. What would a cmap do with an entry that's masked? Leave it white like th
 def psthcorr(rec, nids=None, natexps=False, strange=None):
     if nids == None:
         nids = sorted(rec.n)
-    midbins, psths, nids = rec.traster(nids=nids, natexps=natexps, strange=strange, plot=False,
-                                       psth=True, binw=0.02, tres=0.005, norm=True)
+    midbins, psths = rec.traster(nids=nids, natexps=natexps, strange=strange, plot=False,
+                                 psth=True, binw=0.02, tres=0.005, norm=True)
     nn = len(nids)
     nidticks = np.arange(0, nn, 10)
     rho = np.corrcoef(psths) # defaults to bias=1
