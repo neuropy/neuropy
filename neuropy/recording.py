@@ -1083,18 +1083,19 @@ class RecordingRaster(BaseRecording):
                        size=size, color=color, title=title, figsize=figsize)
 
     def traster(self, nids=None, overlap=False, sweepis=None, eids=None, natexps=False,
-                t0=None, dt=None, blank=True, plot=True, psth=False, binw=0.02,
+                strange=None, t0=None, dt=None, blank=True, plot=True, psth=False, binw=0.02,
                 tres=0.005, norm=True, marker='|', s=20, c=None, title=False, ylabel=True,
                 figsize=(7.5, None), psthfigsize=None):
         """Create a trial spike raster plot for each given neuron ('all' and 'quiet' are valid
         values), one figure for each neuron, or overlapping using different colours in a
         single figure. For the designated sweep indices, based on stimulus info in experiments
         eids. natexps controls whether only natural scene movies are considered in ptc15
-        multiexperiment recordings. t0 and dt manually designate trial tranges. blank controls
-        whether to include blank frames for trials in movie type stimuli. psth, binw and tres
-        control corresponding PSTH plots and return value. c controls color, and can be a
-        single value, a list of len(nids), or use c='bwg' to plot black and white bars on a
-        grey background for black and white drifting bar trials"""
+        multiexperiment recordings. Consider only those spikes that fall within strange (in
+        sec). t0 and dt manually designate trial tranges. blank controls whether to include
+        blank frames for trials in movie type stimuli. psth, binw and tres control
+        corresponding PSTH plots and return value. c controls color, and can be a single
+        value, a list of len(nids), or use c='bwg' to plot black and white bars on a grey
+        background for black and white drifting bar trials"""
         if nids == None:
             nids = sorted(self.n.keys()) # use active neurons
         elif nids == 'quiet':
@@ -1125,6 +1126,9 @@ class RecordingRaster(BaseRecording):
                 c = [c] * nn # repeat the single colour specifier nn times
             else:
                 assert len(c) == nn # one specified colour per neuron
+
+        if strange != None:
+            strange = np.asarray(strange) * 1000000 # convert to us
 
         dins = [ self.e[eid].din for eid in eids ]
         din0 = dins[0]
@@ -1241,6 +1245,7 @@ class RecordingRaster(BaseRecording):
 
         # for each nid, collect its raster points and colours, and optionally its PSTH:
         tss, trialiss, css = [], [], []
+        rmnids = [] # nids to remove from returned nids due to not having spikes
         if figsize[1] == None: # replace None with calculated height
             figsize = figsize[0], 1 + ntrials / 36 # ~1/36th vertical inch per trial
         if psth:
@@ -1261,6 +1266,10 @@ class RecordingRaster(BaseRecording):
         for nidi, nid in enumerate(nids):
             # collect raster points:
             spikes = self.alln[nid].spikes
+            # keep only spikes that fall within strange, if specified:
+            if strange != None:
+                s0i, s1i = spikes.searchsorted(strange)
+                spikes = spikes[s0i:s1i]
             ts = []
             trialis = []
             for triali, trange in enumerate(tranges):
@@ -1274,6 +1283,8 @@ class RecordingRaster(BaseRecording):
                 ts.append(t) # x values for this trial
                 trialis.append(np.tile(triali, nspikes)) # 0-based y values for this trial
             if len(ts) == 0: # no spikes for this neuron for this experiment
+                #raise ValueError("n%d has no spikes, maybe due to strange?" % nid)
+                rmnids.append(nid)
                 continue
 
             # collect raster colours:
@@ -1323,7 +1334,9 @@ class RecordingRaster(BaseRecording):
 
         if not plot:
             if psth:
-                return midbins, np.asarray(psths)
+                ## TODO: returning a modified nids seems like a bad idea, should just raise:
+                nids = np.setdiff1d(nids, rmnids) # remove rmnids from nids
+                return midbins, np.asarray(psths), nids
             else:
                 print('That was useless!')
                 return
