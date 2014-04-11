@@ -4,11 +4,10 @@ within neuropy using `run -i scripts/psthcorr.py`"""
 from __future__ import division
 
 figsize = (3, 3)
-common = False # use common set of active nids within a recording list?
 showcolorbar = False # show colorbar
 sepbinw = 200 # separation bin width, um
 
-#ptc15tr7crecs = [ptc15.tr7c.r74, ptc15.tr7c.r95b]
+ptc15tr7crecs = [ptc15.tr7c.r74, ptc15.tr7c.r95b]
 
 ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
 strangesr08s = [(0, 1500), # r08 desynched
@@ -37,20 +36,17 @@ def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
     nnss = len(ssnids)
     midbins, psths = rec.traster(nids=nids, natexps=natexps, strange=strange, plot=False,
                                  psth=True, binw=0.02, tres=0.005, norm=True)
-    #sspsths = np.zeros((nnss, psths.shape[1])) # init superset psths array
-    #sspsths.fill(-1) # init to -1 since 0s would cause div by 0 error in np.corrcoef()
-    #sspsths[ssnids.searchsorted(nids)] = psths # fill it appropriately
-    #print(sspsths)
     rho = np.corrcoef(psths) # defaults to bias=1
-    #rho[np.diag_indices(nn)] = 0.0 # null the diagonal
-    ssrho = np.zeros((nnss, nnss))
-    ssrho.fill(-1)
+    rho[np.diag_indices(nn)] = np.nan # nan the diagonal, which imshow plots as white
+    ssrho = np.zeros((nnss, nnss)) # superset rho matrix
+    ssrho.fill(np.nan) # init with nans
+    # load up relevant values into superset rho matrix:
     for i in range(nn):
         for j in range(nn):
             ssi, ssj = ssnids.searchsorted([nids[i], nids[j]])
             ssrho[ssi, ssj] = rho[i, j]
 
-    # plot rho matrix:
+    # plot superset rho matrix:
     figure(figsize=figsize)
     imshow(ssrho, vmin=-1, vmax=1, cmap='jet') # cmap='gray' is too bland
     ssnidticks = np.arange(0, nnss, 10)
@@ -75,7 +71,7 @@ def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
     ylim(ymax=n.max()) # effectively normalizes the histogram
     rhoticks = np.arange(-0.2, 1, 0.2) # excluding the final 1
     xticks(rhoticks)
-    yticks([]) # turn off y ticks for space
+    yticks([]) # turn off y ticks to save space
     #yticks([0, n.max()])
     gcfm().window.setWindowTitle(basetitle + '_rho_hist')
     tight_layout(pad=0.3)
@@ -103,6 +99,7 @@ def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
         rhosems.append(rhoslice.std() / np.sqrt(len(rhoslice))) # SEM of rho in this sepbin
     #plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
     errorbar(sepmeans, rhomeans, yerr=rhosems, fmt='r.-', ms=10, lw=2)
+    xlim(xmin=0, xmax=sepxmax)
     ylim(ymin=-0.3, ymax=1)
     septicks = np.arange(0, seps.max()+100, 500)
     xticks(septicks)
@@ -110,14 +107,17 @@ def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
     gcfm().window.setWindowTitle(basetitle + '_rho_sep')
     tight_layout(pad=0.3)
 
-'''
-nids = None
-if common:
-    nids = ptc15.tr7c.get_nids(['74', '95b']) # sorted
+# ptc15.tr7c:
+sepxmax = 1675
+recnids = []
 for rec in ptc15tr7crecs:
-    psthcorr(rec, nids=nids, natexps=True)
-'''
+    recnids.append(sorted(rec.n)) # active neurons of each recording
+ssnids = np.unique(np.hstack(recnids))
+for rec, nids in zip(ptc15tr7crecs, recnids):
+    psthcorr(rec, nids=nids, ssnids=ssnids, natexps=False)
 
+# ptc22.tr1.r08 sections:
+sepxmax = 1200
 recsecnids = [] # holds arrays of active nids of each recording section
 for rec, strange in zip(ptc22tr1r08s, strangesr08s):
     recsecnids.append(rec.get_nids(tranges=[np.asarray(strange) * 1000000])) # convert to us
@@ -125,6 +125,7 @@ ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sec
 for rec, nids, strange  in zip(ptc22tr1r08s, recsecnids, strangesr08s):
     psthcorr(rec, nids=nids, ssnids=ssnids, natexps=False, strange=strange)
 
+# ptc22.tr1.r10 sections:
 recsecnids = [] # holds arrays of active nids of each recording section
 for rec, strange in zip(ptc22tr1r10s, strangesr10s):
     recsecnids.append(rec.get_nids(tranges=[np.asarray(strange) * 1000000])) # convert to us
