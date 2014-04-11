@@ -201,9 +201,10 @@ class BaseRecording(object):
         return nids[sortis]
 
     def get_nids(self, tranges=None):
-        """Find nids of neurons that are active in all tranges"""
+        """Find nids of neurons that are active in all tranges, return as array. inf can
+        be used as shorthand for end of recording"""
         if tranges == None:
-            return sorted(self.n) # return sorted nids of all active neurons
+            return np.sort(self.n.keys()) # return sorted nids of all active neurons
         # start with all neurons, even those with average rates below MINRATE over the
         # span of self. Remove them one by one if their average rates fall below MINRATE
         # in any trange in tranges
@@ -213,10 +214,13 @@ class BaseRecording(object):
         assert tranges.shape[1] == 2 # two columns
         uns = get_ipython().user_ns
         alln = self.alln
-        nids = alln.keys()
+        nids = sorted(alln) # might as well index into sorted nids, still a list
         for trange in tranges:
             #print('trange: %r' % (trange,))
-            dt = (trange[1] - trange[0]) / 1e6 # trange duration in sec
+            t0, t1 = trange
+            if t1 == np.inf:
+                t1 = self.trange[1] # make inf shorthand for end of recording
+            dt = (t1 - t0) / 1e6 # trange duration in sec
             assert dt >= 0
             nidi = 0
             while nidi < len(nids):
@@ -230,7 +234,7 @@ class BaseRecording(object):
                     # new nid has slid into view, don't inc nidi
                 else: # keep nid (for now), inc nidi
                     nidi += 1
-        return np.sort(nids) # may as well sort them
+        return np.asarray(nids) # still sorted, now an array
 
     def esorted(self):
         """Return list of experiments, sorted by ID"""
