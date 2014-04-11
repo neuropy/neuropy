@@ -10,11 +10,12 @@ sepbinw = 200 # separation bin width, um
 
 #ptc15tr7crecs = [ptc15.tr7c.r74, ptc15.tr7c.r95b]
 
-ptc22tr1recs = [ptc22.tr1.r08, ptc22.tr1.r08, ptc22.tr1.r10, ptc22.tr1.r10]
-stranges = [(0, 1500), # r08 desynched
-            (1550, np.inf), # r08 synched, end is ~ 2300
-            (0, 1400), # r10 synched
-            (1480, np.inf)] # r10 desynched, end is ~ 2300
+ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
+strangesr08s = [(0, 1500), # r08 desynched
+                (1550, np.inf)] # r08 synched, end is ~ 2300
+ptc22tr1r10s = [ptc22.tr1.r10, ptc22.tr1.r10]
+strangesr10s = [(0, 1400), # r10 synched
+                (1480, np.inf)] # r10 desynched, end is ~ 2300
 
 #ptc22tr2recs  = [ptc22.tr2.r33, ptc22.tr2.r28] # 28 is a 5 min movie
 """
@@ -27,21 +28,34 @@ to color them black or white instead of dark blue. Hard to do with the cmap? May
 arrays. What would a cmap do with an entry that's masked? Leave it white like the background?
 """
 
-def psthcorr(rec, nids=None, natexps=False, strange=None):
+def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
     if nids == None:
-        nids = sorted(rec.n)
+        nids = sorted(rec.n) # use active neurons
+    if ssnids == None:
+        ssnids = nids # use nids as the superset
+    nn = len(nids)
+    nnss = len(ssnids)
     midbins, psths = rec.traster(nids=nids, natexps=natexps, strange=strange, plot=False,
                                  psth=True, binw=0.02, tres=0.005, norm=True)
-    nn = len(nids)
-    nidticks = np.arange(0, nn, 10)
+    #sspsths = np.zeros((nnss, psths.shape[1])) # init superset psths array
+    #sspsths.fill(-1) # init to -1 since 0s would cause div by 0 error in np.corrcoef()
+    #sspsths[ssnids.searchsorted(nids)] = psths # fill it appropriately
+    #print(sspsths)
     rho = np.corrcoef(psths) # defaults to bias=1
-    rho[np.diag_indices(nn)] = 0.0 # null the diagonal
+    #rho[np.diag_indices(nn)] = 0.0 # null the diagonal
+    ssrho = np.zeros((nnss, nnss))
+    ssrho.fill(-1)
+    for i in range(nn):
+        for j in range(nn):
+            ssi, ssj = ssnids.searchsorted([nids[i], nids[j]])
+            ssrho[ssi, ssj] = rho[i, j]
 
     # plot rho matrix:
     figure(figsize=figsize)
-    imshow(rho, vmin=-1, vmax=1, cmap='jet') # cmap='gray' is too bland
-    xticks(nidticks)
-    yticks(nidticks)
+    imshow(ssrho, vmin=-1, vmax=1, cmap='jet') # cmap='gray' is too bland
+    ssnidticks = np.arange(0, nnss, 10)
+    xticks(ssnidticks)
+    yticks(ssnidticks)
     if showcolorbar:
         colorbar()
     basetitle = rec.absname
@@ -69,7 +83,7 @@ def psthcorr(rec, nids=None, natexps=False, strange=None):
     # plot rho vs separation:
     seps = []
     for nidii0, nidii1 in np.asarray(lti).T:
-        sep = dist(rec.n[nids[nidii0]].pos, rec.n[nids[nidii1]].pos)
+        sep = dist(rec.alln[nids[nidii0]].pos, rec.alln[nids[nidii1]].pos)
         seps.append(sep)
     seps = np.hstack(seps)
     figure(figsize=figsize)
@@ -103,11 +117,19 @@ if common:
 for rec in ptc15tr7crecs:
     psthcorr(rec, nids=nids, natexps=True)
 '''
-nids = None
-if common:
-    nids = ptc22.tr1.get_nids(['08', '10']) # sorted
-for rec, strange in zip(ptc22tr1recs, stranges):
-    psthcorr(rec, nids=nids, natexps=False, strange=strange)
 
+recsecnids = [] # holds arrays of active nids of each recording section
+for rec, strange in zip(ptc22tr1r08s, strangesr08s):
+    recsecnids.append(rec.get_nids(tranges=[np.asarray(strange) * 1000000])) # convert to us
+ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sections
+for rec, nids, strange  in zip(ptc22tr1r08s, recsecnids, strangesr08s):
+    psthcorr(rec, nids=nids, ssnids=ssnids, natexps=False, strange=strange)
+
+recsecnids = [] # holds arrays of active nids of each recording section
+for rec, strange in zip(ptc22tr1r10s, strangesr10s):
+    recsecnids.append(rec.get_nids(tranges=[np.asarray(strange) * 1000000])) # convert to us
+ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sections
+for rec, nids, strange  in zip(ptc22tr1r10s, recsecnids, strangesr10s):
+    psthcorr(rec, nids=nids, ssnids=ssnids, natexps=False, strange=strange)
 
 show()
