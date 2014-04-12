@@ -122,15 +122,34 @@ recsecnids = [] # holds arrays of active nids of each recording section
 for rec, strange in zip(ptc22tr1r08s, strangesr08s):
     recsecnids.append(rec.get_nids(tranges=[np.asarray(strange) * 1000000])) # convert to us
 ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sections
-for rec, nids, strange  in zip(ptc22tr1r08s, recsecnids, strangesr08s):
+for rec, nids, strange in zip(ptc22tr1r08s, recsecnids, strangesr08s):
     psthcorr(rec, nids=nids, ssnids=ssnids, natexps=False, strange=strange)
 
 # ptc22.tr1.r10 sections:
+sepxmax = 1200
 recsecnids = [] # holds arrays of active nids of each recording section
 for rec, strange in zip(ptc22tr1r10s, strangesr10s):
     recsecnids.append(rec.get_nids(tranges=[np.asarray(strange) * 1000000])) # convert to us
 ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sections
-for rec, nids, strange  in zip(ptc22tr1r10s, recsecnids, strangesr10s):
+for rec, nids, strange in zip(ptc22tr1r10s, recsecnids, strangesr10s):
     psthcorr(rec, nids=nids, ssnids=ssnids, natexps=False, strange=strange)
+'''
+'''
+# ptc22.tr1.r08 + 10 sections:
+sepxmax = 1200
+recsecnids = [] # holds arrays of active nids of each recording section
+ptc22tr1s = ptc22tr1r08s+ptc22tr1r10s
+stranges = strangesr08s+strangesr10s
+for rec, strange in zip(ptc22tr1s, stranges):
+    recsecnids.append(rec.get_nids(tranges=[np.asarray(strange) * 1000000])) # convert to us
+ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sections
+for rec, nids, strange in zip(ptc22tr1s, recsecnids, stranges):
+    psthcorr(rec, nids=nids, ssnids=ssnids, natexps=False, strange=strange)
+'''
+"""
+## TODO: take difference between pairs of PSTH corr matrices. To include only those cell pairs
+that don't have nan as a value, for each difference matrix, take a[npnot(isnan(a))] to get
+just such pairs. Then take the mean of this nan filtered difference matrix.
+"""
 
 show()
