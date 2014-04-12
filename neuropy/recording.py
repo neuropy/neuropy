@@ -6,6 +6,7 @@ from __future__ import print_function
 import os
 import time
 import StringIO
+from pprint import pprint
 import random
 import multiprocessing as mp
 
@@ -1115,7 +1116,11 @@ class RecordingRaster(BaseRecording):
             if natexps: # assume ptc15, only include natural scene movie experiments
                 assert self.tr.absname == 'ptc15.tr7c'
                 eids = [ eid for eid in eids if self.e[eid].e.name[0] == 'n' ]
-                print('nat eids: %s' % eids)
+                eid2name = { eid:self.e[eid].e.name for eid in eids }
+                pprint(eid2name)
+        else: # eids were specified, print eid2name
+            eid2name = { eid:self.e[eid].name for eid in eids }
+            pprint(eid2name)
         e0 = self.e[eids[0]]
         if type(e0.e) == Movie: # movie stimulus, each frame is a sweep
             trialtype = 'dinrange' # one trial for every cycle of din values
