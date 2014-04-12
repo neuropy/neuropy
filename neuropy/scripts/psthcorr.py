@@ -17,15 +17,6 @@ strangesr10s = [(0, 1400), # r10 synched
                 (1480, np.inf)] # r10 desynched, end is ~ 2300
 
 #ptc22tr2recs  = [ptc22.tr2.r33, ptc22.tr2.r28] # 28 is a 5 min movie
-"""
-## TODO: make rec method that takes strange and returns list of nids that are active within
-that trange. The, do this for every rec section to be plotted here. For the rho matrix, use
-the superset of all nids to be compared, and leave set to -1 for those rec sections for which
-a nid is inactive. This will result in entire rows and columns coloured dark blue, but will
-allow direct comparison of as many cell pairs as possible across rec sections. Would be nice
-to color them black or white instead of dark blue. Hard to do with the cmap? Maybe used masked
-arrays. What would a cmap do with an entry that's masked? Leave it white like the background?
-"""
 
 def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
     if nids == None:
@@ -69,9 +60,9 @@ def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
     axvline(x=rhol.mean(), c='r', ls='--') # draw vertical line at mean rho
     xlim(xmin=-0.3, xmax=1)
     ylim(ymax=n.max()) # effectively normalizes the histogram
-    rhoticks = np.arange(-0.2, 1, 0.2) # excluding the final 1
+    rhoticks = np.arange(-0.2, 1+0.2, 0.2) # excluding the final 1
     xticks(rhoticks)
-    yticks([]) # turn off y ticks to save space
+    yticks([n.max()]) # turn off y ticks to save space
     #yticks([0, n.max()])
     gcfm().window.setWindowTitle(basetitle + '_rho_hist')
     tight_layout(pad=0.3)
