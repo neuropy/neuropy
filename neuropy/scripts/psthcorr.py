@@ -105,8 +105,9 @@ for rec in ptc15tr7crecs:
     recnids.append(sorted(rec.n)) # active neurons of each recording
 ssnids = np.unique(np.hstack(recnids))
 for rec, nids in zip(ptc15tr7crecs, recnids):
-    psthcorr(rec, nids=nids, ssnids=ssnids, natexps=False)
+    psthcorr(rec, nids=nids, ssnids=ssnids, natexps=True)
 
+'''
 # ptc22.tr1.r08 sections:
 sepxmax = 1200
 recsecnids = [] # holds arrays of active nids of each recording section
