@@ -8,6 +8,9 @@ showcolorbar = False # show colorbar
 sepbinw = 200 # separation bin width, um
 
 ptc15tr7crecs = [ptc15.tr7c.r74, ptc15.tr7c.r95b]
+nateids = [3, 4, 10, 12] # for both recs in ptc15.tr7c
+etrangesr74 = [ ptc15.tr7c.r74.e[nateid].trange for nateid in nateids ] # us
+etrangesr95b = [ ptc15.tr7c.r74.e[nateid].trange for nateid in nateids ] # us
 
 ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
 strangesr08s = [(0, 1500), # r08 desynched
@@ -100,12 +103,19 @@ def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
 
 # ptc15.tr7c:
 sepxmax = 1675
-recnids = []
-for rec in ptc15tr7crecs:
-    recnids.append(sorted(rec.n)) # active neurons of each recording
-ssnids = np.unique(np.hstack(recnids))
-for rec, nids in zip(ptc15tr7crecs, recnids):
-    psthcorr(rec, nids=nids, ssnids=ssnids, natexps=True)
+recsecnids = []
+# get superset of active nids for all natexps of both recs in ptc15tr7crecs:
+strangesus = etrangesr74 + etrangesr95b # 8 stranges in total
+#stranges = np.asarray(strangesus) / 1e6 # in sec
+recs = [ptc15.tr7c.r74]*4 + [ptc15.tr7c.r95b]*4 # 8 recs corresponding to 8 stranges
+for rec, strangeus in zip(recs, strangesus):
+    recsecnids.append(rec.get_nids(tranges=[strangeus])) # 8 recsecnids in total, in us
+ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from all rec sections
+# separate supersets of active nids for all 4 natexps in each recording:
+ptc15tr7crecsecnids = [np.unique(np.hstack(recsecnids[:4])),
+                       np.unique(np.hstack(recsecnids[4:]))]
+for rec, nids in zip(ptc15tr7crecs, ptc15tr7crecsecnids):
+    psthcorr(rec, nids=nids, ssnids=ssnids, natexps=True) # in sec
 
 '''
 # ptc22.tr1.r08 sections:
@@ -127,10 +137,10 @@ for rec, nids, strange in zip(ptc22tr1r10s, recsecnids, strangesr10s):
     psthcorr(rec, nids=nids, ssnids=ssnids, natexps=False, strange=strange)
 '''
 '''
-# ptc22.tr1.r08 + 10 sections:
+# ptc22.tr1.r08 + ptc22.tr1.r10 sections:
 sepxmax = 1200
 recsecnids = [] # holds arrays of active nids of each recording section
-ptc22tr1s = ptc22tr1r08s+ptc22tr1r10s
+ptc22tr1s = ptc22tr1r08s+ptc22tr1r1ptc15tr7crecsecnids0s
 stranges = strangesr08s+strangesr10s
 for rec, strange in zip(ptc22tr1s, stranges):
     recsecnids.append(rec.get_nids(tranges=[np.asarray(strange) * 1000000])) # convert to us
