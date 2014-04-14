@@ -6,6 +6,7 @@ from __future__ import division
 figsize = (3, 3)
 showcolorbar = False # show colorbar
 sepbinw = 200 # separation bin width, um
+rhomin, rhomax = -0.3, 1
 
 ptc15tr7crecs = [ptc15.tr7c.r74, ptc15.tr7c.r95b]
 nateids = [3, 4, 10, 12] # for both recs in ptc15.tr7c
@@ -58,11 +59,11 @@ def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
     lti = np.tril_indices(nn, -1) # lower triangle (below diagonal) indices
     rhol = rho[lti]
     figure(figsize=figsize)
-    rhobins = np.arange(-0.3, 1+0.0333, 0.0333) # left edges + rightmost edge
+    rhobins = np.arange(rhomin, rhomax+0.0333, 0.0333) # left edges + rightmost edge
     n = hist(rhol, bins=rhobins, color='k')[0]
     axvline(x=rhol.mean(), c='r', ls='--') # draw vertical red line at mean rho
     axvline(x=0, c='e', ls='--') # draw vertical grey line at x=0
-    xlim(xmin=-0.3, xmax=1)
+    xlim(xmin=rhomin, xmax=rhomax)
     ylim(ymax=n.max()) # effectively normalizes the histogram
     rhoticks = np.arange(-0.2, 1+0.2, 0.2) # excluding the final 1
     xticks(rhoticks)
@@ -93,9 +94,9 @@ def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
         rhomeans.append(rhoslice.mean()) # mean rho of all points in this sepbin
         rhostds.append(rhoslice.std()) # std of rho in this sepbin
     #plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
-    errorbar(sepmeans, rhomeans, yerr=rhostds, fmt='r.-', ms=10, lw=2)
+    errorbar(sepmeans, rhomeans, yerr=rhostds, fmt='r.-', ms=10, lw=2, zorder=9999)
     xlim(xmin=0, xmax=sepxmax)
-    ylim(ymin=-0.3, ymax=1)
+    ylim(ymin=rhomin, ymax=rhomax)
     septicks = np.arange(0, seps.max()+100, 500)
     xticks(septicks)
     yticks(rhoticks)
