@@ -140,7 +140,7 @@ for rec, nids, strange in zip(ptc22tr1r10s, recsecnids, strangesr10s):
 # ptc22.tr1.r08 + ptc22.tr1.r10 sections:
 sepxmax = 1200
 recsecnids = [] # holds arrays of active nids of each recording section
-ptc22tr1s = ptc22tr1r08s+ptc22tr1r1ptc15tr7crecsecnids0s
+ptc22tr1s = ptc22tr1r08s+ptc22tr1r10s
 stranges = strangesr08s+strangesr10s
 for rec, strange in zip(ptc22tr1s, stranges):
     recsecnids.append(rec.get_nids(tranges=[np.asarray(strange) * 1000000])) # convert to us
