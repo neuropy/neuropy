@@ -60,7 +60,8 @@ def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
     figure(figsize=figsize)
     rhobins = np.arange(-0.3, 1+0.0333, 0.0333) # left edges + rightmost edge
     n = hist(rhol, bins=rhobins, color='k')[0]
-    axvline(x=rhol.mean(), c='r', ls='--') # draw vertical line at mean rho
+    axvline(x=rhol.mean(), c='r', ls='--') # draw vertical red line at mean rho
+    axvline(x=0, c='e', ls='--') # draw vertical grey line at x=0
     xlim(xmin=-0.3, xmax=1)
     ylim(ymax=n.max()) # effectively normalizes the histogram
     rhoticks = np.arange(-0.2, 1+0.2, 0.2) # excluding the final 1
@@ -85,14 +86,14 @@ def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
     rhos = rhol[sortis]
     sepbins = np.arange(0, seps.max()+sepbinw, sepbinw) # left edges
     sepis = seps.searchsorted(sepbins)
-    sepmeans, rhomeans, rhosems = [], [], []
+    sepmeans, rhomeans, rhostds = [], [], []
     for sepi0, sepi1 in zip(sepis[:-1], sepis[1:]): # iterate over sepbins
         sepmeans.append(seps[sepi0:sepi1].mean()) # mean sep of all points in this sepbin
         rhoslice = rhos[sepi0:sepi1] # rhos in this sepbin
         rhomeans.append(rhoslice.mean()) # mean rho of all points in this sepbin
-        rhosems.append(rhoslice.std() / np.sqrt(len(rhoslice))) # SEM of rho in this sepbin
+        rhostds.append(rhoslice.std()) # std of rho in this sepbin
     #plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
-    errorbar(sepmeans, rhomeans, yerr=rhosems, fmt='r.-', ms=10, lw=2)
+    errorbar(sepmeans, rhomeans, yerr=rhostds, fmt='r.-', ms=10, lw=2)
     xlim(xmin=0, xmax=sepxmax)
     ylim(ymin=-0.3, ymax=1)
     septicks = np.arange(0, seps.max()+100, 500)
