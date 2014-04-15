@@ -102,6 +102,76 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
     tight_layout(pad=0.3)
 
     return ssrho
+
+
+def psthcorrdiff(rhos, seps, basetitle):
+    """Plot difference of a pair of rho matrices"""
+    assert len(rhos) == 2
+    rhomin, rhomax = -0.65, 0.65 # symmetric about 0 for the delta rhos
+
+    # calc rho difference matrix:
+    rhod = rhos[0] - rhos[1]
+    assert rhod.shape[0] == rhod.shape[1] # square
+    nn = rhod.shape[0]
+    
+    # plot rho diff matrix:
+    figure(figsize=figsize)
+    imshow(rhod, vmin=-1, vmax=1, cmap='jet') # cmap='gray' is too bland
+    ssnidticks = np.arange(0, nn, 10)
+    xticks(ssnidticks)
+    yticks(ssnidticks)
+    if showcolorbar:
+        colorbar()
+    gcfm().window.setWindowTitle(basetitle + '_rhod_mat')
+    tight_layout(pad=0.3)
+
+    # plot rho histogram:
+    lti = np.tril_indices(nn, -1) # lower triangle (below diagonal) indices
+    rhol = rhod[lti]
+    notnanis = np.logical_not(np.isnan(rhol)) # indices of non-nan values
+    frhol = rhol[notnanis] # rhol filtered out for nans
+    figure(figsize=figsize)
+    rhobins = np.arange(rhomin, rhomax+0.0333, 0.0333) # left edges + rightmost edge
+    n = hist(frhol, bins=rhobins, color='k')[0]
+    axvline(x=frhol.mean(), c='r', ls='--') # draw vertical red line at mean frhol
+    axvline(x=0, c='e', ls='--') # draw vertical grey line at x=0
+    xlim(xmin=rhomin, xmax=rhomax)
+    ylim(ymax=n.max()) # effectively normalizes the histogram
+    rhoticks = np.arange(-0.6, 0.6+0.2, 0.2)
+    xticks(rhoticks)
+    yticks([n.max()]) # turn off y ticks to save space
+    #yticks([0, n.max()])
+    gcfm().window.setWindowTitle(basetitle + '_rhod_hist')
+    tight_layout(pad=0.3)
+    
+    # plot rho vs separation:
+    fseps = seps[notnanis] # seps filtered out for nans
+    figure(figsize=figsize)
+    # scatter plot:
+    plot(fseps, frhol, 'k.')
+    # bin seps and plot mean rho in each bin:
+    sortis = np.argsort(fseps)
+    seps = fseps[sortis]
+    rhos = frhol[sortis]
+    sepbins = np.arange(0, seps.max()+sepbinw, sepbinw) # left edges
+    sepis = seps.searchsorted(sepbins)
+    sepmeans, rhomeans, rhostds = [], [], []
+    for sepi0, sepi1 in zip(sepis[:-1], sepis[1:]): # iterate over sepbins
+        sepmeans.append(seps[sepi0:sepi1].mean()) # mean sep of all points in this sepbin
+        rhoslice = rhos[sepi0:sepi1] # rhos in this sepbin
+        rhomeans.append(rhoslice.mean()) # mean rho of all points in this sepbin
+        rhostds.append(rhoslice.std()) # std of rho in this sepbin
+    #plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
+    errorbar(sepmeans, rhomeans, yerr=rhostds, fmt='r.-', ms=10, lw=2, zorder=9999)
+    xlim(xmin=0, xmax=sepxmax)
+    ylim(ymin=rhomin, ymax=rhomax)
+    septicks = np.arange(0, seps.max()+100, 500)
+    xticks(septicks)
+    yticks(rhoticks)
+    gcfm().window.setWindowTitle(basetitle + '_rhod_sep')
+    tight_layout(pad=0.3)
+
+
 def get_seps(nids, nd):
     """Build flattened array of distances between all unique pairs in nids, given neuron
     dict nd"""
@@ -135,6 +205,8 @@ ssrhos = []
 for rec, nids in zip(ptc15tr7crecs, ptc15tr7crecsecnids):
     ssrho = psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=True) # in sec
     ssrhos.append(ssrho)
+# plot differences in superset rho matrices for the two recordings:
+psthcorrdiff(ssrhos, ssseps, 'r74-r95b')
 
 '''
 # ptc22.tr1.r08 sections:
@@ -170,10 +242,4 @@ ssseps = get_seps(ssnids, ptc22.tr1.alln)
 for rec, nids, strange in zip(ptc22tr1s, recsecnids, stranges):
     psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
 '''
-"""
-## TODO: take difference between pairs of PSTH corr matrices. To include only those cell pairs
-that don't have nan as a value, for each difference matrix, take a[npnot(isnan(a))] to get
-just such pairs. Then take the mean of this nan filtered difference matrix.
-"""
-
 show()
