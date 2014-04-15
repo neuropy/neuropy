@@ -22,7 +22,7 @@ strangesr10s = [(0, 1400), # r10 synched
 
 #ptc22tr2recs  = [ptc22.tr2.r33, ptc22.tr2.r28] # 28 is a 5 min movie
 
-def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
+def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=None):
     if nids == None:
         nids = sorted(rec.n) # use active neurons
     if ssnids == None:
@@ -35,7 +35,7 @@ def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
     rho[np.diag_indices(nn)] = np.nan # nan the diagonal, which imshow plots as white
     ssrho = np.zeros((nnss, nnss)) # superset rho matrix
     ssrho.fill(np.nan) # init with nans
-    # load up relevant values into superset rho matrix:
+    # load up values into appropriate spots in superset rho matrix:
     for i in range(nn):
         for j in range(nn):
             ssi, ssj = ssnids.searchsorted([nids[i], nids[j]])
@@ -56,12 +56,14 @@ def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
     tight_layout(pad=0.3)
 
     # plot rho histogram:
-    lti = np.tril_indices(nn, -1) # lower triangle (below diagonal) indices
-    rhol = rho[lti]
+    lti = np.tril_indices(nnss, -1) # lower triangle (below diagonal) indices off ssrho
+    ssrhol = ssrho[lti]
+    notnanis = np.logical_not(np.isnan(ssrhol)) # indices of non-nan values
+    fssrhol = ssrhol[notnanis] # ssrhol filtered out for nans
     figure(figsize=figsize)
     rhobins = np.arange(rhomin, rhomax+0.0333, 0.0333) # left edges + rightmost edge
-    n = hist(rhol, bins=rhobins, color='k')[0]
-    axvline(x=rhol.mean(), c='r', ls='--') # draw vertical red line at mean rho
+    n = hist(fssrhol, bins=rhobins, color='k')[0]
+    axvline(x=fssrhol.mean(), c='r', ls='--') # draw vertical red line at mean fssrhol
     axvline(x=0, c='e', ls='--') # draw vertical grey line at x=0
     xlim(xmin=rhomin, xmax=rhomax)
     ylim(ymax=n.max()) # effectively normalizes the histogram
@@ -73,18 +75,14 @@ def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
     tight_layout(pad=0.3)
 
     # plot rho vs separation:
-    seps = []
-    for nidii0, nidii1 in np.asarray(lti).T:
-        sep = dist(rec.alln[nids[nidii0]].pos, rec.alln[nids[nidii1]].pos)
-        seps.append(sep)
-    seps = np.hstack(seps)
+    fssseps = ssseps[notnanis] # ssseps filtered out for nans
     figure(figsize=figsize)
     # scatter plot:
-    plot(seps, rhol, 'k.')
+    plot(fssseps, fssrhol, 'k.')
     # bin seps and plot mean rho in each bin:
-    sortis = np.argsort(seps)
-    seps = seps[sortis]
-    rhos = rhol[sortis]
+    sortis = np.argsort(fssseps)
+    seps = fssseps[sortis]
+    rhos = fssrhol[sortis]
     sepbins = np.arange(0, seps.max()+sepbinw, sepbinw) # left edges
     sepis = seps.searchsorted(sepbins)
     sepmeans, rhomeans, rhostds = [], [], []
@@ -103,6 +101,20 @@ def psthcorr(rec, nids=None, ssnids=None, natexps=False, strange=None):
     gcfm().window.setWindowTitle(basetitle + '_rho_sep')
     tight_layout(pad=0.3)
 
+    return ssrho
+def get_seps(nids, nd):
+    """Build flattened array of distances between all unique pairs in nids, given neuron
+    dict nd"""
+    nnss = len(ssnids)
+    lti = np.tril_indices(nnss, -1) # lower triangle (below diagonal) indices, ie unique pairs
+    seps = []
+    for nidii0, nidii1 in np.asarray(lti).T:
+        sep = dist(nd[ssnids[nidii0]].pos, nd[ssnids[nidii1]].pos)
+        seps.append(sep)
+    seps = np.hstack(seps)
+    return seps
+
+
 # ptc15.tr7c:
 sepxmax = 1675
 recsecnids = []
@@ -116,8 +128,13 @@ ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from all rec
 # separate supersets of active nids for all 4 natexps in each recording:
 ptc15tr7crecsecnids = [np.unique(np.hstack(recsecnids[:4])),
                        np.unique(np.hstack(recsecnids[4:]))]
+# build flattened array of distances between all unique pairs in ssnids:
+ssseps = get_seps(ssnids, ptc15.tr7c.alln)
+# do psthcorr plots and collect ssrho matrices:
+ssrhos = []
 for rec, nids in zip(ptc15tr7crecs, ptc15tr7crecsecnids):
-    psthcorr(rec, nids=nids, ssnids=ssnids, natexps=True) # in sec
+    ssrho = psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=True) # in sec
+    ssrhos.append(ssrho)
 
 '''
 # ptc22.tr1.r08 sections:
@@ -147,8 +164,11 @@ stranges = strangesr08s+strangesr10s
 for rec, strange in zip(ptc22tr1s, stranges):
     recsecnids.append(rec.get_nids(tranges=[np.asarray(strange) * 1000000])) # convert to us
 ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sections
+# build flattened array of distances between all unique pairs in ssnids:
+ssseps = get_seps(ssnids, ptc22.tr1.alln)
+# do psthcorr plots:
 for rec, nids, strange in zip(ptc22tr1s, recsecnids, stranges):
-    psthcorr(rec, nids=nids, ssnids=ssnids, natexps=False, strange=strange)
+    psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
 '''
 """
 ## TODO: take difference between pairs of PSTH corr matrices. To include only those cell pairs
