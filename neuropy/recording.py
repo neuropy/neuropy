@@ -63,6 +63,11 @@ class BaseRecording(object):
         self.e = dictattr() # store experiments in a dictionary with attrib access
         self.sorts = dictattr() # store sorts in a dictionary with attrib access
 
+    def __cmp__(self, other):
+        """Comparison to other recordings for sorting purposes. Sort in alphabetical order
+        of recording ID string"""
+        return cmp(self.id, other.id)
+
     def get_name(self):
         return os.path.split(self.path)[-1]
 
@@ -1100,7 +1105,11 @@ class RecordingRaster(BaseRecording):
         blank frames for trials in movie type stimuli. psth, binw and tres control
         corresponding PSTH plots and return value. c controls color, and can be a single
         value, a list of len(nids), or use c='bwg' to plot black and white bars on a grey
-        background for black and white drifting bar trials"""
+        background for black and white drifting bar trials.
+
+        ## TODO: the psth code should be split off into its own rec method and should call
+        ## this traster method (with plot=False) to get its required input
+        """
         if nids == None:
             nids = sorted(self.n.keys()) # use active neurons
         elif nids == 'quiet':
