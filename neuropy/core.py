@@ -2342,7 +2342,7 @@ class SpikeCorr(object):
         ## TODO: update for multiple recs
         rec = self.r
         uns = get_ipython().user_ns
-        t0 = time.time()
+        #t0 = time.time()
 
         if sisource not in ['lfp', 'mua']:
             raise ValueError('unknown sisource %r' % sisource)
