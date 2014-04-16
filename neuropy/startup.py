@@ -29,6 +29,8 @@ def cf():
     import pylab
     pylab.close('all')
 
+c = cf # synonym
+
 def fontsize(pts=None):
     """Get/set font size in points of various typical plot features. Needs work"""
     rc = get_ipython().user_ns['rcParams']
