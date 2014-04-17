@@ -22,7 +22,7 @@ strangesr10s = [(0, 1400), # r10 synched
 
 #ptc22tr2recs  = [ptc22.tr2.r33, ptc22.tr2.r28] # 28 is a 5 min movie
 
-def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=None):
+def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=None, plot=True):
     if nids == None:
         nids = sorted(rec.n) # use active neurons
     if ssnids == None:
@@ -40,6 +40,9 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
         for j in range(nn):
             ssi, ssj = ssnids.searchsorted([nids[i], nids[j]])
             ssrho[ssi, ssj] = rho[i, j]
+
+    if plot == False:
+        return ssrho
 
     # plot superset rho matrix:
     figure(figsize=figsize)
