@@ -108,7 +108,8 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
 
 
 def psthcorrdiff(rhos, seps, basetitle):
-    """Plot difference of a pair of rho matrices"""
+    """Plot difference of a pair of rho matrices (rhos[0] - rhos[1]). seps is the
+    corresponding distance matrix"""
     assert len(rhos) == 2
     rhomin, rhomax = -0.65, 0.65 # symmetric about 0 for the delta rhos
 
@@ -187,7 +188,7 @@ def get_seps(nids, nd):
     seps = np.hstack(seps)
     return seps
 
-
+'''
 # ptc15.tr7c:
 sepxmax = 1675
 recsecnids = []
@@ -210,7 +211,7 @@ for rec, nids in zip(ptc15tr7crecs, ptc15tr7crecsecnids):
     ssrhos.append(ssrho)
 # plot differences in superset rho matrices for the two recordings:
 psthcorrdiff(ssrhos, ssseps, 'r74-r95b')
-
+'''
 '''
 # ptc22.tr1.r08 sections:
 sepxmax = 1200
@@ -230,7 +231,7 @@ ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sec
 for rec, nids, strange in zip(ptc22tr1r10s, recsecnids, strangesr10s):
     psthcorr(rec, nids=nids, ssnids=ssnids, natexps=False, strange=strange)
 '''
-'''
+
 # ptc22.tr1.r08 + ptc22.tr1.r10 sections:
 sepxmax = 1200
 recsecnids = [] # holds arrays of active nids of each recording section
@@ -242,7 +243,18 @@ ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sec
 # build flattened array of distances between all unique pairs in ssnids:
 ssseps = get_seps(ssnids, ptc22.tr1.alln)
 # do psthcorr plots:
+ssrhos = []
 for rec, nids, strange in zip(ptc22tr1s, recsecnids, stranges):
-    psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
-'''
+    ssrho = psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False,
+                     strange=strange, plot=False)
+    ssrhos.append(ssrho)
+
+# plot differences in superset rho matrices for various pairs of recording sections:
+psthcorrdiff([ssrhos[0], ssrhos[1]], ssseps, 'A-B')
+psthcorrdiff([ssrhos[1], ssrhos[2]], ssseps, 'B-C')
+psthcorrdiff([ssrhos[2], ssrhos[3]], ssseps, 'C-D')
+psthcorrdiff([ssrhos[0], ssrhos[3]], ssseps, 'A-D')
+#psthcorrdiff([ssrhos[1], ssrhos[3]], ssseps, 'B-D')
+#psthcorrdiff([ssrhos[0], ssrhos[2]], ssseps, 'A-C')
+
 show()
