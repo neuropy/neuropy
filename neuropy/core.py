@@ -1694,7 +1694,7 @@ class SpikeCorr(object):
         return self
 
     def pdf(self, crange=[-0.05, 0.15], figsize=(7.5, 6.5), limitstats=False,
-            nbins=30, density=True):
+            nbins=30, density=True, title=True, text=True, labels=True):
         """Plot PDF of pairwise spike correlations. If limitstats, the stats displayed
         exclude any corr values that fall outside of crange"""
         self.calc()
@@ -1729,35 +1729,41 @@ class SpikeCorr(object):
         a.bar(left=c[:-1], height=n, width=binwidth, bottom=0, color='k', ec='k')
         if crange != None:
             a.set_xlim(crange)
+            a.set_xticks(np.arange(crange[0], crange[1], 0.1))
+        a.set_ylim(ymax=n.max()) # scale to height of tallest bin
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
-        a.set_title(titlestr)
+        if title:
+            a.set_title(titlestr)
         
-        if density:
-            a.set_ylabel('probability density')
-        else:
-            a.set_ylabel('count')
-        a.set_xlabel('correlation coefficient')
+        if labels:
+            if density:
+                a.set_ylabel('probability density')
+            else:
+                a.set_ylabel('count')
+            a.set_xlabel('correlation coefficient')
+            
         # add stuff to top right of plot:
         uns = get_ipython().user_ns
-        a.text(0.99, 0.99, '%s\n'
-                           'mean = %.3f\n'
-                           'median = %.3f\n'
-                           'mode = %.3f\n'
-                           'stdev = %.3f\n'
-                           'tres = %d ms\n'
-                           'phase = %d deg\n'
-                           'minrate = %.2f Hz\n'
-                           'nneurons = %d\n'
-                           'npairs = %d\n'
-                           'dt = %d min\n'
-                           'alpha = %.2f'
-                           % (self.name, mean, median, mode, stdev,
-                              uns['CODETRES']//1000, uns['CODEPHASE'], uns['MINRATE'],
-                              nneurons, npairs, dtmin, uns['ALPHA']),
-                           transform = a.transAxes,
-                           horizontalalignment='right',
-                           verticalalignment='top')
+        if text:
+            a.text(0.99, 0.99, '%s\n'
+                               'mean = %.3f\n'
+                               'median = %.3f\n'
+                               'mode = %.3f\n'
+                               'stdev = %.3f\n'
+                               'tres = %d ms\n'
+                               'phase = %d deg\n'
+                               'minrate = %.2f Hz\n'
+                               'nneurons = %d\n'
+                               'npairs = %d\n'
+                               'dt = %d min\n'
+                               'alpha = %.2f'
+                               % (self.name, mean, median, mode, stdev,
+                                  uns['CODETRES']//1000, uns['CODEPHASE'], uns['MINRATE'],
+                                  nneurons, npairs, dtmin, uns['ALPHA']),
+                               transform = a.transAxes,
+                               horizontalalignment='right',
+                               verticalalignment='top')
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
