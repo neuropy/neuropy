@@ -76,7 +76,10 @@ class BaseRecording(object):
     def get_absname(self):
         """Absolute name including parent animal and track, kind of like absolute path, but
         more abbreviated, as one would enter it at the IPython prompt"""
-        return '.'.join((self.tr.absname, 'r'+self.id))
+        if self.tr == None: # no parent track
+            return 'r'+self.id
+        else:
+            return '.'.join((self.tr.absname, 'r'+self.id))
 
     absname = property(get_absname)
 

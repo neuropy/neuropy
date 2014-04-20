@@ -38,7 +38,10 @@ class Track(object):
     def get_absname(self):
         """Absolute name including parent Animal, kind of like absolute path, but more
         abbreviated, as one would enter it at the IPython prompt"""
-        return '.'.join((self.animal.name, self.name))
+        if self.animal == None: # no parent animal
+            return self.name
+        else:
+            return '.'.join((self.animal.name, self.name))
 
     absname = property(get_absname)
 

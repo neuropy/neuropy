@@ -4075,7 +4075,10 @@ def parse_source(source):
     recis = np.argsort([ rec.absname for rec in recs ])
     recs = [ recs[reci] for reci in recis ]
     # sort tracks by their absnames:
-    trackis = np.argsort([ track.absname for track in tracks ])
+    try:
+        trackis = np.argsort([ track.absname for track in tracks ])
+    except AttributeError: # track is None and has no .absname?
+        trackis = np.arange(len(tracks))
     tracks = [ tracks[tracki] for tracki in trackis ]
     return recs, tracks
 
@@ -4108,7 +4111,10 @@ def get_nids(recs, tracks, kind=None):
     totaldtsec = 0.0
     for track in tracks:
         dtsec = 0.0
-        allnids = np.asarray(sorted(track.alln)) # all nids in this track
+        if track == None and len(recs) == 1:
+            allnids = np.asarray(sorted(recs[0].alln))
+        else:
+            allnids = np.asarray(sorted(track.alln)) # all nids in this track
         nspikes = {}.fromkeys(allnids, 0) # nid to nspikes mapping, init each entry to 0
         for rec in recs:
             if rec.tr != track: # recording doesn't belong to this track
