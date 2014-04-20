@@ -108,7 +108,9 @@ class BaseRecording(object):
         if self.tr != None:
             self.tr.writetree(string)
 
-    def load(self):
+    def load(self, sortname=None):
+        """If specified, sortname is assumed to be relative to this recording's path, and is
+        set as the default sort"""
         treestr = self.level*TAB + self.name + '/'
         # print string to tree hierarchy and screen
         self.writetree(treestr + '\n')
@@ -135,9 +137,11 @@ class BaseRecording(object):
         dinfnames.sort()
         lfpfnames.sort()
 
-        # load all Sorts, or just the most recent one:
+        # load the specified sort, or just the most recent one, or all of them:
         uns = get_ipython().user_ns
-        if not uns['LOADALLSORTS'] and len(sortfdnames) > 0:
+        if sortname != None: # just load the one specified at the command line
+            sortfdnames = [sortname]
+        elif not uns['LOADALLSORTS'] and len(sortfdnames) > 0:
             sortfdnames = [sortfdnames[-1]] # just the most recent one
         for sortid, fdname in enumerate(sortfdnames):
             path = os.path.join(self.path, fdname)
@@ -146,8 +150,7 @@ class BaseRecording(object):
             self.sorts[sort.name] = sort # save it
             self.__setattr__('sort' + str(sort.id), sort) # add shortcut attrib
         self.sort = None
-        if len(sortfdnames) > 0:
-            # make last sort the default one
+        if len(sortfdnames) > 0: # make last sort the default one
             self.sort = self.sorts[sortfdnames[-1]]
         
         # load all .din as Experiments:
