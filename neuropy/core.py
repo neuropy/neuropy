@@ -1694,7 +1694,7 @@ class SpikeCorr(object):
         return self
 
     def pdf(self, crange=[-0.05, 0.15], figsize=(7.5, 6.5), limitstats=False,
-            nbins=30, density=True, title=True, text=True, labels=True):
+            nbins=30, density=True, title=True, text=True, labels=True, yticks=True):
         """Plot PDF of pairwise spike correlations. If limitstats, the stats displayed
         exclude any corr values that fall outside of crange"""
         self.calc()
@@ -1727,9 +1727,12 @@ class SpikeCorr(object):
         a = f.add_subplot(111)
         # omit last right edge in c:
         a.bar(left=c[:-1], height=n, width=binwidth, bottom=0, color='k', ec='k')
+        a.axvline(x=0, c='e', ls='--') # draw vertical grey line at x=0
         if crange != None:
             a.set_xlim(crange)
             a.set_xticks(np.arange(crange[0], crange[1], 0.1))
+        if yticks in (False, None): # disable yticks
+            a.set_yticks([])
         a.set_ylim(ymax=n.max()) # scale to height of tallest bin
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
