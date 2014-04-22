@@ -1032,7 +1032,7 @@ class DensePopulationRaster(object):
     """Population spike raster plot, with dense vertical spacing according to neuron depth
     rank, and colour proportional to neuron depth"""
     def __init__(self, trange=None, neurons=None, norder=None, units='sec', r=None,
-                 size=None, color=None, title=True, figsize=(20, None)):
+                 marker='|', size=None, color=None, title=True, figsize=(20, None)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
         is displayed in time units of units"""
         assert len(trange) == 2
@@ -1084,7 +1084,7 @@ class DensePopulationRaster(object):
             figsize = figsize[0], 1 + nn / 7 # ~1/7th vertical inch per neuron
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.scatter(t, y, marker='|', c=c, s=s)
+        a.scatter(t, y, marker=marker, c=c, s=s)
         a.set_xlim(trange/tx)
         a.set_ylim(nn, -1) # invert the y axis
         # turn off annoying "+2.41e3" type offset on x axis:
@@ -1115,7 +1115,7 @@ class SpatialPopulationRaster(object):
     """Population spike raster plot, with vertical spacing proportional to neuron depth,
     colour representing neuron id, and point size inversely proportional to spike rate."""
     def __init__(self, trange=None, neurons=None, norder=None, units='sec', r=None,
-                 size=None, color=None, title=True, figsize=(20, 6.5)):
+                 marker='|', size=None, color=None, title=True, figsize=(20, 6.5)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
         is displayed in time units of units"""
         assert len(trange) == 2
@@ -1135,7 +1135,7 @@ class SpatialPopulationRaster(object):
             if nspikes > 0:
                 t.append(spikes)
                 if norder == None:
-                    ypos = -n.pos[1]
+                    ypos = n.pos[1]
                 else:
                     ypos = nidi
                 y.append(np.tile(ypos, nspikes)) # -ve, distance below top of electrode
@@ -1160,16 +1160,22 @@ class SpatialPopulationRaster(object):
         if color != None:
             c = color
 
+        if figsize[1] == None:
+            figsize = figsize[0], 6.5
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.scatter(t, y, marker='.', c=c, edgecolor='none', s=s)
+        ec = 'none'
+        if marker == '|':
+            ec = c
+        a.scatter(t, y, marker=marker, c=c, edgecolor=ec, s=s)
+        a.invert_yaxis() # increasingly +ve values down y axis
         a.set_xlim(trange/tx)
         if norder == None: # set y axis limits according to spatial extent of probe
             # grab first neuron's sort.chanpos, should be the same for all:
             chanpos = neurons[nids[0]].sort.chanpos
             ymax = chanpos[:, 1].max() # max chan distance below top of probe
             ymax = np.ceil(ymax / 50) * 50 # round up to nearest multiple of 100 um
-            a.set_ylim(-ymax, 0)
+            a.set_ylim(ymax, 0)
         else: # autoscale 'nidi' integer y axis
             a.autoscale(enable=True, axis='y', tight=True)
         # turn off annoying "+2.41e3" type offset on x axis:
@@ -1177,7 +1183,7 @@ class SpatialPopulationRaster(object):
         a.xaxis.set_major_formatter(formatter)
         a.set_xlabel("time (%s)" % units)
         if norder == None:
-            a.set_ylabel("depth (um)")
+            a.set_ylabel("depth ($\mu$m)")
         else:
             a.set_ylabel("neuron order")
         titlestr = lastcmd()
