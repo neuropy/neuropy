@@ -255,7 +255,8 @@ class BaseRecording(object):
         eids = sorted(self.e)
         return [ self.e[eid] for eid in eids ]
 
-    def mua(self, width=None, tres=None, neurons=None, smooth=False, layers=False, plot=True):
+    def mua(self, width=None, tres=None, neurons=None, smooth=False, layers=False, plot=True,
+            title=True, figsize=(20, 6.5)):
         """Calculate and optionally plot multiunit activity as a function of time. neurons can
         be None, 'quiet', 'all', or a dict. `width' and `tres' of time bins are in seconds. If
         `smooth' is True, convolve with a smoothing window of width `width'. If layers is
@@ -326,7 +327,7 @@ class BaseRecording(object):
         rates = np.vstack([allrates, suprates, midrates, deeprates])
         n = nn, nsup, nmid, ndeep
         if plot:
-            self.plot_mua(rates, t, n, layers=layers)
+            self.plot_mua(rates, t, n, layers=layers, title=title, figsize=figsize)
         return rates, t, n
 
     def calc_mua(self, spikes, nn, tranges):
@@ -355,7 +356,7 @@ class BaseRecording(object):
         #scipy.signal.fftconvolve(spikehist, window, mode='same') / tressec / window.sum() / nn
 
     def plot_mua(self, rates, t, n, layers=False, ylabel="mean MUA (Hz/neuron)", ylim=None,
-                 hlines=[0], figsize=(20, 6.5)):
+                 hlines=[0], title=True, figsize=(20, 6.5)):
         """Plot multiunit activity (all, sup, mid and deep firing rates) as a function of
         time in seconds"""
         f = pl.figure(figsize=figsize)
@@ -381,18 +382,20 @@ class BaseRecording(object):
         a.xaxis.set_major_formatter(formatter)
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
-        a.set_title(titlestr)
+        if title:
+            a.set_title(titlestr)
         uns = get_ipython().user_ns
         sup, mid, deep = uns['LAYERS'][self.tr.absname]
-        a.text(0.998, 0.99,
-               '%s\n'
-               'sup = %r um\n'
-               'mid = %r um\n'
-               'deep = %r um\n'
-               % (self.name, sup, mid, deep),
-               color='k', transform=a.transAxes,
-               horizontalalignment='right', verticalalignment='top')
-        a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
+        if title:
+            a.text(0.998, 0.99,
+                   '%s\n'
+                   'sup = %r um\n'
+                   'mid = %r um\n'
+                   'deep = %r um\n'
+                   % (self.name, sup, mid, deep),
+                   color='k', transform=a.transAxes,
+                   horizontalalignment='right', verticalalignment='top')
+            a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
     def mua_si(self, kind=None, width=None, tres=None, muawidth=None, muatres=None,
