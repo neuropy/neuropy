@@ -34,7 +34,7 @@ for trackname in tracknames:
 for track in tracks:
     nsresponders = ns[track.absname]
     for nid, n in track.alln.items():
-        xi = 1 if nid in nsresponders else 0  # matrix rows
+        xi = 0 if nid in nsresponders else 1  # matrix rows
         spiketypeyi = spiketype2int[n.spiketype] # matrix spiketype columns
         rftypeyi = rftype2int[n.rftype] # matrix rftype columns
         m[track.absname][xi, spiketypeyi] += 1
@@ -47,7 +47,7 @@ for trackname in tracknames:
     imshow(m[trackname], origin='upper', cmap='gray')
     xticks(np.arange(8), ['fast', 'slow', 'fast\nasym', 'slow\nasym',
                           'simple', 'complex', 'LGN\naff', 'unknown'])
-    yticks(np.arange(2), ['unreliable', 'reliable'])
+    yticks(np.arange(2), ["respond", "don't\nrespond"])
     colorbar(ticks=[m[trackname].min(), m[trackname].max()], label='neuron count')
     gcfm().window.setWindowTitle(trackname + ' cell type vs nsresponse')
     tight_layout(pad=1)
@@ -61,7 +61,7 @@ for trackname in tracknames:
         imshow(m[trackname][:, y0:y1], origin='upper', cmap='gray')
         xticks(np.arange(4), ['fast', 'slow', 'fast\nasym', 'slow\nasym',
                               'simple', 'complex', 'LGN\naff', 'unknown'][y0:y1])
-        yticks(np.arange(2), ['unreliable', 'reliable'])
+        yticks(np.arange(2), ["respond", "don't\nrespond"])
         colorbar(ticks=[m[trackname][:, y0:y1].min(), m[trackname][:, y0:y1].max()],
                         label='neuron count')
     gcfm().window.setWindowTitle(trackname + ' cell type vs nsresponse split')
