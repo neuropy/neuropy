@@ -2,6 +2,7 @@
 within neuropy using `run -i scripts/psthcorr.py`"""
 
 from __future__ import division
+import pylab as pl
 
 figsize = (3, 3)
 showcolorbar = False # show colorbar
@@ -81,7 +82,7 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
     fssseps = ssseps[notnanis] # ssseps filtered out for nans
     figure(figsize=figsize)
     # scatter plot:
-    plot(fssseps, fssrhol, 'k.')
+    pl.plot(fssseps, fssrhol, 'k.')
     # bin seps and plot mean rho in each bin:
     sortis = np.argsort(fssseps)
     seps = fssseps[sortis]
