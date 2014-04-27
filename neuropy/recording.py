@@ -609,19 +609,21 @@ class BaseRecording(object):
         """Scatter plot MUA CV vs LFP SI"""
         self.mua_si(cv=True, smooth=smooth, chani=chani, ratio=ratio, figsize=figsize)
 
-    def mua_lfpsi(self, cv=False, smooth=False, chani=-1, kind=None,
-                  figsize=(7.5, 6.5)):
+    def mua_lfpsi(self, muawidth=None, muatres=None, lfpwidth=None, lfptres=None,
+                  lfpsiwidth=None, lfpsitres=None, smooth=False, chani=-1, kind='L/(L+H)',
+                  layers=True, plot=False, figsize=(7.5, 6.5)):
         """Scatter plot multiunit activity vs LFP synchrony index"""
-        if cv: # mua and muat will refer to CV of MUA, not MUA itself
-            mua, muat, n = self.mua_cv(smooth=smooth, plot=False)
-            ylabel = 'CV of MUA'
-        else:
-            mua, muat, n = self.mua(smooth=smooth, plot=False)
-            ylabel = 'mean MUA (Hz)'
-        si, sit = self.lfp.si(chani=chani, kind=kind, plot=False)
+        mua, muat, n = self.mua(width=muawidth, tres=muatres, smooth=smooth, plot=False)
+        ylabel = 'mean MUA (Hz/neuron)'
+        si, sit = self.lfp.si(chani=chani, width=lfpsiwidth, tres=lfpsitres,
+                              lfpwidth=lfpwidth, lfptres=lfptres, kind=kind,
+                              plot=False)
 
         # get common time resolution:
         t, mua, si = core.commontres(muat, mua, sit, si)
+
+        if not plot:
+            return mua, si
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -633,19 +635,22 @@ class BaseRecording(object):
 
         # plot separate regression lines for all, superficial, middle and deep cells:
         m0, b0, r0, p0, stderr0 = scipy.stats.linregress(si, mua[0])
-        m1, b1, r1, p1, stderr1 = scipy.stats.linregress(si, mua[1])
-        m2, b2, r2, p2, stderr2 = scipy.stats.linregress(si, mua[2])
-        m3, b3, r3, p3, stderr3 = scipy.stats.linregress(si, mua[3])
+        if layers:
+            m1, b1, r1, p1, stderr1 = scipy.stats.linregress(si, mua[1])
+            m2, b2, r2, p2, stderr2 = scipy.stats.linregress(si, mua[2])
+            m3, b3, r3, p3, stderr3 = scipy.stats.linregress(si, mua[3])
         a.plot(sirange, m0*sirange+b0, 'e--')
-        a.plot(sirange, m1*sirange+b1, 'r--')
-        a.plot(sirange, m2*sirange+b2, 'g--')
-        a.plot(sirange, m3*sirange+b3, 'b--')
+        if layers:
+            a.plot(sirange, m1*sirange+b1, 'r--')
+            a.plot(sirange, m2*sirange+b2, 'g--')
+            a.plot(sirange, m3*sirange+b3, 'b--')
 
         # scatter plot MUA vs SI:
         a.plot(si, mua[0], 'e.', label='all (%d), m=%.3f, r=%.3f' % (n[0], m0, r0))
-        a.plot(si, mua[1], 'r.', label='sup (%d), m=%.3f, r=%.3f' % (n[1], m1, r1))
-        a.plot(si, mua[2], 'g.', label='mid (%d), m=%.3f, r=%.3f' % (n[2], m2, r2))
-        a.plot(si, mua[3], 'b.', label='deep (%d), m=%.3f, r=%.3f' % (n[3], m3, r3))
+        if layers:
+            a.plot(si, mua[1], 'r.', label='sup (%d), m=%.3f, r=%.3f' % (n[1], m1, r1))
+            a.plot(si, mua[2], 'g.', label='mid (%d), m=%.3f, r=%.3f' % (n[2], m2, r2))
+            a.plot(si, mua[3], 'b.', label='deep (%d), m=%.3f, r=%.3f' % (n[3], m3, r3))
 
         a.set_xlim(0, 1)
         a.set_ylim(ylim)
@@ -656,14 +661,14 @@ class BaseRecording(object):
         gcfm().window.setWindowTitle(titlestr)
         a.set_title(titlestr)
         uns = get_ipython().user_ns
-        sup, mid, deep = uns['LAYERS'][self.tr.absname]
-        a.text(0.998, 0.99,
-               '%s\n'
-               'sup = %r um\n'
-               'mid = %r um\n'
-               'deep = %r um\n'
-               % (self.name, sup, mid, deep),
-               color='k', transform=a.transAxes,
+        txt = self.name
+        if layers:
+            sup, mid, deep = uns['LAYERS'][self.tr.absname]
+            txt += ('sup = %r um\n'
+                    'mid = %r um\n'
+                    'deep = %r um\n'
+                    % (sup, mid, deep))
+        a.text(0.998, 0.99, txt, color='k', transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
