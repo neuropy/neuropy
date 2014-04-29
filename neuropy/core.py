@@ -768,7 +768,7 @@ class LFP(object):
         if pratio:
             t = Pt
             ylim = 0, 1
-            ylabel = kind
+            ylabel = 'SI (%s)' % kind
         else:
             # potentially overlapping bin time ranges:
             trange = Pt[0], Pt[-1]
