@@ -255,7 +255,7 @@ class BaseRecording(object):
         eids = sorted(self.e)
         return [ self.e[eid] for eid in eids ]
 
-    def mua(self, width=None, tres=None, neurons=None, smooth=False, layers=False, plot=True,
+    def mua(self, neurons=None, width=None, tres=None, smooth=False, layers=False, plot=True,
             title=True, figsize=(20, 6.5)):
         """Calculate and optionally plot multiunit activity as a function of time. neurons can
         be None, 'quiet', 'all', or a dict. `width' and `tres' of time bins are in seconds. If
@@ -609,11 +609,12 @@ class BaseRecording(object):
         """Scatter plot MUA CV vs LFP SI"""
         self.mua_si(cv=True, smooth=smooth, chani=chani, ratio=ratio, figsize=figsize)
 
-    def mua_lfpsi(self, muawidth=None, muatres=None, lfpwidth=None, lfptres=None,
+    def mua_lfpsi(self, neurons=None, muawidth=None, muatres=None, lfpwidth=None, lfptres=None,
                   lfpsiwidth=None, lfpsitres=None, smooth=False, chani=-1, kind='L/(L+H)',
                   layers=True, plot=False, figsize=(7.5, 6.5)):
         """Scatter plot multiunit activity vs LFP synchrony index"""
-        mua, muat, n = self.mua(width=muawidth, tres=muatres, smooth=smooth, plot=False)
+        mua, muat, n = self.mua(neurons=neurons, width=muawidth, tres=muatres, smooth=smooth,
+                                plot=False)
         ylabel = 'mean MUA (Hz/neuron)'
         si, sit = self.lfp.si(chani=chani, width=lfpsiwidth, tres=lfpsitres,
                               lfpwidth=lfpwidth, lfptres=lfptres, kind=kind,

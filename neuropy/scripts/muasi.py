@@ -5,14 +5,15 @@ from __future__ import division
 
 import scipy
 
+neurons = None # None means active
 layers = True
 kind = 'L/(L+H)'
 ms = 1
 ls = '--'
 lw = 2
 
-#tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2] # need to be loaded ahead of time
-tracks = [ptc22.tr2]
+tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2] # need to be loaded ahead of time
+#tracks = [ptc22.tr2]
 recs = []
 for track in tracks:
     # may as well do this in rid order
@@ -23,7 +24,7 @@ recs = np.hstack(recs)
 #recs = [ptc22.tr1.r['08'], ptc22.tr1.r['09'], ptc22.tr1.r['10']]
 muas, sis = [], []
 for rec in recs:
-    mua, si = rec.mua_lfpsi(muawidth=30, muatres=10, lfpwidth=30, lfptres=10,
+    mua, si = rec.mua_lfpsi(neurons=neurons, muawidth=30, muatres=10, lfpwidth=30, lfptres=10,
                             lfpsiwidth=30, lfpsitres=10, plot=False)
     muas.append(mua)
     sis.append(si)
