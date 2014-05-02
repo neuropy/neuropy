@@ -4166,3 +4166,19 @@ def eucd(coords):
         data = coords[:, d]
         delta += (data - data[:, np.newaxis]) ** 2
     return np.sqrt(delta)
+
+def maxabs(a, axis=None):
+    """Return slice of a, keeping only those values that are furthest away from 0 along axis"""
+    maxa = a.max(axis=axis)
+    mina = a.min(axis=axis)
+    p = abs(maxa) > abs(mina) # indices where +ve values win
+    n = abs(mina) > abs(maxa) # indices where -ve values win
+    if axis == None:
+        if p: return maxa
+        else: return mina
+    shape = list(a.shape)
+    shape.pop(axis)
+    out = np.zeros(shape, dtype=a.dtype)
+    out[p] = maxa[p]
+    out[n] = mina[n]
+    return out
