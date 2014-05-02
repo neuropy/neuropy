@@ -3,6 +3,7 @@ within neuropy using `run -i scripts/psthcorr.py`"""
 
 from __future__ import division
 import pylab as pl
+import core
 
 figsize = (3, 3)
 showcolorbar = False # show colorbar
@@ -249,7 +250,8 @@ for rec, nids, strange in zip(ptc22tr1s, recsecnids, stranges):
     ssrho = psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False,
                      strange=strange, plot=False)
     ssrhos.append(ssrho)
-
+ssrhos = np.asarray(ssrhos) # convert to 3D array
+'''
 # plot differences in superset rho matrices for various pairs of recording sections:
 psthcorrdiff([ssrhos[0], ssrhos[1]], ssseps, 'A-B')
 psthcorrdiff([ssrhos[1], ssrhos[2]], ssseps, 'B-C')
@@ -257,5 +259,50 @@ psthcorrdiff([ssrhos[2], ssrhos[3]], ssseps, 'C-D')
 psthcorrdiff([ssrhos[0], ssrhos[3]], ssseps, 'A-D')
 #psthcorrdiff([ssrhos[1], ssrhos[3]], ssseps, 'B-D')
 #psthcorrdiff([ssrhos[0], ssrhos[2]], ssseps, 'A-C')
+'''
+
+# create a rho matrix indexed by cell type
+celltype2int = {'fast':0, 'slow':1, 'fastasym':2, 'slowasym':3,
+                'simple':4, 'complex':5, 'LGN':6, None: 7}
+rhotype = np.zeros((8, 8))
+count = np.zeros((8, 8), dtype=np.int64)
+nn = len(ssnids)
+nanis = np.isnan(ssrhos) # indices of non-nan values
+ssrhos[nanis] = 0 # replace nans with 0s
+
+#maxabsssrhos = core.maxabs(ssrhos, axis=0)
+maxabsssrhos = ssrhos[3]
+alln = ptc22.tr1.alln
+for i in range(nn):
+    for j in range(nn):
+        ni = alln[ssnids[i]] # neuron i
+        nj = alln[ssnids[j]] # neuron j
+        si = celltype2int[ni.spiketype]
+        sj = celltype2int[nj.spiketype]
+        ri = celltype2int[ni.rftype]
+        rj = celltype2int[nj.rftype]
+        rhotype[si, sj] += maxabsssrhos[i, j]
+        rhotype[ri, rj] += maxabsssrhos[i, j]
+        rhotype[ri, sj] += maxabsssrhos[i, j]
+        rhotype[si, rj] += maxabsssrhos[i, j]
+        count[si, sj] += 1
+        count[ri, rj] += 1
+        count[ri, sj] += 1
+        count[si, rj] += 1
+# this isn't proper normalization, need to count n separately for each entry in rhotype:
+#rhotype /= nn
+count[count == 0] = 1 # replace all 0s with 1s to prevent div by 0 during normalization
+rhotype /= count # normalize
+
+figure(figsize=(4, 4))
+imshow(rhotype, origin='upper', cmap='jet')
+typelabels = ['fast', 'slow', 'fast asym', 'slow asym',
+              'simple', 'complex', 'LGN aff', 'unknown']
+xticks(np.arange(8), typelabels, rotation=90)
+yticks(np.arange(8), typelabels)
+#colorbar(ticks=[-1, 1])
+colorbar()
+gcfm().window.setWindowTitle('rho vs celltype')
+tight_layout(pad=0.4)
 
 show()
