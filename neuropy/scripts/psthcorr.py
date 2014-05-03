@@ -4,6 +4,8 @@ within neuropy using `run -i scripts/psthcorr.py`"""
 from __future__ import division
 import pylab as pl
 import core
+from scipy.stats import ttest_1samp
+
 
 figsize = (3, 3)
 showcolorbar = False # show colorbar
@@ -261,48 +263,69 @@ psthcorrdiff([ssrhos[0], ssrhos[3]], ssseps, 'A-D')
 #psthcorrdiff([ssrhos[0], ssrhos[2]], ssseps, 'A-C')
 '''
 
-# create a rho matrix indexed by cell type
+# create a rho matrix of lists, indexed by cell type
 celltype2int = {'fast':0, 'slow':1, 'fastasym':2, 'slowasym':3,
                 'simple':4, 'complex':5, 'LGN':6, None: 7}
-rhotype = np.zeros((8, 8))
-count = np.zeros((8, 8), dtype=np.int64)
+rhotype = np.zeros((8, 8), dtype=object)
+# this is dumb, but I can't find a simple way to init a bunch of independent lists:
+for i in range(8):
+    for j in range(8):
+        rhotype[i, j] = []
 nn = len(ssnids)
 nanis = np.isnan(ssrhos) # indices of non-nan values
 ssrhos[nanis] = 0 # replace nans with 0s
-
-#maxabsssrhos = core.maxabs(ssrhos, axis=0)
-maxabsssrhos = ssrhos[3]
+maxabsssrhos = core.maxabs(ssrhos[[1,2]], axis=0) # choose multiple recording segments here...
+#maxabsssrhos = ssrhos[3] # ... or a single one here
 alln = ptc22.tr1.alln
 for i in range(nn):
-    for j in range(nn):
-        ni = alln[ssnids[i]] # neuron i
+    ni = alln[ssnids[i]] # neuron i
+    si = celltype2int[ni.spiketype]
+    ri = celltype2int[ni.rftype]
+    for j in range(i+1, nn): # use only upper triangle to avoid double counting cell pairs
         nj = alln[ssnids[j]] # neuron j
-        si = celltype2int[ni.spiketype]
         sj = celltype2int[nj.spiketype]
-        ri = celltype2int[ni.rftype]
         rj = celltype2int[nj.rftype]
-        rhotype[si, sj] += maxabsssrhos[i, j]
-        rhotype[ri, rj] += maxabsssrhos[i, j]
-        rhotype[ri, sj] += maxabsssrhos[i, j]
-        rhotype[si, rj] += maxabsssrhos[i, j]
-        count[si, sj] += 1
-        count[ri, rj] += 1
-        count[ri, sj] += 1
-        count[si, rj] += 1
-# this isn't proper normalization, need to count n separately for each entry in rhotype:
-#rhotype /= nn
-count[count == 0] = 1 # replace all 0s with 1s to prevent div by 0 during normalization
-rhotype /= count # normalize
-
-figure(figsize=(4, 4))
-imshow(rhotype, origin='upper', cmap='jet')
-typelabels = ['fast', 'slow', 'fast asym', 'slow asym',
-              'simple', 'complex', 'LGN aff', 'unknown']
-xticks(np.arange(8), typelabels, rotation=90)
-yticks(np.arange(8), typelabels)
-#colorbar(ticks=[-1, 1])
-colorbar()
-gcfm().window.setWindowTitle('rho vs celltype')
-tight_layout(pad=0.4)
+        rho = maxabsssrhos[i, j]
+        if rho == 0:
+            # ignore this cell pair's rho (they were never simultaneously active) so it
+            # doesn't mess up the celltype stats
+            continue
+        rhotype[si, sj].append(rho)
+        rhotype[ri, rj].append(rho)
+        #rhotype[ri, sj].append(rho)
+        #rhotype[si, rj].append(rho)
+rhotypemeans = np.zeros(rhotype.shape)
+rhotypemeans.fill(nan)
+rhotypestds = np.zeros(rhotype.shape)
+rhotypestds.fill(nan)
+rhotypeps = np.zeros(rhotype.shape)
+rhotypeps.fill(nan)
+sigrhotypemeans = np.zeros(rhotype.shape)
+sigrhotypemeans.fill(nan)
+alpha = 0.001
+# calculate rho stats for each combination of cell type:
+for i in range(8):
+    for j in range(i, 8): # use only upper triangle to avoid double counting celltype stats
+        if len(rhotype[i, j]) > 0:
+            rhotypemeans[i, j] = np.mean(rhotype[i, j])
+            rhotypestds[i, j] = np.std(rhotype[i, j])
+            t, p = ttest_1samp(rhotype[i, j], 0) # sample mean ttest relative to 0
+            rhotypeps[i, j] = p
+sigis = rhotypeps < alpha # indices of significant deviations of mean from 0
+sigrhotypemeans[sigis] = rhotypemeans[sigis]
+arrs = [rhotypemeans, rhotypestds, rhotypeps, sigrhotypemeans]
+titlestrs = ['mean', 'stdev', 'pval', 'sigmean']
+for arr, titlestr in zip(arrs, titlestrs):
+    # get symmetrized arr:
+    symarr = nansum([arr, np.triu(arr, k=1).T], axis=0)
+    figure(figsize=(4, 4))
+    imshow(symarr, vmin=0, origin='upper', cmap='jet')
+    typelabels = ['fast', 'slow', 'fast asym', 'slow asym',
+                  'simple', 'complex', 'LGN aff', 'unknown']
+    xticks(np.arange(8), typelabels, rotation=90)
+    yticks(np.arange(8), typelabels)
+    colorbar()
+    gcfm().window.setWindowTitle('%s vs celltype' % titlestr)
+    tight_layout(pad=0.4)
 
 show()
