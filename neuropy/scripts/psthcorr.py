@@ -187,8 +187,8 @@ def psthcorrdiff(rhos, seps, basetitle):
     tight_layout(pad=0.3)
 
 
-def get_seps(nids, nd):
-    """Build flattened array of distances between all unique pairs in nids, given neuron
+def get_seps(ssnids, nd):
+    """Build flattened array of distances between all unique pairs in ssnids, given neuron
     dict nd"""
     nnss = len(ssnids)
     lti = np.tril_indices(nnss, -1) # lower triangle (below diagonal) indices, ie unique pairs
