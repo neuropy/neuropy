@@ -263,10 +263,10 @@ psthcorrdiff([ssrhos[0], ssrhos[3]], ssseps, 'A-D')
 #psthcorrdiff([ssrhos[0], ssrhos[2]], ssseps, 'A-C')
 '''
 
-# create a rho matrix of lists, indexed by cell type
+# based on ssrhos generated above, plot a rho matrix indexed by cell type
 celltype2int = {'fast':0, 'slow':1, 'fastasym':2, 'slowasym':3,
                 'simple':4, 'complex':5, 'LGN':6, None: 7}
-rhotype = np.zeros((8, 8), dtype=object)
+rhotype = np.zeros((8, 8), dtype=object) # init rho cell type matrix of lists
 # this is dumb, but I can't find a simple way to init a bunch of independent lists:
 for i in range(8):
     for j in range(8):
@@ -274,8 +274,10 @@ for i in range(8):
 nn = len(ssnids)
 nanis = np.isnan(ssrhos) # indices of non-nan values
 ssrhos[nanis] = 0 # replace nans with 0s
-maxabsssrhos = core.maxabs(ssrhos[[1,2]], axis=0) # choose multiple recording segments here...
-#maxabsssrhos = ssrhos[3] # ... or a single one here
+#maxabsssrhos = core.maxabs(ssrhos[[1,2]], axis=0) # choose multiple recording segments here...
+alpha = 0.01
+segmenti = 0
+maxabsssrhos = ssrhos[segmenti] # ... or a single one here
 alln = ptc22.tr1.alln
 for i in range(nn):
     ni = alln[ssnids[i]] # neuron i
@@ -302,7 +304,6 @@ rhotypeps = np.zeros(rhotype.shape)
 rhotypeps.fill(nan)
 sigrhotypemeans = np.zeros(rhotype.shape)
 sigrhotypemeans.fill(nan)
-alpha = 0.001
 # calculate rho stats for each combination of cell type:
 for i in range(8):
     for j in range(i, 8): # use only upper triangle to avoid double counting celltype stats
@@ -313,8 +314,10 @@ for i in range(8):
             rhotypeps[i, j] = p
 sigis = rhotypeps < alpha # indices of significant deviations of mean from 0
 sigrhotypemeans[sigis] = rhotypemeans[sigis]
-arrs = [rhotypemeans, rhotypestds, rhotypeps, sigrhotypemeans]
-titlestrs = ['mean', 'stdev', 'pval', 'sigmean']
+#arrs = [rhotypemeans, rhotypestds, rhotypeps, sigrhotypemeans]
+#titlestrs = ['mean', 'stdev', 'pval', 'sigmean']
+arrs = [sigrhotypemeans]
+titlestrs = ['sigmean']
 for arr, titlestr in zip(arrs, titlestrs):
     # get symmetrized arr:
     symarr = nansum([arr, np.triu(arr, k=1).T], axis=0)
