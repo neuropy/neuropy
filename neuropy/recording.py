@@ -1117,7 +1117,7 @@ class RecordingRaster(BaseRecording):
         single figure. For the designated sweep indices, based on stimulus info in experiments
         eids. natexps controls whether only natural scene movies are considered in ptc15
         multiexperiment recordings. Consider only those spikes that fall within strange (in
-        sec). t0 and dt manually designate trial tranges. blank controls whether to include
+        us). t0 and dt manually designate trial tranges. blank controls whether to include
         blank frames for trials in movie type stimuli. psth, binw and tres control
         corresponding PSTH plots and return value. c controls color, and can be a single
         value, a list of len(nids), or use c='bwg' to plot black and white bars on a grey
@@ -1162,7 +1162,7 @@ class RecordingRaster(BaseRecording):
                 assert len(c) == nn # one specified colour per neuron
 
         if strange != None:
-            strange = np.asarray(strange) * 1000000 # convert to us
+            strange = np.asarray(strange)
 
         dins = [ self.e[eid].din for eid in eids ]
         din0 = dins[0]

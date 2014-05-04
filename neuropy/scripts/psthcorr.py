@@ -17,14 +17,20 @@ nateids = [3, 4, 10, 12] # for both recs in ptc15.tr7c
 etrangesr74 = [ ptc15.tr7c.r74.e[nateid].trange for nateid in nateids ] # us
 etrangesr95b = [ ptc15.tr7c.r74.e[nateid].trange for nateid in nateids ] # us
 
-ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
-strangesr08s = [(0, 1500), # r08 desynched
-                (1550, np.inf)] # r08 synched, end is ~ 2300
-ptc22tr1r10s = [ptc22.tr1.r10, ptc22.tr1.r10]
-strangesr10s = [(0, 1400), # r10 synched
-                (1480, np.inf)] # r10 desynched, end is ~ 2300
 
-#ptc22tr2recs  = [ptc22.tr2.r33, ptc22.tr2.r28] # 28 is a 5 min movie
+ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
+strangesr08s = [(0, 1500e6), # r08 desynched, us
+                (1550e6, np.inf)] # r08 synched, us, end is ~ 2300s
+ptc22tr1r10s = [ptc22.tr1.r10, ptc22.tr1.r10]
+strangesr10s = [(0, 1400e6), # r10 synched, us
+                (1480e6, np.inf)] # r10 desynched, us, end is ~ 2300s
+
+ptc22tr1recs = [ptc22.tr1.r05, ptc22.tr1.r08, ptc22.tr1.r10, ptc22.tr1.r19]
+ptc22tr2recs = [ptc22.tr2.r28, ptc22.tr2.r33]
+
+celltype2int = {'fast':0, 'slow':1, 'fastasym':2, 'slowasym':3,
+                'simple':4, 'complex':5, 'LGN':6, None: 7}
+
 
 def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=None, plot=True):
     if nids == None:
@@ -58,7 +64,8 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
         colorbar()
     basetitle = rec.absname
     if strange != None:
-        basetitle += '_strange=%s' % (strange,)
+        strange_sec = tuple(np.array(strange)/1e6) # convert to sec for display
+        basetitle += '_strange=(%.f, %.f)' % strange_sec
     gcfm().window.setWindowTitle(basetitle + '_rho_mat')
     tight_layout(pad=0.3)
 
@@ -192,16 +199,15 @@ def get_seps(nids, nd):
     seps = np.hstack(seps)
     return seps
 
-'''
+
 # ptc15.tr7c:
 sepxmax = 1675
 recsecnids = []
 # get superset of active nids for all natexps of both recs in ptc15tr7crecs:
-strangesus = etrangesr74 + etrangesr95b # 8 stranges in total
-#stranges = np.asarray(strangesus) / 1e6 # in sec
+stranges = etrangesr74 + etrangesr95b # 8 stranges in total
 recs = [ptc15.tr7c.r74]*4 + [ptc15.tr7c.r95b]*4 # 8 recs corresponding to 8 stranges
-for rec, strangeus in zip(recs, strangesus):
-    recsecnids.append(rec.get_nids(tranges=[strangeus])) # 8 recsecnids in total, in us
+for rec, strange in zip(recs, stranges):
+    recsecnids.append(rec.get_nids(tranges=[strange])) # 8 recsecnids in total
 ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from all rec sections
 # separate supersets of active nids for all 4 natexps in each recording:
 ptc15tr7crecsecnids = [np.unique(np.hstack(recsecnids[:4])),
@@ -215,26 +221,28 @@ for rec, nids in zip(ptc15tr7crecs, ptc15tr7crecsecnids):
     ssrhos.append(ssrho)
 # plot differences in superset rho matrices for the two recordings:
 psthcorrdiff(ssrhos, ssseps, 'r74-r95b')
-'''
-'''
+
 # ptc22.tr1.r08 sections:
 sepxmax = 1200
 recsecnids = [] # holds arrays of active nids of each recording section
 for rec, strange in zip(ptc22tr1r08s, strangesr08s):
-    recsecnids.append(rec.get_nids(tranges=[np.asarray(strange) * 1000000])) # convert to us
+    recsecnids.append(rec.get_nids(tranges=[strange]))
 ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sections
+# build flattened array of distances between all unique pairs in ssnids:
+ssseps = get_seps(ssnids, ptc22.tr1.alln)
 for rec, nids, strange in zip(ptc22tr1r08s, recsecnids, strangesr08s):
-    psthcorr(rec, nids=nids, ssnids=ssnids, natexps=False, strange=strange)
+    psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
 
 # ptc22.tr1.r10 sections:
 sepxmax = 1200
 recsecnids = [] # holds arrays of active nids of each recording section
 for rec, strange in zip(ptc22tr1r10s, strangesr10s):
-    recsecnids.append(rec.get_nids(tranges=[np.asarray(strange) * 1000000])) # convert to us
+    recsecnids.append(rec.get_nids(tranges=[strange]))
 ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sections
+# build flattened array of distances between all unique pairs in ssnids:
+ssseps = get_seps(ssnids, ptc22.tr1.alln)
 for rec, nids, strange in zip(ptc22tr1r10s, recsecnids, strangesr10s):
-    psthcorr(rec, nids=nids, ssnids=ssnids, natexps=False, strange=strange)
-'''
+    psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
 
 # ptc22.tr1.r08 + ptc22.tr1.r10 sections:
 sepxmax = 1200
@@ -242,7 +250,7 @@ recsecnids = [] # holds arrays of active nids of each recording section
 ptc22tr1s = ptc22tr1r08s+ptc22tr1r10s
 stranges = strangesr08s+strangesr10s
 for rec, strange in zip(ptc22tr1s, stranges):
-    recsecnids.append(rec.get_nids(tranges=[np.asarray(strange) * 1000000])) # convert to us
+    recsecnids.append(rec.get_nids(tranges=[strange]))
 ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sections
 # build flattened array of distances between all unique pairs in ssnids:
 ssseps = get_seps(ssnids, ptc22.tr1.alln)
@@ -253,21 +261,18 @@ for rec, nids, strange in zip(ptc22tr1s, recsecnids, stranges):
                      strange=strange, plot=False)
     ssrhos.append(ssrho)
 ssrhos = np.asarray(ssrhos) # convert to 3D array
-'''
+
 # plot differences in superset rho matrices for various pairs of recording sections:
 psthcorrdiff([ssrhos[0], ssrhos[1]], ssseps, 'A-B')
 psthcorrdiff([ssrhos[1], ssrhos[2]], ssseps, 'B-C')
 psthcorrdiff([ssrhos[2], ssrhos[3]], ssseps, 'C-D')
-psthcorrdiff([ssrhos[0], ssrhos[3]], ssseps, 'A-D')
+#psthcorrdiff([ssrhos[0], ssrhos[3]], ssseps, 'A-D')
 #psthcorrdiff([ssrhos[1], ssrhos[3]], ssseps, 'B-D')
 #psthcorrdiff([ssrhos[0], ssrhos[2]], ssseps, 'A-C')
 '''
 
-# based on ssrhos generated above, plot a rho matrix indexed by cell type
-celltype2int = {'fast':0, 'slow':1, 'fastasym':2, 'slowasym':3,
-                'simple':4, 'complex':5, 'LGN':6, None: 7}
 rhotype = np.zeros((8, 8), dtype=object) # init rho cell type matrix of lists
-# this is dumb, but I can't find a simple way to init a bunch of independent lists:
+# this is dumb, but I can't find a better clear way to init a bunch of independent lists:
 for i in range(8):
     for j in range(8):
         rhotype[i, j] = []
