@@ -4171,8 +4171,8 @@ def maxabs(a, axis=None):
     """Return slice of a, keeping only those values that are furthest away from 0 along axis"""
     maxa = a.max(axis=axis)
     mina = a.min(axis=axis)
-    p = abs(maxa) > abs(mina) # indices where +ve values win
-    n = abs(mina) > abs(maxa) # indices where -ve values win
+    p = abs(maxa) > abs(mina) # bool, or indices where +ve values win
+    n = abs(mina) > abs(maxa) # bool, or indices where -ve values win
     if axis == None:
         if p: return maxa
         else: return mina
