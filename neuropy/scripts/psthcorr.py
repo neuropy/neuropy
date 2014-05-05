@@ -30,6 +30,8 @@ ptc22tr2recs = [ptc22.tr2.r28, ptc22.tr2.r33]
 
 celltype2int = {'fast':0, 'slow':1, 'fastasym':2, 'slowasym':3,
                 'simple':4, 'complex':5, 'LGN':6, None: 7}
+typelabels = ['fast', 'slow', 'fast asym', 'slow asym',
+              'simple', 'complex', 'LGN aff', 'unknown']
 
 
 def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=None, plot=True):
@@ -114,9 +116,7 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
     yticks(rhoticks)
     gcfm().window.setWindowTitle(basetitle + '_rho_sep')
     tight_layout(pad=0.3)
-
     return ssrho
-
 
 def psthcorrdiff(rhos, seps, basetitle):
     """Plot difference of a pair of rho matrices (rhos[0] - rhos[1]). seps is the
@@ -186,7 +186,6 @@ def psthcorrdiff(rhos, seps, basetitle):
     gcfm().window.setWindowTitle(basetitle + '_rhod_sep')
     tight_layout(pad=0.3)
 
-
 def get_nids(recs, stranges=None):
     """Return superset (and sets) of active nids of all recordings in recs (all from the same
     track). If ptc15.tr7c, limits itself to just the natexpids"""
@@ -207,7 +206,6 @@ def get_nids(recs, stranges=None):
     ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sections
     return ssnids, recsecnids
 
-
 def get_seps(ssnids, nd):
     """Build flattened array of distances between all unique pairs in ssnids, given neuron
     dict nd"""
@@ -219,6 +217,14 @@ def get_seps(ssnids, nd):
         seps.append(sep)
     seps = np.hstack(seps)
     return seps
+
+def init_listarr(a):
+    """This is dumb, but I can't find a better clear way to init a bunch of
+    independent lists"""
+    flata = a.ravel()
+    for i in range(len(flata)):
+        flata[i] = []
+    return a
 
 '''
 # ptc15.tr7c:
@@ -252,7 +258,7 @@ ssnids, recsecnids = get_nids(ptc22tr1r10s, strangesr10s)
 ssseps = get_seps(ssnids, ptc22.tr1.alln)
 for rec, nids, strange in zip(ptc22tr1r10s, recsecnids, strangesr10s):
     psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
-'''
+
 # ptc22.tr1.r08 + ptc22.tr1.r10 sections:
 plot = False
 sepxmax = 1200
@@ -275,72 +281,113 @@ if plot:
     #psthcorrdiff([ssrhos[0], ssrhos[3]], ssseps, 'A-D')
     #psthcorrdiff([ssrhos[1], ssrhos[3]], ssseps, 'B-D')
     #psthcorrdiff([ssrhos[0], ssrhos[2]], ssseps, 'A-C')
-
 '''
 
-rhotype = np.zeros((8, 8), dtype=object) # init rho cell type matrix of lists
-# this is dumb, but I can't find a better clear way to init a bunch of independent lists:
-for i in range(8):
-    for j in range(8):
-        rhotype[i, j] = []
-nn = len(ssnids)
-nanis = np.isnan(ssrhos) # indices of non-nan values
-ssrhos[nanis] = 0 # replace nans with 0s
-#maxabsssrhos = core.maxabs(ssrhos[[1,2]], axis=0) # choose multiple recording segments here...
-alpha = 0.01
-segmenti = 0
-maxabsssrhos = ssrhos[segmenti] # ... or a single one here
-alln = ptc22.tr1.alln
-for i in range(nn):
-    ni = alln[ssnids[i]] # neuron i
-    si = celltype2int[ni.spiketype]
-    ri = celltype2int[ni.rftype]
-    for j in range(i+1, nn): # use only upper triangle to avoid double counting cell pairs
-        nj = alln[ssnids[j]] # neuron j
-        sj = celltype2int[nj.spiketype]
-        rj = celltype2int[nj.rftype]
-        rho = maxabsssrhos[i, j]
-        if rho == 0:
-            # ignore this cell pair's rho (they were never simultaneously active) so it
-            # doesn't mess up the celltype stats
-            continue
-        rhotype[si, sj].append(rho)
-        rhotype[ri, rj].append(rho)
-        #rhotype[ri, sj].append(rho)
-        #rhotype[si, rj].append(rho)
-rhotypemeans = np.zeros(rhotype.shape)
-rhotypemeans.fill(nan)
-rhotypestds = np.zeros(rhotype.shape)
-rhotypestds.fill(nan)
-rhotypeps = np.zeros(rhotype.shape)
-rhotypeps.fill(nan)
-sigrhotypemeans = np.zeros(rhotype.shape)
-sigrhotypemeans.fill(nan)
-# calculate rho stats for each combination of cell type:
-for i in range(8):
-    for j in range(i, 8): # use only upper triangle to avoid double counting celltype stats
-        if len(rhotype[i, j]) > 0:
-            rhotypemeans[i, j] = np.mean(rhotype[i, j])
-            rhotypestds[i, j] = np.std(rhotype[i, j])
-            t, p = ttest_1samp(rhotype[i, j], 0) # sample mean ttest relative to 0
-            rhotypeps[i, j] = p
-sigis = rhotypeps < alpha # indices of significant deviations of mean from 0
-sigrhotypemeans[sigis] = rhotypemeans[sigis]
-#arrs = [rhotypemeans, rhotypestds, rhotypeps, sigrhotypemeans]
-#titlestrs = ['mean', 'stdev', 'pval', 'sigmean']
-arrs = [sigrhotypemeans]
-titlestrs = ['sigmean']
-for arr, titlestr in zip(arrs, titlestrs):
-    # get symmetrized arr:
-    symarr = nansum([arr, np.triu(arr, k=1).T], axis=0)
-    figure(figsize=(4, 4))
-    imshow(symarr, vmin=0, origin='upper', cmap='jet')
-    typelabels = ['fast', 'slow', 'fast asym', 'slow asym',
-                  'simple', 'complex', 'LGN aff', 'unknown']
-    xticks(np.arange(8), typelabels, rotation=90)
-    yticks(np.arange(8), typelabels)
-    colorbar()
-    gcfm().window.setWindowTitle('%s vs celltype' % titlestr)
-    tight_layout(pad=0.4)
+# generated ssrhos from the specified recs and plot a rho matrix indexed by cell type:
+#trackrecs = [ptc15tr7crecs, ptc22tr1recs, ptc22tr2recs]
+#trackrecs = [ptc15tr7crecs]
+trackrecs = [ptc22tr1recs, ptc22tr2recs]
+tracknames = [ trackrec[0].tr.absname for trackrec in trackrecs ]
+pool = True # pool across all tracks to get a single rhotype matrix?
+alpha = 0.0005
+vmin, vmax = 0, 0.13
+separatetypeplots = True
+ntracks = len(trackrecs)
+rhotype = init_listarr(np.zeros((8, 8), dtype=object)) # init rho cell type matrix of lists
+npairs = 0 # init npairs
+for tracki, recs in enumerate(trackrecs):
+    track = recs[0].tr
+    natexps = False
+    trackname = recs[0].tr.absname
+    if trackname == 'ptc15.tr7c':
+        natexps = True
+    ssnids, recsecnids = get_nids(recs)
+    ssrhos = []
+    for rec in recs:
+        ssrho = psthcorr(rec, nids=None, ssnids=ssnids, natexps=natexps, plot=False)
+        ssrhos.append(ssrho)
+    ssrhos = np.asarray(ssrhos) # convert to 3D array
+    if pool == False:
+        init_listarr(rhotype) # reset between tracks
+        npairs = 0 # reset between tracks
+    nn = len(ssnids)
+    nanis = np.isnan(ssrhos) # indices of non-nan values
+    ssrhos[nanis] = 0 # replace nans with 0s
+    maxabsssrhos = core.maxabs(ssrhos, axis=0)
+    alln = track.alln
+    for i in range(nn):
+        ni = alln[ssnids[i]] # neuron i
+        si = celltype2int[ni.spiketype]
+        ri = celltype2int[ni.rftype]
+        for j in range(i+1, nn): # use only upper triangle to avoid double counting cell pairs
+            nj = alln[ssnids[j]] # neuron j
+            sj = celltype2int[nj.spiketype]
+            rj = celltype2int[nj.rftype]
+            rho = maxabsssrhos[i, j]
+            if rho == 0:
+                # ignore this cell pair's rho (they were never simultaneously active) so it
+                # doesn't mess up the celltype stats
+                continue
+            rhotype[si, sj].append(rho)
+            rhotype[ri, rj].append(rho)
+            # these cross terms should best be left disabled, because they conflate the
+            # correlations between spiketype and rftype:
+            #rhotype[ri, sj].append(rho)
+            #rhotype[si, rj].append(rho)
+            npairs += 1
+    rhotypemeans = np.zeros(rhotype.shape); rhotypemeans.fill(nan)
+    rhotypestds = np.zeros(rhotype.shape); rhotypestds.fill(nan)
+    rhotypeps = np.zeros(rhotype.shape); rhotypeps.fill(nan)
+    rhotypesigmeans = np.zeros(rhotype.shape); rhotypesigmeans.fill(nan)
+    # calculate rho stats for each combination of cell type:
+    for i in range(8):
+        for j in range(i, 8): # use only upper triangle to avoid double counting celltype stats
+            if len(rhotype[i, j]) > 0:
+                rhotypemeans[i, j] = np.mean(rhotype[i, j])
+                rhotypestds[i, j] = np.std(rhotype[i, j])
+                t, p = ttest_1samp(rhotype[i, j], 0) # sample mean ttest relative to 0
+                rhotypeps[i, j] = p
+    sigis = rhotypeps < alpha # indices of significant deviations of mean from 0
+    rhotypesigmeans[sigis] = rhotypemeans[sigis]
+    #arrs = [rhotypemeans, rhotypestds, rhotypeps, rhotypesigmeans]
+    #plottypes = ['mean', 'stdev', 'pval', 'sigmean']
+    arrs = [rhotypesigmeans]
+    plottypes = ['sigmean']
+    if pool:
+        if tracki < ntracks-1:
+            continue # only plot once all tracks have been iterated over
+        trackname = ', '.join(tracknames)
+    for arr, plottype in zip(arrs, plottypes):
+        # get symmetrized arr:
+        symarr = nansum([arr, np.triu(arr, k=1).T], axis=0)
+        thisvmin, thisvmax = nanmin(symarr), nanmax(symarr)
+        vmin = min(vmin, thisvmin) # set to manual vmin at most
+        vmax = max(vmax, thisvmax) # set to manual vmax at least
+        if separatetypeplots:
+            figure(figsize=(8, 3))
+            # plot spiketypes:
+            subplot(121)
+            imshow(symarr[:4, :4], vmin=vmin, vmax=vmax, origin='upper', cmap='jet')
+            xticks(np.arange(4), typelabels[:4], rotation=90)
+            yticks(np.arange(4), typelabels[:4])
+            colorbar(ticks=(vmin, vmax), format='%.2f')
+            # plot rftypes:
+            subplot(122)
+            imshow(symarr[4:, 4:], vmin=vmin, vmax=vmax, origin='upper', cmap='jet')
+            xticks(np.arange(4), typelabels[4:], rotation=90)
+            yticks(np.arange(4), typelabels[4:])
+            colorbar(ticks=(vmin, vmax), format='%.2f')
+            plottype += ' separate'
+        else: # plot spike and rf types in the same matrix
+            figure(figsize=(4, 4))
+            imshow(symarr, vmin=vmin, vmax=vmax, origin='upper', cmap='jet')
+            xticks(np.arange(8), typelabels, rotation=90)
+            yticks(np.arange(8), typelabels)
+            colorbar(ticks=(vmin, vmax), format='%.2f')
+            plottype += ' combined'
+        titlestr = (trackname + ' psthcorrtype ' + plottype +
+                    ' alpha=%.4f, npairs=%d' % (alpha, npairs))
+        gcfm().window.setWindowTitle(titlestr)
+        tight_layout(pad=0.4)
 
 show()
