@@ -192,7 +192,7 @@ def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatety
     only one rho celltype histogram pooled across all trackrecs."""
     ntracks = len(trackrecs)
     tracknames = [ trackrec[0].tr.absname for trackrec in trackrecs ]
-    rhotype = init_listarr(np.zeros((8, 8), dtype=object)) # init rho cell type matrix of lists
+    rhotype = listarr(np.empty((8, 8))) # init rho cell type 2D array of lists
     npairs = 0 # init npairs
     for tracki, recs in enumerate(trackrecs):
         track = recs[0].tr
@@ -207,7 +207,7 @@ def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatety
             ssrhos.append(ssrho)
         ssrhos = np.asarray(ssrhos) # convert to 3D array
         if pool == False:
-            init_listarr(rhotype) # reset between tracks
+            listarr(rhotype) # reset between tracks
             npairs = 0 # reset between tracks
         nn = len(ssnids)
         nanis = np.isnan(ssrhos) # indices of non-nan values
@@ -322,13 +322,7 @@ def get_seps(ssnids, nd):
     seps = np.hstack(seps)
     return seps
 
-def init_listarr(a):
-    """This is dumb, but I can't find a better clear way to init a bunch of
-    independent lists"""
-    flata = a.ravel()
-    for i in range(len(flata)):
-        flata[i] = []
-    return a
+listarr = np.frompyfunc(lambda x: [], 1, 1) # take 1 input array, return 1 list in each entry
 
 '''
 # ptc15.tr7c:
