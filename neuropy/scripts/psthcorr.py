@@ -283,111 +283,116 @@ if plot:
     #psthcorrdiff([ssrhos[0], ssrhos[2]], ssseps, 'A-C')
 '''
 
+def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatetypeplots=True):
+    """Plot mean PSTH correlation (rho) 2D histograms, indexed by spike and RF type. Plot one
+    for each set of recordings in trackrecs (ostensibly, one per track). If pool, plot
+    only one rho celltype histogram pooled across all trackrecs."""
+    ntracks = len(trackrecs)
+    tracknames = [ trackrec[0].tr.absname for trackrec in trackrecs ]
+    rhotype = init_listarr(np.zeros((8, 8), dtype=object)) # init rho cell type matrix of lists
+    npairs = 0 # init npairs
+    for tracki, recs in enumerate(trackrecs):
+        track = recs[0].tr
+        natexps = False
+        trackname = recs[0].tr.absname
+        if trackname == 'ptc15.tr7c':
+            natexps = True
+        ssnids, recsecnids = get_nids(recs)
+        ssrhos = []
+        for rec in recs:
+            ssrho = psthcorr(rec, nids=None, ssnids=ssnids, natexps=natexps, plot=False)
+            ssrhos.append(ssrho)
+        ssrhos = np.asarray(ssrhos) # convert to 3D array
+        if pool == False:
+            init_listarr(rhotype) # reset between tracks
+            npairs = 0 # reset between tracks
+        nn = len(ssnids)
+        nanis = np.isnan(ssrhos) # indices of non-nan values
+        ssrhos[nanis] = 0 # replace nans with 0s
+        maxabsssrhos = core.maxabs(ssrhos, axis=0)
+        alln = track.alln
+        for i in range(nn):
+            ni = alln[ssnids[i]] # neuron i
+            si = celltype2int[ni.spiketype]
+            ri = celltype2int[ni.rftype]
+            for j in range(i+1, nn): # use only upper triangle, don't double count cell pairs
+                nj = alln[ssnids[j]] # neuron j
+                sj = celltype2int[nj.spiketype]
+                rj = celltype2int[nj.rftype]
+                rho = maxabsssrhos[i, j]
+                if rho == 0:
+                    # ignore this cell pair's rho (they were never simultaneously active) so it
+                    # doesn't mess up the celltype stats
+                    continue
+                rhotype[si, sj].append(rho)
+                rhotype[ri, rj].append(rho)
+                # these cross terms should best be left disabled, because they conflate the
+                # correlations between spiketype and rftype:
+                #rhotype[ri, sj].append(rho)
+                #rhotype[si, rj].append(rho)
+                npairs += 1
+        rhotypemeans = np.zeros(rhotype.shape); rhotypemeans.fill(nan)
+        rhotypestds = np.zeros(rhotype.shape); rhotypestds.fill(nan)
+        rhotypeps = np.zeros(rhotype.shape); rhotypeps.fill(nan)
+        rhotypesigmeans = np.zeros(rhotype.shape); rhotypesigmeans.fill(nan)
+        # calculate rho stats for each combination of cell type:
+        for i in range(8):
+            for j in range(i, 8): # use only upper triangle, don't double count celltype stats
+                if len(rhotype[i, j]) > 0:
+                    rhotypemeans[i, j] = np.mean(rhotype[i, j])
+                    rhotypestds[i, j] = np.std(rhotype[i, j])
+                    # 2-sided sample mean ttest relative to 0:
+                    t, p = ttest_1samp(rhotype[i, j], 0)
+                    rhotypeps[i, j] = p
+        sigis = rhotypeps < alpha # indices of significant deviations of mean from 0
+        rhotypesigmeans[sigis] = rhotypemeans[sigis]
+        #arrs = [rhotypemeans, rhotypestds, rhotypeps, rhotypesigmeans]
+        #plottypes = ['mean', 'stdev', 'pval', 'sigmean']
+        arrs = [rhotypesigmeans]
+        plottypes = ['sigmean']
+        if pool:
+            if tracki < ntracks-1:
+                continue # only plot once all tracks have been iterated over
+            trackname = ', '.join(tracknames)
+        for arr, plottype in zip(arrs, plottypes):
+            # get symmetrized arr:
+            symarr = nansum([arr, np.triu(arr, k=1).T], axis=0)
+            thisvmin, thisvmax = nanmin(symarr), nanmax(symarr)
+            vmin = min(vmin, thisvmin) # set to manual vmin at most
+            vmax = max(vmax, thisvmax) # set to manual vmax at least
+            if separatetypeplots:
+                figure(figsize=(8, 3))
+                # plot spiketypes:
+                subplot(121)
+                imshow(symarr[:4, :4], vmin=vmin, vmax=vmax, origin='upper', cmap='jet')
+                xticks(np.arange(4), typelabels[:4], rotation=90)
+                yticks(np.arange(4), typelabels[:4])
+                colorbar(ticks=(vmin, vmax), format='%.2f')
+                # plot rftypes:
+                subplot(122)
+                imshow(symarr[4:, 4:], vmin=vmin, vmax=vmax, origin='upper', cmap='jet')
+                xticks(np.arange(4), typelabels[4:], rotation=90)
+                yticks(np.arange(4), typelabels[4:])
+                colorbar(ticks=(vmin, vmax), format='%.2f')
+                plottype += ' separate'
+            else: # plot spike and rf types in the same matrix
+                figure(figsize=(4, 4))
+                imshow(symarr, vmin=vmin, vmax=vmax, origin='upper', cmap='jet')
+                xticks(np.arange(8), typelabels, rotation=90)
+                yticks(np.arange(8), typelabels)
+                colorbar(ticks=(vmin, vmax), format='%.2f')
+                plottype += ' combined'
+            titlestr = (trackname + ' psthcorrtype ' + plottype +
+                        ' alpha=%.4f, npairs=%d' % (alpha, npairs))
+            gcfm().window.setWindowTitle(titlestr)
+            tight_layout(pad=0.4)
+
 # generated ssrhos from the specified recs and plot a rho matrix indexed by cell type:
 #trackrecs = [ptc15tr7crecs, ptc22tr1recs, ptc22tr2recs]
 #trackrecs = [ptc15tr7crecs]
 trackrecs = [ptc22tr1recs, ptc22tr2recs]
-tracknames = [ trackrec[0].tr.absname for trackrec in trackrecs ]
-pool = True # pool across all tracks to get a single rhotype matrix?
-alpha = 0.0005
-vmin, vmax = 0, 0.13
-separatetypeplots = True
-ntracks = len(trackrecs)
-rhotype = init_listarr(np.zeros((8, 8), dtype=object)) # init rho cell type matrix of lists
-npairs = 0 # init npairs
-for tracki, recs in enumerate(trackrecs):
-    track = recs[0].tr
-    natexps = False
-    trackname = recs[0].tr.absname
-    if trackname == 'ptc15.tr7c':
-        natexps = True
-    ssnids, recsecnids = get_nids(recs)
-    ssrhos = []
-    for rec in recs:
-        ssrho = psthcorr(rec, nids=None, ssnids=ssnids, natexps=natexps, plot=False)
-        ssrhos.append(ssrho)
-    ssrhos = np.asarray(ssrhos) # convert to 3D array
-    if pool == False:
-        init_listarr(rhotype) # reset between tracks
-        npairs = 0 # reset between tracks
-    nn = len(ssnids)
-    nanis = np.isnan(ssrhos) # indices of non-nan values
-    ssrhos[nanis] = 0 # replace nans with 0s
-    maxabsssrhos = core.maxabs(ssrhos, axis=0)
-    alln = track.alln
-    for i in range(nn):
-        ni = alln[ssnids[i]] # neuron i
-        si = celltype2int[ni.spiketype]
-        ri = celltype2int[ni.rftype]
-        for j in range(i+1, nn): # use only upper triangle to avoid double counting cell pairs
-            nj = alln[ssnids[j]] # neuron j
-            sj = celltype2int[nj.spiketype]
-            rj = celltype2int[nj.rftype]
-            rho = maxabsssrhos[i, j]
-            if rho == 0:
-                # ignore this cell pair's rho (they were never simultaneously active) so it
-                # doesn't mess up the celltype stats
-                continue
-            rhotype[si, sj].append(rho)
-            rhotype[ri, rj].append(rho)
-            # these cross terms should best be left disabled, because they conflate the
-            # correlations between spiketype and rftype:
-            #rhotype[ri, sj].append(rho)
-            #rhotype[si, rj].append(rho)
-            npairs += 1
-    rhotypemeans = np.zeros(rhotype.shape); rhotypemeans.fill(nan)
-    rhotypestds = np.zeros(rhotype.shape); rhotypestds.fill(nan)
-    rhotypeps = np.zeros(rhotype.shape); rhotypeps.fill(nan)
-    rhotypesigmeans = np.zeros(rhotype.shape); rhotypesigmeans.fill(nan)
-    # calculate rho stats for each combination of cell type:
-    for i in range(8):
-        for j in range(i, 8): # use only upper triangle to avoid double counting celltype stats
-            if len(rhotype[i, j]) > 0:
-                rhotypemeans[i, j] = np.mean(rhotype[i, j])
-                rhotypestds[i, j] = np.std(rhotype[i, j])
-                t, p = ttest_1samp(rhotype[i, j], 0) # sample mean ttest relative to 0
-                rhotypeps[i, j] = p
-    sigis = rhotypeps < alpha # indices of significant deviations of mean from 0
-    rhotypesigmeans[sigis] = rhotypemeans[sigis]
-    #arrs = [rhotypemeans, rhotypestds, rhotypeps, rhotypesigmeans]
-    #plottypes = ['mean', 'stdev', 'pval', 'sigmean']
-    arrs = [rhotypesigmeans]
-    plottypes = ['sigmean']
-    if pool:
-        if tracki < ntracks-1:
-            continue # only plot once all tracks have been iterated over
-        trackname = ', '.join(tracknames)
-    for arr, plottype in zip(arrs, plottypes):
-        # get symmetrized arr:
-        symarr = nansum([arr, np.triu(arr, k=1).T], axis=0)
-        thisvmin, thisvmax = nanmin(symarr), nanmax(symarr)
-        vmin = min(vmin, thisvmin) # set to manual vmin at most
-        vmax = max(vmax, thisvmax) # set to manual vmax at least
-        if separatetypeplots:
-            figure(figsize=(8, 3))
-            # plot spiketypes:
-            subplot(121)
-            imshow(symarr[:4, :4], vmin=vmin, vmax=vmax, origin='upper', cmap='jet')
-            xticks(np.arange(4), typelabels[:4], rotation=90)
-            yticks(np.arange(4), typelabels[:4])
-            colorbar(ticks=(vmin, vmax), format='%.2f')
-            # plot rftypes:
-            subplot(122)
-            imshow(symarr[4:, 4:], vmin=vmin, vmax=vmax, origin='upper', cmap='jet')
-            xticks(np.arange(4), typelabels[4:], rotation=90)
-            yticks(np.arange(4), typelabels[4:])
-            colorbar(ticks=(vmin, vmax), format='%.2f')
-            plottype += ' separate'
-        else: # plot spike and rf types in the same matrix
-            figure(figsize=(4, 4))
-            imshow(symarr, vmin=vmin, vmax=vmax, origin='upper', cmap='jet')
-            xticks(np.arange(8), typelabels, rotation=90)
-            yticks(np.arange(8), typelabels)
-            colorbar(ticks=(vmin, vmax), format='%.2f')
-            plottype += ' combined'
-        titlestr = (trackname + ' psthcorrtype ' + plottype +
-                    ' alpha=%.4f, npairs=%d' % (alpha, npairs))
-        gcfm().window.setWindowTitle(titlestr)
-        tight_layout(pad=0.4)
+psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13, separatetypeplots=True)
+
+
 
 show()
