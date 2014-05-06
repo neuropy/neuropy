@@ -186,103 +186,6 @@ def psthcorrdiff(rhos, seps, basetitle):
     gcfm().window.setWindowTitle(basetitle + '_rhod_sep')
     tight_layout(pad=0.3)
 
-def get_nids(recs, stranges=None):
-    """Return superset (and sets) of active nids of all recordings in recs (all from the same
-    track). If ptc15.tr7c, limits itself to just the natexpids"""
-    recsecnids = [] # holds arrays of active nids of each recording section
-    track = recs[0].tr
-    # make sure they're all from the same track:
-    for rec in recs:
-        assert rec.tr == track
-    if stranges == None:
-        stranges = [None]*len(recs)
-    # collect active nids for each recording section
-    for rec, strange in zip(recs, stranges):
-        if strange == None:
-            tranges = None
-        else:
-            tranges = [np.asarray(strange)]
-        recsecnids.append(rec.get_nids(tranges=tranges))
-    ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sections
-    return ssnids, recsecnids
-
-def get_seps(ssnids, nd):
-    """Build flattened array of distances between all unique pairs in ssnids, given neuron
-    dict nd"""
-    nnss = len(ssnids)
-    lti = np.tril_indices(nnss, -1) # lower triangle (below diagonal) indices, ie unique pairs
-    seps = []
-    for nidii0, nidii1 in np.asarray(lti).T:
-        sep = dist(nd[ssnids[nidii0]].pos, nd[ssnids[nidii1]].pos)
-        seps.append(sep)
-    seps = np.hstack(seps)
-    return seps
-
-def init_listarr(a):
-    """This is dumb, but I can't find a better clear way to init a bunch of
-    independent lists"""
-    flata = a.ravel()
-    for i in range(len(flata)):
-        flata[i] = []
-    return a
-
-'''
-# ptc15.tr7c:
-sepxmax = 1675
-# get superset of active nids for all natexps of both recs in ptc15tr7crecs:
-stranges = etrangesr74 + etrangesr95b # 8 stranges in total
-recs = [ptc15.tr7c.r74]*4 + [ptc15.tr7c.r95b]*4 # 8 recs corresponding to 8 stranges
-ssnids, recsecnids = get_nids(recs, stranges)
-ssseps = get_seps(ssnids, ptc15.tr7c.alln)
-# separate supersets of active nids for all 4 natexps in each recording:
-ptc15tr7crecsecnids = [np.unique(np.hstack(recsecnids[:4])),
-                       np.unique(np.hstack(recsecnids[4:]))]
-# do psthcorr plots and collect ssrho matrices:
-ssrhos = []
-for rec, nids in zip(ptc15tr7crecs, ptc15tr7crecsecnids):
-    ssrho = psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=True) # in sec
-    ssrhos.append(ssrho)
-# plot differences in superset rho matrices for the two recordings:
-psthcorrdiff(ssrhos, ssseps, 'r74-r95b')
-
-# ptc22.tr1.r08 sections:
-sepxmax = 1200
-ssnids, recsecnids = get_nids(ptc22tr1r08s, strangesr08s)
-ssseps = get_seps(ssnids, ptc22.tr1.alln)
-for rec, nids, strange in zip(ptc22tr1r08s, recsecnids, strangesr08s):
-    psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
-
-# ptc22.tr1.r10 sections:
-sepxmax = 1200
-ssnids, recsecnids = get_nids(ptc22tr1r10s, strangesr10s)
-ssseps = get_seps(ssnids, ptc22.tr1.alln)
-for rec, nids, strange in zip(ptc22tr1r10s, recsecnids, strangesr10s):
-    psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
-
-# ptc22.tr1.r08 + ptc22.tr1.r10 sections:
-plot = False
-sepxmax = 1200
-ptc22tr1s = ptc22tr1r08s+ptc22tr1r10s
-stranges = strangesr08s+strangesr10s
-ssnids, recsecnids = get_nids(ptc22tr1s, stranges)
-ssseps = get_seps(ssnids, ptc22.tr1.alln)
-# do psthcorr plots and collect ssrho matrices:
-ssrhos = []
-for rec, nids, strange in zip(ptc22tr1s, recsecnids, stranges):
-    ssrho = psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False,
-                     strange=strange, plot=plot)
-    ssrhos.append(ssrho)
-ssrhos = np.asarray(ssrhos) # convert to 3D array
-if plot:
-    # plot differences in superset rho matrices for various pairs of recording sections:
-    psthcorrdiff([ssrhos[0], ssrhos[1]], ssseps, 'A-B')
-    psthcorrdiff([ssrhos[1], ssrhos[2]], ssseps, 'B-C')
-    psthcorrdiff([ssrhos[2], ssrhos[3]], ssseps, 'C-D')
-    #psthcorrdiff([ssrhos[0], ssrhos[3]], ssseps, 'A-D')
-    #psthcorrdiff([ssrhos[1], ssrhos[3]], ssseps, 'B-D')
-    #psthcorrdiff([ssrhos[0], ssrhos[2]], ssseps, 'A-C')
-'''
-
 def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatetypeplots=True):
     """Plot mean PSTH correlation (rho) 2D histograms, indexed by spike and RF type. Plot one
     for each set of recordings in trackrecs (ostensibly, one per track). If pool, plot
@@ -387,12 +290,108 @@ def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatety
             gcfm().window.setWindowTitle(titlestr)
             tight_layout(pad=0.4)
 
-# generated ssrhos from the specified recs and plot a rho matrix indexed by cell type:
+def get_nids(recs, stranges=None):
+    """Return superset (and sets) of active nids of all recordings in recs (all from the same
+    track). If ptc15.tr7c, limits itself to just the natexpids"""
+    recsecnids = [] # holds arrays of active nids of each recording section
+    track = recs[0].tr
+    # make sure they're all from the same track:
+    for rec in recs:
+        assert rec.tr == track
+    if stranges == None:
+        stranges = [None]*len(recs)
+    # collect active nids for each recording section
+    for rec, strange in zip(recs, stranges):
+        if strange == None:
+            tranges = None
+        else:
+            tranges = [np.asarray(strange)]
+        recsecnids.append(rec.get_nids(tranges=tranges))
+    ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sections
+    return ssnids, recsecnids
+
+def get_seps(ssnids, nd):
+    """Build flattened array of distances between all unique pairs in ssnids, given neuron
+    dict nd"""
+    nnss = len(ssnids)
+    lti = np.tril_indices(nnss, -1) # lower triangle (below diagonal) indices, ie unique pairs
+    seps = []
+    for nidii0, nidii1 in np.asarray(lti).T:
+        sep = dist(nd[ssnids[nidii0]].pos, nd[ssnids[nidii1]].pos)
+        seps.append(sep)
+    seps = np.hstack(seps)
+    return seps
+
+def init_listarr(a):
+    """This is dumb, but I can't find a better clear way to init a bunch of
+    independent lists"""
+    flata = a.ravel()
+    for i in range(len(flata)):
+        flata[i] = []
+    return a
+
+'''
+# ptc15.tr7c:
+sepxmax = 1675
+# get superset of active nids for all natexps of both recs in ptc15tr7crecs:
+stranges = etrangesr74 + etrangesr95b # 8 stranges in total
+recs = [ptc15.tr7c.r74]*4 + [ptc15.tr7c.r95b]*4 # 8 recs corresponding to 8 stranges
+ssnids, recsecnids = get_nids(recs, stranges)
+ssseps = get_seps(ssnids, ptc15.tr7c.alln)
+# separate supersets of active nids for all 4 natexps in each recording:
+ptc15tr7crecsecnids = [np.unique(np.hstack(recsecnids[:4])),
+                       np.unique(np.hstack(recsecnids[4:]))]
+# do psthcorr plots and collect ssrho matrices:
+ssrhos = []
+for rec, nids in zip(ptc15tr7crecs, ptc15tr7crecsecnids):
+    ssrho = psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=True) # in sec
+    ssrhos.append(ssrho)
+# plot differences in superset rho matrices for the two recordings:
+psthcorrdiff(ssrhos, ssseps, 'r74-r95b')
+
+# ptc22.tr1.r08 sections:
+sepxmax = 1200
+ssnids, recsecnids = get_nids(ptc22tr1r08s, strangesr08s)
+ssseps = get_seps(ssnids, ptc22.tr1.alln)
+for rec, nids, strange in zip(ptc22tr1r08s, recsecnids, strangesr08s):
+    psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
+
+# ptc22.tr1.r10 sections:
+sepxmax = 1200
+ssnids, recsecnids = get_nids(ptc22tr1r10s, strangesr10s)
+ssseps = get_seps(ssnids, ptc22.tr1.alln)
+for rec, nids, strange in zip(ptc22tr1r10s, recsecnids, strangesr10s):
+    psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
+
+# ptc22.tr1.r08 + ptc22.tr1.r10 sections:
+plot = False
+sepxmax = 1200
+ptc22tr1s = ptc22tr1r08s+ptc22tr1r10s
+stranges = strangesr08s+strangesr10s
+ssnids, recsecnids = get_nids(ptc22tr1s, stranges)
+ssseps = get_seps(ssnids, ptc22.tr1.alln)
+# do psthcorr plots and collect ssrho matrices:
+ssrhos = []
+for rec, nids, strange in zip(ptc22tr1s, recsecnids, stranges):
+    ssrho = psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False,
+                     strange=strange, plot=plot)
+    ssrhos.append(ssrho)
+ssrhos = np.asarray(ssrhos) # convert to 3D array
+if plot:
+    # plot differences in superset rho matrices for various pairs of recording sections:
+    psthcorrdiff([ssrhos[0], ssrhos[1]], ssseps, 'A-B')
+    psthcorrdiff([ssrhos[1], ssrhos[2]], ssseps, 'B-C')
+    psthcorrdiff([ssrhos[2], ssrhos[3]], ssseps, 'C-D')
+    #psthcorrdiff([ssrhos[0], ssrhos[3]], ssseps, 'A-D')
+    #psthcorrdiff([ssrhos[1], ssrhos[3]], ssseps, 'B-D')
+    #psthcorrdiff([ssrhos[0], ssrhos[2]], ssseps, 'A-C')
+'''
+
+# given specified trackrecs, plot a PSTH mean corr matrix indexed by cell type:
 #trackrecs = [ptc15tr7crecs, ptc22tr1recs, ptc22tr2recs]
 #trackrecs = [ptc15tr7crecs]
 trackrecs = [ptc22tr1recs, ptc22tr2recs]
 psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13, separatetypeplots=True)
-
 
 
 show()
