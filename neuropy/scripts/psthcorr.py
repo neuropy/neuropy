@@ -4,7 +4,7 @@ within neuropy using `run -i scripts/psthcorr.py`"""
 from __future__ import division
 import pylab as pl
 import core
-from scipy.stats import ttest_1samp, ttest_ind
+from scipy.stats import ttest_1samp, ttest_ind, ks_2samp
 
 
 figsize = (3, 3)
@@ -214,7 +214,7 @@ def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatety
         nn = len(ssnids)
         nanis = np.isnan(ssrhos) # indices of non-nan values
         ssrhos[nanis] = 0 # replace nans with 0s
-        maxabsssrhos = core.maxabs(ssrhos, axis=0)
+        maxabsssrhos = core.maxabs(ssrhos, axis=0) # keep only the max rho of each cell pair
         alln = track.alln
         for i in range(nn):
             ni = alln[ssnids[i]] # neuron i
@@ -298,11 +298,15 @@ def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatety
         rhotype[insigis] = listarr(rhotype[insigis]) # set insig entries to empty lists
         return rhotype # only significant entires aren't empty
 
-def psthcorrtypestats(rhotype, sigiss=None, alpha=0.01):
-    """Run some T-tests on rhotype matrix. First, test if suspected significantly high entries
-    of spike types and RF types (sigiss) in rhotype array do indeed have significantly
-    different means from all the other entries pooled together. Also, test each entry against
-    each other entry for significant differences in mean."""
+def psthcorrtypestats(rhotype, sigiss=None, test=ttest_ind, alpha=0.01):
+    """Run some statistical tests on rhotype matrix. First, test if suspected significantly
+    high entries of spike types and RF types (sigiss) in rhotype array do indeed have
+    significantly different means from all the other entries pooled together. Also, test each
+    entry against each other entry for significant differences in mean. Test can be ttest_ind
+    or ks_2samp (or probably many others). Best is probably ttest_ind, because we're
+    interested in testing whether differences in means are significant. KS tests if overall
+    differences in distributions are significant. T-test seems to return more stringent p
+    values, and therefore seems to be the more conservative choice in this case."""
     rhosptype = rhotype[:4, :4] # spike type, top left part of upper triangle
     rhorftype = rhotype[4:, 4:] # RF type, right bottom part of upper triangle
     rhosubtypes = [rhosptype, rhorftype]
@@ -327,7 +331,7 @@ def psthcorrtypestats(rhotype, sigiss=None, alpha=0.01):
             for j in range(i, 4): # iterate over upper triangle of sigis
                 if sigis[i, j]: # suspected significantly high entry
                     sig = rhosubtype[i, j]
-                    t, p = ttest_ind(sig, insig)
+                    t, p = test(sig, insig)
                     ti, tj = typelabels[i], typelabels[j]
                     if p < alpha:
                         result = 'significantly different'
@@ -348,7 +352,7 @@ def psthcorrtypestats(rhotype, sigiss=None, alpha=0.01):
                         b = rhosubtype[bi, bj]
                         if len(b) == 0: continue # skip empty entries
                         tbi, tbj = typelabels[bi], typelabels[bj]
-                        t, p = ttest_ind(a, b)
+                        t, p = test(a, b)
                         if p < alpha:
                             result = 'significantly different'
                         else:
@@ -453,7 +457,7 @@ rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
                        separatetypeplots=True)
 spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
 print('\nptc15.tr7c')
-psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], alpha=0.01)
+psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01)
 
 # run psthcorrtype and psthcorrtypestats on ptc22:
 trackrecs = [ptc22tr1recs, ptc22tr2recs]
@@ -463,7 +467,7 @@ spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
 spsigis[0, 0] = True
 rfsigis[1, 1] = True; #rfsigis[0, 2] = True
 print('\nptc22')
-psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], alpha=0.01)
+psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01)
 
 # run psthcorrtype and psthcorrtypestats on all tracks:
 trackrecs = [ptc15tr7crecs, ptc22tr1recs, ptc22tr2recs]
@@ -471,6 +475,6 @@ rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
                        separatetypeplots=True)
 spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
 print('\nall tracks pooled')
-psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], alpha=0.01)
+psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01)
 
 show()
