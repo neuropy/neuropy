@@ -184,7 +184,7 @@ class NeuropyWindow(QtGui.QMainWindow):
         text = """
         <h2>neuropy %s</h2>
         <p>A tool for neuronal spike data analysis</p>
-        <p>Copyright &copy; 2006-2013 Martin Spacek<br>
+        <p>Copyright &copy; 2006-2014 Martin Spacek<br>
            University of British Columbia</p>
         <p>Python %s, Qt %s, PyQt %s<br>
         %s</p>""" % (__version__, platform.python_version(),
