@@ -32,7 +32,8 @@ celltype2int = {'fast':0, 'slow':1, 'fastasym':2, 'slowasym':3,
                 'simple':4, 'complex':5, 'LGN':6, None: 7}
 typelabels = ['fast', 'slow', 'fast asym', 'slow asym',
               'simple', 'complex', 'LGN aff', 'unknown']
-
+spiketypelabels = typelabels[:4]
+rftypelabels = typelabels[4:]
 
 def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=None, plot=True):
     if nids == None:
@@ -188,8 +189,9 @@ def psthcorrdiff(rhos, seps, basetitle):
 
 def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatetypeplots=True):
     """Plot mean PSTH correlation (rho) 2D histograms, indexed by spike and RF type. Plot one
-    for each set of recordings in trackrecs (ostensibly, one per track). If pool, plot
-    only one rho celltype histogram pooled across all trackrecs."""
+    for each set of recordings in trackrecs (ostensibly, one per track). If pool, plot only
+    one rho celltype histogram pooled across all trackrecs. If pool, return rhotype matrix
+    filled only with those distributions whose mean is significantly different from 0."""
     ntracks = len(trackrecs)
     tracknames = [ trackrec[0].tr.absname for trackrec in trackrecs ]
     rhotype = listarr(np.empty((8, 8))) # init rho cell type 2D array of lists
@@ -227,6 +229,7 @@ def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatety
                     # ignore this cell pair's rho (they were never simultaneously active) so it
                     # doesn't mess up the celltype stats
                     continue
+                # fill in the upper triangle of rhotype matrix:
                 rhotype[si, sj].append(rho)
                 rhotype[ri, rj].append(rho)
                 # these cross terms should best be left disabled, because they conflate the
@@ -258,7 +261,8 @@ def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatety
                 continue # only plot once all tracks have been iterated over
             trackname = ', '.join(tracknames)
         for arr, plottype in zip(arrs, plottypes):
-            # get symmetrized arr:
+            # get symmetric arr by copying upper triangle, transposing to get lower triangle,
+            # and adding to arr:
             symarr = nansum([arr, np.triu(arr, k=1).T], axis=0)
             thisvmin, thisvmax = nanmin(symarr), nanmax(symarr)
             vmin = min(vmin, thisvmin) # set to manual vmin at most
@@ -268,14 +272,14 @@ def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatety
                 # plot spiketypes:
                 subplot(121)
                 imshow(symarr[:4, :4], vmin=vmin, vmax=vmax, origin='upper', cmap='jet')
-                xticks(np.arange(4), typelabels[:4], rotation=90)
-                yticks(np.arange(4), typelabels[:4])
+                xticks(np.arange(4), spiketypelabels, rotation=90)
+                yticks(np.arange(4), spiketypelabels)
                 colorbar(ticks=(vmin, vmax), format='%.2f')
                 # plot rftypes:
                 subplot(122)
                 imshow(symarr[4:, 4:], vmin=vmin, vmax=vmax, origin='upper', cmap='jet')
-                xticks(np.arange(4), typelabels[4:], rotation=90)
-                yticks(np.arange(4), typelabels[4:])
+                xticks(np.arange(4), rftypelabels, rotation=90)
+                yticks(np.arange(4), rftypelabels)
                 colorbar(ticks=(vmin, vmax), format='%.2f')
                 plottype += ' separate'
             else: # plot spike and rf types in the same matrix
@@ -289,6 +293,10 @@ def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatety
                         ' alpha=%.4f, npairs=%d' % (alpha, npairs))
             gcfm().window.setWindowTitle(titlestr)
             tight_layout(pad=0.4)
+    if pool: # only return rhotype if pooling across all tracks
+        insigis = np.logical_not(sigis)
+        rhotype[insigis] = listarr(rhotype[insigis]) # set insig entries to empty lists
+        return rhotype # only significant entires aren't empty
 
 def get_nids(recs, stranges=None):
     """Return superset (and sets) of active nids of all recordings in recs (all from the same
