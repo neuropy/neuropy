@@ -4,7 +4,7 @@ within neuropy using `run -i scripts/psthcorr.py`"""
 from __future__ import division
 import pylab as pl
 import core
-from scipy.stats import ttest_1samp
+from scipy.stats import ttest_1samp, ttest_ind
 
 
 figsize = (3, 3)
@@ -387,13 +387,53 @@ if plot:
     #psthcorrdiff([ssrhos[0], ssrhos[3]], ssseps, 'A-D')
     #psthcorrdiff([ssrhos[1], ssrhos[3]], ssseps, 'B-D')
     #psthcorrdiff([ssrhos[0], ssrhos[2]], ssseps, 'A-C')
-'''
 
+'''
 # given specified trackrecs, plot a PSTH mean corr matrix indexed by cell type:
 #trackrecs = [ptc15tr7crecs, ptc22tr1recs, ptc22tr2recs]
 #trackrecs = [ptc15tr7crecs]
 trackrecs = [ptc22tr1recs, ptc22tr2recs]
-psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13, separatetypeplots=True)
-
+rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
+                       separatetypeplots=True)
+# test if suspected significantly high entries of spike types and RF types in rhotype array
+# are indeed significantly different from suspected low entries:
+rhosptype = rhotype[:4, :4] # spike type, top left part of upper triangle
+rhorftype = rhotype[4:, 4:] # RF type, right bottom part of upper triangle
+# sigis are bool indices of entries suspected of significantly higher rho distribs than rest
+spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
+spinsigis, rfinsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
+spsigis[0, 0] = True
+spinsigis = np.logical_not(spsigis)
+#spinsigis[0, 1:3] = True; spinsigis[1, 1:] = True;
+rfsigis[1, 1] = True; #rfsigis[0, 2] = True
+rfinsigis = np.logical_not(rfsigis)
+#rfinsigis[0, :2] = True; rfinsigis[0, 3] = True; rfinsigis[1, 2:] = True;
+typelabelss = [spiketypelabels, rftypelabels]
+rhosubtypes = [rhosptype, rhorftype]
+sigiss = [spsigis, rfsigis]
+insigiss = [spinsigis, rfinsigis]
+for typelabels, rhosubtype, sigis, insigis in zip(typelabelss, rhosubtypes, sigiss, insigiss):
+    # collect distributions of suspected insignificantly low entries in rhotype,
+    # to later compare to the suspected significantly high entries.
+    insig = []
+    for i in range(4):
+        for j in range(i, 4): # iterate over upper triangle of insigis
+            if insigis[i, j]: # suspected insignificantly low entry
+                # some entires in rhosubtype may be empty due to T-test in psthcorrtype():
+                insig.append(rhosubtype[i, j])
+    insig = np.hstack(insig)
+    # test each suspected significantly high entry against insig distrib
+    alpha = 0.05
+    for i in range(4):
+        for j in range(i, 4): # iterate over upper triangle of sigis
+            if sigis[i, j]: # suspected significantly high entry
+                sig = rhosubtype[i, j]
+                t, p = ttest_ind(sig, insig)
+                ti, tj = typelabels[i], typelabels[j]
+                if p < alpha:
+                    result = 'significantly different'
+                else:
+                    result = 'NOT significantly different'
+                print('%s-%s %s: p=%e' % (ti, tj, result, p))
 
 show()
