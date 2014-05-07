@@ -458,7 +458,27 @@ rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
 spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
 print('\nptc15.tr7c')
 psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01)
+'''
+# run psthcorrtype and psthcorrtypestats on ptc22.tr1:
+trackrecs = [ptc22tr1recs]
+rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
+                       separatetypeplots=True)
+spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
+spsigis[0, 0] = True
+rfsigis[1, 1] = True; #rfsigis[0, 2] = True
+print('\nptc22.tr1')
+psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01)
 
+# run psthcorrtype and psthcorrtypestats on ptc22.tr2:
+trackrecs = [ptc22tr2recs]
+rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
+                       separatetypeplots=True)
+spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
+spsigis[0, 0] = True
+rfsigis[1, 1] = True; #rfsigis[0, 2] = True
+print('\nptc22.tr2')
+psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01)
+'''
 # run psthcorrtype and psthcorrtypestats on ptc22:
 trackrecs = [ptc22tr1recs, ptc22tr2recs]
 rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
