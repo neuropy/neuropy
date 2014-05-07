@@ -298,6 +298,63 @@ def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatety
         rhotype[insigis] = listarr(rhotype[insigis]) # set insig entries to empty lists
         return rhotype # only significant entires aren't empty
 
+def psthcorrtypestats(rhotype, sigiss=None, alpha=0.01):
+    """Run some T-tests on rhotype matrix. First, test if suspected significantly high entries
+    of spike types and RF types (sigiss) in rhotype array do indeed have significantly
+    different means from all the other entries pooled together. Also, test each entry against
+    each other entry for significant differences in mean."""
+    rhosptype = rhotype[:4, :4] # spike type, top left part of upper triangle
+    rhorftype = rhotype[4:, 4:] # RF type, right bottom part of upper triangle
+    rhosubtypes = [rhosptype, rhorftype]
+    typelabelss = [spiketypelabels, rftypelabels]
+    spsigis, rfsigis = sigiss # unpack indices of suspected significant entries
+    spinsigis, rfinsigis = np.logical_not(spsigis), np.logical_not(rfsigis)
+    insigiss = [spinsigis, rfinsigis]
+    print('alpha=%s' % alpha)
+    for typelabels, rhosubtype, sigis, insigis in zip(typelabelss, rhosubtypes,
+                                                      sigiss, insigiss):
+        # collect distributions of suspected insignificantly low entries in rhotype,
+        # to then compare to the suspected significantly high entries.
+        insig = []
+        for i in range(4):
+            for j in range(i, 4): # iterate over upper triangle of insigis
+                if insigis[i, j]: # suspected insignificantly low entry
+                    # some entires in rhosubtype may be empty due to T-test in psthcorrtype():
+                    insig.append(rhosubtype[i, j])
+        insig = np.hstack(insig)
+        # test each suspected significantly high entry against insig distrib
+        for i in range(4):
+            for j in range(i, 4): # iterate over upper triangle of sigis
+                if sigis[i, j]: # suspected significantly high entry
+                    sig = rhosubtype[i, j]
+                    t, p = ttest_ind(sig, insig)
+                    ti, tj = typelabels[i], typelabels[j]
+                    if p < alpha:
+                        result = 'significantly different'
+                    else:
+                        result = 'NOT significantly different'
+                    print('%s-%s %s from pooled others: p=%s' % (ti, tj, result, p))
+    # for more statistical power, instead of pooling over all insigis, compare each
+    # entry to every other entry:
+    for typelabels, rhosubtype in zip(typelabelss, rhosubtypes):
+        print('--')
+        for ai in range(4):
+            for aj in range(ai, 4): # iterate over upper triangle of rhosubtype
+                a = rhosubtype[ai, aj]
+                if len(a) == 0: continue # skip empty entries
+                tai, taj = typelabels[ai], typelabels[aj]
+                for bi in range(4):
+                    for bj in range(bi, 4): # iterate over upper triangle of rhosubtype
+                        b = rhosubtype[bi, bj]
+                        if len(b) == 0: continue # skip empty entries
+                        tbi, tbj = typelabels[bi], typelabels[bj]
+                        t, p = ttest_ind(a, b)
+                        if p < alpha:
+                            result = 'significantly different'
+                        else:
+                            result = 'NOT significantly different'
+                        print('%s-%s %s from %s-%s: p=%s' % (tai, taj, result, tbi, tbj, p))
+
 def get_nids(recs, stranges=None):
     """Return superset (and sets) of active nids of all recordings in recs (all from the same
     track). If ptc15.tr7c, limits itself to just the natexpids"""
@@ -389,71 +446,30 @@ if plot:
     #psthcorrdiff([ssrhos[0], ssrhos[2]], ssseps, 'A-C')
 
 '''
-# given specified trackrecs, plot a PSTH mean corr matrix indexed by cell type:
-#trackrecs = [ptc15tr7crecs, ptc22tr1recs, ptc22tr2recs]
-#trackrecs = [ptc15tr7crecs]
+# run psthcorrtype and psthcorrtypestats on ptc15.tr7c:
+trackrecs = [ptc15tr7crecs]
+rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
+                       separatetypeplots=True)
+spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
+print('\nptc15.tr7c')
+psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], alpha=0.01)
+
+# run psthcorrtype and psthcorrtypestats on ptc22:
 trackrecs = [ptc22tr1recs, ptc22tr2recs]
 rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
                        separatetypeplots=True)
-# test if suspected significantly high entries of spike types and RF types in rhotype array
-# are indeed significantly different from suspected low entries:
-rhosptype = rhotype[:4, :4] # spike type, top left part of upper triangle
-rhorftype = rhotype[4:, 4:] # RF type, right bottom part of upper triangle
-# sigis are bool indices of entries suspected of significantly higher rho distribs than rest
 spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
-spinsigis, rfinsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
 spsigis[0, 0] = True
-spinsigis = np.logical_not(spsigis)
-#spinsigis[0, 1:3] = True; spinsigis[1, 1:] = True;
 rfsigis[1, 1] = True; #rfsigis[0, 2] = True
-rfinsigis = np.logical_not(rfsigis)
-#rfinsigis[0, :2] = True; rfinsigis[0, 3] = True; rfinsigis[1, 2:] = True;
-typelabelss = [spiketypelabels, rftypelabels]
-rhosubtypes = [rhosptype, rhorftype]
-sigiss = [spsigis, rfsigis]
-insigiss = [spinsigis, rfinsigis]
-for typelabels, rhosubtype, sigis, insigis in zip(typelabelss, rhosubtypes, sigiss, insigiss):
-    # collect distributions of suspected insignificantly low entries in rhotype,
-    # to later compare to the suspected significantly high entries.
-    insig = []
-    for i in range(4):
-        for j in range(i, 4): # iterate over upper triangle of insigis
-            if insigis[i, j]: # suspected insignificantly low entry
-                # some entires in rhosubtype may be empty due to T-test in psthcorrtype():
-                insig.append(rhosubtype[i, j])
-    insig = np.hstack(insig)
-    # test each suspected significantly high entry against insig distrib
-    alpha = 0.05
-    for i in range(4):
-        for j in range(i, 4): # iterate over upper triangle of sigis
-            if sigis[i, j]: # suspected significantly high entry
-                sig = rhosubtype[i, j]
-                t, p = ttest_ind(sig, insig)
-                ti, tj = typelabels[i], typelabels[j]
-                if p < alpha:
-                    result = 'significantly different'
-                else:
-                    result = 'NOT significantly different'
-                print('%s-%s %s from pooled others: p=%e' % (ti, tj, result, p))
-# for more statistical power, instead of over insigis, compare each entry to every other entry:
-alpha = 0.05
-for typelabels, rhosubtype in zip(typelabelss, rhosubtypes):
-    print('--')
-    for ai in range(4):
-        for aj in range(ai, 4): # iterate over upper triangle of rhosubtype
-            a = rhosubtype[ai, aj]
-            if len(a) == 0: continue # skip empty entries
-            tai, taj = typelabels[ai], typelabels[aj]
-            for bi in range(4):
-                for bj in range(bi, 4): # iterate over upper triangle of rhosubtype
-                    b = rhosubtype[bi, bj]
-                    if len(b) == 0: continue # skip empty entries
-                    tbi, tbj = typelabels[bi], typelabels[bj]
-                    t, p = ttest_ind(a, b)
-                    if p < alpha:
-                        result = 'significantly different'
-                    else:
-                        result = 'NOT significantly different'
-                    print('%s-%s %s from %s-%s: p=%e' % (tai, taj, result, tbi, tbj, p))
+print('\nptc22')
+psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], alpha=0.01)
+
+# run psthcorrtype and psthcorrtypestats on all tracks:
+trackrecs = [ptc15tr7crecs, ptc22tr1recs, ptc22tr2recs]
+rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
+                       separatetypeplots=True)
+spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
+print('\nall tracks pooled')
+psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], alpha=0.01)
 
 show()
