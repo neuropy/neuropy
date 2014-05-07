@@ -353,7 +353,8 @@ def psthcorrtypestats(rhotype, sigiss=None, alpha=0.01):
                             result = 'significantly different'
                         else:
                             result = 'NOT significantly different'
-                        print('%s-%s %s from %s-%s: p=%s' % (tai, taj, result, tbi, tbj, p))
+                        print('%s-%s %s from %s-%s: p=%s, N=%r'
+                              % (tai, taj, result, tbi, tbj, p, (len(a), len(b))))
 
 def get_nids(recs, stranges=None):
     """Return superset (and sets) of active nids of all recordings in recs (all from the same
