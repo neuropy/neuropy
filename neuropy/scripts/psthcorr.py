@@ -434,6 +434,26 @@ for typelabels, rhosubtype, sigis, insigis in zip(typelabelss, rhosubtypes, sigi
                     result = 'significantly different'
                 else:
                     result = 'NOT significantly different'
-                print('%s-%s %s: p=%e' % (ti, tj, result, p))
+                print('%s-%s %s from pooled others: p=%e' % (ti, tj, result, p))
+# for more statistical power, instead of over insigis, compare each entry to every other entry:
+alpha = 0.05
+for typelabels, rhosubtype in zip(typelabelss, rhosubtypes):
+    print('--')
+    for ai in range(4):
+        for aj in range(ai, 4): # iterate over upper triangle of rhosubtype
+            a = rhosubtype[ai, aj]
+            if len(a) == 0: continue # skip empty entries
+            tai, taj = typelabels[ai], typelabels[aj]
+            for bi in range(4):
+                for bj in range(bi, 4): # iterate over upper triangle of rhosubtype
+                    b = rhosubtype[bi, bj]
+                    if len(b) == 0: continue # skip empty entries
+                    tbi, tbj = typelabels[bi], typelabels[bj]
+                    t, p = ttest_ind(a, b)
+                    if p < alpha:
+                        result = 'significantly different'
+                    else:
+                        result = 'NOT significantly different'
+                    print('%s-%s %s from %s-%s: p=%e' % (tai, taj, result, tbi, tbj, p))
 
 show()
