@@ -432,9 +432,11 @@ class LFP(object):
         """Return full set of timestamps, in sec"""
         return np.arange(self.t0/1e6, self.t1/1e6, self.tres/1e6)
 
-    def plot(self, t0=None, t1=None, chanis=None, gain=1, yunits='um', title=True,
-             figsize=(20, 6.5)):
-        """Plot chanis of LFP data between t0 and t1 in sec"""
+    def plot(self, t0=None, t1=None, chanis=None, gain=1, c='k', alpha=1.0, yunits='um',
+             title=True, xlabel=True, figsize=(20, 6.5)):
+        """Plot chanis of LFP data between t0 and t1 in sec. Unfortunatley, setting an alpha <
+        1 doesn't seem to reveal detail when a line obscures itself, such as when plotting a
+        very long time series"""
         self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
         if t0 == None:
@@ -463,7 +465,7 @@ class LFP(object):
             segments[chanii, :, 1] += ypos # vertical distance below top of probe
         if yunits == 'mm':
             segments[:, :, 1] /= 1000
-        lc = LineCollection(segments, linewidth=1, linestyle='-', colors='k',
+        lc = LineCollection(segments, linewidth=1, linestyle='-', colors=c, alpha=alpha,
                             antialiased=True, visible=True)
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
@@ -473,7 +475,8 @@ class LFP(object):
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
-        a.set_xlabel("time (sec)")
+        if xlabel:
+            a.set_xlabel("time (sec)")
         if yunits == 'um':
             a.set_ylabel("depth ($\mu$m)")
         elif yunits == 'mm':
