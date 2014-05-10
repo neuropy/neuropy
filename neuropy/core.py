@@ -1035,7 +1035,7 @@ class DensePopulationRaster(object):
     """Population spike raster plot, with dense vertical spacing according to neuron depth
     rank, and colour proportional to neuron depth"""
     def __init__(self, trange=None, neurons=None, norder=None, units='sec', r=None,
-                 marker='|', size=None, color=None, title=True, figsize=(20, None)):
+                 marker='|', size=None, color=None, alpha=1.0, title=True, figsize=(20, None)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
         is displayed in time units of units"""
         assert len(trange) == 2
@@ -1087,7 +1087,7 @@ class DensePopulationRaster(object):
             figsize = figsize[0], 1 + nn / 7 # ~1/7th vertical inch per neuron
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
-        a.scatter(t, y, marker=marker, c=c, s=s)
+        a.scatter(t, y, marker=marker, c=c, alpha=alpha, s=s)
         a.set_xlim(trange/tx)
         a.set_ylim(nn, -1) # invert the y axis
         # turn off annoying "+2.41e3" type offset on x axis:
@@ -1118,7 +1118,7 @@ class SpatialPopulationRaster(object):
     """Population spike raster plot, with vertical spacing proportional to neuron depth,
     colour representing neuron id, and point size inversely proportional to spike rate."""
     def __init__(self, trange=None, neurons=None, norder=None, units='sec', r=None,
-                 marker='|', size=None, color=None, title=True, figsize=(20, 6.5)):
+                 marker='|', size=None, color=None, alpha=1.0, title=True, figsize=(20, 6.5)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
         is displayed in time units of units"""
         assert len(trange) == 2
@@ -1170,7 +1170,7 @@ class SpatialPopulationRaster(object):
         ec = 'none'
         if marker == '|':
             ec = c
-        a.scatter(t, y, marker=marker, c=c, edgecolor=ec, s=s)
+        a.scatter(t, y, marker=marker, c=c, edgecolor=ec, alpha=alpha, s=s)
         a.invert_yaxis() # increasingly +ve values down y axis
         a.set_xlim(trange/tx)
         if norder == None: # set y axis limits according to spatial extent of probe
