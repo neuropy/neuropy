@@ -1116,7 +1116,7 @@ class DensePopulationRaster(object):
 
 class SpatialPopulationRaster(object):
     """Population spike raster plot, with vertical spacing proportional to neuron depth,
-    colour representing neuron id, and point size inversely proportional to spike rate."""
+    colour representing neuron id"""
     def __init__(self, trange=None, neurons=None, norder=None, units='sec', r=None,
                  marker='|', size=None, color=None, alpha=1.0, title=True, figsize=(20, 6.5)):
         """neurons is a dict, trange is time range in us to raster plot over. Raster plot
@@ -1145,8 +1145,8 @@ class SpatialPopulationRaster(object):
                 nc = CCWHITERGBDICT1[nid] # for max colour alternation, use DICT0 and nidi
                 c.append(np.tile(nc, nspikes))
                 # use big points for low rate cells, small points for high rate cells:
-                ms = max(min(10000/nspikes, 50), 5)
-                s.append(np.tile(ms, nspikes))
+                #ms = max(min(10000/nspikes, 50), 5)
+                #s.append(np.tile(ms, nspikes))
         t = np.hstack(t)
         # spike time multiplier to use for raster labels:
         tx = {'us': 1, 'ms': 1000, 'sec': 1000000}[units]
@@ -1155,7 +1155,8 @@ class SpatialPopulationRaster(object):
         y = np.hstack(y)
         c = np.hstack(c)
         c.shape = -1, 3
-        s = np.hstack(s)
+        #s = np.hstack(s)
+        s = 50
 
         # manual size or color settings override the automatic values
         if size != None:
