@@ -1085,7 +1085,18 @@ class RecordingRaster(BaseRecording):
         elif neurons == 'all':
             neurons = self.alln # use all neurons
         else: # assume it's a list of nids
-            neurons = { nid:self.alln[nid] for nid in neurons }
+            nids = neurons # rename
+            neurons = {}
+            alln = self.alln
+            for nid in nids:
+                if nid in alln:
+                    neuron = alln[nid]
+                else: # no such neuron for this rec, see if it exists in parent track
+                    trneuron = self.tr.alln[nid]
+                    neuron = DummyNeuron() # create placeholder with no spikes
+                    neuron.record.nid = nid
+                    neuron.record.xpos, neuron.record.ypos = trneuron.pos # for spatial order
+                neurons[nid] = neuron
         if t0 == None:
             t0, t1 = 0, self.trange[1] # use full recording trange, from t=0 acquisition start
         else:
