@@ -550,8 +550,8 @@ class Track(object):
             width = uns['SCWIDTH']
         if tres == None:
             tres = width
-        blankmseqrids = uns['BLANKRIDS'][self.absname] + uns['MSEQRIDS'][self.absname]
-        movdriftrids = uns['MOVRIDS'][self.absname] + uns['DRIFTRIDS'][self.absname]
+        blankmseqrids = uns['BSRIDS'][self.absname] + uns['MSRIDS'][self.absname]
+        movdriftrids = uns['NSRIDS'][self.absname] + uns['DBRIDS'][self.absname]
 
         blankmseqcorrs = []
         movdriftcorrs = []
@@ -601,10 +601,10 @@ class Track(object):
             width = uns['LFPSIWIDTH']
         if tres == None:
             tres = width
-        bsrids = uns['BLANKRIDS'][self.absname]
-        msrids = uns['MSEQRIDS'][self.absname]
-        mvrids = uns['MOVRIDS'][self.absname]
-        dbrids = uns['DRIFTRIDS'][self.absname]
+        bsrids = uns['BSRIDS'][self.absname]
+        msrids = uns['MSRIDS'][self.absname]
+        mvrids = uns['NSRIDS'][self.absname]
+        dbrids = uns['DBRIDS'][self.absname]
         rids = sorted(bsrids + msrids + mvrids + dbrids) # do everything in rid order
         print('blankscreen: %r' % [self.r[rid].name for rid in bsrids])
         print('mseq: %r' % [self.r[rid].name for rid in msrids])

@@ -82,41 +82,48 @@ PTTIPLENGTHS = {'uMap54_1a':325, 'uMap54_1b':324, 'uMap54_1c':324,
                 'uMap54_2a':324, 'uMap54_2b':324}
 
 """IDs of blankscreen recordings"""
-BLANKRIDS = {'ptc15.tr7c': ['87'],
-             'ptc22.tr1':  ['07', '09', '11', '21'],
-             'ptc22.tr2':  ['27', '32', '36']}
+BSRIDS = {'ptc15.tr7c': ['87'],
+          'ptc22.tr1':  ['07', '09', '11', '21'],
+          'ptc22.tr2':  ['27', '32', '36']}
 
 """IDs of msequence recordings"""
-MSEQRIDS = {'ptc15.tr7c': ['70', '81', '91', '92', '94'],
-            'ptc22.tr1':  ['04', '17'],
-            'ptc22.tr2':  ['26', '34']}
+MSRIDS = {'ptc15.tr7c': ['70', '81', '91', '92', '94'],
+          'ptc22.tr1':  ['04', '17'],
+          'ptc22.tr2':  ['26', '34']}
 
-"""IDs of movie recordings"""
-MOVRIDS = {'ptc15.tr7c': ['76', '96'],
-           'ptc22.tr1':  ['05', '06', '08', '10', '19', '20'],
-           'ptc22.tr2':  ['28', '33']}
+"""IDs of natural scene movie recordings"""
+NSRIDS = {'ptc15.tr7c': ['76', '96'],
+          'ptc22.tr1':  ['05', '06', '08', '10', '19', '20'],
+          'ptc22.tr2':  ['28', '33']}
 
 """IDs of drift bar recordings"""
-DRIFTRIDS = {'ptc15.tr7c': ['71', '82'],
-             'ptc22.tr1':  ['03', '18'],
-             'ptc22.tr2':  ['25', '31']}
+DBRIDS = {'ptc15.tr7c': ['71', '82'],
+          'ptc22.tr1':  ['03', '18'],
+          'ptc22.tr2':  ['25', '31']}
+
+"""IDs of drift grating recordings"""
+DGRIDS = {'ptc15.tr7c': ['85'],
+          'ptc22.tr1':  ['14']}
 
 """IDs of full field flash recordings"""
-FFFRIDS = {'ptc15.tr7c': ['69', '78', '79', '88', '93'],
-           'ptc22.tr1':  ['01', '02', '12', '16', '22'],
-           'ptc22.tr2':  ['23', '24', '35']}
+FFRIDS = {'ptc15.tr7c': ['69', '78', '79', '88', '93'],
+          'ptc22.tr1':  ['01', '02', '12', '16', '22'],
+          'ptc22.tr2':  ['23', '24', '35']}
 
 """IDs of flash grating recordings"""
 FGRIDS = {'ptc15.tr7c': ['73'],
           'ptc22.tr1':  ['13'],
           'ptc22.tr2':  ['30']}
 
-"""Per-track list of relevant recordings, merged from those above"""
-RIDS = mergeuniquedictvals([BLANKRIDS, MSEQRIDS, MOVRIDS, DRIFTRIDS])
-"""Per-track list of blankscreen and msequence recordings"""
-BLANKMSEQRIDS = mergeuniquedictvals([BLANKRIDS, MSEQRIDS])
-"""Per-track list of movie and driftbar recordings"""
-MOVDRIFTRIDS = mergeuniquedictvals([MOVRIDS, DRIFTRIDS])
+"""Per-track list of blankscreen, mseq, natscene, and driftbar recordings"""
+BSMSNSDBRIDS = mergeuniquedictvals([BSRIDS, MSRIDS, NSRIDS, DBRIDS])
+"""Per-track list of blankscreen and mseq recordings"""
+BSMSRIDS = mergeuniquedictvals([BSRIDS, MSRIDS])
+"""Per-track list of mseq, driftbar, and flashed grating recordings"""
+MSDBFGRIDS = mergeuniquedictvals([MSRIDS, DBRIDS, FGRIDS])
+"""Per-track list of natscene and driftbar recordings"""
+NSDBRIDS = mergeuniquedictvals([NSRIDS, DBRIDS])
+
 
 NULLDIN = 65535 # integer value in stimulus .din files used as NULL (stimulus off)
 ALPHA = 0.05 # threshold p value for rejecting null hypothesis

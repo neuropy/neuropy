@@ -4067,7 +4067,7 @@ def parse_source(source):
     from track import Track # do this here to prevent circular import
     uns = get_ipython().user_ns
     if type(source) == Track:
-        rids = uns['RIDS'][source.absname]
+        rids = uns['BSMSNSDBRIDS'][source.absname]
         recs = [ source.r[rid] for rid in rids ]
     elif type(source) == list: # assume it's a list of recordings
         recs = source

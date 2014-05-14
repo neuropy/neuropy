@@ -14,8 +14,8 @@ ms = 1
 ls = '--'
 lw = 2
 
-rectype2rids = {'blankscreen':BLANKRIDS, 'natscene':MOVRIDS, 'driftbar':DRIFTRIDS,
-                'mseq':MSEQRIDS}
+rectype2rids = {'blankscreen':BSRIDS, 'natscene':NSRIDS, 'driftbar':DBRIDS,
+                'driftgrating':DGRIDS, 'mseq':MSRIDS}
 
 # choose desired tracks, need to be loaded ahead of time:
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
