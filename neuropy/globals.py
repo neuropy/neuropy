@@ -105,24 +105,20 @@ DBRIDS = {'ptc15.tr7c': ['71', '82'],
 DGRIDS = {'ptc15.tr7c': ['85'],
           'ptc22.tr1':  ['14']}
 
-"""IDs of full field flash recordings"""
-FFRIDS = {'ptc15.tr7c': ['69', '78', '79', '88', '93'],
-          'ptc22.tr1':  ['01', '02', '12', '16', '22'],
-          'ptc22.tr2':  ['23', '24', '35']}
-
 """IDs of flash grating recordings"""
 FGRIDS = {'ptc15.tr7c': ['73'],
           'ptc22.tr1':  ['13'],
           'ptc22.tr2':  ['30']}
 
+"""IDs of full field flash recordings"""
+FFRIDS = {'ptc15.tr7c': ['69', '78', '79', '88', '93'],
+          'ptc22.tr1':  ['01', '02', '12', '16', '22'],
+          'ptc22.tr2':  ['23', '24', '35']}
+
 """Per-track list of blankscreen, mseq, natscene, and driftbar recordings"""
 BSMSNSDBRIDS = mergeuniquedictvals([BSRIDS, MSRIDS, NSRIDS, DBRIDS])
-"""Per-track list of blankscreen and mseq recordings"""
-BSMSRIDS = mergeuniquedictvals([BSRIDS, MSRIDS])
-"""Per-track list of mseq, driftbar, and flashed grating recordings"""
-MSDBFGRIDS = mergeuniquedictvals([MSRIDS, DBRIDS, FGRIDS])
-"""Per-track list of natscene and driftbar recordings"""
-NSDBRIDS = mergeuniquedictvals([NSRIDS, DBRIDS])
+"""Per-track list of mseq, driftbar, driftgrating, and flashed grating recordings"""
+MSDBDGFGRIDS = mergeuniquedictvals([MSRIDS, DBRIDS, DGRIDS, FGRIDS])
 
 
 NULLDIN = 65535 # integer value in stimulus .din files used as NULL (stimulus off)
