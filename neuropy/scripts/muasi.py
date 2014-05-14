@@ -9,7 +9,7 @@ import scipy
 neurons = 'complex' # None (active), 'all', 'quiet', 'fast', 'slow', 'fastasym', 'slowasym',
                # 'simple', 'complex', 'LGN', 'unknown'
 layers = True
-rectype = 'blankscreen'
+rectype = 'bs'
 kind = 'L/(L+H)'
 axeslabels = False
 ticklabels = False
@@ -20,8 +20,8 @@ ls = '--'
 lw = 2
 alpha = 0.6
 
-rectype2rids = {'blankscreen':BSRIDS, 'natscene':NSRIDS, 'driftbar':DBRIDS,
-                'driftgrating':DGRIDS, 'mseq':MSRIDS}
+rectype2rids = {'bs':BSRIDS, 'ns':NSRIDS, 'db':DBRIDS,
+                'dg':DGRIDS, 'ms':MSRIDS, 'art':MSDBDGFGRIDS}
 
 # choose desired tracks, need to be loaded ahead of time:
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
