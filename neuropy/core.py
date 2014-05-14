@@ -4019,7 +4019,8 @@ def mergeuniquedictvals(dicts):
     for key in keys:
         md[key] = set()
         for d in dicts:
-            md[key].update(d[key])
+            if key in d: # don't require all dicts to have the same set of keys
+                md[key].update(d[key])
         md[key] = sorted(md[key])
     return md
 
