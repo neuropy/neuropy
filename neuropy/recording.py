@@ -261,12 +261,20 @@ class BaseRecording(object):
         be None, 'quiet', 'all', or a dict. `width' and `tres' of time bins are in seconds. If
         `smooth' is True, convolve with a smoothing window of width `width'. If layers is
         False, just plot MUA for all neurons, don't plot layer subsets"""
-        if neurons == None:
-            neurons = self.n # use active neurons
-        elif neurons == 'quiet':
-            neurons = self.qn # use quiet neurons
-        elif neurons == 'all':
-            neurons = self.alln # use all neurons
+        trn = self.tr.alln
+        if neurons == None: # use active neurons
+            neurons = self.n
+        elif neurons == 'quiet': # use quiet neurons
+            neurons = self.qn
+        elif neurons == 'all': # use all neurons
+            neurons = self.alln
+        elif neurons in ['fast', 'slow', 'fastasym', 'slowasym']:
+            # use neurons of specific spike type
+            neurons = { nid:self.n[nid] for nid in self.n if trn[nid].spiketype == neurons }
+        elif neurons in ['simple', 'complex', 'LGN', 'unknown']:
+            # use neurons of specific RF type
+            if neurons == 'unknown': neurons = None # normally, None means active
+            neurons = { nid:self.n[nid] for nid in self.n if trn[nid].rftype == neurons }
         nn = len(neurons)
 
         uns = get_ipython().user_ns
