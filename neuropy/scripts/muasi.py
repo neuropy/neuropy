@@ -20,9 +20,9 @@ pad = 0.3
 ms = 3
 ls = '--'
 lw = 2
-sig2pointalpha = {True:0.5, False:0.2}
-sig2linealpha = {True:1.0, False:0.3}
-alpha = 0.001 # for p threshold
+sig2pointalpha = {True:0.5, False:0.2} # alpha as in transparency
+sig2linealpha = {True:1.0, False:0.3} # controls text transparency as well
+alpha = 0.001 # alpha as in p threshold
 
 rectype2rids = {'bs':BSRIDS, 'ns':NSRIDS, 'db':DBRIDS,
                 'dg':DGRIDS, 'ms':MSRIDS, 'art':MSDBDGFGRIDS}
@@ -51,9 +51,7 @@ for rectype in rectypes:
                 rids = sorted(track.r)
                 recs.append([ track.r[rid] for rid in rids ])
             recs = np.hstack(recs)
-
-        # override recordings if desired:
-        #recs = [ptc22.tr1.r['08'], ptc22.tr1.r['09'], ptc22.tr1.r['10']]
+        # for each recording, calculate MUA and SI for the specified neuron type
         muas, sis = [], []
         for rec in recs:
             mua, si = rec.mua_lfpsi(neurons=neurons, muawidth=30, muatres=10,
