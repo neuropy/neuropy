@@ -15,7 +15,8 @@ layers = True
 kind = 'L/(L+H)'
 axeslabels = False
 ticklabels = False
-figsize = 2.4, 2.4
+figsize = (2.4, 2.4)
+savefigs = False
 pad = 0.3
 ms = 3
 ls = '--'
@@ -52,15 +53,20 @@ for rectype in rectypes:
                 recs.append([ track.r[rid] for rid in rids ])
             recs = np.hstack(recs)
         # for each recording, calculate MUA and SI for the specified neuron type
-        muas, sis = [], []
+        muas, sis, ns = [], [], []
         for rec in recs:
-            mua, si = rec.mua_lfpsi(neurons=neurons, muawidth=30, muatres=10,
-                                    lfpwidth=30, lfptres=10, lfpsiwidth=30, lfpsitres=10,
-                                    plot=False)
+            mua, si, n = rec.mua_lfpsi(neurons=neurons, muawidth=30, muatres=10,
+                                       lfpwidth=30, lfptres=10, lfpsiwidth=30, lfpsitres=10,
+                                       plot=False)
             muas.append(mua)
             sis.append(si)
+            ns.append(n*mua.shape[1]) # ncells that contributed * n MUA timebins, by layer
         mua = np.hstack(muas)
         si = np.hstack(sis)
+        ns = np.vstack(ns) # nrecs x 4
+
+        # calc mean number of cells that contributed to each scatter point, by layer
+        meann = ns.sum(axis=0) / mua.shape[1]
 
         figure(figsize=figsize)
 
@@ -114,19 +120,19 @@ for rectype in rectypes:
 
         # add info text in upper left corner:
         if layers:
-            text(0.01, 0.99, 'super: r=%.2f, p=%.2g' % (r1, p1),
+            text(0.01, 0.99, 'r=%.2f, p=%.1g, N=%.1f' % (r1, p1, meann[1]),
                  color='r', alpha=sig2linealpha[sig[1]],
                  transform=gca().transAxes,
                  horizontalalignment='left', verticalalignment='top')
             #text(0.01, 0.99, 'mid: r=%.2f, p=%.2g' % (r1, p1), color='r',
             #     transform=gca().transAxes,
             #     horizontalalignment='left', verticalalignment='top')
-            text(0.01, 0.91, 'deep: r=%.2f, p=%.2g' % (r3, p3),
+            text(0.01, 0.91, 'r=%.2f, p=%.1g, N=%.1f' % (r3, p3, meann[3]),
                  color='b', alpha=sig2linealpha[sig[3]],
                  transform=gca().transAxes, horizontalalignment='left',
                  verticalalignment='top')
         else:
-            text(0.01, 0.99, 'all: r=%.2f, p=%.2g' % (r0, p0),
+            text(0.01, 0.99, 'r=%.2f, p=%.1g, N=%.1f' % (r0, p0, meann[0]),
                  color='k', alpha=sig2linealpha[sig[0]],
                  transform=gca().transAxes, horizontalalignment='left',
                  verticalalignment='top')
@@ -136,7 +142,9 @@ for rectype in rectypes:
                        % (rectype, neurons, layers, tracknames))
         gcfm().window.setWindowTitle(windowtitle)
         tight_layout(pad=pad)
-        fname = windowtitle.replace(' ', '_')
-        savefig('/home/mspacek/thesis/img/05_nscs/muasi/' + fname + '.png', transparent=False)
+        if savefigs:
+            fname = windowtitle.replace(' ', '_')
+            savefig('/home/mspacek/thesis/img/05_nscs/muasi/' + fname + '.png',
+                    transparent=False)
 
 show()
