@@ -333,7 +333,7 @@ class BaseRecording(object):
             midrates = self.calc_mua(midspikes, nmid, tranges)
             deeprates = self.calc_mua(deepspikes, ndeep, tranges)
         rates = np.vstack([allrates, suprates, midrates, deeprates])
-        n = nn, nsup, nmid, ndeep
+        n = np.asarray([nn, nsup, nmid, ndeep])
         if plot:
             self.plot_mua(rates, t, n, layers=layers, title=title, figsize=figsize)
         return rates, t, n
