@@ -632,7 +632,7 @@ class BaseRecording(object):
         t, mua, si = core.commontres(muat, mua, sit, si)
 
         if not plot:
-            return mua, si
+            return mua, si, n
 
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
