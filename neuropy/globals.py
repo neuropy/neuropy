@@ -119,6 +119,9 @@ FFRIDS = {'ptc15.tr7c': ['69', '78', '79', '88', '93'],
 BSMSNSDBRIDS = mergeuniquedictvals([BSRIDS, MSRIDS, NSRIDS, DBRIDS])
 """Per-track list of mseq, driftbar, driftgrating, and flashed grating recordings"""
 MSDBDGFGRIDS = mergeuniquedictvals([MSRIDS, DBRIDS, DGRIDS, FGRIDS])
+"""Per-track list of blankscreen, natscene, mseq, driftbar, driftgrating, and flashed grating
+recordings"""
+BSNSMSDBDGFGRIDS = mergeuniquedictvals([BSRIDS, NSRIDS, MSRIDS, DBRIDS, DGRIDS, FGRIDS])
 
 
 NULLDIN = 65535 # integer value in stimulus .din files used as NULL (stimulus off)

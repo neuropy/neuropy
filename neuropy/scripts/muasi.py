@@ -5,7 +5,7 @@ from __future__ import division
 
 import scipy
 
-rectypes = ['bs', 'ns', 'art'] #['bs']
+rectypes = ['all', 'bs', 'ns', 'art'] #['bs']
 # if choosing a cell spiketype or rftype, they will be picked active cells. Choices are:
 # None (active), 'all', 'quiet', 'fast', 'slow', 'fastasym', 'slowasym',
 # 'simple', 'complex', 'LGN', 'unknown'
@@ -16,7 +16,7 @@ kind = 'L/(L+H)'
 axeslabels = False
 ticklabels = False
 figsize = (2.4, 2.4)
-savefigs = False
+savefigs = True
 pad = 0.3
 ms = 3
 ls = '--'
@@ -25,8 +25,8 @@ sig2pointalpha = {True:0.5, False:0.2} # alpha as in transparency
 sig2linealpha = {True:1.0, False:0.3} # controls text transparency as well
 alpha = 0.001 # alpha as in p threshold
 
-rectype2rids = {'bs':BSRIDS, 'ns':NSRIDS, 'db':DBRIDS,
-                'dg':DGRIDS, 'ms':MSRIDS, 'art':MSDBDGFGRIDS}
+rectype2rids = {'bs':BSRIDS, 'ns':NSRIDS, 'ms':MSRIDS, 'db':DBRIDS, 'dg':DGRIDS,
+                'art':MSDBDGFGRIDS, 'all':BSNSMSDBDGFGRIDS}
 
 # choose desired tracks, need to be loaded ahead of time:
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
