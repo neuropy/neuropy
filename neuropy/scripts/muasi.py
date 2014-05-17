@@ -5,11 +5,11 @@ from __future__ import division
 
 import scipy
 
-rectypes = ['all', 'bs', 'ns', 'art'] #['bs']
+rectypes = ['bs', 'ns', 'art', 'all'] #['bs']
 # if choosing a cell spiketype or rftype, they will be picked active cells. Choices are:
 # None (active), 'all', 'quiet', 'fast', 'slow', 'fastasym', 'slowasym',
 # 'simple', 'complex', 'LGN', 'unknown'
-neuronss = [None, 'fast', 'slow', 'simple', 'complex'] #['simple']
+neuronss = ['fast', 'slow', 'simple', 'complex', None] #['simple']
 
 layers = True
 kind = 'L/(L+H)'
