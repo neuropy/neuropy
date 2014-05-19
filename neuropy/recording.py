@@ -1175,7 +1175,7 @@ class RecordingRaster(BaseRecording):
             assert trialtype == 'dinval'
             brightness = e0.sweeptable.data['brightness'] # indexed into using sweepis
             assert len(np.unique(brightness)) == 2
-        else:
+        elif c != None:
             c = tolist(c)
             if len(c) == 1:
                 c = [c] * nn # repeat the single colour specifier nn times
