@@ -108,7 +108,7 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
         rhoslice = rhos[sepi0:sepi1] # rhos in this sepbin
         rhomeans.append(rhoslice.mean()) # mean rho of all points in this sepbin
         rhostds.append(rhoslice.std()) # std of rho in this sepbin
-    #plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
+    #pl.plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
     errorbar(sepmeans, rhomeans, yerr=rhostds, fmt='r.-', ms=10, lw=2, zorder=9999)
     xlim(xmin=0, xmax=sepxmax)
     ylim(ymin=rhomin, ymax=rhomax)
@@ -164,7 +164,7 @@ def psthcorrdiff(rhos, seps, basetitle):
     fseps = seps[notnanis] # seps filtered out for nans
     figure(figsize=figsize)
     # scatter plot:
-    plot(fseps, frhol, 'k.')
+    pl.plot(fseps, frhol, 'k.')
     # bin seps and plot mean rho in each bin:
     sortis = np.argsort(fseps)
     seps = fseps[sortis]
@@ -177,7 +177,7 @@ def psthcorrdiff(rhos, seps, basetitle):
         rhoslice = rhos[sepi0:sepi1] # rhos in this sepbin
         rhomeans.append(rhoslice.mean()) # mean rho of all points in this sepbin
         rhostds.append(rhoslice.std()) # std of rho in this sepbin
-    #plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
+    #pl.plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
     errorbar(sepmeans, rhomeans, yerr=rhostds, fmt='r.-', ms=10, lw=2, zorder=9999)
     xlim(xmin=0, xmax=sepxmax)
     ylim(ymin=rhomin, ymax=rhomax)
@@ -426,9 +426,10 @@ ssnids, recsecnids = get_nids(ptc22tr1r10s, strangesr10s)
 ssseps = get_seps(ssnids, ptc22.tr1.alln)
 for rec, nids, strange in zip(ptc22tr1r10s, recsecnids, strangesr10s):
     psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
-
+'''
 # ptc22.tr1.r08 + ptc22.tr1.r10 sections:
-plot = False
+plotpsthcorr = False
+plotpsthcorrdiff = True
 sepxmax = 1200
 ptc22tr1s = ptc22tr1r08s+ptc22tr1r10s
 stranges = strangesr08s+strangesr10s
@@ -438,10 +439,10 @@ ssseps = get_seps(ssnids, ptc22.tr1.alln)
 ssrhos = []
 for rec, nids, strange in zip(ptc22tr1s, recsecnids, stranges):
     ssrho = psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False,
-                     strange=strange, plot=plot)
+                     strange=strange, plot=plotpsthcorr)
     ssrhos.append(ssrho)
 ssrhos = np.asarray(ssrhos) # convert to 3D array
-if plot:
+if plotpsthcorrdiff:
     # plot differences in superset rho matrices for various pairs of recording sections:
     psthcorrdiff([ssrhos[0], ssrhos[1]], ssseps, 'A-B')
     psthcorrdiff([ssrhos[1], ssrhos[2]], ssseps, 'B-C')
@@ -449,8 +450,8 @@ if plot:
     #psthcorrdiff([ssrhos[0], ssrhos[3]], ssseps, 'A-D')
     #psthcorrdiff([ssrhos[1], ssrhos[3]], ssseps, 'B-D')
     #psthcorrdiff([ssrhos[0], ssrhos[2]], ssseps, 'A-C')
-
 '''
+
 # run psthcorrtype and psthcorrtypestats on ptc15.tr7c:
 trackrecs = [ptc15tr7crecs]
 rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
@@ -458,7 +459,7 @@ rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
 spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
 print('\nptc15.tr7c')
 psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01)
-'''
+
 # run psthcorrtype and psthcorrtypestats on ptc22.tr1:
 trackrecs = [ptc22tr1recs]
 rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
@@ -478,7 +479,7 @@ spsigis[0, 0] = True
 rfsigis[1, 1] = True; #rfsigis[0, 2] = True
 print('\nptc22.tr2')
 psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01)
-'''
+
 # run psthcorrtype and psthcorrtypestats on ptc22:
 trackrecs = [ptc22tr1recs, ptc22tr2recs]
 rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
@@ -496,5 +497,6 @@ rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
 spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
 print('\nall tracks pooled')
 psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01)
+'''
 
 show()
