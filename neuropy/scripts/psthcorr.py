@@ -444,12 +444,12 @@ for rec, nids, strange in zip(ptc22tr1s, recsecnids, stranges):
 ssrhos = np.asarray(ssrhos) # convert to 3D array
 if plotpsthcorrdiff:
     # plot differences in superset rho matrices for various pairs of recording sections:
-    psthcorrdiff([ssrhos[0], ssrhos[1]], ssseps, 'A-B')
-    psthcorrdiff([ssrhos[1], ssrhos[2]], ssseps, 'B-C')
-    psthcorrdiff([ssrhos[2], ssrhos[3]], ssseps, 'C-D')
-    #psthcorrdiff([ssrhos[0], ssrhos[3]], ssseps, 'A-D')
-    #psthcorrdiff([ssrhos[1], ssrhos[3]], ssseps, 'B-D')
-    #psthcorrdiff([ssrhos[0], ssrhos[2]], ssseps, 'A-C')
+    psthcorrdiff([ssrhos[1], ssrhos[0]], ssseps, 'B-A')
+    psthcorrdiff([ssrhos[2], ssrhos[1]], ssseps, 'C-B')
+    psthcorrdiff([ssrhos[3], ssrhos[2]], ssseps, 'D-C')
+    #psthcorrdiff([ssrhos[3], ssrhos[0]], ssseps, 'D-A')
+    #psthcorrdiff([ssrhos[3], ssrhos[1]], ssseps, 'D-B')
+    #psthcorrdiff([ssrhos[2], ssrhos[0]], ssseps, 'C-A')
 '''
 
 # run psthcorrtype and psthcorrtypestats on ptc15.tr7c:
