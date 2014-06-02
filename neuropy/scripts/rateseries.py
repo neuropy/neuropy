@@ -37,26 +37,30 @@ for track in tracks:
     nids = np.sort(track.alln.keys())
     figure(figsize=figsize)
     axes(axisbg=bg) # set background color
-    for nidi, nid in enumerate(nids):
-        neuronrates = []
-        n = track.alln[nid]
-        # plot rates for each rectrange separately, so lines aren't drawn across time gaps:
-        for rectrange in rectranges: # one per recording
-            tranges = split_tranges([rectrange], width, tres) # possibly overlapping bins, in us
-            midtranges = tranges.mean(axis=1) / 1e6 / 3600 # midpoints of tranges, in hours
+    # plot rates for each rectrange separately, so lines aren't drawn across time gaps:
+    for rectrange in rectranges: # one per recording
+        recrates = [] # one row per neuron for this recording
+        tranges = split_tranges([rectrange], width, tres) # possibly overlapping bins, in us
+        midtranges = tranges.mean(axis=1) / 1e6 / 3600 # midpoints of tranges, in hours
+        for nidi, nid in enumerate(nids):
+            n = track.alln[nid]
             spikeis = n.spikes.searchsorted(tranges) # slice indices into spikes
             nspikes = spikeis[:, 1] - spikeis[:, 0] # number of spikes in each trange
             rate = nspikes / (width / 1e6) # spike rate per bin, in Hz
-            rate[rate == 0.0] = np.nan # replace 0's with nans so they're ignored by plot()
+            rate[rate == 0.0] = np.nan # replace 0s with nans so they're ignored by plot()
             c = CCDICT[nidi] # use nidi to maximize colour alternation
             plot(midtranges, rate, '-', lw=lw, c=c, alpha=alpha)
-            neuronrates.append(rate)
-        trackrates.append(np.hstack(neuronrates))
+            recrates.append(rate)
+        recrates = np.vstack(recrates)
+        trackrates.append(recrates)
+        logmeanrate = np.nansum(log10(recrates), axis=0) / len(nids) # mean across neurons
+        # underplot fat logmeanrate line in grey, take 10^ cuz yscale is set to log below:
+        plot(midtranges, 10**logmeanrate, '-', lw=lw*10, c='e', alpha=alpha, zorder=-np.inf)
+    trackrates = np.hstack(trackrates) # one row per neuron
+    minrate = np.nanmin(trackrates) # lowest (non-nan) rate
     yscale('log')
-    xlabel('time (h)')
+    xlabel('time (hours)')
     ylabel('firing rate (Hz)')
-    trackrates = np.vstack(trackrates) # one row per neuron
-    minrate = np.unique(trackrates)[1] # lowest rate, excluding 0 Hz
     if trtrange:
         xlim(trtrange)
     ylim(minrate, maxrate)
