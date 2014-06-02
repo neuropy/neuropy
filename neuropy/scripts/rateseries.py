@@ -12,6 +12,7 @@ from colour import CCBLACKDICT0, CCWHITEDICT0 # for plotting on black or white
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
 figsize = (10, 3)
 alpha = 1
+maxrate = 50 # max rate to display, Hz
 widthsec = 5*60 # bin width, in sec
 tressec = 60 # tres, in sec
 width = widthsec * 1e6 # bin width, in us
@@ -58,7 +59,7 @@ for track in tracks:
     minrate = np.unique(trackrates)[1] # lowest rate, excluding 0 Hz
     if trtrange:
         xlim(trtrange)
-    ylim(ymin=minrate)
+    ylim(minrate, maxrate)
     titlestr = "%s_width=%d_tres=%d_trange=%s" % (track.absname, widthsec, tressec, trtrange)
     gcfm().window.setWindowTitle(titlestr)
     tight_layout(pad=0.3)
