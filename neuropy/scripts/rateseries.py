@@ -55,7 +55,7 @@ for track in tracks:
         trackrates.append(recrates)
         logmeanrate = np.nansum(log10(recrates), axis=0) / len(nids) # mean across neurons
         # underplot fat logmeanrate line in grey, take 10^ cuz yscale is set to log below:
-        plot(midtranges, 10**logmeanrate, '-', lw=lw*10, c='e', alpha=alpha, zorder=-np.inf)
+        plot(midtranges, 10**logmeanrate, '-', lw=lw*10, c='w', alpha=0.5)
     trackrates = np.hstack(trackrates) # one row per neuron
     minrate = np.nanmin(trackrates) # lowest (non-nan) rate
     yscale('log')
