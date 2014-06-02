@@ -10,10 +10,10 @@ from colour import CCBLACKDICT0, CCWHITEDICT0 # for plotting on black or white
 
 
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
-figsize = (8, 3)
+figsize = (10, 3)
 alpha = 1
-widthsec = 2*60 # bin width, in sec
-tressec = 30 # tres, in sec
+widthsec = 5*60 # bin width, in sec
+tressec = 60 # tres, in sec
 width = widthsec * 1e6 # bin width, in us
 tres = tressec * 1e6 # time resolution of potentially overlapping bins, in us
 CCDICT = CCBLACKDICT0
