@@ -5,43 +5,54 @@ using `run -i scripts/rateseries.py`"""
 from __future__ import division
 from __future__ import print_function
 
+from core import split_tranges
 from colour import CCBLACKDICT0, CCWHITEDICT0 # for plotting on black or white
+
 
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
 figsize = (8, 3)
 alpha = 1
-binwmin = 5 # bin width, in min
-binwhour = binwmin / 60
+widthsec = 2*60 # bin width, in sec
+tressec = 30 # tres, in sec
+width = widthsec * 1e6 # bin width, in us
+tres = tressec * 1e6 # time resolution of potentially overlapping bins, in us
 CCDICT = CCBLACKDICT0
 bg = 'k'
 lw = 0.5
+trtrange = [0, 5] # track trange to plot, in hours. Set to None to plot entire tracks
 
 rates = {}
 for track in tracks:
     trackrates = []
-    dthour = track.dthour
-    bins = np.arange(0, dthour+binwhour, binwhour) # nonoverlapping bins, end inclusive
+    # filter out track tranges < width wide (like short CSD recordings):
+    tranges = []
+    for trange in track.tranges:
+        if trange[1] - trange[0] >= width:
+            tranges.append(trange)
+    tranges = np.array(tranges)
+    # split tranges, so that gaps between recordings are excluded from rate calcs
+    tranges = split_tranges(tranges, width, tres) # possibly overlapping, in us
+    midtranges = tranges.mean(axis=1) / 1e6 / 3600 # midpoints of tranges, in hours
     nids = np.sort(track.alln.keys())
     figure(figsize=figsize)
     axes(axisbg=bg) # set background color
     for nidi, nid in enumerate(nids):
         n = track.alln[nid]
-        spikes = n.spikes / 1e6 / 3600 # spike times, floats, in hours
-        nspikes, edges = np.histogram(spikes, bins) # spike counts per bin
-        rate = nspikes / binwhour / 3600 # spike rate per bin, in Hz
-        rate[rate == 0.0] = np.nan # replace 0's with nans so that they're ignored by plot()
+        spikeis = n.spikes.searchsorted(tranges) # slice indices into spikes
+        nspikes = spikeis[:, 1] - spikeis[:, 0] # number of spikes in each trange
+        rate = nspikes / (width / 1e6) # spike rate per bin, in Hz
+        #rate[rate == 0.0] = np.nan # replace 0's with nans so they're ignored by plot()
         c = CCDICT[nidi] # use nidi to maximize colour alternation
-        plot(bins[:-1], rate, '-', lw=lw, c=c, alpha=alpha)
+        plot(midtranges, rate, '-', lw=lw, c=c, alpha=alpha)
         trackrates.append(rate)
     yscale('log')
-    xlim(0, dthour)
     xlabel('time (h)')
     ylabel('firing rate (Hz)')
-    gcfm().window.setWindowTitle(track.absname + '_binwmin=%d' % binwmin)
+    gcfm().window.setWindowTitle(track.absname)
     tight_layout(pad=0.3)
     trackrates = np.vstack(trackrates)
     minrate = np.unique(trackrates)[1] # lowest rate, excluding 0 Hz
-    xlim(0, 6) # show only first 6 hours
+    xlim(trtrange)
     ylim(ymin=minrate)
     rates[track.absname] = trackrates
 
