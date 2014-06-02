@@ -126,15 +126,20 @@ class Track(object):
         except IOError: # no absname.spiketype file denoting RF type of each cell
             pass
 
-        # one way of calculating self.trange:
-        #tranges = np.asarray([ n.trange for n in self.alln.values() ])
-        #self.trange = min(tranges[:, 0]), max(tranges[:, 1])
-        # better way of calculating self.trange:
+        # calculate tranges, representing start and stop times (us) of child recordings
+        # relative to start of track:
         rids = sorted(self.r.keys()) # all recording ids in self
         r0 = self.r[rids[0]]
-        r1 = self.r[rids[-1]]
         assert r0.datetime == self.datetime
-        self.trange = r0.td+r0.trange[0], r1.td+r1.trange[1]
+        tranges = []
+        for rid in rids:
+            rec = self.r[rid]
+            # rec.td is time delta (us) between start of track and start of recording
+            trange = rec.td+rec.trange[0], rec.td+rec.trange[1]
+            tranges.append(trange)
+
+        self.tranges = np.array(tranges) # each row is a recording trange
+        self.trange = self.tranges[0, 0], self.tranges[-1, 1]
 
         self.calc_meanrates()
 
