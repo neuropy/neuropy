@@ -13,7 +13,7 @@ figsize = (10, 3)
 alpha = 1
 maxrate = 50 # max rate to display, Hz
 widthsec = 5*60 # bin width, in sec
-tressec = 60 # tres, in sec
+tressec = 60 # time resolution, in sec
 width = widthsec * 1e6 # bin width, in us
 tres = tressec * 1e6 # time resolution of potentially overlapping bins, in us
 # any MPL cmap like jet_r or gist_rainbow or hsv or spectral_r. hsv is problematic because it's
@@ -46,14 +46,16 @@ for track in tracks:
         recrates = [] # one row per neuron for this recording
         tranges = split_tranges([rectrange], width, tres) # possibly overlapping bins, in us
         midtranges = tranges.mean(axis=1) / 1e6 / 3600 # midpoints of tranges, in hours
+        #nmuspikes = np.zeros(len(tranges), dtype=np.int64) # count multiunit spikes per bin
         for nidi, nid in enumerate(nids): # nid order is (or should be) also depth order
             n = track.alln[nid]
             spikeis = n.spikes.searchsorted(tranges) # slice indices into spikes
             nspikes = spikeis[:, 1] - spikeis[:, 0] # number of spikes in each trange
+            #nmuspikes += nspikes # accumulate
             rate = nspikes / (width / 1e6) # spike rate per bin, in Hz
             rate[rate == 0.0] = np.nan # replace 0s with nans so they're ignored by plot()
             if cmap:
-                cmapi = nidi/nn # from 0 to just under 1, cmaps wrap at 1
+                cmapi = nidi / nn # from 0 to just under 1, cmaps wrap at 1
                 c = cmap(cmapmax*cmapi)
             else:
                 c = CCDICT[nidi] # use nidi to maximize colour alternation
@@ -61,9 +63,15 @@ for track in tracks:
             recrates.append(rate)
         recrates = np.vstack(recrates)
         trackrates.append(recrates)
-        logmeanrate = np.nansum(log10(recrates), axis=0) / len(nids) # mean across neurons
-        # underplot fat logmeanrate line in grey, take 10^ cuz yscale is set to log below:
+        # plot (arithmetic) meanrate line in transparent red:
+        meanrate = np.nansum(recrates, axis=0) / nn # mean across neurons
+        plot(midtranges, meanrate, '-', lw=lw*10, c='r', alpha=0.5)
+        # plot (geometric) logmeanrate line in transparent grey, take 10^ due to log yscale:
+        logmeanrate = np.nansum(log10(recrates), axis=0) / nn # logmean across neurons
         plot(midtranges, 10**logmeanrate, '-', lw=lw*10, c='w', alpha=0.5)
+        # plot multiunit rate, this is identical to the meanrate:
+        #murate = nmuspikes / (width / 1e6) / nn # multiunit rate per bin per neuron, in Hz
+        #plot(midtranges, murate, '-', lw=lw*10, c='b', alpha=0.5)
     trackrates = np.hstack(trackrates) # one row per neuron
     minrate = np.nanmin(trackrates) # lowest (non-nan) rate
     yscale('log')
