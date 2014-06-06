@@ -3703,8 +3703,8 @@ def ensurenormed(p, atol=1e-8):
     p = np.asarray(p)
     psum = p.sum()
     if not approx(psum, 1.0, atol=atol): # make sure the probs sum to 1
-        print('ps don''t sum to 1, they sum to %f instead, normalizing for you' % psum)
-        p /= float(psum)
+        print("ps don't sum to 1, they sum to %f instead, normalizing for you" % psum)
+        p = p / float(psum) # in case p are integers, don't divide in place
     return p
 
 def logn(x, base=10):
@@ -3737,8 +3737,8 @@ def entropy(p):
     return -(p * np.log2(p)).sum()
 
 def entropy_no_sing(p):
-    """Returns the entropy (in bits) of the prob distribution described by the prob values in p
-    Ignore singularities in p (assumes their contribution to entropy is zero)"""
+    """Returns the entropy (in bits) of the prob distribution described by the prob values
+    in p. Ignore singularities in p (assumes their contribution to entropy is zero)"""
     p = ensurenormed(p)
     return -(p * log2_no_sing(p, subval=0.0)).sum()
 
