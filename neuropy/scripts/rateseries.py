@@ -23,7 +23,7 @@ cmapmax = 1.0 # use only first cmapmax of cmap, useful for hsv to prevent red at
 CCDICT = CCBLACKDICT0
 bg = 'k'
 lw = 0.5
-trtrange = [0, 5] # track trange to plot, in hours. Set to None to plot entire tracks
+trtrange = None #[0, 5] # track trange to plot, in hours. Set to None to plot entire tracks
 
 rates = {} # one entry per track
 for track in tracks:
@@ -34,7 +34,10 @@ for track in tracks:
     rectranges = []
     for trange in track.tranges:
         if trange[1] - trange[0] >= width: # trange is sufficiently wide
-            if trtrange and trange[0] < trtrange[1]*3600*1e6: # trange starts within trtrange
+            if trtrange:
+                if trange[0] < trtrange[1]*3600*1e6: # trange starts within trtrange
+                    rectranges.append(trange)
+            else:
                 rectranges.append(trange)
     rectranges = np.array(rectranges)
     nids = np.sort(track.alln.keys())
