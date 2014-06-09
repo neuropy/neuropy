@@ -7,6 +7,7 @@ from __future__ import print_function
 
 from core import split_tranges
 from colour import CCBLACKDICT0, CCWHITEDICT0 # for plotting on black or white
+from scipy.stats import nanmean
 
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
 figsize = (10, 3)
@@ -18,16 +19,18 @@ width = widthsec * 1e6 # bin width, in us
 tres = tressec * 1e6 # time resolution of potentially overlapping bins, in us
 # any MPL cmap like jet_r or gist_rainbow or hsv or spectral_r. hsv is problematic because it's
 # red at both extremes. None cycles through colours in CCDICT:
-cmap = None #cm.gist_rainbow
+cmap = cm.gist_rainbow
 cmapmax = 1.0 # use only first cmapmax of cmap, useful for hsv to prevent red at both extremes
 CCDICT = CCBLACKDICT0
 bg = 'k'
 lw = 0.5
 trtrange = None #[0, 5] # track trange to plot, in hours. Set to None to plot entire tracks
+plotlogmeanhists = True
 
 rates = {} # one entry per track
 for track in tracks:
     trackrates = []
+    logmeanrates = []
     # to prevent AssertionError in split_tranges(), filter out track tranges < width wide,
     # also to prevent unnecessary plotting, exclude track tranges that fall completely
     # outside trtrange:
@@ -66,16 +69,19 @@ for track in tracks:
             recrates.append(rate)
         recrates = np.vstack(recrates)
         trackrates.append(recrates)
+        ## NOTE: np.nansum replaces nans with 0. scipy.stats.nanmean ignores nans completely
         # plot (arithmetic) meanrate line in transparent red:
-        meanrate = np.nansum(recrates, axis=0) / nn # mean across neurons
-        plot(midtranges, meanrate, '-', lw=lw*10, c='r', alpha=0.5)
+        #meanrate = np.nansum(recrates, axis=0) / nn # mean across neurons, replace nan with 0
+        #plot(midtranges, meanrate, '-', lw=lw*10, c='r', alpha=0.5)
         # plot (geometric) logmeanrate line in transparent grey, take 10^ due to log yscale:
-        logmeanrate = np.nansum(log10(recrates), axis=0) / nn # logmean across neurons
+        logmeanrate = nanmean(log10(recrates), axis=0) # logmean across neurons, exclude nans
+        logmeanrates.append(logmeanrate)
         plot(midtranges, 10**logmeanrate, '-', lw=lw*10, c='w', alpha=0.5)
-        # plot multiunit rate, this is identical to the meanrate:
+        # plot multiunit rate in transparent blue, this is identical to the meanrate:
         #murate = nmuspikes / (width / 1e6) / nn # multiunit rate per bin per neuron, in Hz
         #plot(midtranges, murate, '-', lw=lw*10, c='b', alpha=0.5)
     trackrates = np.hstack(trackrates) # one row per neuron
+    logmeanrates = np.hstack(logmeanrates) # concatenate logmeans from all recs in this track
     minrate = np.nanmin(trackrates) # lowest (non-nan) rate
     yscale('log')
     xlabel('time (hours)')
@@ -92,5 +98,21 @@ for track in tracks:
     gcfm().window.setWindowTitle(titlestr)
     tight_layout(pad=0.3)
     rates[track.absname] = trackrates
+    if plotlogmeanhists:
+        figure(figsize=(3, 3))
+        nbins = 20 #intround(np.sqrt(len(logmeanrates)))
+        logmin, logmax = -2, 0
+        edges = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
+        y = hist(10**logmeanrates, bins=edges, color='k')[0]
+        ymax = max(y)
+        xscale('log')
+        ylim(0, ymax)
+        yticks((0, ymax))
+        xlabel('log-average firing rate (Hz)')
+        ylabel('time bin count')
+        titlestr = ("%s_logmeanhist_width=%d_tres=%d_trange=%s"
+                    % (track.absname, widthsec, tressec, trtrange))
+        gcfm().window.setWindowTitle(titlestr)
+        tight_layout(pad=0.3)
 
 show()
