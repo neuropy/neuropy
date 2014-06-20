@@ -15,6 +15,7 @@ elif style == 'lines':
     rc['savefig.format'] = 'pdf' # restore to default pdf
     bw = 10/60 # bin width for lines style, hours
     tres = 10/60 # bin tres for lines style, hours
+plotdydt = False
 
 # define stuff associated with each desired track:
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
@@ -25,7 +26,13 @@ spikefnames = ['/home/mspacek/data/ptc15/tr7c/track7c.track_2012-08-07_08.59.10.
 yposylims = (0, 1800), (0, 1250), (0, 1250) # um
 #yposylims = (0, 1800), (0, 1800), (0, 1800) # um
 
-fontsize(18)
+if plotdydt:
+    assert style == 'lines'
+    maxdydt = 200
+    dydtstep = 10
+    edges = np.arange(-maxdydt, maxdydt+dydtstep, dydtstep) # um/h
+else:
+    fontsize(18)
 vppylim = 0, 600
 vppyticks = 0, 300, 600 # uV
 sxylim = 0, 150 # um
@@ -105,6 +112,9 @@ for tracki, track in enumerate(tracks):
         t0 = ts[0] / 1e6 / 3600 # convert from us to hours
         t1 = ts[-1] / 1e6 / 3600 # convert from us to hours
         tranges = core.split_tranges([(t0, t1)], bw, tres)
+        # take left edges of tranges as bin time:
+        bint = tranges[:, 0]
+        binys = []
     # plot data for each nid, one at a time:
     for nidi, nid in enumerate(nids):
         sids, = np.where(spikes['nid'] == nid)
@@ -128,8 +138,9 @@ for tracki, track in enumerate(tracks):
             biny = np.array([ vals.mean() if len(vals) > 0 else np.nan for vals in biny ])
             binx = [ x[tirange[0]:tirange[1]] for tirange in tiranges ]
             binx = np.array([ vals.mean() if len(vals) > 0 else np.nan for vals in binx ])
-            # take left edges of tranges as bin time:
-            bint = tranges[:, 0]
+            if plotdydt:
+                binys.append(biny)
+                continue # don't bother plotting the sparams_lines figure
             vppa.plot(bint, binvpp, '-', marker=None, lw=1, c=c)
             sxa.plot(bint, binsx, '-', marker=None, lw=1, c=c)
             xa.plot(bint, binx, '-', marker=None, lw=1, c=c)
@@ -185,6 +196,40 @@ for tracki, track in enumerate(tracks):
     sxas.append(xa)
     xas.append(xa)
     yas.append(ya)
+
+    if not plotdydt:
+        continue
+    # calculate dy/dt of each neuron, and plot its distribution for this track:
+    binys = np.vstack(binys) # one row per neuron, has nans
+    # take -ve of diff because of inverted y pos axis: low values are at the top
+    dydt = -np.diff(binys, axis=1) / tres # um/hour, one row per neuron, has nans
+    # plot dy/dt time series for all neurons:
+    figure(figsize=(10,3))
+    plot(bint[:-1], dydt.T, '-') # last timepoint was lost due to diff()
+    xlabel('time (h)')
+    ylabel('dy/dt ($\mu$m/h)')
+    gcfm().set_window_title(track.absname + '_dydt')
+    gcf().tight_layout(pad=0.3) # crop figure to contents
+    # plot dy/dt histogram for all neurons:
+    figure(figsize=(3,3))
+    flatdydt = dydt.ravel() # flatten
+    keepis = np.logical_not(np.isnan(flatdydt))
+    flatdydt = flatdydt[keepis] # exclude nans for hist
+    count = hist(flatdydt, bins=edges, color='k')[0]
+    axvline(x=0, c='e', ls='--') # draw vertical grey line at x=0
+    gca().set_ylim(ymax=count.max()) # normalize to max
+    gca().set_xticks([edges[0], edges[0]/2, 0, edges[-1]/2, edges[-1]])
+    gca().set_yticks([0, count.max()])
+    xlabel('$dy/dt$ ($\mu$m/h)')
+    ylabel('bin count')
+    text(0.99, 0.99, '$\mu$ = %.1f\n'
+                     '$\sigma$ = %.1f' % (flatdydt.mean(), flatdydt.std()),
+                     horizontalalignment='right',
+                     verticalalignment='top',
+                     transform=gca().transAxes,
+                     color='k')
+    gcfm().set_window_title(track.absname + '_dydthist')
+    gcf().tight_layout(pad=0.3) # crop figure to contents
 
 if style == 'points':
     titlestr = 'sparams'
