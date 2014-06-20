@@ -82,17 +82,17 @@ annotate('', xy=(10**logmean, 26), xycoords='data',
 annotate('', xy=(10**mu, 26), xycoords='data',
              xytext=(10**mu, 29), textcoords='data',
              arrowprops=dict(fc='m', ec='none', width=1, frac=0.5))
-text(0.99, 0.98, 'log(mean) = %.2f\n'
-                 'mean = %.2f Hz' % (logmean, 10**logmean),
+text(0.99, 0.98, 'log($\mu$) = %.2f\n'
+                 '$\mu$ = %.2f Hz' % (logmean, 10**logmean),
                  horizontalalignment='right',
-                 verticalalignment='top',
+                 verticalalignment='top', linespacing=1.15,
                  transform=gca().transAxes,
                  color='k')
 text(0.99, 0.88, 'log($\mu$) = %.2f\n'
                  '$\mu$ = %.2f Hz\n'
                  'log($\sigma$) = %.2f' % (mu, 10**mu, sigma),
                  horizontalalignment='right',
-                 verticalalignment='top',
+                 verticalalignment='top', linespacing=1.15,
                  transform=gca().transAxes,
                  color='m')
 gcfm().window.setWindowTitle('meanrates_pdf')
