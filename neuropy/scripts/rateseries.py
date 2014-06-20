@@ -27,9 +27,11 @@ lw = 0.5
 trtrange = None #[0, 5] # track trange to plot, in hours. Set to None to plot entire tracks
 plotlogmeanhists = True
 
-rates = {} # one entry per track
+rates, logmeans = {}, {} # one entry per track
+fnanss, meanratess = [], [] # accumulate over all tracks
 for track in tracks:
     trackrates = []
+    meanrates = []
     logmeanrates = []
     # to prevent AssertionError in split_tranges(), filter out track tranges < width wide,
     # also to prevent unnecessary plotting, exclude track tranges that fall completely
@@ -71,7 +73,8 @@ for track in tracks:
         trackrates.append(recrates)
         ## NOTE: np.nansum replaces nans with 0. scipy.stats.nanmean ignores nans completely
         # plot (arithmetic) meanrate line in transparent red:
-        #meanrate = np.nansum(recrates, axis=0) / nn # mean across neurons, replace nan with 0
+        meanrate = np.nansum(recrates, axis=0) / nn # mean across neurons, replace nan with 0
+        meanrates.append(meanrate)
         #plot(midtranges, meanrate, '-', lw=lw*10, c='r', alpha=0.5)
         # plot (geometric) logmeanrate line in transparent grey, take 10^ due to log yscale:
         logmeanrate = nanmean(log10(recrates), axis=0) # logmean across neurons, exclude nans
@@ -81,6 +84,7 @@ for track in tracks:
         #murate = nmuspikes / (width / 1e6) / nn # multiunit rate per bin per neuron, in Hz
         #plot(midtranges, murate, '-', lw=lw*10, c='b', alpha=0.5)
     trackrates = np.hstack(trackrates) # one row per neuron
+    meanrates = np.hstack(meanrates) # concatenate meanrates from all recs in this track
     logmeanrates = np.hstack(logmeanrates) # concatenate logmeans from all recs in this track
     minrate = np.nanmin(trackrates) # lowest (non-nan) rate
     yscale('log')
@@ -98,6 +102,7 @@ for track in tracks:
     gcfm().window.setWindowTitle(titlestr)
     tight_layout(pad=0.3)
     rates[track.absname] = trackrates
+    logmeans[track.absname] = logmeanrates
     if plotlogmeanhists:
         figure(figsize=(3, 3))
         nbins = 20 #intround(np.sqrt(len(logmeanrates)))
@@ -114,5 +119,24 @@ for track in tracks:
                     % (track.absname, widthsec, tressec, trtrange))
         gcfm().window.setWindowTitle(titlestr)
         tight_layout(pad=0.3)
-
+        '''
+        # plot meanrates vs fraction of cells at 0 Hz:
+        figure(figsize=(3, 3))
+        # fraction of cells with no rate, as a f'n of time:
+        fnans = np.isnan(trackrates).sum(axis=0) / nn
+        plot(fnans, meanrates/meanrates.mean(), 'k.', alpha=0.3)
+        #yscale('log')
+        fnanss.append(fnans)
+        #normmeanrates.append(meanrates)
+        meanratess.append(meanrates)
+        '''
+'''
+fnanss = np.hstack(fnanss)
+meanratess = np.hstack(meanratess)
+figure(figsize=(3, 3))
+plot(fnanss, meanratess/meanratess.mean(), 'k.', alpha=0.3)
+#yscale('log')
+xlabel('fraction of cells not firing')
+ylabel('meanrate relative to meanrate.mean()')
+'''
 show()
