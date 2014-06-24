@@ -4,7 +4,7 @@ specified tracks. Run from within neuropy using `run -i scripts/ndistpdf.py`"""
 from __future__ import division
 from core import dist
 
-figsize = 2.75, 3 # inches
+figsize = 3, 3 # inches
 spacing = 65 # um
 binw = 2 # um
 edges = np.arange(0, spacing/2+binw, binw)
@@ -46,7 +46,7 @@ theory = rho*2*pi*midbins/binw # normed distrib expected for randomly distribute
 umap1a = ptc22.tr1.sort.chanpos
 area1a, xlims1a, ylims1a = areas[1], xlims[1], ylims[1]
 nseed = intround(rho * area)
-nrandom = 10000
+nrandom = 100000
 w = xlims1a[1]-xlims1a[0]
 h = ylims1a[1]-ylims1a[0]
 x = np.random.random_sample(nrandom) * w - w/2 # centered around 0
