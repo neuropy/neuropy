@@ -231,6 +231,7 @@ for tracki, track in enumerate(tracks):
     flatdydt = flatdydt[keepis] # exclude nans for hist
     count = hist(flatdydt, bins=edges, color='k')[0]
     axvline(x=0, c='e', ls='--') # draw vertical grey line at x=0
+    gca().set_xlim(-maxdydt, maxdydt)
     gca().set_ylim(ymax=count.max()) # normalize to max
     gca().set_xticks([edges[0], edges[0]/2, 0, edges[-1]/2, edges[-1]])
     gca().set_yticks([0, count.max()])
@@ -248,6 +249,7 @@ for tracki, track in enumerate(tracks):
     figure(figsize=(3,3))
     count = hist(netdydt, bins=netedges, color='k')[0]
     axvline(x=0, c='e', ls='--') # draw vertical grey line at x=0
+    gca().set_xlim(-maxnetdydt, maxnetdydt)
     gca().set_ylim(ymax=count.max()) # normalize to max
     gca().set_xticks([netedges[0], netedges[0]/2, 0, netedges[-1]/2, netedges[-1]])
     gca().set_yticks([0, count.max()])
