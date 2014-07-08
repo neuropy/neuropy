@@ -33,7 +33,6 @@ if plotdydt:
     maxnetdydt, netdydtstep = 50, 5
     edges = np.arange(-maxdydt, maxdydt+dydtstep, dydtstep) # um/h
     netedges = np.arange(-maxnetdydt, maxnetdydt+netdydtstep, netdydtstep) # um/h
-
 else:
     fontsize(18)
 vppylim = 0, 600
@@ -114,13 +113,11 @@ for tracki, track in enumerate(tracks):
     if style == 'lines': # generate time bins of bw and tres, in hours:
         t0 = ts[0] / 1e6 / 3600 # convert from us to hours
         t1 = ts[-1] / 1e6 / 3600 # convert from us to hours
-        tranges = core.split_tranges([(t0, t1)], bw, tres)
+        tranges = core.split_tranges([(t0, t1)], bw, tres) # in hours
         # take left edges of tranges as bin time:
         bint = tranges[:, 0]
         if plotdydt:
             binys = []
-            y0y1s = []
-            netdts = []
     # plot data for each nid, one at a time:
     for nidi, nid in enumerate(nids):
         sids, = np.where(spikes['nid'] == nid)
@@ -146,8 +143,6 @@ for tracki, track in enumerate(tracks):
             binx = np.array([ vals.mean() if len(vals) > 0 else np.nan for vals in binx ])
             if plotdydt:
                 binys.append(biny)
-                y0y1s.append([y[0], y[-1]])
-                netdts.append(t[-1]-t[0]) # in hours
                 continue # don't bother plotting the sparams_lines figure
             vppa.plot(bint, binvpp, '-', marker=None, lw=1, c=c)
             sxa.plot(bint, binsx, '-', marker=None, lw=1, c=c)
@@ -209,11 +204,17 @@ for tracki, track in enumerate(tracks):
         continue
     # calculate dy/dt of each neuron, and plot its distribution for this track:
     binys = np.vstack(binys) # one row per neuron, has nans
-    y0y1s = np.vstack(y0y1s) # one row per neuron, no nans
-    netdts = np.vstack(netdts)
     # take -ve of diff because of inverted y pos axis: low values are at the top
     dydt = -np.diff(binys, axis=1) / tres # um/hour, one row per neuron, has nans
-    netdydt = -np.diff(y0y1s, axis=1) / netdts # um/hour, one row per neuron, no nans
+    # calculate net dydt for each neuron, using first and last non-nan time-binned ypos
+    netdydt = []
+    for biny in binys: # iterate over each neuron's time-binned ypos
+        keepis = np.logical_not(np.isnan(biny))
+        biny = biny[keepis] # nans removed
+        if len(biny) < 2:
+            continue # neuron's activity must span at least 2 time bins to calc netdydt
+        netdydt.append(-(biny[-1] - biny[0]) / ((len(biny)-1) * tres))
+    netdydt = np.hstack(netdydt)
     '''
     # plot dy/dt time series for all neurons:
     figure(figsize=(10,3))
@@ -245,8 +246,7 @@ for tracki, track in enumerate(tracks):
     gcf().tight_layout(pad=0.3) # crop figure to contents
     # plot net dy/dt histogram for all neurons:
     figure(figsize=(3,3))
-    flatnetdydt = netdydt.ravel() # flatten
-    count = hist(flatnetdydt, bins=netedges, color='k')[0]
+    count = hist(netdydt, bins=netedges, color='k')[0]
     axvline(x=0, c='e', ls='--') # draw vertical grey line at x=0
     gca().set_ylim(ymax=count.max()) # normalize to max
     gca().set_xticks([netedges[0], netedges[0]/2, 0, netedges[-1]/2, netedges[-1]])
@@ -254,7 +254,7 @@ for tracki, track in enumerate(tracks):
     xlabel('net $\Delta y/t$ ($\mu$m/h)')
     ylabel('neuron count')
     text(0.99, 0.99, '$\mu$ = %.1f\n'
-                     '$\sigma$ = %.1f' % (flatnetdydt.mean(), flatnetdydt.std()),
+                     '$\sigma$ = %.1f' % (netdydt.mean(), netdydt.std()),
                      horizontalalignment='right',
                      verticalalignment='top',
                      transform=gca().transAxes,
