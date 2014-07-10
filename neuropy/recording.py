@@ -1130,8 +1130,8 @@ class RecordingRaster(BaseRecording):
 
     def traster(self, nids=None, overlap=False, sweepis=None, eids=None, natexps=False,
                 strange=None, t0=None, dt=None, blank=True, plot=True, psth=False, binw=0.02,
-                tres=0.005, norm=True, marker='|', s=20, c=None, title=False, ylabel=True,
-                figsize=(7.5, None), psthfigsize=None):
+                tres=0.005, norm=True, marker='|', s=20, c=None, hlinesweepis=None, hlinec='e',
+                title=False, ylabel=True, figsize=(7.5, None), psthfigsize=None):
         """Create a trial spike raster plot for each given neuron ('all' and 'quiet' are valid
         values), one figure for each neuron, or overlapping using different colours in a
         single figure. For the designated sweep indices, based on stimulus info in experiments
@@ -1141,7 +1141,9 @@ class RecordingRaster(BaseRecording):
         blank frames for trials in movie type stimuli. psth, binw and tres control
         corresponding PSTH plots and return value. c controls color, and can be a single
         value, a list of len(nids), or use c='bwg' to plot black and white bars on a grey
-        background for black and white drifting bar trials.
+        background for black and white drifting bar trials. hlinesweepis designates sweepis at
+        which to plot a horizontal line on the traster the first time they occur, while hlinec
+        designates their colour.
 
         ## TODO: the psth code should be split off into its own rec method and should call
         ## this traster method (with plot=False) to get its required input
@@ -1189,7 +1191,7 @@ class RecordingRaster(BaseRecording):
         din0 = dins[0]
         nrefreshes = len(din0)
         rtime = np.diff(din0[:, 0]).mean() # refresh time, us
-        dinis = np.cumsum([ len(din) for din in dins ]) # indices into din denoting exp ends
+        expdinis = np.cumsum([ len(din) for din in dins ]) # indices into din denoting exp ends
         din = np.vstack(dins) # din from all experiments, concatenated together
         alltimes = din[:, 0] # times of every screen refresh
         allsweepis = din[:, 1] # sweep indices of every screen refresh
@@ -1406,10 +1408,15 @@ class RecordingRaster(BaseRecording):
             # plot 1-based trialis:
             a.scatter(ts, trialis+1, marker=marker, c=cs, s=s, cmap=cmap)
             a.set_xlim(xmin, xmax)
-            if len(dinis) > 1:
+            if len(expdinis) > 1:
                 # assume nrt was defined above
-                exptrialis = intround(dinis[:-1] / nrt) # trialis separating experiments
-                a.hlines(y=exptrialis, xmin=xmin, xmax=xmax, colors='e', linestyles='dashed')
+                exptrialis = intround(expdinis[:-1] / nrt) # trialis separating experiments
+                a.hlines(y=exptrialis, xmin=xmin, xmax=xmax, colors=hlinec,
+                         linestyles='dashed')
+            if hlinesweepis != None:
+                hlinetrialis = trangesweepis.searchsorted(hlinesweepis)
+                a.hlines(y=hlinetrialis, xmin=xmin, xmax=xmax, colors=hlinec,
+                         linestyles='dashed')
             # -1 inverts the y axis, +1 ensures last trial is fully visible:
             a.set_ylim(ntrials+1, -1)
             # turn off annoying "+2.41e3" type offset on x axis:
