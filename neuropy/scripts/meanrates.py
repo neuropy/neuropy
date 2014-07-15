@@ -45,7 +45,7 @@ edges = np.logspace(logstart, logend, nbins+1) # nbins+1 points in log space
 
 y = hist(allrates, bins=edges, color='k')[0]
 logx = np.log10(edges)[:-1] # left bin edges
-logx = logx + (logx[1] - logx[0]) / 2# middle of bins
+logx = logx + (logx[1] - logx[0]) / 2 # middle of bins
 
 # do least-squares LM of fit lognormal distribution to data:
 
