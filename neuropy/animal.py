@@ -57,3 +57,12 @@ class Animal(object):
             track.load()
             self.tr[track.id] = track
             self.__setattr__('tr' + str(track.id), track) # add shortcut attrib
+
+    def get_rnames(self):
+        rnames = []
+        trids = sorted(self.tr)
+        for trid in trids:
+            rnames.append(self.tr[trid].rnames)
+        return rnames
+
+    rnames = property(get_rnames)
