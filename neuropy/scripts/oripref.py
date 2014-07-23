@@ -1,5 +1,5 @@
 """Plot orientation preference vs tuning strength and cell position of all oriented cells from
-a number of orientated stimulus recordings. Run with 'run -i scripts/oritun.py' or copy and
+a number of orientated stimulus recordings. Run with 'run -i scripts/oripref.py' or copy and
 paste into neuropy console."""
 
 from __future__ import division
