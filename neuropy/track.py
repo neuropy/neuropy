@@ -81,10 +81,16 @@ class Track(object):
                    and name[0].isdigit() ]
         rnames.sort() # alphabetical order
         dt = 0 # calculate total track duration by summing durations of all recordings
+        # does this track have any missing sorts, or rely on old impoverished .spk files?:
+        missingsort, spksort = False, False
         for rname in rnames:
             path = os.path.join(self.path, rname)
             recording = Recording(path, track=self)
             recording.load()
+            if recording.sort == None:
+                missingsort = True
+            elif type(recording.sort.header) == core.SPKHeader:
+                spksort = True
             self.r[recording.id] = recording
             self.__setattr__('r' + str(recording.id), recording) # add shortcut attrib
             dt += recording.dt
@@ -97,8 +103,8 @@ class Track(object):
         if len(rnames) == 0:
             return # no recordings in this track, nothing else to do
 
-        if recording.sort == None or type(recording.sort.header) == core.SPKHeader:
-            return # skip everything else due to impoverished .spk files
+        if missingsort or spksort:
+            return # skip all below due to missing .ptcs or use of impoverished .spk files
 
         # create a TrackSort with TrackNeurons:
         self.sort = TrackSort(self)
