@@ -686,7 +686,7 @@ class BaseRecording(object):
         """Calculate mean firing rates of all neurons in this recording"""
         RECNEURONPERIOD = get_ipython().user_ns['RECNEURONPERIOD']
         if RECNEURONPERIOD == 'recording':
-            # calc n.meanrate using entire track duration:
+            # calc n.meanrate using entire recording duration:
             for n in self.alln.values():
                 n.meanrate = n.nspikes / self.dtsec
         elif RECNEURONPERIOD == 'trange':
