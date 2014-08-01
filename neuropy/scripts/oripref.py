@@ -137,9 +137,9 @@ ylim(0, 1.02)
 xscale('log')
 xlabel('mean firing rate (Hz)')
 ylabel('tuning strength')
-# plot linear log regression:
+# plot linear-log regression:
 m, b, r, p, stderr = scipy.stats.linregress(np.log10(rates), rs)
-rr = np.asarray(xlim()) # log rates range
+rr = np.asarray(xlim()) # rates range
 plot(rr, m*np.log10(rr)+b, 'r', ls='--', lw=4, alpha=0.7)
 # add text in upper right corner:
 text(0.75, 0.99, 'r=%.2f\np=%.1g' % (r, p),
@@ -159,6 +159,19 @@ hist(rates, bins=edges, color='k')
 xscale('log')
 xlabel('mean firing rate (Hz)')
 ylabel('tuned neuron count')
+ymin, ymax, lw = 18, 20, 2
+# mark the distribution mean:
+logmean = mean(log10(rates))
+# arrow doesn't display correctly on log axis, use annotate instead:
+#vlines(10**logmean, ymin, ymax, colors='k', lw=lw)
+annotate('', xy=(10**logmean, 17), xycoords='data',
+             xytext=(10**logmean, 20), textcoords='data',
+             arrowprops=dict(fc='k', ec='none', width=1, headwidth=10, frac=0.5))
+text(0.43, 0.97, '$\mu$=%.2f Hz' % 10**logmean,
+                 horizontalalignment='right',
+                 verticalalignment='top', linespacing=1.15,
+                 transform=gca().transAxes,
+                 color='k')
 tight_layout(pad=0.3) # crop figure to contents
 gcfm().window.setWindowTitle('tuned_meanrates_hist')
 
