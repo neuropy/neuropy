@@ -19,7 +19,7 @@ for track in tracks:
         allrates.append(n.meanrate)
 
 logallrates = np.log10(allrates)
-logmin, logmax, logmean = min(logallrates), max(logallrates), logallrates.mean()
+logmin, logmax = min(logallrates), max(logallrates)
 logstart, logend = np.floor(logmin), np.ceil(logmax)
 edges = np.logspace(logstart, logend, nbins+1) # nbins+1 points in log space
 
