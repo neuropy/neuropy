@@ -445,10 +445,10 @@ class Track(object):
         f.canvas.set_window_title(lastcmd())
 
 
-    def npos(self, inchespermicron=0.007, colour='active', legend=False):
+    def npos(self, colour='active', inchespermicron=0.007, legend=False, alpha=0.6):
         """Plot (x, y) cell positions over top of polytrode channel positions, to get an idea
-        of how cells are distributed in space. Color cells by 'active', 'rftype' or
-        'spiketype'."""
+        of how cells are distributed in space. Colour cells by 'active', 'rftype',
+        'spiketype' or 'sigma'."""
         uns = get_ipython().user_ns
         npos = np.asarray([ neuron.pos for neuron in self.alln.values() ])
         chanpos = self.chanpos
@@ -482,8 +482,8 @@ class Track(object):
             na = len(anpos)
             nq = len(qnpos)
             # layer in inverse order of importance:
-            if na: a.plot(qnpos[:, 0], qnpos[:, 1], 'b.', ms=10, alpha=0.6, label='quiet')
-            if nq: a.plot(anpos[:, 0], anpos[:, 1], 'r.', ms=10, alpha=0.6, label='active')
+            if na: a.plot(qnpos[:, 0], qnpos[:, 1], 'b.', ms=10, alpha=alpha, label='quiet')
+            if nq: a.plot(anpos[:, 0], anpos[:, 1], 'r.', ms=10, alpha=alpha, label='active')
         elif colour == 'rftype':
             # plot simple, complex, LGN afferent and None in red, blue, green and grey:
             spos = np.asarray([ neuron.pos for neuron in self.alln.values()
@@ -499,10 +499,10 @@ class Track(object):
             nL = len(Lpos)
             nN = len(Npos)
             # layer in inverse order of importance:
-            if nN: a.plot(Npos[:, 0], Npos[:, 1], 'e.', ms=10, alpha=0.6, label='unknown')
-            if nL: a.plot(Lpos[:, 0], Lpos[:, 1], 'g.', ms=10, alpha=0.6, label='LGN afferent')
-            if nc: a.plot(cpos[:, 0], cpos[:, 1], 'b.', ms=10, alpha=0.6, label='complex')
-            if ns: a.plot(spos[:, 0], spos[:, 1], 'r.', ms=10, alpha=0.6, label='simple')
+            if nN: a.plot(Npos[:, 0], Npos[:, 1], 'e.', ms=10, alpha=alpha, label='unknown')
+            if nL: a.plot(Lpos[:, 0], Lpos[:, 1], 'g.', ms=10, alpha=alpha, label='LGN afferent')
+            if nc: a.plot(cpos[:, 0], cpos[:, 1], 'b.', ms=10, alpha=alpha, label='complex')
+            if ns: a.plot(spos[:, 0], spos[:, 1], 'r.', ms=10, alpha=alpha, label='simple')
         elif colour == 'spiketype':
             # plot fast, slow, fastasym and slowasym in red, blue, green and grey:
             fpos = np.asarray([ neuron.pos for neuron in self.alln.values()
@@ -518,12 +518,18 @@ class Track(object):
             nfa = len(fapos)
             nsa = len(sapos)
             # layer in inverse order of frequency:
-            if nf: a.plot(fpos[:, 0], fpos[:, 1], 'r.', ms=10, alpha=0.6, label='fast')
-            if ns: a.plot(spos[:, 0], spos[:, 1], 'b.', ms=10, alpha=0.6, label='slow')
-            if nfa: a.plot(fapos[:, 0], fapos[:, 1], 'g.', ms=10, alpha=0.6,
+            if nf: a.plot(fpos[:, 0], fpos[:, 1], 'r.', ms=10, alpha=alpha, label='fast')
+            if ns: a.plot(spos[:, 0], spos[:, 1], 'b.', ms=10, alpha=alpha, label='slow')
+            if nfa: a.plot(fapos[:, 0], fapos[:, 1], 'g.', ms=10, alpha=alpha,
                            label='fast asymmetric')
-            if nsa: a.plot(sapos[:, 0], sapos[:, 1], 'e.', ms=10, alpha=0.6,
+            if nsa: a.plot(sapos[:, 0], sapos[:, 1], 'e.', ms=10, alpha=alpha,
                            label='slow asymmetric')
+        elif colour == 'sigma':
+            sigmas = np.asarray([ neuron.sigma for neuron in self.alln.values() ])
+            cmap = mpl.cm.hot_r
+            # best to fully saturate alpha because colour indicates value, not just class:
+            sc = a.scatter(npos[:, 0], npos[:, 1], edgecolor='none', c=sigmas, cmap=cmap,
+                           alpha=1.0, s=30, zorder=10)
         else:
             raise RuntimeError("unknown colour kwarg %r" % colour)
         a.set_xlim(xlim)
@@ -534,7 +540,11 @@ class Track(object):
         #a.yaxis.set_ticks_position('left')
         # put legend to right of the axes:
         if legend:
-            a.legend(loc='center left', bbox_to_anchor=(1.2, 0.5), frameon=False)
+            if colour == 'sigma':
+                f.colorbar(sc, ax=a, shrink=0.1, pad=0.1, aspect=10,
+                           ticks=[min(sigmas), max(sigmas)], format='%d', label='sigma')
+            else:
+                a.legend(loc='center left', bbox_to_anchor=(1.2, 0.5), frameon=False)
         bbox = a.get_position()
         wh = bbox.width / bbox.height # w:h ratio of axes, includes all ticks and labels?
         w, h = gcfm().canvas.get_width_height()
