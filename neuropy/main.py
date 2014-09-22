@@ -181,14 +181,24 @@ class NeuropyWindow(QtGui.QMainWindow):
 
     @QtCore.pyqtSlot()
     def on_actionAboutNeuropy_triggered(self):
+        lf = open('../LICENSE', 'r')
+        LICENSE = lf.read()
+        lf.close()
+        system = """<p>Python %s, Qt %s, PyQt %s<br>
+                    %s</p>""" % (platform.python_version(),
+                                 QtCore.QT_VERSION_STR, QtCore.PYQT_VERSION_STR,
+                                 platform.platform())
         text = """
-        <h2>neuropy %s</h2>
+        <h2><a href=http://neuropy.github.io>neuropy</a> %s</h2>
         <p>A tool for neuronal spike data analysis</p>
-        <p>Copyright &copy; 2006-2014 Martin Spacek<br>
+        
+        <p>Copyright &copy; 2006-2014 <a href=http://mspacek.github.io>Martin Spacek</a><br>
+           <a href=http://swindale.ecc.ubc.ca>Swindale</a> Lab,
            University of British Columbia</p>
-        <p>Python %s, Qt %s, PyQt %s<br>
-        %s</p>""" % (__version__, platform.python_version(),
-        QtCore.QT_VERSION_STR, QtCore.PYQT_VERSION_STR, platform.platform())
+
+        <p>%s</p>
+
+        %s""" % (__version__, LICENSE, system)
         QtGui.QMessageBox.about(self, "About neuropy", text)
 
     @QtCore.pyqtSlot()
