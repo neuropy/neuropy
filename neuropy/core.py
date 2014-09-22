@@ -1365,7 +1365,7 @@ class Codes(object):
     
 class SpikeCorr(object):
     """Calculate and plot spike correlations of all cell pairs from nids (or of all
-    cell pairs within some torus of radii R=(R0, R1) in um) in this Recording, during tranges
+    cell pairs within some torus of radii R=(R0, R1) in um) in source, during tranges
     or experiments. If width is not None, calculate self as a function of time, with bin
     widths width sec and time resolution tres sec. For each pair, shift the
     second spike train by shift ms, or shift it by shiftcorrect ms and subtract the

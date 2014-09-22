@@ -59,8 +59,8 @@ Optional:
 
 * [scikit-learn](http://scikit-learn.org)
 
-neuropy is developed in Xubuntu 12.10. It should work in other Linux distributions.
-In principle, it should also work in Windows and OSX.
+neuropy is developed in Xubuntu 14.04. It should work in other Linux distributions. In
+principle, it should also work in Windows and OSX.
 
 An older version is described in the paper [Python for large-scale electrophysiology]
 (http://www.frontiersin.org/Neuroinformatics/10.3389/neuro.11.009.2008/abstract).
