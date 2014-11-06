@@ -95,12 +95,16 @@ for track in tracks:
     farrs.append(farr)
 
 fontsize(16)
-fig = figure(figsize=(7, 4.4))
+df0 = 1e-6 # for log y scale, use this to plot pairs with df = 0
+fig = figure(figsize=(7, 4.8))
 for track, farr, c in zip(tracks, farrs, colours):
+    df = farr['df']
+    df[df == 0] = df0
     plot(farr['df'], ls='-', lw=4, marker=None, c=c, label=track.absname)
 legend(frameon=False, loc='center right')
+yscale('log')
 xlim(xmin=-20)
-ylim(ymin=-0.0002)
+ylim(ymin=df0 - 1e-7)
 xlabel('pair rank')
 ylabel('df')
 fig.tight_layout(pad=0.3) # crop figure to contents
