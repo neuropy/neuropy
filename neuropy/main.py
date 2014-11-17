@@ -190,7 +190,7 @@ class NeuropyWindow(QtGui.QMainWindow):
                                  platform.platform())
         text = """
         <h2><a href=http://neuropy.github.io>neuropy</a> %s</h2>
-        <p>A tool for neuronal spike data analysis</p>
+        <p>A tool for neuronal spike, stimulus, and LFP data analysis</p>
         
         <p>Copyright &copy; 2006-2014 <a href=http://mspacek.github.io>Martin Spacek</a><br>
            <a href=http://swindale.ecc.ubc.ca>Swindale</a> Lab,
