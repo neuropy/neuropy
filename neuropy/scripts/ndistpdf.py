@@ -41,8 +41,8 @@ rho = N / sum(areas) # average cell density per unit polytrode area (1/um^2)
 midbins = edges[:-1] + intround(binw/2) # middle of each bin
 theory = rho*2*pi*midbins/binw # normed distrib expected for randomly distributed units
 
-# simulate numerically by randomly distributing points aroound a polytrode and measuring
-# the distribution of distances between each point and its nearest electrode site:
+# simulate numerically by randomly and uniformly distributing points around a polytrode and
+# measuring the distribution of distances between each point and its nearest electrode site:
 umap1a = ptc22.tr1.sort.chanpos
 area1a, xlims1a, ylims1a = areas[1], xlims[1], ylims[1]
 nseed = intround(rho * area)
