@@ -22,11 +22,11 @@ tracks = [ eval(trackname) for trackname in tracknames ]
 
 alpha = 0.01 # p value threshold for significance
 ec = 'gray'
-allnids, allthetas, allrs, alldepths, allps, allrates = {}, {}, {}, {}, {}, {}
+allnids, allthetas, allrs, alldepths, allps, allrates, allbestrec = {}, {}, {}, {}, {}, {}, {}
 fs = fontsize() # save original font size
 for track in tracks:
     # theta in deg, r in fraction of total spikes, depth in um:
-    thetas, rs, depths, ps, rates = {}, {}, {}, {}, {}
+    thetas, rs, depths, ps, rates, bestrec = {}, {}, {}, {}, {}, {}
     for rec in trackrecs[track]:
         nids = np.array(sorted(rec.alln))
         neurons = [ rec.alln[nid] for nid in nids ]
@@ -43,6 +43,7 @@ for track in tracks:
             depths[nid] = neuron.pos[1]
             ps[nid] = p
             rates[nid] = neuron.meanrate
+            bestrec[nid] = rec.name
         print('%s: %d of %d neurons tuned' % (rec.absname, len(thetas), rec.nallneurons))
     nids = sorted(thetas.keys()) # just the significant ones that were kept
     thetas = np.asarray([ thetas[nid] for nid in nids ])
@@ -60,6 +61,7 @@ for track in tracks:
     alldepths[track.absname] = depths
     allps[track.absname] = ps
     allrates[track.absname] = rates
+    allbestrec[track.absname] = bestrec
 
     # plot tuning strength vs theta, in half polar plot, colour by depth, with darker colours
     # indicating greater depth:
