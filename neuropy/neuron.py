@@ -861,12 +861,12 @@ class Tune(object):
         n = counts.sum()
         if n:
             r = np.sqrt(x**2+y**2) / n # fraction of total spikes
-            # calc significance of r, eq 4.17 From p70 of Statistical Analysis of Circular Data,
-            # by N.I. Fisher, Cambridge University Press, 1993 (1995 paperback edition). Also,
-            # see Wilkie1983. I'm assuming here that n should be the number of spikes, ie the
-            # number of data points used to create all the vectors, not the number of vectors
-            # (which in this application is the number of orientation conditions). Almost
-            # certain this is correct.
+            # calc significance of r, eq 4.17 From p70 of Statistical Analysis of Circular
+            # Data, by N.I. Fisher, Cambridge University Press, 1993 (1995 paperback
+            # edition). Also, see Wilkie1983. I'm assuming here that n should be the number
+            # of spikes, ie the number of data points used to create all the vectors, not the
+            # number of vectors (which in this application is the number of orientation
+            # conditions).
             z = n * r**2 # critical value
             p = np.exp(-z) * (1 + (2*z-z**2)/(4*n) - (24*z-132*z**2+76*z**3-9*z**4)/(288*n**2))
         else: # no spikes, return values representing uniform 0 height distribution
