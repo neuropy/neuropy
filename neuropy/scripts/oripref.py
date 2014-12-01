@@ -57,6 +57,8 @@ for track in tracks:
             rs[nid] = r
             depths[nid] = neuron.pos[1]
             ps[nid] = p
+            # NOTE: neuron.meanrate includes periods during the recording when the stimulus
+            # is not on screen, though these periods are brief:
             rates[nid] = neuron.meanrate
             bestrec[nid] = rec.name
         print('%s: %d/%d neurons tuned' % (rec.absname, len(snids), len(nids)))
