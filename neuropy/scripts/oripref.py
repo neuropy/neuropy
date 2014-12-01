@@ -21,24 +21,27 @@ tracknames = sorted([ track.absname for track in trackrecs ])
 tracks = [ eval(trackname) for trackname in tracknames ]
 
 ALPHA = 0.01 # p value threshold for significance
-# minimum mean firing rate during oriented stim for cell inclusion, None means ignore
-RATETHRESH = 0.05
-print('ALPHA=%g, RATETHRESH=%r' % (ALPHA, RATETHRESH))
+ONLYACTIVE = True # only consider active neurons (mean rate >= MINRATE global value)?
+if ONLYACTIVE:
+    print('ALPHA=%g, ONLYACTIVE=%r, MINRATE=%r' % (ALPHA, ONLYACTIVE, MINRATE))
+else:
+    print('ALPHA=%g, ONLYACTIVE=%r' % (ALPHA, ONLYACTIVE))
 ec = 'grey'
-allnids, totals = {}, [] # all nids, by track, that > RATETHRESH, or all if RATETHRESH == None
+allnids, totals = {}, [] # all nids, by track, >= MINRATE, or all if not ONLYACTIVE
 allsnids, allthetas, allrs, alldepths, allps, allrates, allbestrec = {}, {}, {}, {}, {}, {}, {}
 fs = fontsize() # save original font size
 for track in tracks:
-    tracknids = [] # nids for this track that passed RATETHRESH
+    tracknids = [] # nids for this track >= MINRATE, or all if not ONLYACTIVE
     # theta in deg, r in fraction of total spikes, depth in um:
     thetas, rs, depths, ps, rates, bestrec = {}, {}, {}, {}, {}, {}
     for rec in trackrecs[track]:
-        # sorted list of all neurons that fired at least once during this recording:
-        neurons = [ rec.alln[nid] for nid in np.array(sorted(rec.alln)) ]
-        # filter out low rate cells:
-        if RATETHRESH != None:
-            neurons = [ neuron for neuron in neurons if neuron.meanrate >= RATETHRESH ]
-        nids = [ neuron.id for neuron in neurons ] # nids that passed RATETHRESH for this rec
+        if ONLYACTIVE:
+            n = rec.n
+        else:
+            n = rec.alln
+        # sorted list of relevant neurons for this recording:
+        neurons = [ n[nid] for nid in np.array(sorted(n)) ]
+        nids = [ neuron.id for neuron in neurons ] # corresponding nids
         tracknids.append(nids)
         snids = [] # significantly tuned nids for this rec
         for nid in nids:
@@ -56,12 +59,8 @@ for track in tracks:
             ps[nid] = p
             rates[nid] = neuron.meanrate
             bestrec[nid] = rec.name
-        if RATETHRESH == None:
-            total = rec.nallneurons
-        else:
-            total = len(nids)
-        print('%s: %d/%d neurons tuned' % (rec.absname, len(snids), total))
-    nids = np.unique(np.hstack(tracknids)) # nids that passed RATETHRESH in at least one rec
+        print('%s: %d/%d neurons tuned' % (rec.absname, len(snids), len(nids)))
+    nids = np.unique(np.hstack(tracknids)) # nids that were relevant in at least one rec
     snids = sorted(thetas.keys()) # significantly tuned nids across all recs
     thetas = np.asarray([ thetas[nid] for nid in snids ])
     rs = np.asarray([ rs[nid] for nid in snids ])
@@ -110,10 +109,10 @@ for track in tracks:
     f.tight_layout(pad=0.3)
     f.canvas.manager.set_window_title(track.absname+'_depth')
     fontsize(fs) # restore
-    if RATETHRESH == None:
-        tracktotal = track.nallneurons
-    else:
+    if ONLYACTIVE:
         tracktotal = len(nids)
+    else: # count all cells in each track, even if they didn't fire at all during oriented recs
+        tracktotal = track.nallneurons
     totals.append(tracktotal)
     nsn, tn = len(snids), tracktotal
     print('%s: %d/%d (%g%%) neurons tuned' % (track.absname, nsn, tn, nsn/tn*100))
