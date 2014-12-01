@@ -20,42 +20,60 @@ trackrecs = {ptc15.tr7c: [ptc15.tr7c.r71, ptc15.tr7c.r73, ptc15.tr7c.r85],
 tracknames = sorted([ track.absname for track in trackrecs ])
 tracks = [ eval(trackname) for trackname in tracknames ]
 
-alpha = 0.01 # p value threshold for significance
-ec = 'gray'
-allnids, allthetas, allrs, alldepths, allps, allrates, allbestrec = {}, {}, {}, {}, {}, {}, {}
+ALPHA = 0.01 # p value threshold for significance
+# minimum mean firing rate during oriented stim for cell inclusion, None means ignore
+RATETHRESH = 0.05
+print('ALPHA=%g, RATETHRESH=%r' % (ALPHA, RATETHRESH))
+ec = 'grey'
+allnids, totals = {}, [] # all nids, by track, that > RATETHRESH, or all if RATETHRESH == None
+allsnids, allthetas, allrs, alldepths, allps, allrates, allbestrec = {}, {}, {}, {}, {}, {}, {}
 fs = fontsize() # save original font size
 for track in tracks:
+    tracknids = [] # nids for this track that passed RATETHRESH
     # theta in deg, r in fraction of total spikes, depth in um:
     thetas, rs, depths, ps, rates, bestrec = {}, {}, {}, {}, {}, {}
     for rec in trackrecs[track]:
-        nids = np.array(sorted(rec.alln))
-        neurons = [ rec.alln[nid] for nid in nids ]
+        # sorted list of all neurons that fired at least once during this recording:
+        neurons = [ rec.alln[nid] for nid in np.array(sorted(rec.alln)) ]
+        # filter out low rate cells:
+        if RATETHRESH != None:
+            neurons = [ neuron for neuron in neurons if neuron.meanrate >= RATETHRESH ]
+        nids = [ neuron.id for neuron in neurons ] # nids that passed RATETHRESH for this rec
+        tracknids.append(nids)
+        snids = [] # significantly tuned nids for this rec
         for nid in nids:
             neuron = rec.alln[nid]
             tune = neuron.tune()
             theta, r, z, p = tune.pref(var='ori')
-            if not p < alpha:
+            if not p < ALPHA:
                 continue # insignificant tuning, skip to next nid
             if nid in rs and r <= rs[nid]:
                 continue # skip nid if it's less tuned than same nid from earlier rec
+            snids.append(nid)
             thetas[nid] = theta
             rs[nid] = r
             depths[nid] = neuron.pos[1]
             ps[nid] = p
             rates[nid] = neuron.meanrate
             bestrec[nid] = rec.name
-        print('%s: %d of %d neurons tuned' % (rec.absname, len(thetas), rec.nallneurons))
-    nids = sorted(thetas.keys()) # just the significant ones that were kept
-    thetas = np.asarray([ thetas[nid] for nid in nids ])
-    rs = np.asarray([ rs[nid] for nid in nids ])
-    depths = np.asarray([ depths[nid] for nid in nids ])
-    ps = np.asarray([ ps[nid] for nid in nids ])
-    rates = np.asarray([ rates[nid] for nid in nids ])
+        if RATETHRESH == None:
+            total = rec.nallneurons
+        else:
+            total = len(nids)
+        print('%s: %d/%d neurons tuned' % (rec.absname, len(snids), total))
+    nids = np.unique(np.hstack(tracknids)) # nids that passed RATETHRESH in at least one rec
+    snids = sorted(thetas.keys()) # significantly tuned nids across all recs
+    thetas = np.asarray([ thetas[nid] for nid in snids ])
+    rs = np.asarray([ rs[nid] for nid in snids ])
+    depths = np.asarray([ depths[nid] for nid in snids ])
+    ps = np.asarray([ ps[nid] for nid in snids ])
+    rates = np.asarray([ rates[nid] for nid in snids ])
     cellmaxdepth = depths.max()
     chanmaxdepth = track.sort.chanpos[:, 1].max()
     maxdepth = max(cellmaxdepth, chanmaxdepth)
     depths /= maxdepth # normalize by cell or channel of greatest depth
     allnids[track.absname] = nids
+    allsnids[track.absname] = snids
     allthetas[track.absname] = thetas
     allrs[track.absname] = rs
     alldepths[track.absname] = depths
@@ -92,15 +110,24 @@ for track in tracks:
     f.tight_layout(pad=0.3)
     f.canvas.manager.set_window_title(track.absname+'_depth')
     fontsize(fs) # restore
-    print('%s: %d of %d neurons tuned' % (track.absname, len(nids), track.nallneurons))
+    if RATETHRESH == None:
+        tracktotal = track.nallneurons
+    else:
+        tracktotal = len(nids)
+    totals.append(tracktotal)
+    nsn, tn = len(snids), tracktotal
+    print('%s: %d/%d (%g%%) neurons tuned' % (track.absname, nsn, tn, nsn/tn*100))
 
 # create flattened versions:
-nids = np.hstack([ allnids[track.absname] for track in tracks ])
+snids = np.hstack([ allsnids[track.absname] for track in tracks ])
 thetas = np.hstack([ allthetas[track.absname] for track in tracks ])
 rs = np.hstack([ allrs[track.absname] for track in tracks ])
 depths = np.hstack([ alldepths[track.absname] for track in tracks ])
 ps = np.hstack([ allps[track.absname] for track in tracks ])
 rates = np.hstack([ allrates[track.absname] for track in tracks ])
+
+nsn, tn = len(snids), sum(totals)
+print('total: %d/%d (%g%%) neurons tuned' % (nsn, tn, nsn/tn*100))
 
 # plot tuning strength vs theta, in half polar plot, colour by depth, with darker colours
 # indicating greater depth:
