@@ -694,7 +694,7 @@ class RevCorrs(object):
             nids = sorted(r.alln.keys()) # use all neurons
         else:
             nids = tolist(nids) # use specified nids
-        neurons = [ r.alln[nid] for nid in nids ]
+        neurons = [ r.alln[nid] if nid in r.alln else None for nid in nids ]
         return nids, neurons
 
     def plot(self, normed=True, title='RevCorrWindow', scale=2.0, MPL=False, margins=True):
@@ -705,20 +705,23 @@ class RevCorrs(object):
         if normed == 'global': # normalize across all timepoints for all neurons
             vmin = min([ sta.rf.min() for sta in self.stas ]) # global min
             vmax = max([ sta.rf.max() for sta in self.stas ]) # global max
-        for ni, sta in enumerate(self.stas):
-            # create a copy to manipulate for display purposes, (nt, width, height):
-            rf = sta.rf.copy()
-            if normed: # either 'global' or True
-                if normed == True: # normalize across the timepoints for this Neuron
-                    vmin, vmax = rf.min(), rf.max()
-                norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
-                rf = norm(rf) # normalize the rf the same way across all timepoints
-            else: # don't normalize across timepoints, leave each one to autoscale
-                for ti in range(self.nt):
-                    norm = mpl.colors.normalize(vmin=None, vmax=None, clip=True)
-                    rf[ti] = norm(rf[ti]) # normalize the rf separately at each timepoint
-            rf *= 255 # scale up to 8 bit values
-            rf = rf.round().astype(np.uint8) # downcast from float to uint8
+        for sta in (self.stas):
+            if sta is None:
+                rf = None
+            else:
+                # create a copy to manipulate for display purposes, (nt, width, height):
+                rf = sta.rf.copy()
+                if normed: # either 'global' or True
+                    if normed == True: # normalize across the timepoints for this Neuron
+                        vmin, vmax = rf.min(), rf.max()
+                    norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
+                    rf = norm(rf) # normalize the rf the same way across all timepoints
+                else: # don't normalize across timepoints, leave each one to autoscale
+                    for ti in range(self.nt):
+                        norm = mpl.colors.Normalize(vmin=None, vmax=None, clip=True)
+                        rf[ti] = norm(rf[ti]) # normalize the rf separately at each timepoint
+                rf *= 255 # scale up to 8 bit values
+                rf = rf.round().astype(np.uint8) # downcast from float to uint8
             rfs.append(rf)
         if MPL == True:
             core.mplrevcorr(title=title, rfs=rfs, nids=self.nids, ts=self.ts, scale=scale,
@@ -736,8 +739,11 @@ class STAs(RevCorrs):
     def calc(self):
         self.stas = [] # store STAs in a list
         for neuron in self.neurons:
-            stao = neuron.sta(experiment=self.experiment, trange=self.trange, nt=self.nt)
-            self.stas.append(stao)
+            if neuron == None:
+                sta = None
+            else:
+                sta = neuron.sta(experiment=self.experiment, trange=self.trange, nt=self.nt)
+            self.stas.append(sta)
 
     def plot(self, normed=True, scale=2.0, MPL=False, margins=True):
         win = RevCorrs.plot(self, normed=normed, title=lastcmd(), scale=scale, MPL=MPL,

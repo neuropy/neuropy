@@ -2565,7 +2565,7 @@ class NeuropyWindow(QtGui.QMainWindow):
 
 class RevCorrWindow(NeuropyWindow):
     def __init__(self, parent=None, title='RevCorrWindow', rfs=None,
-                 nids=None, ts=None, scale=2.0):
+                 nids=None, ts=None, scale=2.0, blanksize=(32, 32)):
         NeuropyWindow.__init__(self, parent)
         self.title = title
         self.rfs = rfs
@@ -2593,7 +2593,10 @@ class RevCorrWindow(NeuropyWindow):
             rf = rfs[ni]
             for ti, t in enumerate(ts):
                 #data = np.uint8(np.random.randint(0, 255, size=(height, width)))
-                data = rf[ti]
+                if rf == None:
+                    data = np.zeros(blanksize, dtype=np.uint8) # blank placeholder rf
+                else:
+                    data = rf[ti]
                 width, height = data.shape
                 image = QImage(data.data, width, height, QImage.Format_Indexed8)
                 image.ndarray = data # hold a ref, prevent gc
@@ -2668,6 +2671,8 @@ def mplrevcorr(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2, dpi
         if margins:
             plt.figtext(x, y, 'n'+str(nid),
                         verticalalignment='center', horizontalalignment='right')
+        if rf == None:
+            continue # skip blank rfs
         for ti, t in enumerate(ts):
             # x and y pos of rf, in pixels:
             x0 = (lm + ti*(rfw+hs)) * dpi
