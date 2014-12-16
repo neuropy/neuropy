@@ -2571,7 +2571,7 @@ class RevCorrWindow(NeuropyWindow):
         self.rfs = rfs
         self.nids = nids
         self.ts = ts
-        self.scale = scale # setting to a float will give uneven sized pixels
+        self.scale = scale # setting to non-integer will give uneven sized pixels
 
         cmap = mpl.cm.jet(np.arange(256), bytes=True) # 8 bit RGBA colormap
         #cmap[:, [0, 1, 2, 3]] = cmap[:, [3, 0, 1, 2]] # 8 bit ARGB colormap
@@ -2622,6 +2622,9 @@ def mplrevcorr(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2, dpi
     explicitly set the output file to have the same DPI as the figure:
 
     gcf().savefig('filename.png', dpi=gcf().dpi)
+    You might also want to set transparency=False kwarg to get rid of transparency, or set
+    that as the default in rcParams['savefig.transparent'].
+    
     Saving to PDF seems buggy. Use PNG instead.
 
     Do bbox_inches='tight', pad_inches=0 do anything? Don't seem to...
@@ -2665,7 +2668,6 @@ def mplrevcorr(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2, dpi
         if margins:
             plt.figtext(x, y, 'n'+str(nid),
                         verticalalignment='center', horizontalalignment='right')
-        vmin, vmax = rf.min(), rf.max()
         for ti, t in enumerate(ts):
             # x and y pos of rf, in pixels:
             x0 = (lm + ti*(rfw+hs)) * dpi
@@ -2675,7 +2677,7 @@ def mplrevcorr(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2, dpi
             if scale != 1:
                 data = data.repeat(scale, axis=0).repeat(scale, axis=1)
             im = plt.figimage(data, x0, y0, origin='upper', cmap=mpl.cm.jet_r,
-                              vmin=vmin, vmax=vmax)
+                              vmin=0, vmax=255)
             ims.append(im)
             #a.set_axis_off() # disable axes lines, ticks and labels
 
@@ -2710,15 +2712,10 @@ def mplrevcorraxes(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2.
     fh = tm + nn*rfh + (nn-1)*vs + bm # inches
     f = plt.figure(figsize=(fw, fh))
 
-    # place time labels along top
-    #for ti, t in enumerate(ts):
-    #    label = QtGui.QLabel(str(t))
-    #    layout.addWidget(label, 0, ti+1)
-    # plot each row, with its nid label
+    # plot each row:
     maxni = nn - 1
     for ni, nid in enumerate(nids):
         rf = rfs[ni]
-        vmin, vmax = rf.min(), rf.max()
         for ti, t in enumerate(ts):
             # left bottom width and height of rf, in fractional figure units:
             lbwh = (lm + ti*(rfw+hs))/fw, (bm + (maxni-ni)*(rfh+vs))/fh, rfw/fw, rfh/fh
@@ -2727,7 +2724,7 @@ def mplrevcorraxes(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2.
             data = rf[ti]
             #data = np.uint8(np.random.randint(0, 255, size=(32, 32)))
             im = a.imshow(data, interpolation='nearest', cmap=mpl.cm.jet_r,
-                          aspect='equal', origin='upper',
+                          vmin=0, vmax=255, aspect='equal', origin='upper',
                           extent=[0, data.shape[1], 0, data.shape[0]])
 
     gcfm().window.setWindowTitle(title)

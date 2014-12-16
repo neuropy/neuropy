@@ -698,7 +698,9 @@ class RevCorrs(object):
         return nids, neurons
 
     def plot(self, normed=True, title='RevCorrWindow', scale=2.0, MPL=False, margins=True):
-        """Plots the RFs as bitmaps in a window. normed = 'global'|True|False"""
+        """Plots the RFs as bitmaps in a window.
+        normed = True|False|'global'
+        MPL = True|False|'axes'"""
         rfs = [] # list of receptive fields to pass to ReceptiveFieldFrame object
         if normed == 'global': # normalize across all timepoints for all neurons
             vmin = min([ sta.rf.min() for sta in self.stas ]) # global min
@@ -718,9 +720,11 @@ class RevCorrs(object):
             rf *= 255 # scale up to 8 bit values
             rf = rf.round().astype(np.uint8) # downcast from float to uint8
             rfs.append(rf)
-        if MPL:
+        if MPL == True:
             core.mplrevcorr(title=title, rfs=rfs, nids=self.nids, ts=self.ts, scale=scale,
                             dpi=MPL, margins=margins)
+        elif MPL == 'axes':
+            core.mplrevcorraxes(title=title, rfs=rfs, nids=self.nids, ts=self.ts, scale=scale)
         else:
             win = RevCorrWindow(title=title, rfs=rfs, nids=self.nids, ts=self.ts, scale=scale)
             win.show()
