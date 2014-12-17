@@ -21,7 +21,7 @@ tracknames = sorted([ track.absname for track in trackrecs ])
 tracks = [ eval(trackname) for trackname in tracknames ]
 
 ALPHA = 0.01 # p value threshold for significance
-ONLYACTIVE = True # only consider active neurons (mean rate >= MINRATE global value)?
+ONLYACTIVE = False # only consider active neurons (mean rate >= MINRATE global value)?
 if ONLYACTIVE:
     print('ALPHA=%g, ONLYACTIVE=%r, MINRATE=%r' % (ALPHA, ONLYACTIVE, MINRATE))
 else:
