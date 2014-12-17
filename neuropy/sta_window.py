@@ -22,10 +22,12 @@ class STAWindow(QtGui.QMainWindow):
         width, height = 32, 32
         scale = 2 # setting to a float will give uneven sized pixels
 
-        cmap = mpl.cm.jet(np.arange(256), bytes=True) # 8 bit RGBA colormap
-        #cmap[:, [0, 1, 2, 3]] = cmap[:, [3, 0, 1, 2]] # 8 bit ARGB colormap
-        # from Qt docs, sounds like I should be using ARGB format, but seems like
-        # RGBA is the format that works in PyQt4
+        cmap = mpl.cm.jet(np.arange(256), alpha=None, bytes=True) # 8 bit RGBA colormap
+        # from Qt docs, need to use ARGB format:
+        # http://qt-project.org/doc/qt-4.8/qimage.html#image-formats
+        # convert to 8 bit ARGB colormap, but due to little-endianness, need to arrange
+        # array columns in reverse BGRA order:
+        cmap[:, [0, 1, 2, 3]] = cmap[:, [2, 1, 0, 3]]
         colortable = cmap.view(dtype=np.uint32).ravel().tolist() # QVector<QRgb> colors 
         layout = QtGui.QGridLayout() # can set vert and horiz spacing
         #layout.setContentsMargins(0, 0, 0, 0) # doesn't seem to do anything
