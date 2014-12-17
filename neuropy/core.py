@@ -2573,11 +2573,13 @@ class RevCorrWindow(NeuropyWindow):
         self.ts = ts
         self.scale = scale # setting to non-integer will give uneven sized pixels
 
-        cmap = mpl.cm.jet(np.arange(256), bytes=True) # 8 bit RGBA colormap
-        #cmap[:, [0, 1, 2, 3]] = cmap[:, [3, 0, 1, 2]] # 8 bit ARGB colormap
-        # from Qt docs, sounds like I should be using ARGB format, but seems like
-        # RGBA is the format that works in PyQt4
-        colortable = cmap.view(dtype=np.uint32).ravel().tolist() # QVector<QRgb> colors 
+        cmap = mpl.cm.jet(np.arange(256), alpha=None, bytes=True) # 8 bit RGBA colormap
+        # from Qt docs, need to use ARGB format:
+        # http://qt-project.org/doc/qt-4.8/qimage.html#image-formats
+        # convert to 8 bit ARGB colormap, but due to little-endianness, need to arrange
+        # array columns in reverse BGRA order:
+        cmap[:, [0, 1, 2, 3]] = cmap[:, [2, 1, 0, 3]]
+        colortable = cmap.view(dtype=np.uint32).ravel().tolist() # QVector<QRgb> colors
         layout = QtGui.QGridLayout() # can set vert and horiz spacing
         #layout.setContentsMargins(0, 0, 0, 0) # doesn't seem to do anything
 
@@ -2681,7 +2683,7 @@ def mplrevcorr(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2, dpi
             data = rf[ti]
             if scale != 1:
                 data = data.repeat(scale, axis=0).repeat(scale, axis=1)
-            im = plt.figimage(data, x0, y0, origin='upper', cmap=mpl.cm.jet_r,
+            im = plt.figimage(data, x0, y0, origin='upper', cmap=mpl.cm.jet,
                               vmin=0, vmax=255)
             ims.append(im)
             #a.set_axis_off() # disable axes lines, ticks and labels
@@ -2728,7 +2730,7 @@ def mplrevcorraxes(title='RevCorrWindow', rfs=None, nids=None, ts=None, scale=2.
             a.set_axis_off() # disable axes lines, ticks and labels
             data = rf[ti]
             #data = np.uint8(np.random.randint(0, 255, size=(32, 32)))
-            im = a.imshow(data, interpolation='nearest', cmap=mpl.cm.jet_r,
+            im = a.imshow(data, interpolation='nearest', cmap=mpl.cm.jet,
                           vmin=0, vmax=255, aspect='equal', origin='upper',
                           extent=[0, data.shape[1], 0, data.shape[0]])
 
