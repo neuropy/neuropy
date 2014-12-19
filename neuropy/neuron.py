@@ -615,7 +615,8 @@ class RevCorr(object):
             # this can happen during a multi-experiment recording in which self.neuron has no
             # spikes during one of the experiments, but does have spikes at some other
             # point in the recording, such as during one or more of the other experiments
-            print('n%d has no spikes to reverse-correlate to' % self.neuron.id)
+            print('n%d has no spikes for reverse correlation for experiment %d' %
+                 (self.neuron.id, self.experiment.id))
             self.rcdini = None
         else:
             self.rcdini = self.experiment.din[:, 0].searchsorted(spikes) - 1
