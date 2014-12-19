@@ -609,9 +609,16 @@ class RevCorr(object):
     def calc(self):
         """General calc step that has to be performed for all kinds of reverse correlations"""
         spikes = self.neuron.cut(self.trange)
-        # revcorr dini. Find where the spike times fall in the din, dec so you get indices
+        # build revcorr dini: where spike times fall in the din. Subtract 1 to get indices
         # that point to the most recent din value for each spike:
-        self.rcdini = self.experiment.din[:, 0].searchsorted(spikes) - 1
+        if len(spikes) == 0:
+            # this can happen during a multi-experiment recording in which self.neuron has no
+            # spikes during one of the experiments, but does have spikes at some other
+            # point in the recording, such as during one or more of the other experiments
+            print('n%d has no spikes to reverse-correlate to' % self.neuron.id)
+            self.rcdini = None
+        else:
+            self.rcdini = self.experiment.din[:, 0].searchsorted(spikes) - 1
         #self.din = self.experiment.din[rcdini, 1] # get the din (frame indices) at the rcdini
 
     def plot(self, normed=True, title='RevCorrWindow', scale=2.0):
@@ -640,6 +647,9 @@ class STA(RevCorr):
         #sys.stdout.write('n%d' % self.neuron.id) # prevents trailing space and newline
         # init a 3D matrix to store the STA at each timepoint. rf == 'receptive field'
         self.rf = np.zeros([self.nt, self.height, self.width], dtype=np.float64)
+        if self.rcdini == None: # no spikes for revcorr
+            self.done = True # there's nothing to do
+            return
         # converting from uint8 to float64 seems to speed up mean() method a bit:
         #frames = np.float64(self.movie.frames)
         frames = self.movie.frames
@@ -672,7 +682,7 @@ class STA(RevCorr):
             pickedframes = frames.take(frameis, axis=0)
             self.rf[ti] = mean_accum(pickedframes)
             #self.rf[ti] = mean_accum2(frames, frameis)
-        self.done = True
+        self.done = True # flag successful completion of calc()
 
     def plot(self, normed=True, scale=2.0):
         win = RevCorr.plot(self, normed=normed, title=lastcmd(), scale=scale)
