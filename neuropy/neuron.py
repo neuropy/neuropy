@@ -719,21 +719,21 @@ class NeuronRevCorr(object):
                 # assume experiment is an Experiment id, get the associated object
                 experiment = self.sort.r.e[experiment]
             # else: experiment is probably an Experiment object
-        stao = STA(neuron=self, experiment=experiment, **kwargs) # init a new STA object
-        for sta in self._stas:
-            if stao == sta: # need to define special == method for RevCorr class
-                if sta.done:
-                    # return the first STA object whose attributes match what's desired, and
-                    # whose calculation done flag is set. This saves on calc() time and
-                    # avoids wasting memory with unnecessary sta objects:
-                    return sta
+        sta = STA(neuron=self, experiment=experiment, **kwargs) # init a new STA object
+        for _sta in self._stas:
+            if _sta == sta: # special == method defined for RevCorr class
+                # return the first STA object whose attributes match what's desired, and
+                # whose calculation done flag is set. This saves on calc() time and
+                # avoids wasting memory with unnecessary sta objects:
+                if _sta.done:
+                    return _sta
                 else:
-                    sta.calc() # re-run its calc()
-                    return sta
-        stao.calc() # no matching STA was found, calculate it
-        if stao.done: # if calc() was allowed to go to completion
-            self._stas.append(stao) # add it to the STA object list
-        return stao # return it, even if it isn't done
+                    _sta.calc() # re-run its calc()
+                    return _sta
+        sta.calc() # no matching STA was found, calculate it
+        if sta.done: # if calc() completed without error
+            self._stas.append(sta) # add it to the STA object list
+        return sta # return it, even if it isn't done
     sta.__doc__ += '\n\n**kwargs:\n'
     sta.__doc__ += getargstr(STA.__init__)
 

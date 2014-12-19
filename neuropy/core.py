@@ -3671,8 +3671,7 @@ def mean_accum(data):
     Suggested by Tim Hochberg"""
     result = np.zeros(data[0].shape, np.float64) # init output array
     for dataslice in data:
-        # this for loop isn't such a bad thing cuz the massive add step inside the loop
-        # is the limiting factor
+        # this loop isn't so bad since the massive add step is the limiting factor
         result += dataslice
     result /= len(data)
     return result
