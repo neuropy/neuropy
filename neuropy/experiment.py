@@ -122,6 +122,12 @@ class BaseExperiment(object):
         # add an extra refresh time after last din, that's when screen actually turns off
         self.trange = (self.din[0, 0], self.din[-1, 0] + self.REFRESHTIME)
 
+        # these are static, no need for properties:
+        self.dt = self.trange[1] - self.trange[0] # duration (us)
+        self.dtsec = self.dt / 1e6
+        self.dtmin = self.dtsec / 60
+        self.dthour = self.dtmin / 60
+
     def loadptc15exp(self):
         ## TODO: - fake a .e dimstim.Experiment object, to replace what used to be the
         ## .stims object for movie experiments
