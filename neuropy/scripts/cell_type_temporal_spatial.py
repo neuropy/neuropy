@@ -81,6 +81,7 @@ sigmas = []
 rftypes = []
 waves = []
 nwaves = [] # peak-to-peak normalized waveforms
+Vpps = [] # peak-to-peak amplitudes
 fwhm1s = [] # full-width half max values of primary peak
 fwhm2s = [] # full-width half max values of secondary peak
 ipis = [] # interpeak intervals
@@ -116,7 +117,9 @@ for track in tracks:
         # interpolate waveforms from original t0 timebase to higher rez t1 timebase:
         wave = scipy.interpolate.spline(t0, wave, t1)
         waves.append(wave)
-        nwave = wave / wave.ptp() # normalize peak-to-peak amplitudes
+        Vpp = wave.ptp() # peak-to-peak amplitude
+        Vpps.append(Vpp)
+        nwave = wave / Vpp # normalize peak-to-peak amplitudes
         nwaves.append(nwave)
         extis = arg0xextrema(wave) # indices of biggest peaks between 0 crossings and edges
         extii = abs(extis - aligni).argmin() # extremum closest to aligni
@@ -223,6 +226,7 @@ for track in tracks:
 
 waves = np.asarray(waves)
 nwaves = np.asarray(nwaves)
+Vpps = np.asarray(Vpps)
 sigmas = np.hstack(sigmas)
 rftypes = np.hstack(rftypes)
 fwhm1s = np.hstack(fwhm1s)
@@ -253,6 +257,17 @@ gcfm().window.setWindowTitle('waveforms')
 tight_layout(pad=0.3)
 '''
 '''
+# scatter plot sigma vs Vpp
+figure(figsize=(3, 3))
+plot(Vpps, sigmas, 'k.')
+xticks([0, 100, 200, 300, 400])
+yticks([0, 25, 50, 75, 100])
+xlabel('$V_{pp}$ ($\mu$V)')
+ylabel('$\sigma$ ($\mu$m)')
+#title('tracks: %r' % tracknames)
+gcfm().window.setWindowTitle('sigma vs Vpp')
+tight_layout(pad=0.3)
+
 # scatter plot sigma vs ipi
 figure(figsize=(3, 3))
 plot(ipis, sigmas, 'k.')
