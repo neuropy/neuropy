@@ -3,6 +3,10 @@ scripts/cell_type_vs_ns_matrix.py`"""
 
 from __future__ import division
 
+from scipy.stats import chisquare
+
+alpha = 0.01 # for chi squared test
+
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2] # need to be loaded ahead of time
 tracknames = [track.absname for track in tracks ] + ['all']
 
@@ -66,5 +70,39 @@ for trackname in tracknames:
                         label='neuron count')
     gcfm().window.setWindowTitle(trackname + ' cell type vs nsresponse split')
     tight_layout(pad=1)
+
+print('individual chi square tests, alpha=%g' % alpha)
+labels = 'fast', 'slow', 'fasym', 'sasym', 'simple', 'complex', 'LGN', 'unknown'
+for label, col in zip(labels, m['all'].T):
+    chi2, p = chisquare(col)
+    print('%s: %r, %.2g, %.2g, %r' % (label, list(col), chi2, p, p<alpha))
+
+print()
+print("Seems the following gives the same results:")
+print()
+
+mspiketype = m['all'][:, :4]
+mrftype = m['all'][:, 4:]
+
+print('spike type group chi square tests, alpha=%g' % alpha)
+print(mspiketype)
+chi2, p = chisquare(mspiketype)
+print('chi2:')
+print(chi2)
+print('p:')
+print(p)
+print('p<alpha')
+print(p<alpha)
+print()
+
+print('RF type group chi square tests, alpha=%g' % alpha)
+print(mrftype)
+chi2, p = chisquare(mrftype)
+print('chi2:')
+print(chi2)
+print('p:')
+print(p)
+print('p<alpha')
+print(p<alpha)
 
 show()
