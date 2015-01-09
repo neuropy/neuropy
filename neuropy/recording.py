@@ -998,7 +998,8 @@ class BaseRecording(object):
         a.set_title(titlestr)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def pospdf(self, neurons=None, dim='y', nbins=10, a=None, stats=False, figsize=(7.5, 6.5)):
+    def pospdf(self, neurons=None, dim='y', nbins=10, a=None, stats=False,
+               figsize=(7.5, 6.5)):
         """Plot PDF of cell positions ('x' or 'y') along the polytrode
         to get an idea of how cells are distributed in space"""
         if neurons == 'all':

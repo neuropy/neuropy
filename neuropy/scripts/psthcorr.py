@@ -402,7 +402,7 @@ stranges = etrangesr74 + etrangesr95b # 8 stranges in total
 recs = [ptc15.tr7c.r74]*4 + [ptc15.tr7c.r95b]*4 # 8 recs corresponding to 8 stranges
 ssnids, recsecnids = get_nids(recs, stranges)
 ssseps = get_seps(ssnids, ptc15.tr7c.alln)
-# separate supersets of active nids for all 4 natexps in each recording:
+# get separate supersets of active nids for all 4 natexps in each recording:
 ptc15tr7crecsecnids = [np.unique(np.hstack(recsecnids[:4])),
                        np.unique(np.hstack(recsecnids[4:]))]
 # do psthcorr plots and collect ssrho matrices:
@@ -412,6 +412,23 @@ for rec, nids in zip(ptc15tr7crecs, ptc15tr7crecsecnids):
     ssrhos.append(ssrho)
 # plot differences in superset rho matrices for the two recordings:
 psthcorrdiff(ssrhos, ssseps, 'r74-r95b')
+
+# rho for ns1 figure:
+In [124]: np.where(ssnids == 328)
+Out[124]: (array([31]),)
+In [125]: np.where(ssnids == 345)
+Out[125]: (array([34]),)
+In [126]: ssrhos[0][31,34]
+Out[126]: -0.11554163740884685
+
+# rho for ns2 figure:
+In [127]: np.where(ssnids == 87)
+Out[127]: (array([8]),)
+In [128]: np.where(ssnids == 93)
+Out[128]: (array([10]),)
+In [129]: ssrhos[0][8,10]
+Out[129]: 0.82907446734056678
+
 
 # ptc22.tr1.r08 sections:
 sepxmax = 1200
@@ -426,7 +443,7 @@ ssnids, recsecnids = get_nids(ptc22tr1r10s, strangesr10s)
 ssseps = get_seps(ssnids, ptc22.tr1.alln)
 for rec, nids, strange in zip(ptc22tr1r10s, recsecnids, strangesr10s):
     psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
-'''
+
 # ptc22.tr1.r08 + ptc22.tr1.r10 sections:
 plotpsthcorr = False
 plotpsthcorrdiff = True
@@ -450,7 +467,7 @@ if plotpsthcorrdiff:
     #psthcorrdiff([ssrhos[3], ssrhos[0]], ssseps, 'D-A')
     #psthcorrdiff([ssrhos[3], ssrhos[1]], ssseps, 'D-B')
     #psthcorrdiff([ssrhos[2], ssrhos[0]], ssseps, 'C-A')
-'''
+
 
 # run psthcorrtype and psthcorrtypestats on ptc15.tr7c:
 trackrecs = [ptc15tr7crecs]
@@ -497,6 +514,7 @@ rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
 spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
 print('\nall tracks pooled')
 psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01)
-'''
+
 
 show()
+'''

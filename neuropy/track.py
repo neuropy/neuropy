@@ -561,8 +561,8 @@ class Track(object):
         classified by the stimulus group each recording falls into. width and tres dictate
         tranges to split recordings up into, if any"""
 
-        ## TODO: for each pair of recordings, find common subset of active neurons and calculate
-        ## pairwise corrs for each recording in that pair using just those neurons
+        ## TODO: for each pair of recordings, find common subset of active neurons and
+        ## calculate pairwise corrs for each recording in that pair using just those neurons
 
         ## TODO: maybe limit to visually responsive cells
 
