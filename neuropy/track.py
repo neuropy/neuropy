@@ -12,6 +12,10 @@ import matplotlib as mpl
 import pylab as pl
 from pylab import get_current_fig_manager as gcfm
 
+import pyximport
+pyximport.install(build_in_temp=False, inplace=True)
+import util # .pyx file
+
 import core
 from core import dictattr, TAB, td2usec, lastcmd, intround
 from recording import Recording
@@ -555,6 +559,76 @@ class Track(object):
         #a.set_xlabel('$\mu$m')
         #a.set_ylabel('$\mu$m')
         #f.tight_layout(pad=0.3) # resizes contents to figure (not crop figure to contents!)
+
+    def cch(self, nid0, nid1=None, trange=50, binw=None, shift=None, nshifts=10,
+            rate=False, norm=False, c='k', title=True, figsize=(7.5, 6.5)):
+        """Copied from Recording.cch(). Plot cross-correlation histogram given nid0 and nid1.
+        If nid1 is None, calculate autocorrelogram. +/- trange and binw are in ms. If shift
+        (in ms) is set, calculate the average of +/- nshift CCHs shifted by shift, and then
+        subtract that from the unshifted CCH to get the shift corrected CCH"""
+        if nid1 == None:
+            nid1 = nid0
+        autocorr = nid0 == nid1
+        n0 = self.alln[nid0]
+        n1 = self.alln[nid1]
+        calctrange = trange * 1000 # calculation trange, in us
+        if shift:
+            assert nshifts > 0
+            shift *= 1000 # convert to us
+            maxshift = nshifts * shift
+            calctrange = trange + maxshift # expand calculated trange to encompass shifts
+        calctrange = np.array([-calctrange, calctrange]) # convert to a +/- array, in us
+        dts = util.xcorr(n0.spikes, n1.spikes, calctrange) # in us
+        if autocorr:
+            dts = dts[dts != 0] # remove 0s for autocorr
+        if shift: # calculate dts for shift corrector
+            shiftis = range(-nshifts, nshifts+1)
+            shiftis.remove(0) # don't shift by 0, that's the original which we'll subtract from
+            shifts = np.asarray(shiftis) * shift
+            shiftdts = np.hstack([ dts+s for s in shifts ]) # in us
+            print('shifts =', shifts / 1000)
+
+        if not binw:
+            nbins = intround(np.sqrt(len(dts))) # good heuristic
+            nbins = max(20, nbins) # enforce min nbins
+            nbins = min(200, nbins) # enforce max nbins
+        else:
+            nbins = intround(2 * trange / binw)
+
+        dts = dts / 1000 # in ms, converts to float64 array
+        t = np.linspace(start=-trange, stop=trange, num=nbins+1, endpoint=True) # ms
+        binw = t[1] - t[0] # all should be equal width, ms
+        n = np.histogram(dts, bins=t, density=False)[0]
+        if shift: # subtract shift corrector
+            shiftdts = shiftdts / 1000 # in ms, converts to float64 array
+            shiftn = np.histogram(shiftdts, bins=t, density=False)[0] / (nshifts*2)
+            f = pl.figure(figsize=figsize)
+            a = f.add_subplot(111)
+            a.bar(left=t[:-1], height=shiftn, width=binw) # omit last right edge in t
+            a.set_xlim(t[0], t[-1])
+            a.set_xlabel('spike interval (ms)')
+            n -= shiftn
+        if norm: # normalize and convert to float:
+            n = n / n.max()
+        elif rate: # normalize by binw and convert to float:
+            n = n / binw
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        a.bar(left=t[:-1], height=n, width=binw, color=c, ec=c) # omit last right edge in t
+        a.set_xlim(t[0], t[-1])
+        a.set_xlabel('spike interval (ms)')
+        if norm:
+            a.set_ylabel('coincidence rate (AU)')
+            a.set_yticks([0, 1])
+        elif rate:
+            a.set_ylabel('coincidence rate (Hz)')
+        else:
+            a.set_ylabel('count')
+        if title:
+            a.set_title('spike times of n%d wrt n%d' % (self.n1.id, self.n0.id))
+        wtitlestr = lastcmd()# + ', binw=%.1f ms' % binw
+        gcfm().window.setWindowTitle(wtitlestr)
+        f.tight_layout(pad=0.3) # crop figure to contents
 
     def scstim(self, method='mean', width=None, tres=None, figsize=(7.5, 6.5)):
         """Scatter plot some summary statistic of spike correlations of each recording,
