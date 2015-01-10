@@ -4190,3 +4190,32 @@ def maxabs(a, axis=None):
     out[p] = maxa[p]
     out[n] = mina[n]
     return out
+
+
+def argfwhm(a, exti, fraction=0.5):
+    """Find timepoints of full width half max (or whatever fraction is) around extremum
+    at index exti in 1D array a"""
+    #a = abs(a)
+    fm = a[exti] * fraction # fraction of max
+    d = a - fm
+    lis = np.diff(np.sign(d[:exti])).nonzero()[0]
+    ris = np.diff(np.sign(d[exti:])).nonzero()[0] + exti + 1
+    assert len(lis) > 0
+    if not len(ris) > 0:
+        # linearly extrapolate right edge of a until it falls below 0
+        # find slope from last two points:
+        m = a[-1] - a[-2]
+        b = a[-1]
+        assert b * m < 0 # heading towards 0? or we'll never find the end of this extremum
+        n = np.ceil(abs(b / m)) # number of points to extrapolate to get to 0
+        y = m * np.arange(n) + b # extrapolated points
+        a = np.hstack([a, y]) # extrapolated points concatenated to end of a
+        # now try again:
+        d = a - fm
+        lis = np.diff(np.sign(d[:exti])).nonzero()[0]
+        ris = np.diff(np.sign(d[exti:])).nonzero()[0] + exti + 1
+        assert len(lis) > 0
+        assert len(ris) > 0
+        #import pdb; pdb.set_trace()
+    # return rightmost of left indices, and leftmost of right indices:
+    return lis[-1], ris[0]
