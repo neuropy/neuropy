@@ -1385,8 +1385,12 @@ class RecordingRaster(BaseRecording):
                 tsiranges = ts.searchsorted(bins)
                 # number of spikes in each bin normalized by bin width:
                 thispsth = (tsiranges[:, 1] - tsiranges[:, 0]) / binw
-                if norm:
+                if norm == True:
+                    # normalize to set peak of this PSTH to 1:
                     thispsth = thispsth / thispsth.max() # ensure float division
+                elif norm == 'ntrials':
+                    # normalize by number of trials:
+                    thispsth = thispsth / ntrials # ensure float division
                 psths.append(thispsth) # save
 
         if not plot:
