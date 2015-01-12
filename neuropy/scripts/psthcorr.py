@@ -18,7 +18,7 @@ nateids = [3, 4, 10, 12] # for both recs in ptc15.tr7c
 etrangesr74 = [ ptc15.tr7c.r74.e[nateid].trange for nateid in nateids ] # us
 etrangesr95b = [ ptc15.tr7c.r74.e[nateid].trange for nateid in nateids ] # us
 
-
+# copied to psth_precision.py:
 ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
 strangesr08s = [(0, 1500e6), # r08 desynched, us
                 (1550e6, np.inf)] # r08 synched, us, end is ~ 2300s
