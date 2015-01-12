@@ -1137,16 +1137,16 @@ class RecordingRaster(BaseRecording):
         values), one figure for each neuron, or overlapping using different colours in a
         single figure. For the designated sweep indices, based on stimulus info in experiments
         eids. natexps controls whether only natural scene movies are considered in ptc15
-        multiexperiment recordings. Consider only those spikes that fall within strange (in
-        us). t0 and dt manually designate trial tranges. blank controls whether to include
-        blank frames for trials in movie type stimuli. psth, binw and tres control
-        corresponding PSTH plots and return value. c controls color, and can be a single
-        value, a list of len(nids), or use c='bwg' to plot black and white bars on a grey
-        background for black and white drifting bar trials. hlinesweepis designates sweepis at
-        which to plot a horizontal line on the traster the first time they occur, while hlinec
-        designates their colour.
+        multiexperiment recordings. Consider only those spikes that fall within strange
+        ("spike time range", in us). t0 and dt manually designate trial tranges. blank
+        controls whether to include blank frames for trials in movie type stimuli. psth, binw
+        and tres control corresponding PSTH plots and return value. c controls color, and can
+        be a single value, a list of len(nids), or use c='bwg' to plot black and white bars on
+        a grey background for black and white drifting bar trials. hlinesweepis designates
+        sweepis at which to plot a horizontal line on the traster the first time they occur,
+        while hlinec designates their colour.
 
-        ## TODO: the psth code should be split off into its own rec method and should call
+        ## TODO: the PSTH code should be split off into its own rec method and should call
         ## this traster method (with plot=False) to get its required input
         """
         if nids == None:

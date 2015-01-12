@@ -3,9 +3,9 @@ within neuropy using `run -i scripts/psthcorr.py`"""
 
 from __future__ import division
 import pylab as pl
-import core
 from scipy.stats import ttest_1samp, ttest_ind, ks_2samp
 
+import core
 
 figsize = (3, 3)
 showcolorbar = False # show colorbar
@@ -212,7 +212,7 @@ def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatety
             listarr(rhotype) # reset between tracks
             npairs = 0 # reset between tracks
         nn = len(ssnids)
-        nanis = np.isnan(ssrhos) # indices of non-nan values
+        nanis = np.isnan(ssrhos) # indices of nan values
         ssrhos[nanis] = 0 # replace nans with 0s
         maxabsssrhos = core.maxabs(ssrhos, axis=0) # keep only the max rho of each cell pair
         alln = track.alln
@@ -362,7 +362,7 @@ def psthcorrtypestats(rhotype, sigiss=None, test=ttest_ind, alpha=0.01):
 
 def get_nids(recs, stranges=None):
     """Return superset (and sets) of active nids of all recordings in recs (all from the same
-    track). If ptc15.tr7c, limits itself to just the natexpids"""
+    track). Potentially constrict to spike tranges only"""
     recsecnids = [] # holds arrays of active nids of each recording section
     track = recs[0].tr
     # make sure they're all from the same track:
@@ -394,7 +394,7 @@ def get_seps(ssnids, nd):
 
 listarr = np.frompyfunc(lambda x: [], 1, 1) # take 1 input array, return 1 list in each entry
 
-'''
+
 # ptc15.tr7c:
 sepxmax = 1675
 # get superset of active nids for all natexps of both recs in ptc15tr7crecs:
@@ -413,21 +413,21 @@ for rec, nids in zip(ptc15tr7crecs, ptc15tr7crecsecnids):
 # plot differences in superset rho matrices for the two recordings:
 psthcorrdiff(ssrhos, ssseps, 'r74-r95b')
 
-# rho for ns1 figure:
-In [124]: np.where(ssnids == 328)
-Out[124]: (array([31]),)
-In [125]: np.where(ssnids == 345)
-Out[125]: (array([34]),)
-In [126]: ssrhos[0][31,34]
-Out[126]: -0.11554163740884685
+## rho for ns1 figure:
+#In [124]: np.where(ssnids == 328)
+#Out[124]: (array([31]),)
+#In [125]: np.where(ssnids == 345)
+#Out[125]: (array([34]),)
+#In [126]: ssrhos[0][31,34]
+#Out[126]: -0.11554163740884685
 
-# rho for ns2 figure:
-In [127]: np.where(ssnids == 87)
-Out[127]: (array([8]),)
-In [128]: np.where(ssnids == 93)
-Out[128]: (array([10]),)
-In [129]: ssrhos[0][8,10]
-Out[129]: 0.82907446734056678
+## rho for ns2 figure:
+#In [127]: np.where(ssnids == 87)
+#Out[127]: (array([8]),)
+#In [128]: np.where(ssnids == 93)
+#Out[128]: (array([10]),)
+#In [129]: ssrhos[0][8,10]
+#Out[129]: 0.82907446734056678
 
 
 # ptc22.tr1.r08 sections:
@@ -517,4 +517,4 @@ psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01
 
 
 show()
-'''
+
