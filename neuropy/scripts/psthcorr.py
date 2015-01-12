@@ -239,12 +239,12 @@ def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatety
                 npairs += 1
         rhotypemeans = np.zeros(rhotype.shape); rhotypemeans.fill(nan)
         rhotypestds = np.zeros(rhotype.shape); rhotypestds.fill(nan)
-        rhotypeps = np.zeros(rhotype.shape); rhotypeps.fill(nan)
+        rhotypeps = np.zeros(rhotype.shape); rhotypeps.fill(np.inf)
         rhotypesigmeans = np.zeros(rhotype.shape); rhotypesigmeans.fill(nan)
         # calculate rho stats for each combination of cell type:
         for i in range(8):
             for j in range(i, 8): # use only upper triangle, don't double count celltype stats
-                if len(rhotype[i, j]) > 0:
+                if len(rhotype[i, j]) > 1:
                     rhotypemeans[i, j] = np.mean(rhotype[i, j])
                     rhotypestds[i, j] = np.std(rhotype[i, j])
                     # 2-sided sample mean ttest relative to 0:
