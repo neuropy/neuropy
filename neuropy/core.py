@@ -4191,7 +4191,6 @@ def maxabs(a, axis=None):
     out[n] = mina[n]
     return out
 
-
 def argfwhm(a, exti, fraction=0.5):
     """Find timepoints of full width half max (or whatever fraction is) around extremum
     at index exti in 1D array a"""
@@ -4200,6 +4199,10 @@ def argfwhm(a, exti, fraction=0.5):
     d = a - fm
     lis = np.diff(np.sign(d[:exti])).nonzero()[0]
     ris = np.diff(np.sign(d[exti:])).nonzero()[0] + exti + 1
+    if len(lis) == 0 or len(ris) == 0:
+        # signal doesn't change enough on either side of exti to calculate FWHM
+        raise ValueError("exti %d has no FWHM" % exti)
+    '''
     assert len(lis) > 0
     if not len(ris) > 0:
         # linearly extrapolate right edge of a until it falls below 0
@@ -4217,5 +4220,6 @@ def argfwhm(a, exti, fraction=0.5):
         assert len(lis) > 0
         assert len(ris) > 0
         #import pdb; pdb.set_trace()
+    '''
     # return rightmost of left indices, and leftmost of right indices:
     return lis[-1], ris[0]
