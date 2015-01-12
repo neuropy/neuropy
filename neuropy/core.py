@@ -4096,6 +4096,26 @@ def parse_source(source):
     tracks = [ tracks[tracki] for tracki in trackis ]
     return recs, tracks
 
+def get_ssnids(recs, stranges=None):
+    """Return superset (and sets) of active nids of all recordings in recs (all from the same
+    track). Potentially constrict to spike tranges only"""
+    recsecnids = [] # holds arrays of active nids of each recording section
+    track = recs[0].tr
+    # make sure they're all from the same track:
+    for rec in recs:
+        assert rec.tr == track
+    if stranges == None:
+        stranges = [None]*len(recs)
+    # collect active nids for each spike trange:
+    for rec, strange in zip(recs, stranges):
+        if strange == None:
+            tranges = None
+        else:
+            tranges = [np.asarray(strange)]
+        recsecnids.append(rec.get_nids(tranges=tranges))
+    ssnids = np.unique(np.hstack(recsecnids)) # superset of active nids from rec sections
+    return ssnids, recsecnids
+
 def get_nids(recs, tracks, kind=None):
     """Given sorted lists of recordings and unique tracks, return lists of sorted nids, one
     per track, according to value of kind ('active', 'quiet' or 'all'). If kind is 'active' or
