@@ -14,7 +14,9 @@ ptc22tr1r10s = [ptc22.tr1.r10, ptc22.tr1.r10]
 strangesr10s = [(0, 1400e6), # r10 synched, us
                 (1480e6, np.inf)] # r10 desynched, us, end is ~ 2300s
 
-BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
+NIDSKIND = 'active'
+
+BINW, TRES = 0.02, 0.0002 # PSTH time bins, sec
 MINTHRESH = 3 # peak detection thresh, Hz
 #BASELINEX = 5 # PSTH baseline multiplier, Hz
 FWFRACTION = 0.5 # full width fraction of max
@@ -126,17 +128,17 @@ def get_psth_peaks(nid, psth, plot='k-'):
 
     return fwhms
 
-# get active neuron ids for each section of r08:
-ssnids, recsecnids = get_ssnids(ptc22tr1r08s, strangesr08s)
-## TODO: use responsive nids instead of active nids used above?
+## TODO: use only neurons qualitatively deemed responsive?
+# get active or all neuron ids for each section of r08:
+ssnids, recsecnids = get_ssnids(ptc22tr1r08s, strangesr08s, kind=NIDSKIND)
 
 # calculate PSTHs for both sections of r08:
 midbinss, psthss = [], []
 for rec, nids, strange in zip(ptc22tr1r08s, recsecnids, strangesr08s):
     midbins, psths = rec.traster(nids=nids, natexps=False, strange=strange, plot=False,
                                  psth=True, binw=BINW, tres=TRES, norm='ntrials')
-    midbinss.append(midbins)
     psthss.append(psths)
+    #midbinss.append(midbins)
     #figure()
     #plot(midbins, psths.T, '-')
 
