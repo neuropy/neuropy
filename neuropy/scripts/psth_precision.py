@@ -15,8 +15,9 @@ strangesr10s = [(0, 1400e6), # r10 synched, us
                 (1480e6, np.inf)] # r10 desynched, us, end is ~ 2300s
 
 BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
-MINTHRESH = 5 # peak detection thresh, Hz
-BASELINEX = 5 # PSTH baseline multiplier, Hz
+## TODO: maybe reduce to 3?
+MINTHRESH = 3 # peak detection thresh, Hz
+#BASELINEX = 5 # PSTH baseline multiplier, Hz
 FWFRACTION = 0.5 # full width fraction of max
 
 # plotting params:
@@ -26,8 +27,8 @@ figsize = (3.5, 3.5) # inches
 def get_psth_peaks(psthi, psth, plot=True):
     """Extract peaks from PSTH"""
     baseline = np.median(psth)
-    thresh = max(MINTHRESH, BASELINEX*baseline) # peak detection threshold
-    ## TODO: try setting thresh = baseline + MINTHRESH
+    thresh = baseline + MINTHRESH # peak detection threshold
+    #thresh = max(MINTHRESH, BASELINEX*baseline) # peak detection threshold
 
     # find all local peaks above thresh:
     allpeakis, = argrelextrema(psth, np.greater_equal) # indices of all local maxima in psth
