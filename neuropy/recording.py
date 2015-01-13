@@ -212,11 +212,16 @@ class BaseRecording(object):
         sortis = np.argsort(ypos) # superficial to deep
         return nids[sortis]
 
-    def get_nids(self, tranges=None):
-        """Find nids of neurons that are active in all tranges, return as array. inf can
-        be used as shorthand for end of recording"""
+    def get_nids(self, tranges=None, kind='active'):
+        """Find nids of neurons that are etiher active in all tranges (kind='active'), or
+        fired at least 1 spike in all tranges (kind='all'). Return as array. inf can be used
+        as shorthand for end of recording"""
+        assert kind in ['active', 'all']
         if tranges == None:
-            return np.sort(self.n.keys()) # return sorted nids of all active neurons
+            if kind == 'active':
+                return np.sort(self.n.keys()) # return sorted nids of all active neurons
+            elif kind == 'all':
+                return np.sort(self.alln.keys()) # return sorted nids of all neurons
         # start with all neurons, even those with average rates below MINRATE over the
         # span of self. Remove them one by one if their average rates fall below MINRATE
         # in any trange in tranges
@@ -241,7 +246,8 @@ class BaseRecording(object):
                 lo, hi = alln[nid].spikes.searchsorted(trange)
                 nspikes = hi - lo # nspikes for nid in this trange
                 meanrate = nspikes / dt # Hz
-                if meanrate < uns['MINRATE']:
+                if (kind == 'active' and meanrate < uns['MINRATE']
+                    or kind == 'all' and nspikes < 1):
                     nids.remove(nid)
                     # new nid has slid into view, don't inc nidi
                 else: # keep nid (for now), inc nidi
