@@ -25,6 +25,13 @@ FWFRACTION = 0.5 # full width fraction of max
 FWHMMIN, FWHMMAX, FWHMSTEP, XTICKSTEP = 0, 100, 2.5, 25
 figsize = (3.5, 3.5) # inches
 
+
+def sparseness(psth):
+    """Sparseness measure, from Vinje and Gallant, 2000. This is basically 1 minus the ratio
+    of the square of the sums over the sum of the squares of the values in the PSTH"""
+    n = len(psth) # number of bins
+    return (1 - (psth.sum()/n)**2 / np.sum((psth**2)/n)) / (1 - 1/n)
+
 def get_psth_peaks(nid, psth, plot='k-'):
     """Extract peaks from PSTH. Plot PSTH using format in plot kwarg"""
     baseline = np.median(psth)
@@ -143,15 +150,19 @@ for rec, nids, strange in zip(ptc22tr1r08s, recsecnids, strangesr08s):
     #plot(midbins, psths.T, '-')
 
 fwhms = {} # fwhm values for each recording section
+spars = {} # sparseness values for each recording section
 for recseci, (nids, psths, plot) in enumerate(zip(recsecnids, psthss, ['b-', 'r-'])):
     psthsfwhms = [] # fwhm values across PSTHs from this recording section
+    sparsenesses = [] # sparseness values for each PSTH
     for nid, psth in zip(nids, psths):
+        sparsenesses.append(sparseness(psth)) # for all PSTHS, even those without peaks
         try:
             psthfwhms = get_psth_peaks(nid, psth, plot=False)
         except ValueError:
             continue # this psth has no peaks, skip it
         psthsfwhms.append(psthfwhms)
     fwhms[recseci] = np.hstack(psthsfwhms)
+    spars[recseci] = np.hstack(sparsenesses)
     print() # newline
 
 # plot FWHM distributions:
@@ -168,6 +179,22 @@ xticks(ticks)
 xlabel('FWHM (ms)')
 ylabel('PSTH peak count')
 gcfm().window.setWindowTitle('PSTH FWHM ptc22.tr1.r08')
+tight_layout(pad=0.3)
+
+# plot sparseness distributions:
+SPARSTEP = 0.05
+ticks = np.arange(0, 1, 0.25)
+bins = np.arange(0, 1+SPARSTEP, SPARSTEP)
+figure(figsize=figsize)
+n1 = hist(spars[1], bins=bins, color='r')[0] # second section in r08, synched
+n0 = hist(spars[0], bins=bins, color='b')[0] # first section in r08, desynched
+n = np.hstack([n0, n1])
+xlim(xmin=0, xmax=1)
+ylim(ymax=n.max()) # effectively normalizes the histogram
+xticks(ticks)
+xlabel('sparseness')
+ylabel('neuron count')
+gcfm().window.setWindowTitle('PSTH sparseness ptc22.tr1.r08')
 tight_layout(pad=0.3)
 
 show()
