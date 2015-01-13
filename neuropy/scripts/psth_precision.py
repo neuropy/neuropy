@@ -2,7 +2,7 @@
 their distributions as a function of cortical state within each of the 2 natural scene movies
 in ptc22.tr1"""
 
-from __future__ import division
+from __future__ import division, print_function
 from scipy.signal import argrelextrema
 from core import argfwhm, get_ssnids
 
@@ -15,7 +15,6 @@ strangesr10s = [(0, 1400e6), # r10 synched, us
                 (1480e6, np.inf)] # r10 desynched, us, end is ~ 2300s
 
 BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
-## TODO: maybe reduce to 3?
 MINTHRESH = 3 # peak detection thresh, Hz
 #BASELINEX = 5 # PSTH baseline multiplier, Hz
 FWFRACTION = 0.5 # full width fraction of max
@@ -24,11 +23,21 @@ FWFRACTION = 0.5 # full width fraction of max
 FWHMMIN, FWHMMAX, FWHMSTEP, XTICKSTEP = 0, 100, 2.5, 25
 figsize = (3.5, 3.5) # inches
 
-def get_psth_peaks(psthi, psth, plot=True):
-    """Extract peaks from PSTH"""
+def get_psth_peaks(nid, psth, plot='k-'):
+    """Extract peaks from PSTH. Plot PSTH using format in plot kwarg"""
     baseline = np.median(psth)
     thresh = baseline + MINTHRESH # peak detection threshold
     #thresh = max(MINTHRESH, BASELINEX*baseline) # peak detection threshold
+
+    # plot PSTH even if no peaks will be found:
+    if plot:
+        figure(figsize=(23, 7))
+        pl.plot(np.arange(0, len(psth))*TRES, psth, plot)
+        # plot thresh and baseline levels:
+        axhline(y=thresh, c='r', ls='--')
+        axhline(y=baseline, c='e', ls='--')
+        gcfm().window.setWindowTitle('n%d, thresh=%g, baseline=%g' % (nid, thresh, baseline))
+        gcf().tight_layout(pad=0.3) # crop figure to contents
 
     # find all local peaks above thresh:
     allpeakis, = argrelextrema(psth, np.greater_equal) # indices of all local maxima in psth
@@ -50,8 +59,19 @@ def get_psth_peaks(psthi, psth, plot=True):
         peakis.append(peaki)
     peakis = np.asarray(peakis)
     '''
+    ## TODO: or as alternative to above, divide peaks up according to where psth falls to
+    ## baseline instead of to threshold. This may remove need for fwhm overlap test below,
+    ## which is rather complicated to explain. Within each range above threshold, if there's
+    ## a peak there, use the earliest value for li and the latest value for ri?
+
+    ## TODO: maybe exclude peaks wider than some threshold, like 150 ms, as invalid
+
     if len(peakis) == 0:
-        raise ValueError("psthi %d has no peaks" % psthi)
+        print('x%d' % nid, end='')
+        raise ValueError
+    else:
+        print("n%d" % nid, end='')
+
 
     # sort peakis in decreasing order of peak amplitude:
     peakis = peakis[psth[peakis].argsort()[::-1]]
@@ -88,19 +108,21 @@ def get_psth_peaks(psthi, psth, plot=True):
             keeppeakis.append(peaki)
             keeplis.append(li)
             keepris.append(ri)
+        print('.', end='')
 
     fwhms = np.asarray(fwhms) * TRES * 1000 # sec
 
+    # mark peaks and their edges:
     if plot:
-        figure(figsize=(23, 7))
-        plot(psth, 'k-')
-        plot(skippeakis, psth[skippeakis], 'eo', mec='none') # discarded peaks
+        skippeakis = np.asarray(skippeakis)
+        keeplis = np.asarray(keeplis)
+        keepris = np.asarray(keepris)
+        keeppeakis = np.asarray(keeppeakis)
+        #pl.plot(skippeakis*TRES, psth[skippeakis], 'eo', mec='none') # discarded peaks
         ms = 10
-        plot(keeplis, psth[keeplis], 'co', ms=ms, mec='none') # left edges
-        plot(keepris, psth[keepris], 'bo', ms=ms, mec='none') # rigth edges
-        plot(keeppeakis, psth[keeppeakis], 'ro', ms=ms, mec='none') # kept peaks
-        gcf().tight_layout(pad=0.3) # crop figure to contents
-        gcfm().window.setWindowTitle('%d, thresh=%f, baseline=%f' % (psthi, thresh, baseline))
+        pl.plot(keeplis*TRES, psth[keeplis], 'co', ms=ms, mec='none') # left edges
+        pl.plot(keepris*TRES, psth[keepris], 'bo', ms=ms, mec='none') # rigth edges
+        pl.plot(keeppeakis*TRES, psth[keeppeakis], 'ro', ms=ms, mec='none') # kept peaks
 
     return fwhms
 
@@ -119,16 +141,18 @@ for rec, nids, strange in zip(ptc22tr1r08s, recsecnids, strangesr08s):
     #plot(midbins, psths.T, '-')
 
 fwhms = {} # fwhm values for each recording section
-for recseci, psths in enumerate(psthss):
+for recseci, (nids, psths, plot) in enumerate(zip(recsecnids, psthss, ['b-', 'r-'])):
     psthsfwhms = [] # fwhm values across PSTHs from this recording section
-    for psthi, psth in enumerate(psths):
+    for nid, psth in zip(nids, psths):
         try:
-            psthfwhms = get_psth_peaks(psthi, psth, plot=False)
+            psthfwhms = get_psth_peaks(nid, psth, plot=False)
         except ValueError:
             continue # this psth has no peaks, skip it
         psthsfwhms.append(psthfwhms)
     fwhms[recseci] = np.hstack(psthsfwhms)
+    print() # newline
 
+# plot FWHM distributions:
 ticks = np.arange(FWHMMIN, FWHMMAX, XTICKSTEP)
 bins = np.arange(FWHMMIN, FWHMMAX+FWHMSTEP, FWHMSTEP)
 figure(figsize=figsize)
@@ -141,7 +165,7 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('FWHM (ms)')
 ylabel('PSTH peak count')
-gcfm().window.setWindowTitle('PSTH precision ptc22.tr1.r08')
+gcfm().window.setWindowTitle('PSTH FWHM ptc22.tr1.r08')
 tight_layout(pad=0.3)
 
 show()
