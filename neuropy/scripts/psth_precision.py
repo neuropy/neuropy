@@ -39,7 +39,7 @@ def sparseness(psth):
     return (1 - (psth.sum()/n)**2 / np.sum((psth**2)/n)) / (1 - 1/n)
 
 def plot_psth(psthparams, nid, fmt='k-', ms=10):
-    psth, thresh, baseline, peakis, lis, ris, fwhms = psthparams[nid]
+    psth, thresh, baseline, peakis, lis, ris = psthparams[nid]
     figure(figsize=(24, 7))
     t = np.arange(0, len(psth))*TRES
     pl.plot(t, psth, fmt)
@@ -92,8 +92,8 @@ def get_psth_peaks(psth, nid):
 
     if len(peakis) == 0:
         print('x%d' % nid, end='')
-        peakis, lis, ris, fwhms = None, None, None, None
-        return psth, thresh, baseline, peakis, lis, ris, fwhms
+        peakis, lis, ris = None, None, None
+        return psth, thresh, baseline, peakis, lis, ris
     else:
         print("n%d" % nid, end='')
 
@@ -103,7 +103,7 @@ def get_psth_peaks(psth, nid):
     # collect left and right edges of all peaks:
     lis, ris, rmpeakiis = [], [], []
     for peakii, peaki in enumerate(peakis):
-        ## TODO: maybe FWHM should be taken relative to baseline instead of 0.
+        ## TODO: maybe FWHM edges should be taken relative to baseline instead of 0.
         ## Or, is it more fair to measure FWHM relative to 0, not to some baseline that's
         ## different for each cell?
         try:
@@ -121,7 +121,6 @@ def get_psth_peaks(psth, nid):
     # This rejects smaller nearby spurious peaks:
     skippeakis, keeppeakis = [], []
     keeplis, keepris = [], []
-    fwhms = []
     for peaki, li, ri in zip(peakis, lis, ris):
         if peaki in skippeakis:
             continue # was trumped by a larger peak with overlapping width, skip it
@@ -131,20 +130,17 @@ def get_psth_peaks(psth, nid):
         # left edge overlaps with this peak's right edge
         skippeakiis = ((li <= ris) & (lis <= ri)) & (peakis != peaki)
         skippeakis.extend(peakis[skippeakiis])
-        fwhm = (ri - li)
-        fwhms.append(fwhm)
         keeppeakis.append(peaki)
         keeplis.append(li)
         keepris.append(ri)
         print('.', end='')
 
     #skippeakis = np.asarray(skippeakis)
-    fwhms = np.asarray(fwhms) * TRES * 1000 # sec
     peakis = np.asarray(keeppeakis)
     lis = np.asarray(keeplis)
     ris = np.asarray(keepris)
 
-    return psth, thresh, baseline, peakis, lis, ris, fwhms
+    return psth, thresh, baseline, peakis, lis, ris
 
 ## TODO: use only neurons qualitatively deemed responsive?
 # get active or all neuron ids for each section of r08:
@@ -175,13 +171,14 @@ for nids, psths, fmt in zip(recsecnids, psthss, ['b-', 'r-', 'r-', 'b-']):
     peaknids = [] # nids with peaks in this recording section
     peakpsths = [] # psths with peaks in this recording section
     for nid, psth in zip(nids, psths):
-        #sparsenesses.append(sparseness(psth)) # for all PSTHS, even those without peaks
         psthparams[nid] = get_psth_peaks(psth, nid)
         if PLOTPSTH:
             plot_psth(psthparams, nid, fmt)
-        if psthparams[nid][-1] == None:
+        psth, thresh, baseline, peakis, lis, ris = psthparams[nid] # unpack
+        if peakis == None:
             continue # this psth has no peaks, skip it
-        psthsfwhms.append(psthparams[nid][-1])
+        fwhms = (ris - lis) * TRES * 1000 # sec
+        psthsfwhms.append(fwhms)
         sparsenesses.append(sparseness(psth)) # for only those PSTHS with peaks
         peaknids.append(nid) # this nid had at least one peak
         peakpsths.append(psth)
