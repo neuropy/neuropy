@@ -77,7 +77,7 @@ def get_psth_peaks(nid, psth, plot='k-'):
 
     if len(peakis) == 0:
         print('x%d' % nid, end='')
-        raise ValueError
+        return
     else:
         print("n%d" % nid, end='')
 
@@ -86,16 +86,21 @@ def get_psth_peaks(nid, psth, plot='k-'):
     peakis = peakis[psth[peakis].argsort()[::-1]]
 
     # collect left and right edges of all peaks:
-    lis, ris = [], []
-    for peaki in peakis:
+    lis, ris, rmpeakiis = [], [], []
+    for peakii, peaki in enumerate(peakis):
         ## TODO: maybe FWHM should be taken relative to baseline instead of 0.
         ## Or, is it more fair to measure FWHM relative to 0, not to some baseline that's
         ## different for each cell?
-        li, ri = argfwhm(psth, peaki, fraction=FWFRACTION) # left and right indices into psth
+        try:
+            li, ri = argfwhm(psth, peaki, fraction=FWFRACTION) # left and right indices
+        except ValueError: # peaki has no FWHM
+            rmpeakiis.append(peakii) # mark peaki for removal
+            continue # skip to next peaki
         lis.append(li)
         ris.append(ri)
     lis = np.asarray(lis)
     ris = np.asarray(ris)
+    peakis = np.delete(peakis, rmpeakiis) # delete peaks marked for removal
 
     # For each peak, check if any others overlap with it in width. If so, discard them.
     # This rejects smaller nearby spurious peaks:
@@ -156,9 +161,8 @@ for recseci, (nids, psths, plot) in enumerate(zip(recsecnids, psthss, ['b-', 'r-
     sparsenesses = [] # sparseness values for each PSTH
     for nid, psth in zip(nids, psths):
         sparsenesses.append(sparseness(psth)) # for all PSTHS, even those without peaks
-        try:
-            psthfwhms = get_psth_peaks(nid, psth, plot=False)
-        except ValueError:
+        psthfwhms = get_psth_peaks(nid, psth, plot=False)
+        if psthfwhms == None:
             continue # this psth has no peaks, skip it
         psthsfwhms.append(psthfwhms)
     fwhms[recseci] = np.hstack(psthsfwhms)
