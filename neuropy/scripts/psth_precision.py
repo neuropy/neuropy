@@ -14,7 +14,10 @@ ptc22tr1r10s = [ptc22.tr1.r10, ptc22.tr1.r10]
 strangesr10s = [(0, 1400e6), # r10 synched, us
                 (1480e6, np.inf)] # r10 desynched, us, end is ~ 2300s
 
-NIDSKIND = 'active'
+recs = ptc22tr1r08s + ptc22tr1r10s
+stranges = strangesr08s + strangesr10s
+
+NIDSKIND = 'all'
 
 BINW, TRES = 0.02, 0.0002 # PSTH time bins, sec
 MINTHRESH = 3 # peak detection thresh, Hz
@@ -23,6 +26,7 @@ FWFRACTION = 0.5 # full width fraction of max
 
 # plotting params:
 FWHMMIN, FWHMMAX, FWHMSTEP, XTICKSTEP = 0, 100, 2.5, 25
+SPARSTEP = 0.1
 figsize = (3.5, 3.5) # inches
 
 
@@ -142,11 +146,14 @@ def get_psth_peaks(nid, psth, plot='k-'):
 
 ## TODO: use only neurons qualitatively deemed responsive?
 # get active or all neuron ids for each section of r08:
-ssnids, recsecnids = get_ssnids(ptc22tr1r08s, strangesr08s, kind=NIDSKIND)
+#ssnids, recsecnids = get_ssnids(ptc22tr1r08s, strangesr08s, kind=NIDSKIND)
+# get active or all neuron ids for each section of both r08 and r10:
+ssnids, recsecnids = get_ssnids(recs, stranges, kind=NIDSKIND)
 
 # calculate PSTHs for both sections of r08:
-midbinss, psthss = [], []
-for rec, nids, strange in zip(ptc22tr1r08s, recsecnids, strangesr08s):
+#midbinss = []
+psthss = []
+for rec, nids, strange in zip(recs, recsecnids, stranges):
     midbins, psths = rec.traster(nids=nids, natexps=False, strange=strange, plot=False,
                                  psth=True, binw=BINW, tres=TRES, norm='ntrials')
     psthss.append(psths)
@@ -154,20 +161,27 @@ for rec, nids, strange in zip(ptc22tr1r08s, recsecnids, strangesr08s):
     #figure()
     #plot(midbins, psths.T, '-')
 
-fwhms = {} # fwhm values for each recording section
-spars = {} # sparseness values for each recording section
-for recseci, (nids, psths, plot) in enumerate(zip(recsecnids, psthss, ['b-', 'r-'])):
+fwhmsrec = [] # fwhm values for each recording section
+sparsrec = [] # sparseness values for each recording section
+for nids, psths, plot in zip(recsecnids, psthss, ['b-', 'r-', 'r-', 'b-']):
     psthsfwhms = [] # fwhm values across PSTHs from this recording section
     sparsenesses = [] # sparseness values for each PSTH
     for nid, psth in zip(nids, psths):
-        sparsenesses.append(sparseness(psth)) # for all PSTHS, even those without peaks
+        #sparsenesses.append(sparseness(psth)) # for all PSTHS, even those without peaks
         psthfwhms = get_psth_peaks(nid, psth, plot=False)
         if psthfwhms == None:
             continue # this psth has no peaks, skip it
         psthsfwhms.append(psthfwhms)
-    fwhms[recseci] = np.hstack(psthsfwhms)
-    spars[recseci] = np.hstack(sparsenesses)
-    print() # newline
+        sparsenesses.append(sparseness(psth)) # for only those PSTHS with peaks
+    fwhmsrec.append(np.hstack(psthsfwhms))
+    sparsrec.append(np.hstack(sparsenesses))
+    print('\n') # two newlines
+
+fwhms = [np.hstack([fwhmsrec[0], fwhmsrec[3]]), # desynched
+         np.hstack([fwhmsrec[1], fwhmsrec[2]])] # synched
+
+spars = [np.hstack([sparsrec[0], sparsrec[3]]), # desynched
+         np.hstack([sparsrec[1], sparsrec[2]])] # synched
 
 # plot FWHM distributions:
 ticks = np.arange(FWHMMIN, FWHMMAX, XTICKSTEP)
@@ -182,11 +196,10 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('FWHM (ms)')
 ylabel('PSTH peak count')
-gcfm().window.setWindowTitle('PSTH FWHM ptc22.tr1.r08')
+gcfm().window.setWindowTitle('PSTH FWHM ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 # plot sparseness distributions:
-SPARSTEP = 0.05
 ticks = np.arange(0, 1, 0.25)
 bins = np.arange(0, 1+SPARSTEP, SPARSTEP)
 figure(figsize=figsize)
@@ -198,7 +211,7 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('sparseness')
 ylabel('neuron count')
-gcfm().window.setWindowTitle('PSTH sparseness ptc22.tr1.r08')
+gcfm().window.setWindowTitle('PSTH sparseness ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 show()
