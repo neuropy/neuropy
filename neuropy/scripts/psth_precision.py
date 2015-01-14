@@ -218,7 +218,15 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('FWHM (ms)')
 ylabel('PSTH peak count')
-gcfm().window.setWindowTitle('PSTH FWHM ptc22.tr1.r08 ptc22.tr1.r10')
+text(0.99, 0.99, '$\mu$ = %.1f ms' % fwhms[1].mean(), # synched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='r') 
+text(0.99, 0.90, '$\mu$ = %.1f ms' % fwhms[0].mean(), # desynched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
+gcfm().window.setWindowTitle('peak widths ptc22.tr1.r08 ptc22.tr1.r10')
+tight_layout(pad=0.3)
+
 # plot peak height distribution:
 ticks = np.arange(HEIGHTMIN, HEIGHTMAX, HEIGHTTICKSTEP)
 bins = np.arange(HEIGHTMIN, HEIGHTMAX+HEIGHTSTEP, HEIGHTSTEP)
@@ -231,6 +239,12 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('peak height (Hz)')
 ylabel('PSTH peak count')
+text(0.99, 0.99, '$\mu$ = %.1f Hz' % heights[1].mean(), # synched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='r') 
+text(0.99, 0.90, '$\mu$ = %.1f Hz' % heights[0].mean(), # desynched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
 gcfm().window.setWindowTitle('peak heights ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
@@ -246,7 +260,13 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('sparseness')
 ylabel('PSTH count')
-gcfm().window.setWindowTitle('PSTH sparseness ptc22.tr1.r08 ptc22.tr1.r10')
+text(0.03, 0.99, '$\mu$ = %.2f' % spars[1].mean(), # synched
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='r') 
+text(0.03, 0.90, '$\mu$ = %.2f' % spars[0].mean(), # desynched
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
+gcfm().window.setWindowTitle('sparseness ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 show()
