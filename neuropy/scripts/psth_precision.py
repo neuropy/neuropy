@@ -27,7 +27,8 @@ FWFRACTION = 0.5 # full width fraction of max
 
 # plotting params:
 PLOTPSTH = False
-FWHMMIN, FWHMMAX, FWHMSTEP, XTICKSTEP = 0, 125, 5, 25
+FWHMMIN, FWHMMAX, FWHMSTEP, FWHMTICKSTEP = 0, 100, 5, 25
+HEIGHTMIN, HEIGHTMAX, HEIGHTSTEP, HEIGHTTICKSTEP = 0, 100, 5, 25
 SPARSTEP = 0.1
 figsize = (3, 3) # inches
 
@@ -148,7 +149,7 @@ def get_psth_peaks(psth, nid):
 # get active or all neuron ids for each section of both r08 and r10:
 ssnids, recsecnids = get_ssnids(recs, stranges, kind=NIDSKIND)
 
-# calculate PSTHs for both sections of r08:
+# calculate PSTHs for both sections of both recordings:
 #midbinss = []
 psthss = []
 for rec, nids, strange in zip(recs, recsecnids, stranges):
@@ -159,14 +160,17 @@ for rec, nids, strange in zip(recs, recsecnids, stranges):
     #figure()
     #pl.plot(midbins, psths.T, '-')
 
+# collect data from each PSTH:
 psthparamsrecsec = [] # params returned for each PSTH, for each recording section
 fwhmsrecsec = [] # fwhm values, for each recording section
+heightsrecsec = [] # peak heights, for each recording section
 sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
 nidsrecsec = [] # nids of cells with at least 1 peak, for each recording section
 psthsrecsec = [] # psths with at least 1 peak, for each recording section
 for nids, psths, fmt in zip(recsecnids, psthss, ['b-', 'r-', 'r-', 'b-']):
     psthparams = {} # params returned for each PSTH by get_psth_peaks
     psthsfwhms = [] # fwhm values from all PSTHs from this recording section
+    psthsheights = [] # peak heights from all PSTHs from this recording section
     sparsenesses = [] # sparseness values for each PSTH in this recording section
     peaknids = [] # nids with peaks in this recording section
     peakpsths = [] # psths with peaks in this recording section
@@ -179,11 +183,13 @@ for nids, psths, fmt in zip(recsecnids, psthss, ['b-', 'r-', 'r-', 'b-']):
             continue # this psth has no peaks, skip it
         fwhms = (ris - lis) * TRES * 1000 # sec
         psthsfwhms.append(fwhms)
+        psthsheights.append(psth[peakis] - baseline) # peak height above baseline
         sparsenesses.append(sparseness(psth)) # for only those PSTHS with peaks
         peaknids.append(nid) # this nid had at least one peak
         peakpsths.append(psth)
     psthparamsrecsec.append(psthparams)
     fwhmsrecsec.append(np.hstack(psthsfwhms))
+    heightsrecsec.append(np.hstack(psthsheights))
     sparsrecsec.append(np.hstack(sparsenesses))
     nidsrecsec.append(np.hstack(peaknids))
     psthsrecsec.append(np.hstack(peakpsths))
@@ -192,17 +198,20 @@ for nids, psths, fmt in zip(recsecnids, psthss, ['b-', 'r-', 'r-', 'b-']):
 fwhms = [np.hstack([fwhmsrecsec[0], fwhmsrecsec[3]]), # desynched
          np.hstack([fwhmsrecsec[1], fwhmsrecsec[2]])] # synched
 
+heights = [np.hstack([heightsrecsec[0], heightsrecsec[3]]), # desynched
+           np.hstack([heightsrecsec[1], heightsrecsec[2]])] # synched
+
 spars = [np.hstack([sparsrecsec[0], sparsrecsec[3]]), # desynched
          np.hstack([sparsrecsec[1], sparsrecsec[2]])] # synched
 
  
 # plot FWHM distributions:
-ticks = np.arange(FWHMMIN, FWHMMAX, XTICKSTEP)
+ticks = np.arange(FWHMMIN, FWHMMAX, FWHMTICKSTEP)
 bins = np.arange(FWHMMIN, FWHMMAX+FWHMSTEP, FWHMSTEP)
 figure(figsize=figsize)
 ## TODO: try plotting distributions on log scale
-n1 = hist(fwhms[1], bins=bins, color='r')[0] # second section in r08, synched
-n0 = hist(fwhms[0], bins=bins, color='b')[0] # first section in r08, desynched
+n1 = hist(fwhms[1], bins=bins, color='r')[0] # synched
+n0 = hist(fwhms[0], bins=bins, color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=FWHMMIN, xmax=FWHMMAX)
 ylim(ymax=n.max()) # effectively normalizes the histogram
@@ -210,14 +219,27 @@ xticks(ticks)
 xlabel('FWHM (ms)')
 ylabel('PSTH peak count')
 gcfm().window.setWindowTitle('PSTH FWHM ptc22.tr1.r08 ptc22.tr1.r10')
+# plot peak height distribution:
+ticks = np.arange(HEIGHTMIN, HEIGHTMAX, HEIGHTTICKSTEP)
+bins = np.arange(HEIGHTMIN, HEIGHTMAX+HEIGHTSTEP, HEIGHTSTEP)
+figure(figsize=figsize)
+n1 = hist(heights[1], bins=bins, color='r')[0] # synched
+n0 = hist(heights[0], bins=bins, color='b')[0] # desynched
+n = np.hstack([n0, n1])
+xlim(xmin=HEIGHTMIN, xmax=HEIGHTMAX)
+ylim(ymax=n.max()) # effectively normalizes the histogram
+xticks(ticks)
+xlabel('peak height (Hz)')
+ylabel('PSTH peak count')
+gcfm().window.setWindowTitle('peak heights ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 # plot sparseness distributions:
 ticks = np.arange(0, 1, 0.25)
 bins = np.arange(0, 1+SPARSTEP, SPARSTEP)
 figure(figsize=figsize)
-n1 = hist(spars[1], bins=bins, color='r')[0] # second section in r08, synched
-n0 = hist(spars[0], bins=bins, color='b')[0] # first section in r08, desynched
+n1 = hist(spars[1], bins=bins, color='r')[0] # synched
+n0 = hist(spars[0], bins=bins, color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=0, xmax=1)
 ylim(ymax=n.max()) # effectively normalizes the histogram
