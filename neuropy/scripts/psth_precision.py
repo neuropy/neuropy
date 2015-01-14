@@ -17,18 +17,19 @@ strangesr10s = [(0, 1400e6), # r10 synched, us
 recs = ptc22tr1r08s + ptc22tr1r10s
 stranges = strangesr08s + strangesr10s
 
-NIDSKIND = 'all'
+NIDSKIND = 'all' # 'active' or 'all'
 
 BINW, TRES = 0.02, 0.0002 # PSTH time bins, sec
-MINTHRESH = 3 # peak detection thresh, Hz
-#BASELINEX = 5 # PSTH baseline multiplier, Hz
+# 2.5 Hz is 1 spike in the same 20 ms wide bin every 20 trials, assuming 0 baseline
+MINTHRESH = 2.5 # peak detection thresh, Hz
+MEDIANX = 2 # PSTH median multiplier, Hz
 FWFRACTION = 0.5 # full width fraction of max
 
 # plotting params:
-FWHMMIN, FWHMMAX, FWHMSTEP, XTICKSTEP = 0, 100, 2.5, 25
 PLOTPSTH = False
+FWHMMIN, FWHMMAX, FWHMSTEP, XTICKSTEP = 0, 125, 5, 25
 SPARSTEP = 0.1
-figsize = (3.5, 3.5) # inches
+figsize = (3, 3) # inches
 
 
 def sparseness(psth):
@@ -39,21 +40,26 @@ def sparseness(psth):
 
 def plot_psth(psthparams, nid, fmt='k-', ms=10):
     psth, thresh, baseline, peakis, lis, ris, fwhms = psthparams[nid]
-    figure(figsize=(23, 7))
-    pl.plot(np.arange(0, len(psth))*TRES, psth, fmt)
+    figure(figsize=(24, 7))
+    t = np.arange(0, len(psth))*TRES
+    pl.plot(t, psth, fmt)
     # plot thresh and baseline levels:
     axhline(y=thresh, c='r', ls='--')
     axhline(y=baseline, c='e', ls='--')
     # mark peaks and their edges:
-    pl.plot(lis*TRES, psth[lis], 'co', ms=ms, mec='none') # left edges
-    pl.plot(ris*TRES, psth[ris], 'bo', ms=ms, mec='none') # rigth edges
-    pl.plot(peakis*TRES, psth[peakis], 'ro', ms=ms, mec='none') # peaks
+    if lis != None:
+        pl.plot(lis*TRES, psth[lis], 'co', ms=ms, mec='none') # left edges
+    if ris != None:
+        pl.plot(ris*TRES, psth[ris], 'bo', ms=ms, mec='none') # rigth edges
+    if peakis != None:
+        pl.plot(peakis*TRES, psth[peakis], 'ro', ms=ms, mec='none') # peaks
+    xlim(xmax=t[-1])
     gcfm().window.setWindowTitle('n%d, thresh=%g, baseline=%g' % (nid, thresh, baseline))
     gcf().tight_layout(pad=0.3) # crop figure to contents
 
 def get_psth_peaks(psth, nid):
     """Extract peaks from PSTH"""
-    baseline = np.median(psth)
+    baseline = MEDIANX*np.median(psth)
     thresh = baseline + MINTHRESH # peak detection threshold
     #thresh = max(MINTHRESH, BASELINEX*baseline) # peak detection threshold
 
@@ -86,10 +92,10 @@ def get_psth_peaks(psth, nid):
 
     if len(peakis) == 0:
         print('x%d' % nid, end='')
-        return
+        peakis, lis, ris, fwhms = None, None, None, None
+        return psth, thresh, baseline, peakis, lis, ris, fwhms
     else:
         print("n%d" % nid, end='')
-
 
     # sort peakis in decreasing order of peak amplitude:
     peakis = peakis[psth[peakis].argsort()[::-1]]
@@ -172,8 +178,8 @@ for nids, psths, fmt in zip(recsecnids, psthss, ['b-', 'r-', 'r-', 'b-']):
         #sparsenesses.append(sparseness(psth)) # for all PSTHS, even those without peaks
         psthparams[nid] = get_psth_peaks(psth, nid)
         if PLOTPSTH:
-            plot_psth(psthparams, fmt)
-        if psthparams[nid] == None:
+            plot_psth(psthparams, nid, fmt)
+        if psthparams[nid][-1] == None:
             continue # this psth has no peaks, skip it
         psthsfwhms.append(psthparams[nid][-1])
         sparsenesses.append(sparseness(psth)) # for only those PSTHS with peaks
