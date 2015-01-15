@@ -1303,6 +1303,17 @@ class RecordingRaster(BaseRecording):
             trangesweepis = np.hstack(trangesweepis) # sweepi of every trange
             tranges = np.column_stack((t0s, t1s))
         ntrials = len(tranges)
+        if strange != None:
+            # trim ntrials to correspond to number of trials fully encompassed by strange.
+            # This means ntrials wil no longer correspond to len(tranges). This seems safe to
+            # do, because ntrials is currently only used to optionally normalize the PSTH.
+            oldntrials = ntrials
+            trial0i = tranges[:, 0].searchsorted(strange[0]) # search 1st trange column
+            trial1i = tranges[:, 1].searchsorted(strange[1]) # search 2nd trange column
+            ntrials = trial1i - trial0i
+            assert ntrials > 0 # if not, strange is too constrictive
+            print('ntrials: %d --> %d after applying strange: %s'
+                  % (oldntrials, ntrials, strange))
         dts = t1s - t0s
         maxdt = max(dts) # max trial duration
         xmin, xmax = 0, maxdt / 1e6 # sec
