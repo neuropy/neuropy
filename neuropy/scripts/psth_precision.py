@@ -54,6 +54,7 @@ def plot_psth(psthparams, nid, fmt='k-', ms=10):
     if peakis != None:
         pl.plot(t[peakis], psth[peakis], 'ro', ms=ms, mec='none') # peaks
     xlim(xmax=t[-1])
+    ylim(ymin=0)
     gcfm().window.setWindowTitle('n%d, thresh=%g, baseline=%g' % (nid, thresh, baseline))
     gcf().tight_layout(pad=0.3) # crop figure to contents
 
@@ -216,7 +217,7 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('FWHM (ms)')
 ylabel('PSTH peak count')
-text(0.99, 0.99, '$\mu$ = %.1f ms' % fwhms[1].mean(), # synched
+text(0.99, 0.98, '$\mu$ = %.1f ms' % fwhms[1].mean(), # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
 text(0.99, 0.90, '$\mu$ = %.1f ms' % fwhms[0].mean(), # desynched
@@ -240,7 +241,7 @@ xscale('log')
 xlabel('FWHM (ms)')
 ylabel('PSTH peak count')
 # display geometric means:
-text(0.99, 0.99, '$\mu$ = %.1f ms' % 10**(np.log10(fwhms[1]).mean()), # synched
+text(0.99, 0.98, '$\mu$ = %.1f ms' % 10**(np.log10(fwhms[1]).mean()), # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
 text(0.99, 0.90, '$\mu$ = %.1f ms' % 10**(np.log10(fwhms[0]).mean()), # desynched
@@ -261,7 +262,7 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('peak height (Hz)')
 ylabel('PSTH peak count')
-text(0.99, 0.99, '$\mu$ = %.1f Hz' % heights[1].mean(), # synched
+text(0.99, 0.98, '$\mu$ = %.1f Hz' % heights[1].mean(), # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
 text(0.99, 0.90, '$\mu$ = %.1f Hz' % heights[0].mean(), # desynched
@@ -287,7 +288,7 @@ xscale('log')
 xlabel('peak height (Hz)')
 ylabel('PSTH peak count')
 # display geometric means:
-text(0.99, 0.99, '$\mu$ = %.1f Hz' % 10**(np.log10(heights[1]).mean()), # synched
+text(0.99, 0.98, '$\mu$ = %.1f Hz' % 10**(np.log10(heights[1]).mean()), # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
 text(0.99, 0.90, '$\mu$ = %.1f Hz' % 10**(np.log10(heights[0]).mean()), # desynched
@@ -308,7 +309,7 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('sparseness')
 ylabel('PSTH count')
-text(0.03, 0.99, '$\mu$ = %.2f' % spars[1].mean(), # synched
+text(0.03, 0.98, '$\mu$ = %.2f' % spars[1].mean(), # synched
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='r')
 text(0.03, 0.90, '$\mu$ = %.2f' % spars[0].mean(), # desynched
