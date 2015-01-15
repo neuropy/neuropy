@@ -4,6 +4,8 @@ in ptc22.tr1"""
 
 from __future__ import division, print_function
 from scipy.signal import argrelextrema
+from numpy import log10
+
 from core import argfwhm, get_ssnids, sparseness
 
 # copied from psthcorr.py:
@@ -20,8 +22,8 @@ stranges = strangesr08s + strangesr10s
 NIDSKIND = 'all' # 'active' or 'all'
 
 BINW, TRES = 0.02, 0.0002 # PSTH time bins, sec
-# 2.5 Hz is 1 spike in the same 20 ms wide bin every 20 trials, assuming 0 baseline
 MINTHRESH = 2.5 # peak detection thresh, Hz
+# 2.5 Hz thresh is 1 spike in the same 20 ms wide bin every 20 trials, assuming 0 baseline:
 MEDIANX = 2 # PSTH median multiplier, Hz
 FWFRACTION = 0.5 # full width fraction of max
 
@@ -149,10 +151,10 @@ ts, psthss = [], []
 for rec, nids, strange in zip(recs, recsecnids, stranges):
     t, psths = rec.traster(nids=nids, natexps=False, strange=strange, plot=False,
                            psth=True, binw=BINW, tres=TRES, norm='ntrials')
-    ts.append(t)
+    ts.append(t) # same time array for all PSTHs in this recording section
     psthss.append(psths)
     #figure()
-    #pl.plot(midbins, psths.T, '-')
+    #pl.plot(t, psths.T, '-')
 
 # collect data from each PSTH:
 psthparamsrecsec = [] # params returned for each PSTH, for each recording section
@@ -211,17 +213,17 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('FWHM (ms)')
 ylabel('PSTH peak count')
-text(0.99, 0.98, '$\mu$ = %.1f ms' % fwhms[1].mean(), # synched
+text(0.98, 0.98, '$\mu$ = %.1f ms' % fwhms[1].mean(), # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.99, 0.90, '$\mu$ = %.1f ms' % fwhms[0].mean(), # desynched
+text(0.98, 0.90, '$\mu$ = %.1f ms' % fwhms[0].mean(), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
 gcfm().window.setWindowTitle('peak widths ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 # plot FWHM distributions in log space:
-logmin, logmax = np.log10(10), np.log10(200)
+logmin, logmax = log10(10), log10(200)
 nbins = 20
 bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
 figure(figsize=figsize)
@@ -235,10 +237,10 @@ xscale('log')
 xlabel('FWHM (ms)')
 ylabel('PSTH peak count')
 # display geometric means:
-text(0.99, 0.98, '$\mu$ = %.1f ms' % 10**(np.log10(fwhms[1]).mean()), # synched
+text(0.98, 0.98, '$\mu$ = %.1f ms' % 10**(log10(fwhms[1]).mean()), # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.99, 0.90, '$\mu$ = %.1f ms' % 10**(np.log10(fwhms[0]).mean()), # desynched
+text(0.98, 0.90, '$\mu$ = %.1f ms' % 10**(log10(fwhms[0]).mean()), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
 gcfm().window.setWindowTitle('peak widths log ptc22.tr1.r08 ptc22.tr1.r10')
@@ -256,17 +258,17 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('peak height (Hz)')
 ylabel('PSTH peak count')
-text(0.99, 0.98, '$\mu$ = %.1f Hz' % heights[1].mean(), # synched
+text(0.98, 0.98, '$\mu$ = %.1f Hz' % heights[1].mean(), # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.99, 0.90, '$\mu$ = %.1f Hz' % heights[0].mean(), # desynched
+text(0.98, 0.90, '$\mu$ = %.1f Hz' % heights[0].mean(), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
 gcfm().window.setWindowTitle('peak heights ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 # plot peak height distribution in log space:
-logmin, logmax = np.log10(2), np.log10(200)
+logmin, logmax = log10(2), log10(200)
 nbins = 20
 bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
 #ticks = np.arange(HEIGHTMIN, HEIGHTMAX, HEIGHTTICKSTEP)
@@ -282,10 +284,10 @@ xscale('log')
 xlabel('peak height (Hz)')
 ylabel('PSTH peak count')
 # display geometric means:
-text(0.99, 0.98, '$\mu$ = %.1f Hz' % 10**(np.log10(heights[1]).mean()), # synched
+text(0.98, 0.98, '$\mu$ = %.1f Hz' % 10**(log10(heights[1]).mean()), # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.99, 0.90, '$\mu$ = %.1f Hz' % 10**(np.log10(heights[0]).mean()), # desynched
+text(0.98, 0.90, '$\mu$ = %.1f Hz' % 10**(log10(heights[0]).mean()), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
 gcfm().window.setWindowTitle('peak heights log ptc22.tr1.r08 ptc22.tr1.r10')
