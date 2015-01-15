@@ -40,25 +40,24 @@ def sparseness(psth):
     return (1 - (psth.sum()/n)**2 / np.sum((psth**2)/n)) / (1 - 1/n)
 
 def plot_psth(psthparams, nid, fmt='k-', ms=10):
-    psth, thresh, baseline, peakis, lis, ris = psthparams[nid]
+    t, psth, thresh, baseline, peakis, lis, ris = psthparams[nid]
     figure(figsize=(24, 7))
-    t = np.arange(0, len(psth))*TRES
     pl.plot(t, psth, fmt)
     # plot thresh and baseline levels:
     axhline(y=thresh, c='r', ls='--')
     axhline(y=baseline, c='e', ls='--')
     # mark peaks and their edges:
     if lis != None:
-        pl.plot(lis*TRES, psth[lis], 'co', ms=ms, mec='none') # left edges
+        pl.plot(t[lis], psth[lis], 'co', ms=ms, mec='none') # left edges
     if ris != None:
-        pl.plot(ris*TRES, psth[ris], 'bo', ms=ms, mec='none') # rigth edges
+        pl.plot(t[ris], psth[ris], 'bo', ms=ms, mec='none') # rigth edges
     if peakis != None:
-        pl.plot(peakis*TRES, psth[peakis], 'ro', ms=ms, mec='none') # peaks
+        pl.plot(t[peakis], psth[peakis], 'ro', ms=ms, mec='none') # peaks
     xlim(xmax=t[-1])
     gcfm().window.setWindowTitle('n%d, thresh=%g, baseline=%g' % (nid, thresh, baseline))
     gcf().tight_layout(pad=0.3) # crop figure to contents
 
-def get_psth_peaks(psth, nid):
+def get_psth_peaks(t, psth, nid):
     """Extract peaks from PSTH"""
     baseline = MEDIANX*np.median(psth)
     thresh = baseline + MINTHRESH # peak detection threshold
@@ -94,7 +93,7 @@ def get_psth_peaks(psth, nid):
     if len(peakis) == 0:
         print('x%d' % nid, end='')
         peakis, lis, ris = None, None, None
-        return psth, thresh, baseline, peakis, lis, ris
+        return t, psth, thresh, baseline, peakis, lis, ris
     else:
         print("n%d" % nid, end='')
 
@@ -141,7 +140,7 @@ def get_psth_peaks(psth, nid):
     lis = np.asarray(keeplis)
     ris = np.asarray(keepris)
 
-    return psth, thresh, baseline, peakis, lis, ris
+    return t, psth, thresh, baseline, peakis, lis, ris
 
 ## TODO: use only neurons qualitatively deemed responsive?
 # get active or all neuron ids for each section of r08:
@@ -150,13 +149,13 @@ def get_psth_peaks(psth, nid):
 ssnids, recsecnids = get_ssnids(recs, stranges, kind=NIDSKIND)
 
 # calculate PSTHs for both sections of both recordings:
-#midbinss = []
-psthss = []
+
+ts, psthss = [], []
 for rec, nids, strange in zip(recs, recsecnids, stranges):
-    midbins, psths = rec.traster(nids=nids, natexps=False, strange=strange, plot=False,
-                                 psth=True, binw=BINW, tres=TRES, norm='ntrials')
+    t, psths = rec.traster(nids=nids, natexps=False, strange=strange, plot=False,
+                           psth=True, binw=BINW, tres=TRES, norm='ntrials')
+    ts.append(t)
     psthss.append(psths)
-    #midbinss.append(midbins)
     #figure()
     #pl.plot(midbins, psths.T, '-')
 
@@ -167,7 +166,7 @@ heightsrecsec = [] # peak heights, for each recording section
 sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
 nidsrecsec = [] # nids of cells with at least 1 peak, for each recording section
 psthsrecsec = [] # psths with at least 1 peak, for each recording section
-for nids, psths, fmt in zip(recsecnids, psthss, ['b-', 'r-', 'r-', 'b-']):
+for nids, t, psths, fmt in zip(recsecnids, ts, psthss, ['b-', 'r-', 'r-', 'b-']):
     psthparams = {} # params returned for each PSTH by get_psth_peaks
     psthsfwhms = [] # fwhm values from all PSTHs from this recording section
     psthsheights = [] # peak heights from all PSTHs from this recording section
@@ -175,10 +174,10 @@ for nids, psths, fmt in zip(recsecnids, psthss, ['b-', 'r-', 'r-', 'b-']):
     peaknids = [] # nids with peaks in this recording section
     peakpsths = [] # psths with peaks in this recording section
     for nid, psth in zip(nids, psths):
-        psthparams[nid] = get_psth_peaks(psth, nid)
+        psthparams[nid] = get_psth_peaks(t, psth, nid)
         if PLOTPSTH:
             plot_psth(psthparams, nid, fmt)
-        psth, thresh, baseline, peakis, lis, ris = psthparams[nid] # unpack
+        t, psth, thresh, baseline, peakis, lis, ris = psthparams[nid] # unpack
         if peakis == None:
             continue # this psth has no peaks, skip it
         fwhms = (ris - lis) * TRES * 1000 # sec
@@ -209,7 +208,6 @@ spars = [np.hstack([sparsrecsec[0], sparsrecsec[3]]), # desynched
 ticks = np.arange(FWHMMIN, FWHMMAX, FWHMTICKSTEP)
 bins = np.arange(FWHMMIN, FWHMMAX+FWHMSTEP, FWHMSTEP)
 figure(figsize=figsize)
-## TODO: try plotting distributions on log scale
 n1 = hist(fwhms[1], bins=bins, color='r')[0] # synched
 n0 = hist(fwhms[0], bins=bins, color='b')[0] # desynched
 n = np.hstack([n0, n1])
