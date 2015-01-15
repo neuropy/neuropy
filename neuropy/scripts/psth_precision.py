@@ -4,7 +4,7 @@ in ptc22.tr1"""
 
 from __future__ import division, print_function
 from scipy.signal import argrelextrema
-from scipy.stats import ttest_ind
+from scipy.stats import ttest_ind, chisquare
 from numpy import log10
 
 from core import argfwhm, get_ssnids, sparseness
@@ -338,4 +338,7 @@ text(0.03, 0.82, 'p = %.1g' % p,
 gcfm().window.setWindowTitle('sparseness ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
+ndesynched, nsynched = len(fwhms[0]), len(fwhms[1]) # peak counts
+chi2, p = chisquare([ndesynched, nsynched]) # compare number of peaks in both states
+print('ndesynched=%d, nsynched=%d, chi2=%.3g, p=%.3g' % (ndesynched, nsynched, chi2, p))
 show()
