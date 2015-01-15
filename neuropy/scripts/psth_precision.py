@@ -4,7 +4,7 @@ in ptc22.tr1"""
 
 from __future__ import division, print_function
 from scipy.signal import argrelextrema
-from core import argfwhm, get_ssnids
+from core import argfwhm, get_ssnids, sparseness
 
 # copied from psthcorr.py:
 ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
@@ -32,12 +32,6 @@ HEIGHTMIN, HEIGHTMAX, HEIGHTSTEP, HEIGHTTICKSTEP = 0, 100, 5, 25
 SPARSTEP = 0.1
 figsize = (3, 3) # inches
 
-
-def sparseness(psth):
-    """Sparseness measure, from Vinje and Gallant, 2000. This is basically 1 minus the ratio
-    of the square of the sums over the sum of the squares of the values in the PSTH"""
-    n = len(psth) # number of bins
-    return (1 - (psth.sum()/n)**2 / np.sum((psth**2)/n)) / (1 - 1/n)
 
 def plot_psth(psthparams, nid, fmt='k-', ms=10):
     t, psth, thresh, baseline, peakis, lis, ris = psthparams[nid]

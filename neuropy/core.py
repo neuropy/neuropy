@@ -4244,3 +4244,9 @@ def argfwhm(a, exti, fraction=0.5):
     '''
     # return rightmost of left indices, and leftmost of right indices:
     return lis[-1], ris[0]
+
+def sparseness(x):
+    """Sparseness measure, from Vinje and Gallant, 2000. This is basically 1 minus the ratio
+    of the square of the sums over the sum of the squares of the values in signal x"""
+    n = len(x)
+    return (1 - (x.sum()/n)**2 / np.sum((x**2)/n)) / (1 - 1/n)
