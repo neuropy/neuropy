@@ -7,7 +7,7 @@ from scipy.signal import argrelextrema
 from scipy.stats import ttest_ind, chisquare
 from numpy import log10
 
-from core import argfwhm, get_ssnids, sparseness
+from core import argfwhm, get_ssnids, sparseness, intround
 
 # copied from psthcorr.py:
 ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
@@ -20,17 +20,21 @@ strangesr10s = [(0, 1400e6), # r10 synched, us
 recs = ptc22tr1r08s + ptc22tr1r10s
 stranges = strangesr08s + strangesr10s
 
+EPS = np.spacing(1) # epsilon, smallest representable non-zero number
+
 NIDSKIND = 'all' # 'active' or 'all'
 
-BINW, TRES = 0.02, 0.0002 # PSTH time bins, sec
-MINTHRESH = 2.5 # peak detection thresh, Hz
+BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
 # 2.5 Hz thresh is 1 spike in the same 20 ms wide bin every 20 trials, assuming 0 baseline:
+MINTHRESH = 3 # peak detection thresh, Hz
 MEDIANX = 2 # PSTH median multiplier, Hz
 FWFRACTION = 0.5 # full width fraction of max
+FWHMMAX = 200 # maximum FWHM, ms
+FWHMMAXPOINTS = intround(FWHMMAX / 1000 / TRES) # maximum FWHM, number of PSTH timepoints
 
 # plotting params:
 PLOTPSTH = False
-FWHMMIN, FWHMMAX, FWHMSTEP, FWHMTICKSTEP = 0, 100, 5, 25
+FWHMMIN, FWHMSTEP, FWHMTICKSTEP = 0, 10, 50
 HEIGHTMIN, HEIGHTMAX, HEIGHTSTEP, HEIGHTTICKSTEP = 0, 100, 5, 25
 SPARSTEP = 0.1
 figsize = (3, 3) # inches
@@ -54,8 +58,8 @@ def plot_psth(psthparams, nid, fmt='k-', ms=10):
     ylim(ymin=0)
     gcfm().window.setWindowTitle('n%d, thresh=%g, baseline=%g' % (nid, thresh, baseline))
     gcf().tight_layout(pad=0.3) # crop figure to contents
-
-def get_psth_peaks(t, psth, nid):
+'''
+def old_get_psth_peaks(t, psth, nid):
     """Extract peaks from PSTH"""
     baseline = MEDIANX*np.median(psth)
     thresh = baseline + MINTHRESH # peak detection threshold
@@ -65,28 +69,6 @@ def get_psth_peaks(t, psth, nid):
     allpeakis, = argrelextrema(psth, np.greater_equal) # indices of all local maxima in psth
     threshis, = np.where(psth >= thresh) # indices of all thresh exceeding points in psth
     peakis = np.intersect1d(threshis, allpeakis) # indices of thresh exceeding maxima
-    '''
-    # alternatively, find only those local peaks above thresh that are separated from each
-    # other by at least one point below threshold:
-    splitis = np.where(np.diff(threshis) > 1)[0] + 1 # indices of thresh exceeding ranges
-    splitthreshis = np.array_split(threshis, splitis) # list of arrays of contiguous indices
-    peakis = []
-    for threshis in splitthreshis: # for each contiguous thresh-exceeding range of points
-        localpeakis = np.intersect1d(threshis, allpeakis) # indices of thresh exceeding maxima
-        if len(localpeakis) == 0:
-            continue # skip this range of points
-        # keep only biggest maximum in this contiguous range:
-        peakii = np.argmax(psth[localpeakis])
-        peaki = localpeakis[peakii]
-        peakis.append(peaki)
-    peakis = np.asarray(peakis)
-    '''
-    ## TODO: or as alternative to above, divide peaks up according to where psth falls to
-    ## baseline instead of to threshold. This may remove need for fwhm overlap test below,
-    ## which is rather complicated to explain. Within each range above threshold, if there's
-    ## a peak there, use the earliest value for li and the latest value for ri?
-
-    ## TODO: maybe exclude peaks wider than some threshold, like 150 ms, as invalid
 
     if len(peakis) == 0:
         print('x%d' % nid, end='')
@@ -101,9 +83,6 @@ def get_psth_peaks(t, psth, nid):
     # collect left and right edges of all peaks:
     lis, ris, rmpeakiis = [], [], []
     for peakii, peaki in enumerate(peakis):
-        ## TODO: maybe FWHM edges should be taken relative to baseline instead of 0.
-        ## Or, is it more fair to measure FWHM relative to 0, not to some baseline that's
-        ## different for each cell?
         try:
             li, ri = argfwhm(psth, peaki, fraction=FWFRACTION) # left and right indices
         except ValueError: # peaki has no FWHM
@@ -139,6 +118,52 @@ def get_psth_peaks(t, psth, nid):
     ris = np.asarray(keepris)
 
     return t, psth, thresh, baseline, peakis, lis, ris
+'''
+
+def get_psth_peaks(t, psth, nid):
+    """Extract peaks from PSTH, simpler, faster, more robust method. Find contiguous ranges of
+    baseline-exceeding points. Within each range, find the biggest value. If that value
+    exceeds thresh, designate that as a peak. Slice out that baseline-exceeding range of data,
+    and run argfwhm on it, with outer kwarg - ie search from the outer edges in when looking
+    for FWHM. If baseline is so high that it exceeds FWHM for that peak, discard the peak."""
+    baseline = MEDIANX*np.median(psth)
+    thresh = baseline + MINTHRESH # peak detection threshold
+    # indices of all baseline-exceeding points in psth:
+    baselineis, = np.where(psth >= (baseline+EPS)) # add EPS because baseline is often 0
+    
+    # find only those local peaks above baseline that are separated from each
+    # other by at least one point below baseline:
+    # indices into baselineis of breaks in baselineis, marking borders of contiguous ranges:
+    splitis = np.where(np.diff(baselineis) > 1)[0] + 1
+    # list of arrays of indices, representing contiguous ranges of baseline-exceeding psth:
+    splitbaselineis = np.array_split(baselineis, splitis)
+    peakis, lis, ris = [], [], []
+    print("n%d" % nid, end='')
+    for baselineis in splitbaselineis: # for each contiguous baseline-exceeding range of points
+        localpsth = psth[baselineis] # slice that range of points out of the psth
+        peakii = localpsth.argmax()
+        if localpsth[peakii] < thresh: # peak in this range of points doesn't exceed thresh
+            continue # skip to next range
+        try: # get left and right FWHM indices:
+            lii, rii = argfwhm(localpsth, peakii, fraction=FWFRACTION, method='outer')
+        except ValueError: # peaki has no FWHM
+            continue # skip to next range
+        if (rii - lii) > FWHMMAXPOINTS: # peak is too wide
+            continue # skip to next range
+        offset = baselineis[0]
+        peakis.append(offset + peakii)
+        lis.append(offset + lii)
+        ris.append(offset + rii)
+        print('.', end='') # printed dot indicates a found peak
+    peakis = np.asarray(peakis)
+    lis = np.asarray(lis)
+    ris = np.asarray(ris)
+
+    if len(peakis) == 0:
+        peakis, lis, ris = None, None, None
+
+    return t, psth, thresh, baseline, peakis, lis, ris
+
 
 ## TODO: use only neurons qualitatively deemed responsive?
 # get active or all neuron ids for each section of r08:
@@ -229,7 +254,7 @@ gcfm().window.setWindowTitle('peak widths ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 # plot FWHM distributions in log space:
-logmin, logmax = log10(10), log10(200)
+logmin, logmax = log10(10), log10(FWHMMAX)
 nbins = 20
 bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
 figure(figsize=figsize)
@@ -286,8 +311,6 @@ tight_layout(pad=0.3)
 logmin, logmax = log10(2), log10(200)
 nbins = 20
 bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
-#ticks = np.arange(HEIGHTMIN, HEIGHTMAX, HEIGHTTICKSTEP)
-#bins = np.arange(HEIGHTMIN, HEIGHTMAX+HEIGHTSTEP, HEIGHTSTEP)
 figure(figsize=figsize)
 n1 = hist(heights[1], bins=bins, color='r')[0] # synched
 n0 = hist(heights[0], bins=bins, color='b')[0] # desynched
@@ -338,7 +361,9 @@ text(0.03, 0.82, 'p = %.1g' % p,
 gcfm().window.setWindowTitle('sparseness ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
+# report chi-square results of numbers of peaks:
 ndesynched, nsynched = len(fwhms[0]), len(fwhms[1]) # peak counts
 chi2, p = chisquare([ndesynched, nsynched]) # compare number of peaks in both states
 print('ndesynched=%d, nsynched=%d, chi2=%.3g, p=%.3g' % (ndesynched, nsynched, chi2, p))
+
 show()

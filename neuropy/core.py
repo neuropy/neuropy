@@ -4212,9 +4212,10 @@ def maxabs(a, axis=None):
     out[n] = mina[n]
     return out
 
-def argfwhm(a, exti, fraction=0.5):
+def argfwhm(a, exti, fraction=0.5, method='inner'):
     """Find timepoints of full width half max (or whatever fraction is) around extremum
-    at index exti in 1D array a"""
+    at index exti in 1D array a. If method is 'inner', search from peak outwards. If method
+    is 'outer', search from outer edges of a inwards."""
     #a = abs(a)
     fm = a[exti] * fraction # fraction of max
     d = a - fm
@@ -4223,27 +4224,14 @@ def argfwhm(a, exti, fraction=0.5):
     if len(lis) == 0 or len(ris) == 0:
         # signal doesn't change enough on either side of exti to calculate FWHM
         raise ValueError("exti %d has no FWHM" % exti)
-    '''
-    assert len(lis) > 0
-    if not len(ris) > 0:
-        # linearly extrapolate right edge of a until it falls below 0
-        # find slope from last two points:
-        m = a[-1] - a[-2]
-        b = a[-1]
-        assert b * m < 0 # heading towards 0? or we'll never find the end of this extremum
-        n = np.ceil(abs(b / m)) # number of points to extrapolate to get to 0
-        y = m * np.arange(n) + b # extrapolated points
-        a = np.hstack([a, y]) # extrapolated points concatenated to end of a
-        # now try again:
-        d = a - fm
-        lis = np.diff(np.sign(d[:exti])).nonzero()[0]
-        ris = np.diff(np.sign(d[exti:])).nonzero()[0] + exti + 1
-        assert len(lis) > 0
-        assert len(ris) > 0
-        #import pdb; pdb.set_trace()
-    '''
-    # return rightmost of left indices, and leftmost of right indices:
-    return lis[-1], ris[0]
+    if method == 'inner':
+        # return rightmost of left indices, and leftmost of right indices:
+        return lis[-1], ris[0]
+    elif method == 'outer':
+        # return leftmost of left indices, and rightmost of right indices:
+        return lis[0], ris[-1]
+    else:
+        raise RuntimeError('unknown method %r' % method)
 
 def sparseness(x):
     """Sparseness measure, from Vinje and Gallant, 2000. This is basically 1 minus the ratio
