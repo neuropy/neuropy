@@ -247,10 +247,10 @@ text(0.98, 0.98, '$\mu$ = %.1f ms' % fwhms[1].mean(), # synched
 text(0.98, 0.90, '$\mu$ = %.1f ms' % fwhms[0].mean(), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.98, 0.82, 'p = %.1g' % p,
+text(0.98, 0.82, 'p < %.1g' % p,
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('peak widths ptc22.tr1.r08 ptc22.tr1.r10')
+gcfm().window.setWindowTitle('peak FWHM ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 # plot FWHM distributions in log space:
@@ -275,10 +275,10 @@ text(0.98, 0.98, '$\mu$ = %.1f ms' % 10**(log10(fwhms[1]).mean()), # synched
 text(0.98, 0.90, '$\mu$ = %.1f ms' % 10**(log10(fwhms[0]).mean()), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.98, 0.82, 'p = %.1g' % p,
+text(0.98, 0.82, 'p < %.1g' % p,
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('peak widths log ptc22.tr1.r08 ptc22.tr1.r10')
+gcfm().window.setWindowTitle('peak FWHM log ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 # plot peak height distribution:
@@ -291,7 +291,7 @@ n = np.hstack([n0, n1])
 xlim(xmin=HEIGHTMIN, xmax=HEIGHTMAX)
 ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
-xlabel('peak height (Hz)')
+xlabel('peak amplitude (Hz)')
 ylabel('PSTH peak count')
 t, p = ttest_ind(heights[0], heights[1], equal_var=False) # Welch's T-test
 # display means and p value:
@@ -301,10 +301,10 @@ text(0.98, 0.98, '$\mu$ = %.1f Hz' % heights[1].mean(), # synched
 text(0.98, 0.90, '$\mu$ = %.1f Hz' % heights[0].mean(), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.98, 0.82, 'p = %.1g' % p,
+text(0.98, 0.82, 'p < %.1g' % p,
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('peak heights ptc22.tr1.r08 ptc22.tr1.r10')
+gcfm().window.setWindowTitle('peak amplitude ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 # plot peak height distribution in log space:
@@ -319,7 +319,7 @@ xlim(xmin=10**0, xmax=10**logmax)
 ylim(ymax=n.max()) # effectively normalizes the histogram
 #xticks(ticks)
 xscale('log')
-xlabel('peak height (Hz)')
+xlabel('peak amplitude (Hz)')
 ylabel('PSTH peak count')
 t, p = ttest_ind(log10(heights[0]), log10(heights[1]), equal_var=False) # Welch's T-test
 # display geometric means and p value:
@@ -329,10 +329,10 @@ text(0.98, 0.98, '$\mu$ = %.1f Hz' % 10**(log10(heights[1]).mean()), # synched
 text(0.98, 0.90, '$\mu$ = %.1f Hz' % 10**(log10(heights[0]).mean()), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.98, 0.82, 'p = %.1g' % p,
+text(0.98, 0.82, 'p < %.1g' % p,
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('peak heights log ptc22.tr1.r08 ptc22.tr1.r10')
+gcfm().window.setWindowTitle('peak amplitude log ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 # plot sparseness distributions:
@@ -355,7 +355,7 @@ text(0.03, 0.98, '$\mu$ = %.2f' % spars[1].mean(), # synched
 text(0.03, 0.90, '$\mu$ = %.2f' % spars[0].mean(), # desynched
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.03, 0.82, 'p = %.1g' % p,
+text(0.03, 0.82, 'p < %.1g' % p,
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 gcfm().window.setWindowTitle('sparseness ptc22.tr1.r08 ptc22.tr1.r10')
