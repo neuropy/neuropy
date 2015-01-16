@@ -214,7 +214,7 @@ for nids, t, psths, fmt in zip(recsecnids, ts, psthss, ['b-', 'r-', 'r-', 'b-'])
     heightsrecsec.append(np.hstack(psthsheights))
     sparsrecsec.append(np.hstack(sparsenesses))
     nidsrecsec.append(np.hstack(peaknids))
-    psthsrecsec.append(np.hstack(peakpsths))
+    psthsrecsec.append(np.vstack(peakpsths))
     print('\n') # two newlines
 
 fwhms = [np.hstack([fwhmsrecsec[0], fwhmsrecsec[3]]), # desynched
@@ -361,9 +361,27 @@ text(0.03, 0.82, 'p < %.1g' % p,
 gcfm().window.setWindowTitle('sparseness ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
-# report chi-square results of numbers of peaks:
+# report numbers of all and active PSTHs
+for kind in ['all', 'active']:
+    tempssnids, temprecsecnids = get_ssnids(recs, stranges, kind=kind)
+    npsths = sum(nids.shape[0] for nids in temprecsecnids) # number that met NIDSKIND criterion
+    print('%s: npsths=%d' % (kind, npsths))
+
+# report numbers of responsive PSTHs:
+nresppsths = sum([ psths.shape[0] for psths in psthsrecsec ])
+print('responsive PSTHs (with at least 1 peak): %d' % nresppsths)
+nresppsthsdesynched = sum([psthsrecsec[0].shape[0], psthsrecsec[3].shape[0]])
+print('responsive PSTHs in desynched periods: %d' % nresppsthsdesynched)
+nresppsthssynched = sum([psthsrecsec[1].shape[0], psthsrecsec[2].shape[0]])
+print('responsive PSTHs in synched periods: %d' % nresppsthssynched)
+# report chi-square results of numbers of responsive PSTHs in both states:
+chi2, p = chisquare([nresppsthsdesynched, nresppsthssynched])
+print('chi2=%.3g, p=%.3g' % (chi2, p))
+
+# report chi-square results of numbers of peaks in both states:
 ndesynched, nsynched = len(fwhms[0]), len(fwhms[1]) # peak counts
-chi2, p = chisquare([ndesynched, nsynched]) # compare number of peaks in both states
+chi2, p = chisquare([ndesynched, nsynched])
+print('peak counts:')
 print('ndesynched=%d, nsynched=%d, chi2=%.3g, p=%.3g' % (ndesynched, nsynched, chi2, p))
 
 show()
