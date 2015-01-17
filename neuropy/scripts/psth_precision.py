@@ -4,7 +4,7 @@ in ptc22.tr1"""
 
 from __future__ import division, print_function
 from scipy.signal import argrelextrema
-from scipy.stats import ttest_ind, chisquare
+from scipy.stats import ttest_ind, chisquare, mannwhitneyu
 from numpy import log10
 
 from core import argfwhm, get_ssnids, sparseness, intround
@@ -239,7 +239,8 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('FWHM (ms)')
 ylabel('PSTH peak count')
-t, p = ttest_ind(fwhms[0], fwhms[1], equal_var=False) # Welch's T-test
+#t, p = ttest_ind(fwhms[0], fwhms[1], equal_var=False) # Welch's T-test
+u, p = mannwhitneyu(fwhms[0], fwhms[1]) # 1-sided
 # display means and p value:
 text(0.98, 0.98, '$\mu$ = %.1f ms' % fwhms[1].mean(), # synched
                  horizontalalignment='right', verticalalignment='top',
@@ -267,7 +268,8 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xscale('log')
 xlabel('FWHM (ms)')
 ylabel('PSTH peak count')
-t, p = ttest_ind(log10(fwhms[0]), log10(fwhms[1]), equal_var=False) # Welch's T-test
+#t, p = ttest_ind(log10(fwhms[0]), log10(fwhms[1]), equal_var=False) # Welch's T-test
+u, p = mannwhitneyu(log10(fwhms[0]), log10(fwhms[1])) # 1-sided
 # display geometric means and p value:
 text(0.98, 0.98, '$\mu$ = %.1f ms' % 10**(log10(fwhms[1]).mean()), # synched
                  horizontalalignment='right', verticalalignment='top',
@@ -293,7 +295,8 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('peak amplitude (Hz)')
 ylabel('PSTH peak count')
-t, p = ttest_ind(heights[0], heights[1], equal_var=False) # Welch's T-test
+#t, p = ttest_ind(heights[0], heights[1], equal_var=False) # Welch's T-test
+u, p = mannwhitneyu(heights[0], heights[1]) # 1-sided
 # display means and p value:
 text(0.98, 0.98, '$\mu$ = %.1f Hz' % heights[1].mean(), # synched
                  horizontalalignment='right', verticalalignment='top',
@@ -321,7 +324,8 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xscale('log')
 xlabel('peak amplitude (Hz)')
 ylabel('PSTH peak count')
-t, p = ttest_ind(log10(heights[0]), log10(heights[1]), equal_var=False) # Welch's T-test
+#t, p = ttest_ind(log10(heights[0]), log10(heights[1]), equal_var=False) # Welch's T-test
+u, p = mannwhitneyu(log10(heights[0]), log10(heights[1])) # 1-sided
 # display geometric means and p value:
 text(0.98, 0.98, '$\mu$ = %.1f Hz' % 10**(log10(heights[1]).mean()), # synched
                  horizontalalignment='right', verticalalignment='top',
@@ -347,7 +351,8 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('sparseness')
 ylabel('PSTH count')
-t, p = ttest_ind(spars[0], spars[1], equal_var=False) # Welch's T-test
+#t, p = ttest_ind(spars[0], spars[1], equal_var=False) # Welch's T-test
+u, p = mannwhitneyu(spars[0], spars[1]) # 1-sided
 # display means and p value:
 text(0.03, 0.98, '$\mu$ = %.2f' % spars[1].mean(), # synched
                  horizontalalignment='left', verticalalignment='top',
