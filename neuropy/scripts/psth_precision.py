@@ -7,7 +7,7 @@ from scipy.signal import argrelextrema
 from scipy.stats import ttest_ind, chisquare, mannwhitneyu
 from numpy import log10
 
-from core import argfwhm, get_ssnids, sparseness, intround
+from core import argfwhm, get_ssnids, sparseness, intround, ceilsigfig
 
 # copied from psthcorr.py:
 ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
@@ -248,7 +248,7 @@ text(0.98, 0.98, '$\mu$ = %.1f ms' % fwhms[1].mean(), # synched
 text(0.98, 0.90, '$\mu$ = %.1f ms' % fwhms[0].mean(), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.98, 0.82, 'p < %.1g' % p,
+text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 gcfm().window.setWindowTitle('peak FWHM ptc22.tr1.r08 ptc22.tr1.r10')
@@ -277,7 +277,7 @@ text(0.98, 0.98, '$\mu$ = %.1f ms' % 10**(log10(fwhms[1]).mean()), # synched
 text(0.98, 0.90, '$\mu$ = %.1f ms' % 10**(log10(fwhms[0]).mean()), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.98, 0.82, 'p < %.1g' % p,
+text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 gcfm().window.setWindowTitle('peak FWHM log ptc22.tr1.r08 ptc22.tr1.r10')
@@ -304,7 +304,7 @@ text(0.98, 0.98, '$\mu$ = %.1f Hz' % heights[1].mean(), # synched
 text(0.98, 0.90, '$\mu$ = %.1f Hz' % heights[0].mean(), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.98, 0.82, 'p < %.1g' % p,
+text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 gcfm().window.setWindowTitle('peak amplitude ptc22.tr1.r08 ptc22.tr1.r10')
@@ -333,7 +333,7 @@ text(0.98, 0.98, '$\mu$ = %.1f Hz' % 10**(log10(heights[1]).mean()), # synched
 text(0.98, 0.90, '$\mu$ = %.1f Hz' % 10**(log10(heights[0]).mean()), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.98, 0.82, 'p < %.1g' % p,
+text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 gcfm().window.setWindowTitle('peak amplitude log ptc22.tr1.r08 ptc22.tr1.r10')
@@ -360,7 +360,7 @@ text(0.03, 0.98, '$\mu$ = %.2f' % spars[1].mean(), # synched
 text(0.03, 0.90, '$\mu$ = %.2f' % spars[0].mean(), # desynched
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.03, 0.82, 'p < %.1g' % p,
+text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 gcfm().window.setWindowTitle('sparseness ptc22.tr1.r08 ptc22.tr1.r10')

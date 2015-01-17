@@ -3064,6 +3064,31 @@ def roundto(val, nearest):
     else:
         return np.floor(val / nearest) * nearest
 
+def sigfig(x, n=1):
+    """Return x rounded to n significant figures. Modified from
+    http://code.activestate.com/lists/python-tutor/70739/"""
+    return round(x, int(n - np.ceil(np.log10(abs(x)))))
+
+def e10(x):
+    """Return exponent of power of 10. Example: if x is 3.5e-10, return -10"""
+    if x == 0:
+        return 0
+    return int(np.floor(np.log10(abs(x))))
+
+def ceilsigfig(x, n=1):
+    """Return x rounded up to n significant figures. This is useful when wanting to
+    write p < value for significance tests. Works for negative numbers too.
+    Example:  2.1e-10 -->  3e-10
+    Example:  2.9e-10 -->  3e-10
+    Example: -2.1e-10 --> -2e-10"""
+    sfx = sigfig(x, n)
+    if sfx < x: # it was rounded down
+        sfx = sfx + 10**(e10(x)) # add one at the same decimal place
+        # filter through sigfig() again to try and fix any float inaccuracy,
+        # example: -2.6e-10 --> -1.9999999999999998e-10
+        sfx = sigfig(sfx, n)
+    return sfx
+
 def pad0s(val, ndigits=2):
     """Returns a string rep of val, padded with enough leading 0s
     to give you a string rep with ndigits in it"""
