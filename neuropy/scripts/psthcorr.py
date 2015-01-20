@@ -8,10 +8,11 @@ from scipy.stats import ttest_1samp, ttest_ind, ks_2samp
 import core
 from core import get_ssnids
 
-figsize = (3, 3)
-showcolorbar = False # show colorbar
-sepbinw = 200 # separation bin width, um
-rhomin, rhomax = -0.3, 1
+FIGSIZE = (3, 3)
+SHOWCOLORBAR = False # show colorbar
+SEPBINW = 200 # separation bin width, um
+RHOMIN, RHOMAX = -0.3, 1
+RHODIFFMIN, RHODIFFMAX = -0.65, 0.65 # symmetric about 0 for the delta rhos
 
 ptc15tr7crecs = [ptc15.tr7c.r74, ptc15.tr7c.r95b]
 nateids = [3, 4, 10, 12] # for both recs in ptc15.tr7c
@@ -59,12 +60,12 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
         return ssrho
 
     # plot superset rho matrix:
-    figure(figsize=figsize)
+    figure(figsize=FIGSIZE)
     imshow(ssrho, vmin=-1, vmax=1, cmap='jet') # cmap='gray' is too bland
     ssnidticks = np.arange(0, nnss, 10)
     xticks(ssnidticks)
     yticks(ssnidticks)
-    if showcolorbar:
+    if SHOWCOLORBAR:
         colorbar()
     basetitle = rec.absname
     if strange != None:
@@ -78,12 +79,12 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
     ssrhol = ssrho[lti]
     notnanis = np.logical_not(np.isnan(ssrhol)) # indices of non-nan values
     fssrhol = ssrhol[notnanis] # ssrhol filtered out for nans
-    figure(figsize=figsize)
-    rhobins = np.arange(rhomin, rhomax+0.0333, 0.0333) # left edges + rightmost edge
+    figure(figsize=FIGSIZE)
+    rhobins = np.arange(RHOMIN, RHOMAX+0.0333, 0.0333) # left edges + rightmost edge
     n = hist(fssrhol, bins=rhobins, color='k')[0]
     axvline(x=fssrhol.mean(), c='r', ls='--') # draw vertical red line at mean fssrhol
     axvline(x=0, c='e', ls='--') # draw vertical grey line at x=0
-    xlim(xmin=rhomin, xmax=rhomax)
+    xlim(xmin=RHOMIN, xmax=RHOMAX)
     ylim(ymax=n.max()) # effectively normalizes the histogram
     rhoticks = np.arange(-0.2, 1+0.2, 0.2) # excluding the final 1
     xticks(rhoticks)
@@ -94,14 +95,14 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
 
     # plot rho vs separation:
     fssseps = ssseps[notnanis] # ssseps filtered out for nans
-    figure(figsize=figsize)
+    figure(figsize=FIGSIZE)
     # scatter plot:
     pl.plot(fssseps, fssrhol, 'k.')
     # bin seps and plot mean rho in each bin:
     sortis = np.argsort(fssseps)
     seps = fssseps[sortis]
     rhos = fssrhol[sortis]
-    sepbins = np.arange(0, seps.max()+sepbinw, sepbinw) # left edges
+    sepbins = np.arange(0, seps.max()+SEPBINW, SEPBINW) # left edges
     sepis = seps.searchsorted(sepbins)
     sepmeans, rhomeans, rhostds = [], [], []
     for sepi0, sepi1 in zip(sepis[:-1], sepis[1:]): # iterate over sepbins
@@ -111,8 +112,8 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
         rhostds.append(rhoslice.std()) # std of rho in this sepbin
     #pl.plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
     errorbar(sepmeans, rhomeans, yerr=rhostds, fmt='r.-', ms=10, lw=2, zorder=9999)
-    xlim(xmin=0, xmax=sepxmax)
-    ylim(ymin=rhomin, ymax=rhomax)
+    xlim(xmin=0, xmax=SEPXMAX)
+    ylim(ymin=RHOMIN, ymax=RHOMAX)
     septicks = np.arange(0, seps.max()+100, 500)
     xticks(septicks)
     yticks(rhoticks)
@@ -124,7 +125,6 @@ def psthcorrdiff(rhos, seps, basetitle):
     """Plot difference of a pair of rho matrices (rhos[0] - rhos[1]). seps is the
     corresponding distance matrix"""
     assert len(rhos) == 2
-    rhomin, rhomax = -0.65, 0.65 # symmetric about 0 for the delta rhos
 
     # calc rho difference matrix:
     rhod = rhos[0] - rhos[1]
@@ -132,12 +132,12 @@ def psthcorrdiff(rhos, seps, basetitle):
     nn = rhod.shape[0]
     
     # plot rho diff matrix:
-    figure(figsize=figsize)
+    figure(figsize=FIGSIZE)
     imshow(rhod, vmin=-1, vmax=1, cmap='jet') # cmap='gray' is too bland
     ssnidticks = np.arange(0, nn, 10)
     xticks(ssnidticks)
     yticks(ssnidticks)
-    if showcolorbar:
+    if SHOWCOLORBAR:
         colorbar()
     gcfm().window.setWindowTitle(basetitle + '_rhod_mat')
     tight_layout(pad=0.3)
@@ -147,12 +147,12 @@ def psthcorrdiff(rhos, seps, basetitle):
     rhol = rhod[lti]
     notnanis = np.logical_not(np.isnan(rhol)) # indices of non-nan values
     frhol = rhol[notnanis] # rhol filtered out for nans
-    figure(figsize=figsize)
-    rhobins = np.arange(rhomin, rhomax+0.0333, 0.0333) # left edges + rightmost edge
+    figure(figsize=FIGSIZE)
+    rhobins = np.arange(RHODIFFMIN, RHODIFFMAX+0.0333, 0.0333) # left edges + rightmost edge
     n = hist(frhol, bins=rhobins, color='k')[0]
     axvline(x=frhol.mean(), c='r', ls='--') # draw vertical red line at mean frhol
     axvline(x=0, c='e', ls='--') # draw vertical grey line at x=0
-    xlim(xmin=rhomin, xmax=rhomax)
+    xlim(xmin=RHODIFFMIN, xmax=RHODIFFMAX)
     ylim(ymax=n.max()) # effectively normalizes the histogram
     rhoticks = np.arange(-0.6, 0.6+0.2, 0.2)
     xticks(rhoticks)
@@ -163,14 +163,14 @@ def psthcorrdiff(rhos, seps, basetitle):
     
     # plot rho vs separation:
     fseps = seps[notnanis] # seps filtered out for nans
-    figure(figsize=figsize)
+    figure(figsize=FIGSIZE)
     # scatter plot:
     pl.plot(fseps, frhol, 'k.')
     # bin seps and plot mean rho in each bin:
     sortis = np.argsort(fseps)
     seps = fseps[sortis]
     rhos = frhol[sortis]
-    sepbins = np.arange(0, seps.max()+sepbinw, sepbinw) # left edges
+    sepbins = np.arange(0, seps.max()+SEPBINW, SEPBINW) # left edges
     sepis = seps.searchsorted(sepbins)
     sepmeans, rhomeans, rhostds = [], [], []
     for sepi0, sepi1 in zip(sepis[:-1], sepis[1:]): # iterate over sepbins
@@ -180,8 +180,8 @@ def psthcorrdiff(rhos, seps, basetitle):
         rhostds.append(rhoslice.std()) # std of rho in this sepbin
     #pl.plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
     errorbar(sepmeans, rhomeans, yerr=rhostds, fmt='r.-', ms=10, lw=2, zorder=9999)
-    xlim(xmin=0, xmax=sepxmax)
-    ylim(ymin=rhomin, ymax=rhomax)
+    xlim(xmin=0, xmax=SEPXMAX)
+    ylim(ymin=RHODIFFMIN, ymax=RHODIFFMAX)
     septicks = np.arange(0, seps.max()+100, 500)
     xticks(septicks)
     yticks(rhoticks)
@@ -377,7 +377,7 @@ listarr = np.frompyfunc(lambda x: [], 1, 1) # take 1 input array, return 1 list 
 
 
 # ptc15.tr7c:
-sepxmax = 1675
+SEPXMAX = 1675
 # get superset of active nids for all natexps of both recs in ptc15tr7crecs:
 stranges = etrangesr74 + etrangesr95b # 8 stranges in total
 recs = [ptc15.tr7c.r74]*4 + [ptc15.tr7c.r95b]*4 # 8 recs corresponding to 8 stranges
@@ -410,25 +410,25 @@ psthcorrdiff(ssrhos, ssseps, 'r74-r95b')
 #In [129]: ssrhos[0][8,10]
 #Out[129]: 0.82907446734056678
 
-
+'''
 # ptc22.tr1.r08 sections:
-sepxmax = 1200
+SEPXMAX = 1200
 ssnids, recsecnids = get_ssnids(ptc22tr1r08s, strangesr08s)
 ssseps = get_seps(ssnids, ptc22.tr1.alln)
 for rec, nids, strange in zip(ptc22tr1r08s, recsecnids, strangesr08s):
     psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
 
 # ptc22.tr1.r10 sections:
-sepxmax = 1200
+SEPXMAX = 1200
 ssnids, recsecnids = get_ssnids(ptc22tr1r10s, strangesr10s)
 ssseps = get_seps(ssnids, ptc22.tr1.alln)
 for rec, nids, strange in zip(ptc22tr1r10s, recsecnids, strangesr10s):
     psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
-
+'''
 # ptc22.tr1.r08 + ptc22.tr1.r10 sections:
-plotpsthcorr = False
+plotpsthcorr = True
 plotpsthcorrdiff = True
-sepxmax = 1200
+SEPXMAX = 1200
 ptc22tr1s = ptc22tr1r08s+ptc22tr1r10s
 stranges = strangesr08s+strangesr10s
 ssnids, recsecnids = get_ssnids(ptc22tr1s, stranges)
