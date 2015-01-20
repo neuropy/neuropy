@@ -14,6 +14,10 @@ SEPBINW = 200 # separation bin width, um
 RHOMIN, RHOMAX = -0.3, 1
 RHODIFFMIN, RHODIFFMAX = -0.65, 0.65 # symmetric about 0 for the delta rhos
 
+ALPHA1 = 0.0005 # for comparing each cell type pair's rho distrib to 0
+ALPHA2 = 0.01 # for comparing each cell type pair's rho distrib to every other cell type pair
+VMIN, VMAX = 0, 0.13 # rho limits for psthcorrtype plots
+
 ptc15tr7crecs = [ptc15.tr7c.r74, ptc15.tr7c.r95b]
 nateids = [3, 4, 10, 12] # for both recs in ptc15.tr7c
 etrangesr74 = [ ptc15.tr7c.r74.e[nateid].trange for nateid in nateids ] # us
@@ -188,7 +192,8 @@ def psthcorrdiff(rhos, seps, basetitle):
     gcfm().window.setWindowTitle(basetitle + '_rhod_sep')
     tight_layout(pad=0.3)
 
-def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatetypeplots=True):
+def psthcorrtype(trackrecs, pool=False, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
+                 separatetypeplots=True):
     """Plot mean PSTH correlation (rho) 2D histograms, indexed by spike and RF type. Plot one
     for each set of recordings in trackrecs (ostensibly, one per track). If pool, plot only
     one rho celltype histogram pooled across all trackrecs. If pool, return rhotype matrix
@@ -299,7 +304,7 @@ def psthcorrtype(trackrecs, pool=False, alpha=0.0005, vmin=0, vmax=1, separatety
         rhotype[insigis] = listarr(rhotype[insigis]) # set insig entries to empty lists
         return rhotype # only significant entires aren't empty
 
-def psthcorrtypestats(rhotype, sigiss=None, test=ttest_ind, alpha=0.01):
+def psthcorrtypestats(rhotype, sigiss=None, test=ttest_ind, alpha=ALPHA2):
     """Run some statistical tests on rhotype matrix. First, test if suspected significantly
     high entries of spike types and RF types (sigiss) in rhotype array do indeed have
     significantly different means from all the other entries pooled together. Also, test each
@@ -452,49 +457,49 @@ if plotpsthcorrdiff:
 
 # run psthcorrtype and psthcorrtypestats on ptc15.tr7c:
 trackrecs = [ptc15tr7crecs]
-rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
+rhotype = psthcorrtype(trackrecs, pool=True, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
                        separatetypeplots=True)
 spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
 print('\nptc15.tr7c')
-psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01)
+psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=ALPHA2)
 
 # run psthcorrtype and psthcorrtypestats on ptc22.tr1:
 trackrecs = [ptc22tr1recs]
-rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
+rhotype = psthcorrtype(trackrecs, pool=True, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
                        separatetypeplots=True)
 spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
 spsigis[0, 0] = True
 rfsigis[1, 1] = True; #rfsigis[0, 2] = True
 print('\nptc22.tr1')
-psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01)
+psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=ALPHA2)
 
 # run psthcorrtype and psthcorrtypestats on ptc22.tr2:
 trackrecs = [ptc22tr2recs]
-rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
+rhotype = psthcorrtype(trackrecs, pool=True, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
                        separatetypeplots=True)
 spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
 spsigis[0, 0] = True
 rfsigis[1, 1] = True; #rfsigis[0, 2] = True
 print('\nptc22.tr2')
-psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01)
+psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=ALPHA2)
 
 # run psthcorrtype and psthcorrtypestats on ptc22:
 trackrecs = [ptc22tr1recs, ptc22tr2recs]
-rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
+rhotype = psthcorrtype(trackrecs, pool=True, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
                        separatetypeplots=True)
 spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
 spsigis[0, 0] = True
 rfsigis[1, 1] = True; #rfsigis[0, 2] = True
 print('\nptc22')
-psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01)
+psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=ALPHA2)
 
 # run psthcorrtype and psthcorrtypestats on all tracks:
 trackrecs = [ptc15tr7crecs, ptc22tr1recs, ptc22tr2recs]
-rhotype = psthcorrtype(trackrecs, pool=True, alpha=0.0005, vmin=0, vmax=0.13,
+rhotype = psthcorrtype(trackrecs, pool=True, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
                        separatetypeplots=True)
 spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
 print('\nall tracks pooled')
-psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=0.01)
+psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=ALPHA2)
 
 
 show()
