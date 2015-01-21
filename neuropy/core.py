@@ -3085,7 +3085,7 @@ def ceilsigfig(x, n=1):
     if sfx < x: # it was rounded down
         sfx = sfx + 10**(e10(x)) # add one at the same decimal place
         # filter through sigfig() again to try and fix any float inaccuracy,
-        # example: -2.6e-10 --> -1.9999999999999998e-10
+        # example: -2.6e-10 --> -3e-10 --> -1.9999999999999998e-10 --> -2e-10
         sfx = sigfig(sfx, n)
     return sfx
 
