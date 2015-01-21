@@ -1,4 +1,5 @@
-"""Plot 2D matrix of natural scene movie PSTH correlations of all active cells. Run from
+"""Plot 2D matrix of natural scene movie PSTH correlations of all active cells. To get decent
+PSTHs, for each track, only include recordings with at least 5 trials per movie clip. Run from
 within neuropy using `run -i scripts/psthcorr.py`"""
 
 from __future__ import division
@@ -21,7 +22,7 @@ VMIN, VMAX = 0, 0.13 # rho limits for psthcorrtype plots
 ptc15tr7crecs = [ptc15.tr7c.r74, ptc15.tr7c.r95b]
 nateids = [3, 4, 10, 12] # for both recs in ptc15.tr7c
 etrangesr74 = [ ptc15.tr7c.r74.e[nateid].trange for nateid in nateids ] # us
-etrangesr95b = [ ptc15.tr7c.r74.e[nateid].trange for nateid in nateids ] # us
+etrangesr95b = [ ptc15.tr7c.r95b.e[nateid].trange for nateid in nateids ] # us
 
 # copied to psth_precision.py:
 ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
@@ -40,6 +41,7 @@ typelabels = ['fast', 'slow', 'fast asym', 'slow asym',
               'simple', 'complex', 'LGN aff', 'unknown']
 spiketypelabels = typelabels[:4]
 rftypelabels = typelabels[4:]
+
 
 def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=None, plot=True):
     if nids == None:
