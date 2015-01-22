@@ -6,7 +6,7 @@ from __future__ import division
 import scipy
 
 rectypes = ['bs', 'ns', 'art', 'all'] #['bs']
-# if choosing a cell spiketype or rftype, they will be picked active cells. Choices are:
+# if choosing a cell spiketype or rftype, they will be picked from active cells. Choices are:
 # None (active), 'all', 'quiet', 'fast', 'slow', 'fastasym', 'slowasym',
 # 'simple', 'complex', 'LGN', 'unknown'
 neuronss = ['fast', 'slow', 'simple', 'complex', None] #['simple']
