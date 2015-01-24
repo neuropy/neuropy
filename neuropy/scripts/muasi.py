@@ -16,7 +16,7 @@ kind = 'L/(L+H)'
 axeslabels = False
 ticklabels = False
 figsize = (2.4, 2.4)
-savefigs = True
+savefigs = False
 pad = 0.3
 ms = 3
 ls = '--'
@@ -61,9 +61,9 @@ for rectype in rectypes:
             muas.append(mua)
             sis.append(si)
             ns.append(n*mua.shape[1]) # ncells that contributed * n MUA timebins, by layer
-        mua = np.hstack(muas)
+        mua = np.hstack(muas) # rows [0 to 4] are all, superficial, mid and deep layers
         si = np.hstack(sis)
-        ns = np.vstack(ns) # nrecs x 4
+        ns = np.vstack(ns) # nrecs x 4 layer types
 
         # calc mean number of cells that contributed to each scatter point, by layer
         meann = ns.sum(axis=0) / mua.shape[1]
