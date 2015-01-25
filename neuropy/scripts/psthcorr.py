@@ -85,10 +85,11 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
     ssrhol = ssrho[lti]
     notnanis = np.logical_not(np.isnan(ssrhol)) # indices of non-nan values
     fssrhol = ssrhol[notnanis] # ssrhol filtered out for nans
+    fssrholmean = fssrhol.mean()
     figure(figsize=FIGSIZE)
     rhobins = np.arange(RHOMIN, RHOMAX+0.0333, 0.0333) # left edges + rightmost edge
     n = hist(fssrhol, bins=rhobins, color='k')[0]
-    axvline(x=fssrhol.mean(), c='r', ls='--') # draw vertical red line at mean fssrhol
+    axvline(x=fssrholmean, c='r', ls='--') # draw vertical red line at mean fssrhol
     axvline(x=0, c='e', ls='--') # draw vertical grey line at x=0
     xlim(xmin=RHOMIN, xmax=RHOMAX)
     ylim(ymax=n.max()) # effectively normalizes the histogram
@@ -96,6 +97,8 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
     xticks(rhoticks)
     yticks([n.max()]) # turn off y ticks to save space
     #yticks([0, n.max()])
+    text(0.98, 0.98, '$\mu$=%.2g' % fssrholmean, color='k', transform=gca().transAxes,
+         horizontalalignment='right', verticalalignment='top')
     gcfm().window.setWindowTitle(basetitle + '_rho_hist')
     tight_layout(pad=0.3)
 
@@ -153,10 +156,11 @@ def psthcorrdiff(rhos, seps, basetitle):
     rhol = rhod[lti]
     notnanis = np.logical_not(np.isnan(rhol)) # indices of non-nan values
     frhol = rhol[notnanis] # rhol filtered out for nans
+    frholmean = frhol.mean()
     figure(figsize=FIGSIZE)
     rhobins = np.arange(RHODIFFMIN, RHODIFFMAX+0.0333, 0.0333) # left edges + rightmost edge
     n = hist(frhol, bins=rhobins, color='k')[0]
-    axvline(x=frhol.mean(), c='r', ls='--') # draw vertical red line at mean frhol
+    axvline(x=frholmean, c='r', ls='--') # draw vertical red line at mean frhol
     axvline(x=0, c='e', ls='--') # draw vertical grey line at x=0
     xlim(xmin=RHODIFFMIN, xmax=RHODIFFMAX)
     ylim(ymax=n.max()) # effectively normalizes the histogram
@@ -164,6 +168,8 @@ def psthcorrdiff(rhos, seps, basetitle):
     xticks(rhoticks)
     yticks([n.max()]) # turn off y ticks to save space
     #yticks([0, n.max()])
+    text(0.98, 0.98, '$\mu$=%.2g' % frholmean, color='k', transform=gca().transAxes,
+         horizontalalignment='right', verticalalignment='top')
     gcfm().window.setWindowTitle(basetitle + '_rhod_hist')
     tight_layout(pad=0.3)
     
