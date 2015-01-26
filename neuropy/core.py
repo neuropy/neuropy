@@ -3089,6 +3089,20 @@ def ceilsigfig(x, n=1):
         sfx = sigfig(sfx, n)
     return sfx
 
+def floorsigfig(x, n=1):
+    """Return x rounded down to n significant figures. This is useful when wanting to
+    write p > value for significance tests. Works for negative numbers too.
+    Example:  2.1e-10 -->  2e-10
+    Example:  2.9e-10 -->  2e-10
+    Example: -2.1e-10 --> -3e-10"""
+    sfx = sigfig(x, n)
+    if sfx > x: # it was rounded up
+        sfx = sfx - 10**(e10(x)) # subtract one at the same decimal place
+        # filter through sigfig() again to try and fix any float inaccuracy,
+        # example: -2.4e-10 --> -2e-10 --> -2.9999999999999998e-10 --> -3e-10
+        sfx = sigfig(sfx, n)
+    return sfx
+
 def pad0s(val, ndigits=2):
     """Returns a string rep of val, padded with enough leading 0s
     to give you a string rep with ndigits in it"""
