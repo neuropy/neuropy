@@ -15,6 +15,7 @@ SEPBINW = 200 # separation bin width, um
 RHOMIN, RHOMAX = -0.3, 1
 RHODIFFMIN, RHODIFFMAX = -0.65, 0.65 # symmetric about 0 for the delta rhos
 
+ALPHA0 = 0.05 # for comparing the means of psthcorr and psthcorrdiff distribs to 0
 ALPHA1 = 0.0005 # for comparing each cell type pair's rho distrib to 0
 ALPHA2 = 0.01 # for comparing each cell type pair's rho distrib to every other cell type pair
 VMIN, VMAX = 0, 0.13 # rho limits for psthcorrtype plots
@@ -86,6 +87,12 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
     notnanis = np.logical_not(np.isnan(ssrhol)) # indices of non-nan values
     fssrhol = ssrhol[notnanis] # ssrhol filtered out for nans
     fssrholmean = fssrhol.mean()
+    t, p = ttest_1samp(fssrhol, 0) # 2-sided ttest relative to 0
+    print('mean=%g, t=%g, p=%g' % (fssrholmean, t, p))
+    if p < ALPHA0:
+        pstring = '$p<%g$' % ceilsigfig(p)
+    else:
+        pstring = '$p>%g$' % floorsigfig(p)
     figure(figsize=FIGSIZE)
     rhobins = np.arange(RHOMIN, RHOMAX+0.0333, 0.0333) # left edges + rightmost edge
     n = hist(fssrhol, bins=rhobins, color='k')[0]
@@ -97,8 +104,8 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
     xticks(rhoticks)
     yticks([n.max()]) # turn off y ticks to save space
     #yticks([0, n.max()])
-    text(0.98, 0.98, '$\mu$=%.2g' % fssrholmean, color='k', transform=gca().transAxes,
-         horizontalalignment='right', verticalalignment='top')
+    text(0.98, 0.98, '$\mu$=%.2g\n%s' % (fssrholmean, pstring), color='k',
+         transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
     gcfm().window.setWindowTitle(basetitle + '_rho_hist')
     tight_layout(pad=0.3)
 
@@ -151,12 +158,18 @@ def psthcorrdiff(rhos, seps, basetitle):
     gcfm().window.setWindowTitle(basetitle + '_rhod_mat')
     tight_layout(pad=0.3)
 
-    # plot rho histogram:
+    # plot rho difference histogram:
     lti = np.tril_indices(nn, -1) # lower triangle (below diagonal) indices
     rhol = rhod[lti]
     notnanis = np.logical_not(np.isnan(rhol)) # indices of non-nan values
     frhol = rhol[notnanis] # rhol filtered out for nans
     frholmean = frhol.mean()
+    t, p = ttest_1samp(frhol, 0) # 2-sided ttest relative to 0
+    print('mean=%g, t=%g, p=%g' % (frholmean, t, p))
+    if p < ALPHA0:
+        pstring = '$p<%g$' % ceilsigfig(p)
+    else:
+        pstring = '$p>%g$' % floorsigfig(p)
     figure(figsize=FIGSIZE)
     rhobins = np.arange(RHODIFFMIN, RHODIFFMAX+0.0333, 0.0333) # left edges + rightmost edge
     n = hist(frhol, bins=rhobins, color='k')[0]
@@ -168,12 +181,12 @@ def psthcorrdiff(rhos, seps, basetitle):
     xticks(rhoticks)
     yticks([n.max()]) # turn off y ticks to save space
     #yticks([0, n.max()])
-    text(0.98, 0.98, '$\mu$=%.2g' % frholmean, color='k', transform=gca().transAxes,
-         horizontalalignment='right', verticalalignment='top')
+    text(0.98, 0.98, '$\mu$=%.2g\n%s' % (frholmean, pstring), color='k',
+         transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
     gcfm().window.setWindowTitle(basetitle + '_rhod_hist')
     tight_layout(pad=0.3)
     
-    # plot rho vs separation:
+    # plot rho difference vs separation:
     fseps = seps[notnanis] # seps filtered out for nans
     figure(figsize=FIGSIZE)
     # scatter plot:

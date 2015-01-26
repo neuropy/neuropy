@@ -63,6 +63,7 @@ for rectype in rectypes:
             ns.append(n*mua.shape[1]) # ncells that contributed * n MUA timebins, by layer
         mua = np.hstack(muas) # rows [0 to 4] are all, superficial, mid and deep layers
         si = np.hstack(sis)
+        #si = np.sqrt(1-si) # transform
         ns = np.vstack(ns) # nrecs x 4 layer types
 
         # calc mean number of cells that contributed to each scatter point, by layer
