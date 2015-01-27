@@ -99,9 +99,9 @@ for track in tracks:
     trackdata = np.hstack(trackdata)
     alldata.append(trackdata)
     del trackdata
-    print( sum([data.nbytes for data in alldata])/1e6 )
+    nMiB = sum([data.nbytes for data in alldata])/(1024**2)
+    print("%g MiB" % nMiB)
     #plot_psd(trackdata, track.absname+' PSD')
-print('concatenating alldata...')
 alldata = np.hstack(alldata)
 
 plot_psd(alldata, 'all tracks PSD')
