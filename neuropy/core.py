@@ -492,7 +492,7 @@ class LFP(object):
         return self
 
     def psd(self, t0=None, t1=None, f0=0.1, f1=100, p0=None, p1=None, chanis=-1,
-            width=None, tres=None, cm=None, colorbar=False, figsize=(5, 5)):
+            width=None, tres=None, figsize=(5, 5)):
         """Plot power spectral density from t0 to t1 in sec, from f0 to f1 in Hz, and clip
         power values from p0 to p1 in dB, based on channel index chani of LFP data. chanis=0
         uses most superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1,

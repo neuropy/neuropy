@@ -389,4 +389,4 @@ chi2, p = chisquare([ndesynched, nsynched])
 print('peak counts:')
 print('ndesynched=%d, nsynched=%d, chi2=%.3g, p=%.3g' % (ndesynched, nsynched, chi2, p))
 
-show()
+pl.show()
