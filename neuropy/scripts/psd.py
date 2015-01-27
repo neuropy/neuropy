@@ -10,14 +10,17 @@ from pylab import get_current_fig_manager as gcfm
 from core import intround
 import filter
 
-tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
+#tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
+tracks = [ptc15.tr7c, ptc17.tr1, ptc17.tr2b, ptc18.tr1, ptc18.tr2c, ptc20.tr1, ptc20.tr2,
+          ptc20.tr3, ptc21.tr2, ptc21.tr5c, ptc21.tr6b, ptc22.tr1, ptc22.tr2, ptc22.tr4b,
+          ptc22.tr5b]
 
 F0, F1 = 0.2, 110 # Hz
 P0, P1 = None, None
 chanis = -1
 width, tres = 10, 5 # sec
 figsize = (5, 5)
-XSCALE = 'linear'
+XSCALE = 'log'
 
 uns = get_ipython().user_ns
 if width == None: # window width
@@ -75,6 +78,7 @@ def plot_psd(data, titlestr):
 # collect LFP data from all recordings in all tracks:
 alldata = []
 for track in tracks:
+    print(track.absname)
     trackdata = []
     #for rec in recs:
     #for rid in BSRIDS[track.absname]:
@@ -88,11 +92,18 @@ for track in tracks:
         else:
             data = data[chanis] # get single row of data at chanis
         trackdata.append(data)
+        # keeping all 10 chans for each LFP for all tracks gives MemoryError:
+        del data
+        del lfp.data
+        print('.', end='')
     trackdata = np.hstack(trackdata)
     alldata.append(trackdata)
-    plot_psd(trackdata, track.absname+' PSD')
+    del trackdata
+    print( sum([data.nbytes for data in alldata])/1e6 )
+    #plot_psd(trackdata, track.absname+' PSD')
+print('concatenating alldata...')
 alldata = np.hstack(alldata)
 
-plot_psd(alldata, 'all PSD')
+plot_psd(alldata, 'all tracks PSD')
 
 pl.show()
