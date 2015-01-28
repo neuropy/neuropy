@@ -1,6 +1,6 @@
 """Detect response events within PSTHs, count them, measure the FWHM of each one, and plot
 their distributions as a function of cortical state within each of the 2 natural scene movies
-in ptc22.tr1"""
+in ptc22.tr1. Run from within neuropy using `run -i scripts/psth_precision.py`"""
 
 from __future__ import division, print_function
 from scipy.signal import argrelextrema

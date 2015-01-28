@@ -1,4 +1,5 @@
-"""Calculate and plot power spectral density from the LFP of desired tracks/recordings"""
+"""Calculate and plot power spectral density from the LFP of desired tracks/recordings. Run
+from within neuropy using `run -i scripts/psd.py`"""
 
 from __future__ import division, print_function
 
@@ -19,14 +20,13 @@ F0, F1 = 0.2, 110 # Hz
 P0, P1 = None, None
 chanis = -1
 width, tres = 10, 5 # sec
-figsize = (5, 5)
+figsize = (4, 4)
 XSCALE = 'log'
 
-uns = get_ipython().user_ns
 if width == None: # window width
-    width = uns['LFPWIDTH'] # sec
+    width = LFPWIDTH # sec
 if tres == None: # window tres
-    tres = uns['LFPTRES'] # sec
+    tres = LFPTRES # sec
 assert tres <= width
 
 SAMPFREQ = 1000 # Hz, should be the same for all LFPs
@@ -84,6 +84,9 @@ for track in tracks:
     #for rid in BSRIDS[track.absname]:
     for rec in track.r.values():
         #rec = track.r[rid]
+        if rec.name.count('freqsweep') > 0: # it's a freqsweep recording
+            print('skip_r%s' % rec.id, end='')
+            continue # skip it, they induce wild high freqs in the LFP
         lfp = rec.lfp
         data = lfp.get_data()
         assert lfp.sampfreq == SAMPFREQ
