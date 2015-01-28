@@ -491,8 +491,8 @@ class LFP(object):
         self.f = f
         return self
 
-    def psd(self, t0=None, t1=None, f0=0.1, f1=100, p0=None, p1=None, chanis=-1,
-            width=None, tres=None, figsize=(5, 5)):
+    def psd(self, t0=None, t1=None, f0=0.2, f1=110, p0=None, p1=None, chanis=-1,
+            width=None, tres=None, xscale='log', figsize=(5, 5)):
         """Plot power spectral density from t0 to t1 in sec, from f0 to f1 in Hz, and clip
         power values from p0 to p1 in dB, based on channel index chani of LFP data. chanis=0
         uses most superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1,
@@ -545,8 +545,14 @@ class LFP(object):
             P[P > p1] = p1
         #self.P = P
         a.plot(freqs, P, 'k-')
-        a.autoscale(enable=True, tight=True)
+        # add SI frequency band limits:
+        LFPSILOWBAND, LFPSIHIGHBAND = uns['LFPSILOWBAND'], uns['LFPSIHIGHBAND']
+        a.axvline(x=LFPSILOWBAND[0], c='r', ls='--')
+        a.axvline(x=LFPSILOWBAND[1], c='r', ls='--')
+        a.axvline(x=LFPSIHIGHBAND[0], c='b', ls='--')
+        a.axvline(x=LFPSIHIGHBAND[1], c='b', ls='--')
         a.axis('tight')
+        a.set_xscale(xscale)
         a.set_xlabel("frequency (Hz)")
         a.set_ylabel("power (dB)")
         titlestr = lastcmd()
