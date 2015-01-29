@@ -39,7 +39,7 @@ HEIGHTMIN, HEIGHTMAX, HEIGHTSTEP, HEIGHTTICKSTEP = 0, 100, 5, 25
 SPARSTEP = 0.1
 figsize = (3, 3) # inches
 
-
+# copied to psth_precision_inactive.py:
 def plot_psth(psthparams, nid, fmt='k-', ms=10):
     t, psth, thresh, baseline, peakis, lis, ris = psthparams[nid]
     figure(figsize=(24, 7))
@@ -51,7 +51,7 @@ def plot_psth(psthparams, nid, fmt='k-', ms=10):
     if lis != None:
         pl.plot(t[lis], psth[lis], 'co', ms=ms, mec='none') # left edges
     if ris != None:
-        pl.plot(t[ris], psth[ris], 'bo', ms=ms, mec='none') # rigth edges
+        pl.plot(t[ris], psth[ris], 'bo', ms=ms, mec='none') # right edges
     if peakis != None:
         pl.plot(t[peakis], psth[peakis], 'ro', ms=ms, mec='none') # peaks
     xlim(xmax=t[-1])
@@ -119,7 +119,7 @@ def old_get_psth_peaks(t, psth, nid):
 
     return t, psth, thresh, baseline, peakis, lis, ris
 '''
-
+# copied to psth_precision_inactive.py:
 def get_psth_peaks(t, psth, nid):
     """Extract peaks from PSTH, simpler, faster, more robust method. Find contiguous ranges of
     baseline-exceeding points. Within each range, find the biggest value. If that value
@@ -172,7 +172,6 @@ def get_psth_peaks(t, psth, nid):
 ssnids, recsecnids = get_ssnids(recs, stranges, kind=NIDSKIND)
 
 # calculate PSTHs for both sections of both recordings:
-
 ts, psthss = [], []
 for rec, nids, strange in zip(recs, recsecnids, stranges):
     t, psths = rec.traster(nids=nids, natexps=False, strange=strange, plot=False,
