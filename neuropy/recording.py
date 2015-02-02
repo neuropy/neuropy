@@ -1135,64 +1135,22 @@ class RecordingRaster(BaseRecording):
                        marker=marker, size=size, color=color, alpha=alpha, title=title,
                        figsize=figsize)
 
-    def traster(self, nids=None, overlap=False, sweepis=None, eids=None, natexps=False,
-                strange=None, t0=None, dt=None, blank=True, plot=True, psth=False, binw=0.02,
-                tres=0.005, norm=True, marker='|', s=20, c=None, hlinesweepis=None, hlinec='e',
-                title=False, ylabel=True, figsize=(7.5, None), psthfigsize=None):
-        """Create a trial spike raster plot for each given neuron ('all' and 'quiet' are valid
-        values), one figure for each neuron, or overlapping using different colours in a
-        single figure. For the designated sweep indices, based on stimulus info in experiments
-        eids. natexps controls whether only natural scene movies are considered in ptc15
-        multiexperiment recordings. Consider only those spikes that fall within strange
-        ("spike time range", in us). t0 and dt manually designate trial tranges. blank
-        controls whether to include blank frames for trials in movie type stimuli. psth, binw
-        and tres control corresponding PSTH plots and return value. c controls color, and can
-        be a single value, a list of len(nids), or use c='bwg' to plot black and white bars on
-        a grey background for black and white drifting bar trials. hlinesweepis designates
-        sweepis at which to plot a horizontal line on the traster the first time they occur,
-        while hlinec designates their colour.
-
-        ## TODO: the PSTH code should be split off into its own rec method and should call
-        ## this traster method (with plot=False) to get its required input
-        """
-        if nids == None:
-            nids = sorted(self.n.keys()) # use active neurons
-        elif nids == 'quiet':
-            nids = sorted(self.qn.keys()) # use quiet neurons
-        elif nids == 'all':
-            nids = sorted(self.alln.keys()) # use all neurons
+    def trialtype(self, eid=0):
+        """Return type of trials in experiment ID eid: dinrange or dinval"""
+        exp = self.e[eid]
+        if type(exp.e) == Movie: # movie stimulus, each frame is a sweep
+            return 'dinrange' # one trial for every cycle of din values
         else:
-            nids = tolist(nids) # use specified neurons
-        nn = len(nids)
+            return 'dinval' # one trial per block of identical din values
 
-        if eids == None:
-            eids = sorted(self.e) # all eids, assume they're all comparable
-            if natexps: # assume ptc15, only include natural scene movie experiments
-                assert self.tr.absname == 'ptc15.tr7c'
-                eids = [ eid for eid in eids if self.e[eid].e.name[0] == 'n' ]
-                eid2name = { eid:self.e[eid].e.name for eid in eids }
-                pprint(eid2name)
-        else: # eids were specified, print eid2name
-            eid2name = { eid:self.e[eid].name for eid in eids }
-            pprint(eid2name)
-        e0 = self.e[eids[0]]
-        if type(e0.e) == Movie: # movie stimulus, each frame is a sweep
-            trialtype = 'dinrange' # one trial for every cycle of din values
-        else:
-            trialtype = 'dinval' # one trial per block of identical din values
-        if c == 'bwg': # black and white ticks on grey, for corresponding drift bar stimulus
-            assert trialtype == 'dinval'
-            brightness = e0.sweeptable.data['brightness'] # indexed into using sweepis
-            assert len(np.unique(brightness)) == 2
-        elif c != None:
-            c = tolist(c)
-            if len(c) == 1:
-                c = [c] * nn # repeat the single colour specifier nn times
-            else:
-                assert len(c) == nn # one specified colour per neuron
-
-        if strange != None:
-            strange = np.asarray(strange)
+    def trialtranges(self, sweepis=None, eids=None, natexps=False, t0=None, dt=None,
+                     blank=True):
+        """Return array of trial time ranges, based kwarg options. Use designated sweep
+        indices sweepis, based on stimulus info in experiments eids. natexps controls whether
+        only natural scene movies are considered in ptc15 multiexperiment recordings. t0 and
+        dt manually designate trial tranges. blank controls whether to include blank frames
+        for trials in movie type stimuli."""
+        trialtype = self.trialtype(eids[0])
 
         dins = [ self.e[eid].din for eid in eids ]
         din0 = dins[0]
@@ -1204,6 +1162,7 @@ class RecordingRaster(BaseRecording):
         allsweepis = din[:, 1] # sweep indices of every screen refresh
 
         # deal with ptc15 movies:
+        exptrialis = None
         if trialtype == 'dinrange' and self.tr.animal.name == 'ptc15':
             # replace uninformative ptc15 repeat movie din values with ones that make
             # the repeats explicit, assuming trial (sweep) length dt:
@@ -1212,6 +1171,7 @@ class RecordingRaster(BaseRecording):
                 dt = 4.998 # s
             dt *= 1000000 # convert from sec to us
             nrt = intround(dt / rtime) # number of refreshes per trial
+            exptrialis = intround(expdinis[:-1] / nrt) # trialis separating experiments
             ntrials = intround(nrefreshes / nrt) # number of trials
             # number of refreshes per movie frame:
             nrf = np.unique(np.diff(np.where(np.diff(din0[:, 1]) == 1)[0]))
@@ -1241,6 +1201,7 @@ class RecordingRaster(BaseRecording):
 
         # find tranges of all trials, either manually based on t0 & dt, or automatically
         # based on trialtype:
+        ttrangesweepis = None
         if dt != None:
             # assume all trials of equal length dt, starting from t0
             dt *= 1000000 # convert from sec to us
@@ -1253,18 +1214,18 @@ class RecordingRaster(BaseRecording):
             t0s = np.arange(t0, tlast-dt, dt)
             t1s = np.arange(t0+dt, tlast, dt)
             assert (t1s - t0s == dt).all() # can fail for float dt
-            tranges = np.column_stack((t0s, t1s))
+            ttranges = np.column_stack((t0s, t1s))
         elif trialtype == 'dinrange':
             sw0, sw1 = sweepis[0], sweepis[-1] # first and last sweep index in each trial
             i0s, = np.where(allsweepis == sw0) # screen refresh indices for sw0
-            # indices into i0s of start of each trange, prepend i0s with a value (-2)
+            # indices into i0s of start of each ttrange, prepend i0s with a value (-2)
             # guaranteed to be non-consecutive with the first value in i0s:
             i0is, = np.where(np.diff(np.hstack(([-2], i0s))) != 1)
             i0s = i0s[i0is]
             t0s = alltimes[i0s]
             if not blank:
                 i1s, = np.where(allsweepis == sw1) # screen refresh indices for sw1
-                # indices into i1s of end of each trange, append i1s with a value (-2)
+                # indices into i1s of end of each ttrange, append i1s with a value (-2)
                 # guaranteed to be non-consecutive with the last value in i1s:
                 i1is, = np.where(np.diff(np.hstack((i1s, [-2]))) != 1)
                 i1s = i1s[i1is]
@@ -1278,15 +1239,15 @@ class RecordingRaster(BaseRecording):
                 # append one more index interval to end of i1s, subtract 1 to stay in bounds
                 i1s = np.hstack((i1s, [i1s[-1]+maxdi1-1]))
             t1s = alltimes[i1s]
-            tranges = np.column_stack((t0s, t1s))
+            ttranges = np.column_stack((t0s, t1s))
         elif trialtype == 'dinval':
-            t0s, t1s, trangesweepis = [], [], []
+            t0s, t1s, ttrangesweepis = [], [], []
             for sweepi in sweepis: # ordered by sweepi
                 i, = np.where(allsweepis == sweepi) # screen refresh indices
-                # indices into i of start of each trange, prepend i with a value (-2)
+                # indices into i of start of each ttrange, prepend i with a value (-2)
                 # guaranteed to be non-consecutive with the first value in i:
                 i0is, = np.where(np.diff(np.hstack(([-2], i))) != 1)
-                # indices into i of end of each trange, append i with a value (-2)
+                # indices into i of end of each ttrange, append i with a value (-2)
                 # guaranteed to be non-consecutive with the last value in i:
                 i1is, = np.where(np.diff(np.hstack((i, [-2]))) != 1)
                 i0s = i[i0is]
@@ -1295,17 +1256,77 @@ class RecordingRaster(BaseRecording):
                 t1s.append(alltimes[i1s])
                 assert len(i0is) == len(i1is)
                 ntranges = len(i0is) # number of tranges for this sweepi
-                trangesweepis.append(np.tile(sweepi, ntranges))
+                ttrangesweepis.append(np.tile(sweepi, ntranges))
                 # each sweepi's tranges could also be saved into a dict, indexed by sweepi,
                 # as in the tuning curve code
             t0s = np.hstack(t0s)
             t1s = np.hstack(t1s)
-            trangesweepis = np.hstack(trangesweepis) # sweepi of every trange
-            tranges = np.column_stack((t0s, t1s))
-        ntrials = len(tranges)
+            ttranges = np.column_stack((t0s, t1s)) # trial tranges
+            ttrangesweepis = np.hstack(ttrangesweepis) # sweepi of every ttrange
+
+        return ttranges, ttrangesweepis, exptrialis
+
+    def traster(self, nids=None, overlap=False, sweepis=None, eids=None, natexps=False,
+                t0=None, dt=None, blank=True, strange=None, plot=True, psth=False, binw=0.02,
+                tres=0.005, norm=True, marker='|', s=20, c=None, hlinesweepis=None, hlinec='e',
+                title=False, ylabel=True, figsize=(7.5, None), psthfigsize=None):
+        """Create a trial spike raster plot for each given neuron ('all' and 'quiet' are valid
+        values), one figure for each neuron, or overlapping using different colours in a
+        single figure. Use the designated sweep indices, based on stimulus info in experiments
+        eids. natexps controls whether only natural scene movies are considered in ptc15
+        multiexperiment recordings. t0 and dt manually designate trial tranges. blank controls
+        whether to include blank frames for trials in movie type stimuli. Consider only those
+        spikes that fall within strange ("spike time range", in us). psth, binw and tres
+        control corresponding PSTH plots and return value. c controls color, and can be a
+        single value, a list of len(nids), or use c='bwg' to plot black and white bars on a
+        grey background for black and white drifting bar trials. hlinesweepis designates
+        sweepis at which to plot a horizontal line on the traster the first time they occur,
+        while hlinec designates their colour.
+
+        ## TODO: the PSTH code should be split off into its own rec method and should call
+        ## this traster method (with plot=False) to get its required input
+        """
+        if nids == None:
+            nids = sorted(self.n.keys()) # use active neurons
+        elif nids == 'quiet':
+            nids = sorted(self.qn.keys()) # use quiet neurons
+        elif nids == 'all':
+            nids = sorted(self.alln.keys()) # use all neurons
+        else:
+            nids = tolist(nids) # use specified neurons
+        nn = len(nids)
+
+        if eids == None:
+            eids = sorted(self.e) # all eids, assume they're all comparable
+            if natexps: # assume ptc15, only include natural scene movie experiments
+                assert self.tr.absname == 'ptc15.tr7c'
+                eids = [ eid for eid in eids if self.e[eid].e.name[0] == 'n' ]
+                eid2name = { eid:self.e[eid].e.name for eid in eids }
+                pprint(eid2name)
+        else: # eids were specified, print eid2name
+            eid2name = { eid:self.e[eid].name for eid in eids }
+            pprint(eid2name)
+        e0 = self.e[eids[0]]
+
+        if c == 'bwg': # black and white ticks on grey, for corresponding drift bar stimulus
+            assert self.trialtype(eids[0]) == 'dinval'
+            brightness = e0.sweeptable.data['brightness'] # indexed into using sweepis
+            assert len(np.unique(brightness)) == 2
+        elif c != None:
+            c = tolist(c)
+            if len(c) == 1:
+                c = [c] * nn # repeat the single colour specifier nn times
+            else:
+                assert len(c) == nn # one specified colour per neuron
+
+        ttranges, ttrangesweepis, exptrialis = self.trialtranges(
+            sweepis=sweepis, eids=eids, natexps=natexps, t0=t0, dt=dt, blank=blank)
+        ntrials = len(ttranges)
+
         if strange != None:
+            strange = np.asarray(strange)
             # trim ntrials to correspond to number of trials fully encompassed by strange.
-            # This means ntrials wil no longer correspond to len(tranges). This seems safe to
+            # This means ntrials wil no longer correspond to len(ttranges). This seems safe to
             # do, because ntrials is currently only used to optionally normalize the PSTH.
             oldntrials = ntrials
             trial0i = tranges[:, 0].searchsorted(strange[0]) # search 1st trange column
@@ -1314,6 +1335,8 @@ class RecordingRaster(BaseRecording):
             assert ntrials > 0 # if not, strange is too constrictive
             print('ntrials: %d --> %d after applying strange: %s'
                   % (oldntrials, ntrials, strange))
+
+        t0s, t1s = ttranges[:, 0], ttranges[:, 1]
         dts = t1s - t0s
         maxdt = max(dts) # max trial duration
         xmin, xmax = 0, maxdt / 1e6 # sec
@@ -1346,11 +1369,11 @@ class RecordingRaster(BaseRecording):
                 spikes = spikes[s0i:s1i]
             ts = []
             trialis = []
-            for triali, trange in enumerate(tranges):
-                si0, si1 = spikes.searchsorted(trange)
-                # slice out spikes that fall within tranges of this trial, make them
+            for triali, ttrange in enumerate(ttranges):
+                si0, si1 = spikes.searchsorted(ttrange)
+                # slice out spikes that fall within ttranges of this trial, make them
                 # relative to start of each trial, convert from us to sec
-                t = (spikes[si0:si1] - trange[0]) / 1e6
+                t = (spikes[si0:si1] - ttrange[0]) / 1e6
                 nspikes = len(t)
                 if nspikes == 0: # no spikes for this neuron for this trial
                     continue
@@ -1380,7 +1403,7 @@ class RecordingRaster(BaseRecording):
                         assert nspikes == len(triali)
                         triali0 = triali[0]
                         assert (triali == triali0).all()
-                        sweepi = trangesweepis[triali0]
+                        sweepi = ttrangesweepis[triali0]
                         b = brightness[sweepi] # 0s and 1s, one value per trial
                         cs.append(np.tile(b, nspikes)) # build array of one value per spike
                     cs = np.hstack(cs)
@@ -1430,13 +1453,11 @@ class RecordingRaster(BaseRecording):
             # plot 1-based trialis:
             a.scatter(ts, trialis+1, marker=marker, c=cs, s=s, cmap=cmap)
             a.set_xlim(xmin, xmax)
-            if len(expdinis) > 1:
-                # assume nrt was defined above
-                exptrialis = intround(expdinis[:-1] / nrt) # trialis separating experiments
+            if exptrialis != None:
                 a.hlines(y=exptrialis, xmin=xmin, xmax=xmax, colors=hlinec,
                          linestyles='dashed')
             if hlinesweepis != None:
-                hlinetrialis = trangesweepis.searchsorted(hlinesweepis)
+                hlinetrialis = ttrangesweepis.searchsorted(hlinesweepis)
                 a.hlines(y=hlinetrialis, xmin=xmin, xmax=xmax, colors=hlinec,
                          linestyles='dashed')
             # -1 inverts the y axis, +1 ensures last trial is fully visible:
