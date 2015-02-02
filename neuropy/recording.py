@@ -1150,6 +1150,8 @@ class RecordingRaster(BaseRecording):
         only natural scene movies are considered in ptc15 multiexperiment recordings. t0 and
         dt manually designate trial tranges. blank controls whether to include blank frames
         for trials in movie type stimuli."""
+        if eids == None:
+            eids = sorted(self.e)
         trialtype = self.trialtype(eids[0])
 
         dins = [ self.e[eid].din for eid in eids ]
@@ -1503,6 +1505,59 @@ class RecordingRaster(BaseRecording):
                 if title:
                     pa.set_title(titlestr)
                 pf.tight_layout(pad=0.3) # crop figure to contents
+
+    def tlfp(self, chani=-1, sweepis=None, eids=None, natexps=False, t0=None, dt=None,
+             blank=True, trange=None, plot=True, figsize=(20, 6.5)):
+        """Calculate LFP averaged over trials, constrained to trange.
+        TODO: could use some manual verification of LFP traces, to make sure slicing
+        in time is correct."""
+        ttranges, ttrangesweepis, exptrialis = self.trialtranges(
+            sweepis=sweepis, eids=eids, natexps=natexps, t0=t0, dt=dt, blank=blank)
+        lfp = self.lfp.get_data()[chani]
+        t = np.arange(self.lfp.t0, self.lfp.t1, self.lfp.tres)
+        assert len(lfp) == len(t)
+        if trange != None:
+            assert len(trange) == 2
+            # keep just those trials that fall entirely with trange:
+            triali0 = ttranges[:, 0].searchsorted(trange[0])
+            triali1 = ttranges[:, 1].searchsorted(trange[1])
+            ttranges = ttranges[triali0:triali1]
+        lfptrials = []
+        ntrials = len(ttranges)
+        minnt = len(t) # can't be any greater than this
+        for ttrange in ttranges:
+            ti0, ti1 = t.searchsorted(ttrange)
+            nt = ti1 - ti0
+            if nt < minnt:
+                minnt = nt
+            #print('%d ' % nt, end='')
+            # slice out LFP signal that falls within ttranges of this trial:
+            lfptrial = lfp[ti0:ti1] # not all will be exactly the same length
+            lfptrials.append(lfptrial)
+        # slice each lfptrial down to length of the shortest:
+        for triali in range(ntrials):
+            lfptrials[triali] = lfptrials[triali][:minnt]
+        lfptrials = np.vstack(lfptrials)
+        t = t[:minnt]/1e6
+        t -= t[0]
+        lfpmean, lfpstd = lfptrials.mean(axis=0), lfptrials.std(axis=0)
+        if plot:
+            f = pl.figure(figsize=figsize)
+            a = f.add_subplot(111)
+            a.plot(t, lfpmean, 'k-')
+            a.plot(t, lfpmean+lfpstd, 'r-') # upper std
+            a.plot(t, lfpmean-lfpstd, 'r-') # lower std
+            a.autoscale(enable=True, tight=True)
+            a.set_xlabel("time (sec)")
+            a.set_ylabel("LFP ($\mu$V)")
+            titlestr = lastcmd()
+            gcfm().window.setWindowTitle(titlestr)
+            a.set_title(titlestr)
+            a.text(0.998, 0.99, '%s' % self.name, transform=a.transAxes,
+                   horizontalalignment='right', verticalalignment='top')
+            f.tight_layout(pad=0.3) # crop figure to contents
+        else:
+            return lfpmean, lfpstd
 
     def tune(self, nids='all', alpha=0.01, eid=0, var='ori', fixed=None,
              tdelay=None, plot=True):
