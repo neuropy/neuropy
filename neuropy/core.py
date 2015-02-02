@@ -457,7 +457,7 @@ class LFP(object):
         x.shape = nchans, nt
         segments = np.zeros((nchans, nt, 2)) # x vals in col 0, yvals in col 1
         segments[:, :, 0] = x
-        segments[:, :, 1] = data
+        segments[:, :, 1] = -data # set to -ve here because of invert_yaxis() below
         # add offsets:
         for chanii, chani in enumerate(chanis):
             chan = self.chans[chani]
