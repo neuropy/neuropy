@@ -1554,8 +1554,7 @@ class RecordingRaster(BaseRecording):
             a.text(0.998, 0.99, '%s' % self.name, transform=a.transAxes,
                    horizontalalignment='right', verticalalignment='top')
             f.tight_layout(pad=0.3) # crop figure to contents
-        else:
-            return lfpmean, lfpstd
+        return t, lfpmean, lfpstd
 
     def tune(self, nids='all', alpha=0.01, eid=0, var='ori', fixed=None,
              tdelay=None, plot=True):
