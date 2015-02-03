@@ -3,6 +3,8 @@ in ptc22.tr1. Run from within neuropy using `run -i scripts/lfp_precision.py`"""
 
 from __future__ import division, print_function
 
+from core import sparseness
+
 # copied from psthcorr.py:
 ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
 strangesr08s = [(0, 1500e6), # r08 desynched, us
@@ -21,23 +23,22 @@ for recs, stranges, fmts in zip((ptc22tr1r08s, ptc22tr1r10s),
     SNa = SNf.add_subplot(111)
     for rec, strange, fmt, delta in zip(recs, stranges, fmts, (0.5, -0.5)):
         t, lfptrials = rec.tlfp(trange=strange, plot=False)
+        lfpmean, lfpstd = lfptrials.mean(axis=0), lfptrials.std(axis=0)
         ntrials = len(lfptrials)
         # to make saturation represent LFP reliability, scale transparency inversely
         # with ntrials:
         alpha = 10 / ntrials
         # plot all trials for this rec, in mV
         LFPa.plot(t, lfptrials.T/1e3+delta, fmt, alpha=alpha)
+        LFPa.plot(t, lfpmean/1e3+delta, 'w-', alpha=1)
+        LFPa.plot(t, (lfpmean+lfpstd)/1e3+delta, 'k-', alpha=1)
+        LFPa.plot(t, (lfpmean-lfpstd)/1e3+delta, 'k-', alpha=1)
         LFPa.set_xlim(xmax=5.5)
         LFPa.set_ylim(-1, 1) # mV
         LFPa.set_xlabel("time (sec)")
         LFPa.set_ylabel("LFP (mV)")
         LFPf.canvas.manager.set_window_title("tLFP %s" % rec.absname)
         LFPf.tight_layout(pad=0.3) # crop figure to contents
-
-        lfpmean, lfpstd = lfptrials.mean(axis=0), lfptrials.std(axis=0)
-        #plot_tlfp(t, lfpmean, f=f)
-        #plot_tlfp(t, lfpmean+lfpstd, fmt='r-', f=f)
-        #plot_tlfp(t, lfpmean-lfpstd, fmt='r-', f=f)
         # Fano-factor and CV don't work very well when mean approaches zero
         #SN = np.abs(lfpmean) / lfpstd # something like S/N ratio
         SN = lfpmean**2 / lfpstd**2 # something like S/N ratio
@@ -47,6 +48,7 @@ for recs, stranges, fmts in zip((ptc22tr1r08s, ptc22tr1r10s),
         #SNa.set_ylabel("trial-averaged LFP $\mu^{2}/\sigma^{2}$")
         SNa.set_ylabel("trial-averaged LFP S/N")
         SNf.canvas.manager.set_window_title("tLFP SN %s" % rec.absname)
+        print('sparseness:', sparseness(np.abs(lfpmean)))
         print('mean tLFP S/N:', SN.mean())
         SNf.tight_layout(pad=0.3) # crop figure to contents
 
