@@ -1538,8 +1538,8 @@ class RecordingRaster(BaseRecording):
         lfptrials = np.vstack(lfptrials)
         t = t[:minnt]/1e6
         t -= t[0]
-        lfpmean, lfpstd = lfptrials.mean(axis=0), lfptrials.std(axis=0)
         if plot:
+            lfpmean, lfpstd = lfptrials.mean(axis=0), lfptrials.std(axis=0)
             f = pl.figure(figsize=figsize)
             a = f.add_subplot(111)
             a.plot(t, lfpmean, 'k-')
@@ -1554,7 +1554,7 @@ class RecordingRaster(BaseRecording):
             a.text(0.998, 0.99, '%s' % self.name, transform=a.transAxes,
                    horizontalalignment='right', verticalalignment='top')
             f.tight_layout(pad=0.3) # crop figure to contents
-        return t, lfpmean, lfpstd
+        return t, lfptrials
 
     def tune(self, nids='all', alpha=0.01, eid=0, var='ori', fixed=None,
              tdelay=None, plot=True):
