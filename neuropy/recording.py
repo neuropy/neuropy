@@ -28,7 +28,7 @@ import util # .pyx file
 import core
 from core import (LFP, SpatialPopulationRaster, DensePopulationRaster, Codes, SpikeCorr,
                   binarray2int, nCr, nCrsamples, iterable, entropy_no_sing, lastcmd, intround,
-                  tolist, rstrip, dictattr, pmf, TAB)
+                  tolist, rstrip, dictattr, pmf, TAB, trimtranges)
 from colour import CCWHITEDICT1
 from experiment import Experiment
 from sort import Sort
@@ -1326,17 +1326,13 @@ class RecordingRaster(BaseRecording):
         ntrials = len(ttranges)
 
         if strange != None:
-            strange = np.asarray(strange)
-            # trim ntrials to correspond to number of trials fully encompassed by strange.
-            # This means ntrials wil no longer correspond to len(ttranges). This seems safe to
-            # do, because ntrials is currently only used to optionally normalize the PSTH.
+            # keep just those trials that fall entirely with strange:
             oldntrials = ntrials
-            trial0i = tranges[:, 0].searchsorted(strange[0]) # search 1st trange column
-            trial1i = tranges[:, 1].searchsorted(strange[1]) # search 2nd trange column
-            ntrials = trial1i - trial0i
+            ttranges = trimtranges(ttranges, strange)
+            ntrials = len(ttranges)
             assert ntrials > 0 # if not, strange is too constrictive
             print('ntrials: %d --> %d after applying strange: %s'
-                  % (oldntrials, ntrials, strange))
+                  % (oldntrials, ntrials, np.asarray(strange)))
 
         t0s, t1s = ttranges[:, 0], ttranges[:, 1]
         dts = t1s - t0s
@@ -1516,14 +1512,16 @@ class RecordingRaster(BaseRecording):
         lfp = self.lfp.get_data()[chani]
         t = np.arange(self.lfp.t0, self.lfp.t1, self.lfp.tres)
         assert len(lfp) == len(t)
-        if trange != None:
-            assert len(trange) == 2
-            # keep just those trials that fall entirely with trange:
-            triali0 = ttranges[:, 0].searchsorted(trange[0])
-            triali1 = ttranges[:, 1].searchsorted(trange[1])
-            ttranges = ttranges[triali0:triali1]
-        lfptrials = []
         ntrials = len(ttranges)
+        if trange != None:
+            # keep just those trials that fall entirely with trange:
+            oldntrials = ntrials
+            ttranges = trimtranges(ttranges, trange)
+            ntrials = len(ttranges)
+            assert ntrials > 0 # if not, trange is too constrictive
+            print('ntrials: %d --> %d after applying trange: %s'
+                  % (oldntrials, ntrials, np.asarray(trange)))
+        lfptrials = []
         minnt = len(t) # can't be any greater than this
         for ttrange in ttranges:
             ti0, ti1 = t.searchsorted(ttrange)
