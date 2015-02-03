@@ -35,6 +35,7 @@ FWHMMAXPOINTS = intround(FWHMMAX / 1000 / TRES) # maximum FWHM, number of PSTH t
 # plotting params:
 PLOTPSTH = False
 FWHMMIN, FWHMSTEP, FWHMTICKSTEP = 0, 10, 50
+TSMAX, TSSTEP = 5.5, 0.25
 HEIGHTMIN, HEIGHTMAX, HEIGHTSTEP, HEIGHTTICKSTEP = 0, 100, 5, 25
 SPARSTEP = 0.1
 figsize = (3, 3) # inches
@@ -184,6 +185,7 @@ for rec, nids, strange in zip(recs, recsecnids, stranges):
 # collect data from each PSTH:
 psthparamsrecsec = [] # params returned for each PSTH, for each recording section
 fwhmsrecsec = [] # fwhm values, for each recording section
+tsrecsec = [] # peak times, for each recording section
 heightsrecsec = [] # peak heights, for each recording section
 sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
 nidsrecsec = [] # nids of cells with at least 1 peak, for each recording section
@@ -191,6 +193,7 @@ psthsrecsec = [] # psths with at least 1 peak, for each recording section
 for nids, t, psths, fmt in zip(recsecnids, ts, psthss, ['b-', 'r-', 'r-', 'b-']):
     psthparams = {} # params returned for each PSTH by get_psth_peaks
     psthsfwhms = [] # fwhm values from all PSTHs from this recording section
+    psthsts = [] # times of all peaks in all PSTHs from this recording section
     psthsheights = [] # peak heights from all PSTHs from this recording section
     sparsenesses = [] # sparseness values for each PSTH in this recording section
     peaknids = [] # nids with peaks in this recording section
@@ -202,14 +205,16 @@ for nids, t, psths, fmt in zip(recsecnids, ts, psthss, ['b-', 'r-', 'r-', 'b-'])
         t, psth, thresh, baseline, peakis, lis, ris = psthparams[nid] # unpack
         if peakis == None:
             continue # this psth has no peaks, skip it
-        fwhms = (ris - lis) * TRES * 1000 # sec
+        fwhms = (ris - lis) * TRES * 1000 # ms
         psthsfwhms.append(fwhms)
+        psthsts.append(peakis * TRES) # sec
         psthsheights.append(psth[peakis] - baseline) # peak height above baseline
         sparsenesses.append(sparseness(psth)) # for only those PSTHS with peaks
         peaknids.append(nid) # this nid had at least one peak
         peakpsths.append(psth)
     psthparamsrecsec.append(psthparams)
     fwhmsrecsec.append(np.hstack(psthsfwhms))
+    tsrecsec.append(np.hstack(psthsts))
     heightsrecsec.append(np.hstack(psthsheights))
     sparsrecsec.append(np.hstack(sparsenesses))
     nidsrecsec.append(np.hstack(peaknids))
@@ -218,6 +223,9 @@ for nids, t, psths, fmt in zip(recsecnids, ts, psthss, ['b-', 'r-', 'r-', 'b-'])
 
 fwhms = [np.hstack([fwhmsrecsec[0], fwhmsrecsec[3]]), # desynched
          np.hstack([fwhmsrecsec[1], fwhmsrecsec[2]])] # synched
+
+ts = [np.hstack([tsrecsec[0], tsrecsec[3]]), # desynched
+      np.hstack([tsrecsec[1], tsrecsec[2]])] # synched
 
 heights = [np.hstack([heightsrecsec[0], heightsrecsec[3]]), # desynched
            np.hstack([heightsrecsec[1], heightsrecsec[2]])] # synched
@@ -280,6 +288,32 @@ text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 gcfm().window.setWindowTitle('peak FWHM log ptc22.tr1.r08 ptc22.tr1.r10')
+tight_layout(pad=0.3)
+
+# plot PSTH peak time distributions:
+bins = np.arange(0, TSMAX+TSSTEP, TSSTEP)
+figure(figsize=figsize)
+n1 = hist(ts[1], bins=bins, color='r')[0] # synched
+n0 = hist(ts[0], bins=bins, color='b')[0] # desynched
+n = np.hstack([n0, n1])
+xlim(xmin=0, xmax=TSMAX)
+ylim(ymax=n.max()) # effectively normalizes the histogram
+#xticks(ticks)
+xlabel('PSTH peak times (sec)')
+ylabel('PSTH peak count')
+#t, p = ttest_ind(fwhms[0], fwhms[1], equal_var=False) # Welch's T-test
+u, p = mannwhitneyu(ts[0], ts[1]) # 1-sided
+# display means and p value:
+text(0.98, 0.98, '$\mu$ = %.1f ms' % ts[1].mean(), # synched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='r')
+text(0.98, 0.90, '$\mu$ = %.1f ms' % ts[0].mean(), # desynched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
+text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+gcfm().window.setWindowTitle('peak times ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 # plot peak height distribution:
