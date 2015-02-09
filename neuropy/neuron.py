@@ -885,7 +885,7 @@ class Tune(object):
         self.theta, self.r, self.z, self.p = theta, r, z, p # save for potential future calls
         return theta, r, z, p
 
-    def plot(self, var='ori', fixed=None, figsize=(6, 5)):
+    def plot(self, var='ori', fixed=None, figsize=(4, 4), title=False):
         """var: string name of variable you want to plot a tuning curve for
         fixed: dict with keys containing names of vars to keep fixed when building tuning
         curve, and values containing each var's value(s) to fix at
@@ -913,11 +913,13 @@ class Tune(object):
         fontsize = get_ipython().user_ns['fontsize'] # function
         fs = fontsize() # save original font size
         a.plot(self.x, self.y, c='e', ls='--', mew=0, mfc='k', ms=10)
+        a.set_ylim(ymin=0)
         a.set_xlabel(var)
         a.set_ylabel('spike count')
         titlestr = lastcmd()
         titlestr += ' nid%d' % self.neuron.id
-        a.set_title(titlestr)
+        if title:
+            a.set_title(titlestr)
         f.canvas.window().setWindowTitle(titlestr)
         a.text(0.99, 0.99, txt, transform=a.transAxes,
                horizontalalignment='right', verticalalignment='top')
