@@ -10,10 +10,10 @@ The user-facing data object hierarchy looks like this:
                 Track             2             Track
                   |                               |
               Recording           3           TrackSort
-             /         \                          |
-       Experiment      Sort       4          TrackNeuron
-                        |
-                      Neuron      5
+             /    |    \                          |
+          Sort   LFP  Experiment  4          TrackNeuron
+           |
+         Neuron                   5
 ```
 Once data are loaded, they can be accessed in various ways:
 ```
