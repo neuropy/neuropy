@@ -26,12 +26,13 @@ pyximport.install(build_in_temp=False, inplace=True)
 import util # .pyx file
 
 import core
-from core import (LFP, SpatialPopulationRaster, DensePopulationRaster, Codes, SpikeCorr,
+from core import (SpatialPopulationRaster, DensePopulationRaster, Codes, SpikeCorr,
                   binarray2int, nCr, nCrsamples, iterable, entropy_no_sing, lastcmd, intround,
                   tolist, rstrip, dictattr, pmf, TAB, trimtranges)
 from colour import CCWHITEDICT1
-from experiment import Experiment
 from sort import Sort
+from lfp import LFP
+from experiment import Experiment
 from neuron import DummyNeuron
 from dimstimskeletal import Movie
 

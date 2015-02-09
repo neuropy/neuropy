@@ -15,7 +15,7 @@ waveforms as much as butterworth or elliptic.
 """
 
 import gc
-from core import LFP
+from lfp import LFP
 import numpy as np
 
 class BZData(LFP):
