@@ -6,7 +6,8 @@ from core import dist
 
 MODEL = False
 
-figsize = 3, 3 # inches
+distfigsize = 3.055, 3 # inches
+scatterfigsize = 3, 3 # inches
 spacing = 65 # um
 binw = 2 # um
 edges = np.arange(0, spacing/2+binw, binw)
@@ -63,24 +64,27 @@ if MODEL: # can take a long time to run
         modelds.append(min(d))
     modelds = np.hstack(modelds)
 
-figure(figsize=figsize)
-hist(ds, bins=edges, normed=True, color=c, ec=c)
+figure(figsize=distfigsize)
+vals = hist(ds, bins=edges, normed=True, color=c, ec=c)[0]
 if MODEL:
     model = np.histogram(modelds, bins=edges, density=True)[0]
     plot(midbins, model, 'r--', lw=3)
 plot(midbins, theory, 'b--', lw=3)
 xlabel('nearest site distance ($\mu$m)')
 ylabel('probability density (1/$\mu$m)')
-xticks((0, gca().get_xticks().max())) # get rid of intermediate xicks
+#xticks((0, gca().get_xticks().max())) # get rid of intermediate xicks
+xticks(np.arange(0, 30+10, 10))
+ylim(ymax=vals.max())
 tight_layout(0.3)
 gcfm().set_window_title("ndistpdf")
 
-figure(figsize=figsize)
-plot(sigmas, ds, 'k.')
-xlabel('template spatial extent ($\mu$m)')
-ylabel('nearest site distance ($\mu$m)')
-xticks(np.arange(25, 100+25, 25))
+figure(figsize=scatterfigsize)
+plot(ds, sigmas, 'k.')
+xlabel('nearest site distance ($\mu$m)')
+ylabel('spatial extent ($\mu$m)')
+xticks(np.arange(0, 30+10, 10))
+yticks(np.arange(25, 100+25, 25))
 tight_layout(0.3)
-gcfm().set_window_title("nearest site distance vs spatial extent")
+gcfm().set_window_title("spatial extent vs nearest site distance")
 
 show()
