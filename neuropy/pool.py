@@ -140,3 +140,52 @@ def mua_si_lfp_si(source, layers=False, ms=1, figsize=(7.5, 6.5)):
     a.set_title(titlestr)
     f.tight_layout(pad=0.3) # crop figure to contents
     #return lfpsi, muasi, t
+
+
+def sc_ising_vs_cch(source, ms=5, figsize=(7.5, 6.5)):
+    """Scatter plot spike corrs calculated from Ising matrix against those calculated
+    from CCH. INCOMPLETE.
+
+    - find tracks in common, get allnids from each track
+
+    - how to deal with big time gaps between experiments in a single recording? I constrain
+    to the set of tranges of each experiment in rec.codes()
+
+    - maybe i can convert the core.SpikeCorr object to take a source argument instead of
+    recording/experiment objects
+        - do all the spikecorr analyses make sense for multiple recordings, or for recordings
+        from different tracks?
+
+    - for each track absname
+    """
+
+    isingscs = {}
+    cchscs = {}
+    # init a dict
+    # for each rec, find out which track it's from
+
+    recs, tracks = parse_source(source)
+    isingscs, cchscs = [], []
+    for rec in recs:
+        print(rec.absname)
+        sc = rec.sc()
+        sc.calc()
+        isingscs.append(sc.corrs)
+        cchscs.append(rec.sc_cch())
+    # for something...
+
+    isingsc = np.hstack(isingscs)
+    cchsc = np.hstack(cchscs)
+
+    # plot:
+    f = pl.figure(figsize=figsize)
+    a = f.add_subplot(111)
+    a.plot(isingsc, cchsc, 'e.', ms=ms)
+    a.set_xlabel('Ising spike corrs')
+    a.set_ylabel('CCH spike corrs')
+    a.set_xlim(-0.05, 0.2)
+    a.set_ylim(-0.5, 1)
+    titlestr = lastcmd()
+    gcfm().window.setWindowTitle(titlestr)
+    a.set_title(titlestr)
+    f.tight_layout(pad=0.3) # crop figure to contents

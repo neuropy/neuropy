@@ -714,6 +714,16 @@ class Track(object):
             r = self.r[rid]
             print('%s: %s' % (r.absname, r.name))
             spikecorr = r.sc(width=width, tres=tres)
+            """
+            TODO: not sure if this is the right way to do this. A different set of neurons for
+            each recording are chosen, then mean sc(t) across all pairs for each recording is
+            found, and pooled across recordings. This pooling is maybe a bit dodgy. Is it
+            valid to pool sc(t) values across recordings when the included neurons are
+            different for each recording? The alternative is to deal only with neurons which
+            exceed MINTHRESH track-wide, but the problem with that is that for much of the
+            time, such neurons are completely silent, and therefore don't deserve to be
+            included in sc calculations for those durations.
+            """
             sc, si = spikecorr.si(method=method, plot=False) # calls sc.sct() and sc.si()
             sc = sc[0] # pull out the spike correlation values that span all laminae
             if timeaverage:
