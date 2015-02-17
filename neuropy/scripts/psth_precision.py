@@ -399,6 +399,25 @@ text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
 gcfm().window.setWindowTitle('sparseness ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
+'''
+# scatter-plot sparseness in synched vs desynched. INCOMPLETE:
+
+nids = [np.hstack([nidsrecsec[0], nidsrecsec[3]]), # desynched
+        np.hstack([nidsrecsec[1], nidsrecsec[2]])] # synched
+
+
+figure(figsize=figsize)
+plot(spars[0], spars[1], 'k.')[0] # synched vs desynched
+xlabel('desynchronized sparseness')
+ylabel('synchronized sparseness')
+gcfm().window.setWindowTitle('sparseness scatter ptc22.tr1.r08 ptc22.tr1.r10')
+tight_layout(pad=0.3)
+'''
+
+
+
+
+
 # report numbers of all and active PSTHs
 for kind in ['all', 'active']:
     tempssnids, temprecsecnids = get_ssnids(recs, stranges, kind=kind)
