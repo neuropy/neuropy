@@ -7,7 +7,7 @@ import pylab as pl
 from scipy.stats import ttest_1samp, ttest_ind, ks_2samp
 
 import core
-from core import get_ssnids
+from core import get_ssnids, ceilsigfig, floorsigfig
 
 FIGSIZE = (3, 3)
 SHOWCOLORBAR = False # show colorbar
