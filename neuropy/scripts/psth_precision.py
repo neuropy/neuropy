@@ -175,8 +175,8 @@ ssnids, recsecnids = get_ssnids(recs, stranges, kind=NIDSKIND)
 # calculate PSTHs for both sections of both recordings:
 ts, psthss = [], []
 for rec, nids, strange in zip(recs, recsecnids, stranges):
-    t, psths = rec.traster(nids=nids, natexps=False, strange=strange, plot=False,
-                           psth=True, binw=BINW, tres=TRES, norm='ntrials')
+    t, psths = rec.psth(nids=nids, natexps=False, strange=strange, plot=False,
+                        binw=BINW, tres=TRES, norm='ntrials')
     ts.append(t) # same time array for all PSTHs in this recording section
     psthss.append(psths)
     #figure()

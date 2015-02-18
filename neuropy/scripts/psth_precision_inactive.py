@@ -94,8 +94,8 @@ def get_psth_peaks(t, psth, nid):
     return t, psth, thresh, baseline, peakis, lis, ris
 
 
-t, psths = rec.traster(nids=nids, natexps=False, strange=strange, plot=False,
-                       psth=True, binw=BINW, tres=TRES, norm='ntrials')
+t, psths = rec.psth(nids=nids, natexps=False, strange=strange, plot=False,
+                    binw=BINW, tres=TRES, norm='ntrials')
 
 psthparams = {} # params returned for each PSTH by get_psth_peaks
 for nid, psth in zip(nids, psths):
