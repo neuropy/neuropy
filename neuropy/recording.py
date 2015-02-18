@@ -29,7 +29,7 @@ import core
 from core import (SpatialPopulationRaster, DensePopulationRaster, Codes, SpikeCorr,
                   binarray2int, nCr, nCrsamples, iterable, entropy_no_sing, lastcmd, intround,
                   tolist, rstrip, dictattr, pmf, TAB, trimtranges)
-from colour import CCWHITEDICT1
+from colour import ColourDict, CCWHITEDICT1
 from sort import Sort
 from lfp import LFP
 from experiment import Experiment
@@ -1269,26 +1269,30 @@ class RecordingRaster(BaseRecording):
 
         return ttranges, ttrangesweepis, exptrialis
 
-    def traster(self, nids=None, overlap=False, sweepis=None, eids=None, natexps=False,
-                t0=None, dt=None, blank=True, strange=None, plot=True, psth=False, binw=0.02,
-                tres=0.005, norm=True, marker='|', s=20, c=None, hlinesweepis=None, hlinec='e',
-                title=False, ylabel=True, figsize=(7.5, None), psthfigsize=None):
+    def traster(self, nids=None, sweepis=None, eids=None, natexps=False,
+                t0=None, dt=None, blank=True, strange=None,
+                plot=True, overlap=False, marker='|', s=20, c=None,
+                hlinesweepis=None, hlinec='e', title=False, ylabel=True, figsize=(7.5, None),
+                psth=False, norm=False, binw=False, tres=False, plotpsth=False,
+                psthfigsize=False):
         """Create a trial spike raster plot for each given neuron ('all' and 'quiet' are valid
         values), one figure for each neuron, or overlapping using different colours in a
         single figure. Use the designated sweep indices, based on stimulus info in experiments
         eids. natexps controls whether only natural scene movies are considered in ptc15
         multiexperiment recordings. t0 and dt manually designate trial tranges. blank controls
         whether to include blank frames for trials in movie type stimuli. Consider only those
-        spikes that fall within strange ("spike time range", in us). psth, binw and tres
-        control corresponding PSTH plots and return value. c controls color, and can be a
-        single value, a list of len(nids), or use c='bwg' to plot black and white bars on a
-        grey background for black and white drifting bar trials. hlinesweepis designates
+        spikes that fall within strange ("spike time range", in us). c controls color, and can
+        be a single value, a list of len(nids), or use c='bwg' to plot black and white bars on
+        a grey background for black and white drifting bar trials. hlinesweepis designates
         sweepis at which to plot a horizontal line on the traster the first time they occur,
-        while hlinec designates their colour.
+        while hlinec designates their colour."""
 
-        ## TODO: the PSTH code should be split off into its own rec method and should call
-        ## this traster method (with plot=False) to get its required input
-        """
+        if psth or norm or binw or tres or plotpsth or psthfigsize:
+            raise RuntimeError("PSTH code has been factored out into recording.psth()")
+
+        TRASTERCOLOURS = ['r', 'b', 'g', 'y', 'm', 'c', 'e', 'k']
+        TRASTERCOLOURDICT = ColourDict(colours=TRASTERCOLOURS, indexbase=0)
+
         if nids == None:
             nids = sorted(self.n.keys()) # use active neurons
         elif nids == 'quiet':
@@ -1340,17 +1344,10 @@ class RecordingRaster(BaseRecording):
         maxdt = max(dts) # max trial duration
         xmin, xmax = 0, maxdt / 1e6 # sec
 
-        # for each nid, collect its raster points and colours, and optionally its PSTH:
-        tss, trialiss, css = [], [], []
+        # for each nid, collect its raster points and colours:
+        n2ts, n2cs, tss, trialiss = {}, {}, {}, {}
         if figsize[1] == None: # replace None with calculated height
             figsize = figsize[0], 1 + ntrials / 36 # ~1/36th vertical inch per trial
-        if psth:
-            psths = []
-            # generate potentially overlapping bins:
-            bins = core.split_tranges([(xmin, xmax)], binw, tres)
-            midbins = bins.mean(axis=1)
-            if psthfigsize == None:
-                psthfigsize = figsize
         ypos = np.array([ self.alln[nid].pos[1] for nid in nids ]) # nid vertical depths
         supis, midis, deepis = core.laminarity(ypos, self.tr.absname) # laminar flags
         cmap = None
@@ -1373,9 +1370,7 @@ class RecordingRaster(BaseRecording):
                 # slice out spikes that fall within ttranges of this trial, make them
                 # relative to start of each trial, convert from us to sec
                 t = (spikes[si0:si1] - ttrange[0]) / 1e6
-                nspikes = len(t)
-                if nspikes == 0: # no spikes for this neuron for this trial
-                    continue
+                nspikes = len(t) # if nspikes == 0, append empty arrays to ts and trialis
                 ts.append(t) # x values for this trial
                 trialis.append(np.tile(triali, nspikes)) # 0-based y values for this trial
             if len(ts) == 0: # no spikes for this neuron for this experiment
@@ -1386,7 +1381,7 @@ class RecordingRaster(BaseRecording):
             # collect raster colours:
             if overlap:
                 if c == None:
-                    cs = ['r', 'b', 'g', 'y', 'm', 'c', 'e', 'k'][nidi]
+                    cs = TRASTERCOLOURDICT[nidi]
                 else: # use provided list of colours to index into
                     cs = c[nidi]
             else:
@@ -1400,6 +1395,8 @@ class RecordingRaster(BaseRecording):
                     for triali, t in zip(trialis, ts):
                         nspikes = len(t)
                         assert nspikes == len(triali)
+                        if nspikes == 0:
+                            continue # no spikes to plot for this trial
                         triali0 = triali[0]
                         assert (triali == triali0).all()
                         sweepi = ttrangesweepis[triali0]
@@ -1409,46 +1406,26 @@ class RecordingRaster(BaseRecording):
                 else: # use provided list of colours to index into
                     cs = c[nidi]
 
-            # convert spike times and trial indices to flat arrays:
-            ts = np.hstack(ts) # sorted by time in each trial, but not overall
-            trialis = np.hstack(trialis)
+            n2ts[nid] = ts # store list of arrays of spike times, each array is 1 trial
+            n2cs[nid] = cs # store list of colours
 
-            # save:
-            tss.append(ts)
-            trialiss.append(trialis)
-            css.append(cs)
-
-            if psth:
-                ts = np.sort(ts) # create a sorted copy, so as not to disturb order in tss
-                # indices into sorted ts for each bin:
-                tsiranges = ts.searchsorted(bins)
-                # number of spikes in each bin normalized by bin width:
-                thispsth = (tsiranges[:, 1] - tsiranges[:, 0]) / binw
-                if norm == True:
-                    # normalize to set peak of this PSTH to 1:
-                    thispsth = thispsth / thispsth.max() # ensure float division
-                elif norm == 'ntrials':
-                    # normalize by number of trials:
-                    thispsth = thispsth / ntrials # ensure float division
-                psths.append(thispsth) # save
+            # convert spike times and trial indices to flat arrays and save to dicts:
+            tss[nid] = np.hstack(ts) # sorted by time in each trial, but not overall
+            trialiss[nid] = np.hstack(trialis)
 
         if not plot:
-            if psth:
-                return midbins, np.asarray(psths)
-            else:
-                print('That was useless!')
-                return
+            return n2ts, n2cs, xmax
 
-        # plot raster and PSTH figures:
+        # plot raster figures:
         for nidi, nid in enumerate(nids):
             # create trial raster plot:
             if overlap and nidi > 0:
-                pass # don't make a second figure and axes in neuron overplot mode
+                pass # don't make further figures and axes in overlap mode
             else:
                 f = pl.figure(figsize=figsize)
                 a = f.add_subplot(111, axisbg=axisbg)
             # unpack:
-            ts, trialis, cs = tss[nidi], trialiss[nidi], css[nidi]
+            ts, trialis, cs = tss[nid], trialiss[nid], n2cs[nid]
             # plot 1-based trialis:
             a.scatter(ts, trialis+1, marker=marker, c=cs, s=s, cmap=cmap)
             a.set_xlim(xmin, xmax)
@@ -1477,31 +1454,76 @@ class RecordingRaster(BaseRecording):
                 a.set_title(titlestr)
             f.tight_layout(pad=0.3) # crop figure to contents
 
-            # plot PSTH:
-            if psth:
-                if overlap and nidi > 0:
-                    pass # don't make a second figure and axes in neuron overplot mode
+    def psth(self, nids=None, sweepis=None, eids=None, natexps=False, t0=None, dt=None,
+             blank=True, strange=None, binw=0.02, tres=0.005,
+             plot=True, overlap=False, title=False, ylabel=True, c=None, norm=True,
+             figsize=(7.5, 3)):
+        """Create a peristimulus time histogram for each given neuron ('all' and 'quiet' are
+        valid values), one figure for each neuron, or overlapping using different colours in a
+        single figure. Use the designated sweep indices, based on stimulus info in experiments
+        eids. natexps controls whether only natural scene movies are considered in ptc15
+        multiexperiment recordings. t0 and dt manually designate trial tranges. blank controls
+        whether to include blank frames for trials in movie type stimuli. Consider only those
+        spikes that fall within strange ("spike time range", in us). binw and tres control
+        corresponding PSTH plots and return value. c controls color, and can be a single
+        value, or a list of len(nids)."""
+
+        assert c != 'bwg' # nonsensical for PSTH
+        xmin = 0
+        n2ts, n2cs, xmax = self.traster(nids=nids, sweepis=sweepis, eids=eids,
+                                        natexps=natexps, t0=t0, dt=dt, blank=blank,
+                                        strange=strange, plot=False, overlap=overlap, c=c)
+        assert len(n2ts) == len(n2cs)
+        nids = sorted(n2ts)
+        ntrials = len(n2ts[nids[0]]) # should be the same for all neurons
+
+        bins = core.split_tranges([(xmin, xmax)], binw, tres) # all in sec
+        midbins = bins.mean(axis=1)
+        psths = []
+        for nidi, nid in enumerate(nids):
+            ts = n2ts[nid]
+            assert len(ts) == ntrials # should be the same for all neurons
+            ts = np.hstack(ts) # flatten across trials, sorted within trials, but not overall
+            ts.sort()
+            tsiranges = ts.searchsorted(bins) # indices into sorted ts for each bin
+            # number of spikes in each bin normalized by bin width:
+            psth = (tsiranges[:, 1] - tsiranges[:, 0]) / binw
+            if norm == True:
+                # normalize to set peak of this PSTH to 1:
+                psth = psth / psth.max() # ensure float division
+            elif norm == 'ntrials':
+                # normalize by number of trials:
+                psth = psth / ntrials # ensure float division
+            psths.append(psth) # save
+
+        if plot == False:
+            return midbins, np.asarray(psths)
+
+        for nidi, nid in enumerate(nids):
+            if overlap and nidi > 0:
+                pass # don't make further figures and axes in PSTH overplot mode
+            else:
+                f = pl.figure(figsize=figsize)
+                a = f.add_subplot(111)
+            a.plot(midbins, psths[nidi], c=n2cs[nid], ls='-', marker=None)
+            a.set_xlim(xmin, xmax)
+            a.set_xlabel("time (sec)")
+            if ylabel:
+                if norm:
+                    a.set_ylabel("firing rate (AU)")
+                    a.set_yticks([0, 1])
                 else:
-                    pf = pl.figure(figsize=psthfigsize)
-                    pa = pf.add_subplot(111)
-                pa.plot(midbins, psths[nidi], c=cs, ls='-', marker=None)
-                pa.set_xlim(xmin, xmax)
-                pa.set_xlabel("time (sec)")
-                if ylabel:
-                    if norm:
-                        pa.set_ylabel("firing rate (AU)")
-                        pa.set_yticks([0, 1])
-                    else:
-                        pa.set_ylabel("firing rate (Hz)")
-                else:
-                    pa.set_yticks([]) # turn off y ticks
-                titlestr = lastcmd() + ' PSTH'
-                if not overlap:
-                    titlestr += " nid%d nidi%d" % (nid, nidi)
-                gcfm().window.setWindowTitle(titlestr)
-                if title:
-                    pa.set_title(titlestr)
-                pf.tight_layout(pad=0.3) # crop figure to contents
+                    a.set_ylabel("firing rate (Hz)")
+            else:
+                a.set_yticks([]) # turn off y ticks
+            titlestr = lastcmd()
+            if not overlap:
+                titlestr += " nid%d nidi%d" % (nid, nidi)
+            gcfm().window.setWindowTitle(titlestr)
+            if title:
+                a.set_title(titlestr)
+            f.tight_layout(pad=0.3) # crop figure to contents
+
 
     def tlfp(self, chani=-1, sweepis=None, eids=None, natexps=False, t0=None, dt=None,
              blank=True, trange=None, plot=True, figsize=(20, 6.5)):
