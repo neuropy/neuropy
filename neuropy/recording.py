@@ -1467,7 +1467,6 @@ class RecordingRaster(BaseRecording):
         spikes that fall within strange ("spike time range", in us). binw and tres control
         corresponding PSTH plots and return value. c controls color, and can be a single
         value, or a list of len(nids)."""
-
         assert c != 'bwg' # nonsensical for PSTH
         xmin = 0
         n2ts, n2cs, xmax = self.traster(nids=nids, sweepis=sweepis, eids=eids,
@@ -1524,6 +1523,34 @@ class RecordingRaster(BaseRecording):
                 a.set_title(titlestr)
             f.tight_layout(pad=0.3) # crop figure to contents
 
+    def bintraster(self, nids=None, sweepis=None, eids=None, natexps=False, t0=None, dt=None,
+                   blank=False, strange=None, binw=0.02, tres=0.005):
+        """Bin each trial with binw and tres. For each trial for each neuron, return spike
+        rates in each bin. Return nid:rate mapping where rate is a 2D (ntrials, nbins)
+        array. See rec.traster docstring for argument details. Each rate array can be
+        visualized with imshow, and should result in an image similar to a rec.traster plot"""
+        xmin = 0
+        n2ts, n2cs, xmax = self.traster(nids=nids, sweepis=sweepis, eids=eids,
+                                        natexps=natexps, t0=t0, dt=dt, blank=blank,
+                                        strange=strange, plot=False)
+        assert len(n2ts) == len(n2cs)
+        nids = sorted(n2ts)
+        ntrials = len(n2ts[nids[0]]) # should be the same for all neurons
+
+        bins = core.split_tranges([(xmin, xmax)], binw, tres) # all in sec
+        nbins = len(bins)
+        n2rate = {}
+        for nid in nids:
+            rate = np.zeros((ntrials, nbins), dtype=np.int64)
+            ts = n2ts[nid]
+            assert len(ts) == ntrials # should be the same for all neurons
+            # don't think there's any way to avoid looping over each trial individually:
+            for triali in range(ntrials):
+                tsiranges = ts[triali].searchsorted(bins)
+                # number of spikes in each bin:
+                rate[triali] = np.float64((tsiranges[:, 1] - tsiranges[:, 0])) / binw
+            n2rate[nid] = rate
+        return n2rate
 
     def tlfp(self, chani=-1, sweepis=None, eids=None, natexps=False, t0=None, dt=None,
              blank=True, trange=None, plot=True, figsize=(20, 6.5)):

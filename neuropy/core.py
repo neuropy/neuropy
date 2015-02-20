@@ -2704,10 +2704,22 @@ def corrcoef(x, y):
     x = np.float64(x)
     y = np.float64(y)
     # pick one of the 2 entries in the correlation coefficient matrix, on the -ve diagonal
-    # (er, the one that goes from bottom left to top right, that's what I mean):
+    # (the one that goes from bottom left to top right):
     return np.corrcoef(x, y)[0, 1]
     # this works just fine as well, easier to understand too:
     #return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std())
+
+def pairwisecorr(signals):
+    """Calculate all pairwise correlations between all rows in signals"""
+    assert signals.ndim == 2
+    N = len(signals)
+    rhos = np.zeros(N*(N-1)/2)
+    pairi = -1
+    for i in range(N):
+        for j in range(i+1, N):
+            pairi += 1
+            rhos[pairi] = corrcoef(signals[i], signals[j])
+    return rhos
 
 def bin(i, minbits=8):
     """Return a string with the binary representation of an integer, or sequence of integers.
