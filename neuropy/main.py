@@ -186,7 +186,7 @@ class NeuropyWindow(QtGui.QMainWindow):
         both the kernel process and the main Python app that launched it are killed."""
         # greatly slows down shutdown, doesn't seem necessary:
         #self.ipw.kernel_client.stop_channels()
-        self.ipw.kernel_manager.shutdown_kernel()
+        self.ipw.kernel_manager.shutdown_kernel(now=True) # now=True shuts down faster
         guisupport.get_app_qt4().exit()
 
     @QtCore.pyqtSlot()
