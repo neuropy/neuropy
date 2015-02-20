@@ -353,3 +353,4 @@ Tuning curves:
 - rename CodeCorr to SpikeCorr, and all instances of 'cc' to 'sc'? Would be a bit clearer.
 - potentially big bug: for multiexperiment recordings, for which spyke currently only exports the first .din, the recording is incorrectly assigned the trange of only the first experiment
     - solution is to make sure all .din are exported from spyke
+- IPython doesn't seem to be exiting properly on neuropy exit, leaves hanging processes that take up lots of memory. Is there some new command that needs to be issued to IPython 2?

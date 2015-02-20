@@ -176,8 +176,18 @@ class NeuropyWindow(QtGui.QMainWindow):
 
     @QtCore.pyqtSlot()
     def on_actionQuit_triggered(self):
-        self.close()
-        #self.destroy() # no longer seems necessary, may cause segfaults?
+        self.close() # trigger closeEvent
+
+    def closeEvent(self, event):
+        self.stop()
+
+    def stop(self):
+        """Taken from ipython/examples/Embedding/inprocess_qtconsole.py. Ensure that
+        both the kernel process and the main Python app that launched it are killed."""
+        # greatly slows down shutdown, doesn't seem necessary:
+        #self.ipw.kernel_client.stop_channels()
+        self.ipw.kernel_manager.shutdown_kernel()
+        guisupport.get_app_qt4().exit()
 
     @QtCore.pyqtSlot()
     def on_actionAboutNeuropy_triggered(self):
@@ -239,9 +249,9 @@ def main():
     neuropywindow = NeuropyWindow()
     ipw = neuropywindow.ipw
     config_ipw(ipw)
-    ipw.exit_requested.connect(app.quit)
     ipw.kernel_manager = km
     ipw.kernel_client = kc
+    ipw.exit_requested.connect(neuropywindow.stop)
     neuropywindow.show()
 
     # execute some code directly, note the output appears at the system command line:
