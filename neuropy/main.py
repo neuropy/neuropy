@@ -57,7 +57,9 @@ from track import Track
 from recording import Recording
 
 from globals import DATAPATH
-INPROCESS = False # use inprocess kernel? otherwise, use 2 process zmq kernel
+# use inprocess kernel? otherwise, use 2 process zmq kernel. This option doesn't seem to work
+# with IPython 2.x:
+INPROCESS = False
 
 
 class NeuropyWindow(QtGui.QMainWindow):
@@ -232,7 +234,10 @@ def main():
     """Start kernel manager and client, create window, run app event loop,
     auto execute some code in user namespace. A minimalist example is shown in
     qt_ip_test.py. This is gleaned from ipython.examples.inprocess.embedded_qtconsole
-    and ipython.IPython.qt.console.qtconsoleapp.new_frontend_master()"""
+    and ipython.IPython.qt.console.qtconsoleapp.new_frontend_master().
+
+    NOTE: Make sure that the Qt v2 API is being used by IPython by running `export
+    QT_API=pyqt` at the command line before running neuropy, or by adding it `.bashrc`"""
     app = guisupport.get_app_qt4()
 
     if INPROCESS:
@@ -246,29 +251,27 @@ def main():
     kc = km.client()
     kc.start_channels()
 
-    neuropywindow = NeuropyWindow()
-    ipw = neuropywindow.ipw
+    nw = NeuropyWindow()
+    ipw = nw.ipw
     config_ipw(ipw)
     ipw.kernel_manager = km
     ipw.kernel_client = kc
-    ipw.exit_requested.connect(neuropywindow.stop)
-    neuropywindow.show()
+    ipw.exit_requested.connect(nw.stop)
+    nw.show()
 
     # execute some code directly, note the output appears at the system command line:
     #kernel.shell.run_cell('print "x=%r, y=%r, z=%r" % (x,y,z)')
+
     # execute some code through the frontend (once the event loop is running).
-    # The output appears in the ipw. __future__ import in startup.py doesn't seem to work,
-    # execute directly:
-    do_later(ipw.execute, "from __future__ import division", hidden=True)
-    do_later(ipw.execute, "from __future__ import print_function", hidden=True)
+    # The output appears in the IPythonWidget (ipw).
     do_later(ipw.execute_file, 'startup.py', hidden=True)
     do_later(ipw.execute_file, 'globals.py', hidden=True)
 
     guisupport.start_event_loop_qt4(app)
 
-def do_later(func, *args, **kwds):
+def do_later(func, *args, **kwargs):
     from IPython.external.qt import QtCore
-    QtCore.QTimer.singleShot(0, lambda: func(*args, **kwds))
+    QtCore.QTimer.singleShot(0, lambda: func(*args, **kwargs))
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 [neuropy](http://neuropy.github.io) is a Python application for interactive analysis
-of sorted neuronal spike data and raw LFP waveforms.
+of neuronal spike, LFP, and stimulus data.
 
 The user-facing data object hierarchy looks like this:
 ```
@@ -47,7 +47,7 @@ Dependencies:
 neuropy requires recent versions of the following to be installed:
 
 * [Python](http://python.org) (2.7.x, 3.x hasn't been tested)
-* [IPython](http://ipython.org) 1.0
+* [IPython](http://ipython.org) 2.4.1
 * [numpy](http://numpy.org)
 * [scipy](http://scipy.org)
 * [matplotlib](http://matplotlib.org)
@@ -58,6 +58,11 @@ neuropy requires recent versions of the following to be installed:
 Optional:
 
 * [scikit-learn](http://scikit-learn.org)
+
+To ensure that the [Qt v2
+API](http://ipython.org/ipython-doc/dev/interactive/reference.html#pyqt-and-pyside) is used by
+IPython, run `export QT_API=pyqt` at the command line before running neuropy, or add it to
+your `.bashrc` or `.bash_aliases` file.
 
 neuropy is developed in Xubuntu 14.04. It should work in other Linux distributions. In
 principle, it should also work in Windows and OSX.
