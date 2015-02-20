@@ -2709,17 +2709,28 @@ def corrcoef(x, y):
     # this works just fine as well, easier to understand too:
     #return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std())
 
-def pairwisecorr(signals):
-    """Calculate all pairwise correlations between all rows in signals"""
+def pairwisecorr(signals, weighted=False):
+    """Calculate all pairwise correlations between all rows in signals.
+    TODO: move this to multithreaded Cython to speed up for large N, and hence very
+    large N^2"""
     assert signals.ndim == 2
     N = len(signals)
     rhos = np.zeros(N*(N-1)/2)
+    if weighted:
+        weights = np.zeros(N*(N-1)/2)
     pairi = -1
     for i in range(N):
         for j in range(i+1, N):
             pairi += 1
             rhos[pairi] = corrcoef(signals[i], signals[j])
-    return rhos
+            if weighted:
+                # weight each pair by the one with the least signal:
+                weights[pairi] = min(signals[i].sum(), signals[j].sum())
+    if weighted:
+        weights /= weights.sum() # normalize
+        return rhos, weights
+    else:
+        return rhos
 
 def bin(i, minbits=8):
     """Return a string with the binary representation of an integer, or sequence of integers.
