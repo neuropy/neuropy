@@ -2715,6 +2715,8 @@ def pairwisecorr(signals, weighted=False):
     large N^2"""
     assert signals.ndim == 2
     N = len(signals)
+    means = signals.mean(axis=1) # precalculate
+    stds = signals.std(axis=1) # precalculate
     rhos = np.zeros(N*(N-1)/2)
     if weighted:
         weights = np.zeros(N*(N-1)/2)
@@ -2722,7 +2724,10 @@ def pairwisecorr(signals, weighted=False):
     for i in range(N):
         for j in range(i+1, N):
             pairi += 1
-            rhos[pairi] = corrcoef(signals[i], signals[j])
+            rho = ((signals[i]*signals[j]).mean() - means[i]*means[j]) / (stds[i]*stds[j])
+            rhos[pairi] = rho
+            # slower:
+            #rhos[pairi] = corrcoef(signals[i], signals[j])
             if weighted:
                 # weight each pair by the one with the least signal:
                 weights[pairi] = min(signals[i].sum(), signals[j].sum())
