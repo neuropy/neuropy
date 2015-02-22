@@ -10,7 +10,7 @@ import pylab as pl
 from pylab import get_current_fig_manager as gcfm
 from matplotlib.collections import LineCollection
 
-from core import intround, issorted, iterable, lastcmd
+from core import intround, issorted, iterable, lastcmd, split_tranges
 import filter
 
 
@@ -128,6 +128,43 @@ class LFP(object):
         f.tight_layout(pad=0.3) # crop figure to contents
         self.f = f
         return self
+
+    def std(self, t0=None, t1=None, chani=-1, width=None, tres=None, fmt='k-', title=True,
+            figsize=(20, 3.5)):
+        """Plot standard deviation of LFP signal from t0 to t1 on chani, using bins of width
+        and tres"""
+        uns = get_ipython().user_ns
+        self.get_data()
+        data = self.data[chani]
+        ts = self.get_tssec()
+        if t0 == None:
+            t0 = ts[0]
+        if t1 == None:
+            t1 = ts[-1]
+        if width == None:
+            width = uns['LFPSIWIDTH'] # sec
+        if tres == None:
+            tres = uns['LFPSITRES'] # sec
+        tranges = split_tranges([(t0, t1)], width, tres)
+        stds = []
+        for trange in tranges:
+            ti0, ti1 = ts.searchsorted(trange)
+            stds.append(data[ti0:ti1].std())
+        stds = np.hstack(stds)
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
+        a.plot(tranges[:, 0], stds, fmt)
+        a.autoscale(enable=True, tight=True)
+        a.set_xlim(xmin=0) # acquisition starts at t=0
+        a.set_xlabel('time (sec)')
+        a.set_ylabel('LFP $\sigma$ ($\mu$V)')
+        titlestr = lastcmd()
+        gcfm().window.setWindowTitle(titlestr)
+        if title:
+            a.set_title(titlestr)
+        f.tight_layout(pad=0.3)
+        self.f = f
+        return stds
 
     def psd(self, t0=None, t1=None, f0=0.2, f1=110, p0=None, p1=None, chanis=-1,
             width=None, tres=None, xscale='log', figsize=(5, 5)):
@@ -338,7 +375,7 @@ class LFP(object):
     def si(self, kind=None, chani=-1, width=None, tres=None,
            lfpwidth=None, lfptres=None, lowband=None, highband=None, plot=True,
            showxlabel=True, showylabel=True, showtitle=True, showtext=True,
-           figsize=(20, 6.5), swapaxes=False):
+           figsize=(20, 3.5), swapaxes=False):
         """Calculate an LFP synchrony index, using potentially overlapping windows of
         width and tres, in sec, from the LFP spectrogram, itself composed of bins of
         lfpwidth and lfptres. Options for kind are:
