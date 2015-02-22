@@ -2710,29 +2710,17 @@ def corrcoef(x, y):
     #return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std())
 
 def pairwisecorr(signals, weighted=False):
-    """Calculate all pairwise correlations between all rows in signals.
-    TODO: move this to multithreaded Cython to speed up for large N, and hence very
-    large N^2"""
+    """Calculate all pairwise correlations between all rows in signals"""
     assert signals.ndim == 2
     N = len(signals)
-    means = signals.mean(axis=1) # precalculate
-    stds = signals.std(axis=1) # precalculate
-    rhos = np.zeros(N*(N-1)/2)
+    rhomat = np.corrcoef(signals) # returns entire corr matrix in one go
+    uti = np.triu_indices(N, k=1)
+    rhos = rhomat[uti] # pull out the upper triangle
     if weighted:
-        weights = np.zeros(N*(N-1)/2)
-    pairi = -1
-    for i in range(N):
-        for j in range(i+1, N):
-            pairi += 1
-            rho = ((signals[i]*signals[j]).mean() - means[i]*means[j]) / (stds[i]*stds[j])
-            rhos[pairi] = rho
-            # slower:
-            #rhos[pairi] = corrcoef(signals[i], signals[j])
-            if weighted:
-                # weight each pair by the one with the least signal:
-                weights[pairi] = min(signals[i].sum(), signals[j].sum())
-    if weighted:
-        weights /= weights.sum() # normalize
+        sums = signals.sum(axis=1)
+        # weight each pair by the one with the least signal:
+        weights = np.vstack((sums[uti[0]], sums[uti[1]])).min(axis=0) # all pairs
+        weights = weights / weights.sum() # normalize, ensure float division
         return rhos, weights
     else:
         return rhos
