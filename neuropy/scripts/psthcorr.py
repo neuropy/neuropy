@@ -84,7 +84,7 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
     tight_layout(pad=0.3)
 
     # plot rho histogram:
-    lti = np.tril_indices(nnss, -1) # lower triangle (below diagonal) indices off ssrho
+    lti = np.tril_indices(nnss, -1) # lower triangle (below diagonal) indices of ssrho
     ssrhol = ssrho[lti]
     notnanis = np.logical_not(np.isnan(ssrhol)) # indices of non-nan values
     fssrhol = ssrhol[notnanis] # ssrhol filtered out for nans

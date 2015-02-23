@@ -1526,31 +1526,40 @@ class RecordingRaster(BaseRecording):
     def bintraster(self, nids=None, sweepis=None, eids=None, natexps=False, t0=None, dt=None,
                    blank=False, strange=None, binw=0.02, tres=0.005):
         """Bin each trial with binw and tres. For each trial for each neuron, return spike
-        rates in each bin. Return nid:rate mapping where rate is a 2D (ntrials, nbins)
-        array. See rec.traster docstring for argument details. Each rate array can be
-        visualized with imshow, and should result in an image similar to a rec.traster plot"""
+        counts in each bin. Return nid:count mapping where count is a 2D (ntrials, nbins)
+        array. See rec.traster docstring for argument details. Each count array can be
+        visualized with imshow, and should result in an image similar to a rec.traster plot.
+        Also return nid:totcount mapping where totcount is a 1D (ntrials) array, and time
+        bins."""
         xmin = 0
         n2ts, n2cs, xmax = self.traster(nids=nids, sweepis=sweepis, eids=eids,
                                         natexps=natexps, t0=t0, dt=dt, blank=blank,
                                         strange=strange, plot=False)
-        assert len(n2ts) == len(n2cs)
         nids = sorted(n2ts)
         ntrials = len(n2ts[nids[0]]) # should be the same for all neurons
+        n2totcount = { nid:len(n2ts[nid]) for nid in nids } # total spike count
+
 
         bins = core.split_tranges([(xmin, xmax)], binw, tres) # all in sec
         nbins = len(bins)
-        n2rate = {}
+        n2count, n2totcount = {}, {}
         for nid in nids:
-            rate = np.zeros((ntrials, nbins), dtype=np.int64)
+            count = np.zeros((ntrials, nbins), dtype=np.int64)
+            totcount = np.zeros(ntrials, dtype=np.int64)
             ts = n2ts[nid]
+
             assert len(ts) == ntrials # should be the same for all neurons
             # don't think there's any way to avoid looping over each trial individually:
             for triali in range(ntrials):
-                tsiranges = ts[triali].searchsorted(bins)
+                trialts = ts[triali] # spike times for this trial
+                nspikes = len(trialts)
+                tsiranges = trialts.searchsorted(bins)
                 # number of spikes in each bin:
-                rate[triali] = np.float64((tsiranges[:, 1] - tsiranges[:, 0])) / binw
-            n2rate[nid] = rate
-        return n2rate
+                count[triali] = tsiranges[:, 1] - tsiranges[:, 0]
+                totcount[triali] = nspikes
+            n2count[nid] = count
+            n2totcount[nid] = totcount
+        return n2count, n2totcount, bins
 
     def tlfp(self, chani=-1, sweepis=None, eids=None, natexps=False, t0=None, dt=None,
              blank=True, trange=None, plot=True, figsize=(20, 6.5)):
