@@ -19,7 +19,8 @@ recs = ptc22tr1r08s + ptc22tr1r10s
 stranges = strangesr08s + strangesr10s
 
 MINTRIALRATE = 0.5 # Hz, 0.2 is at least 1 spike per trial for 4.5 s trials
-WEIGHTED = True
+MINTRIALFRACTION = 0.25
+WEIGHT = True
 BINW, TRES = 0.02, 0.005
 BLANK = False
 NIDSKIND = 'all' # 'active' or 'all'
@@ -41,14 +42,14 @@ for rec, nids, strange in zip(recs, recsecnids, stranges):
         # keep only those trials with sufficiently high spike rate:
         cs = cs[totcs/trialwidth >= MINTRIALRATE]
         ntrials = len(cs)
-        if ntrials < 2:
-            print("nid%d has insufficient trials that pass rate thresh" % nid)
-            continue # not enough trials to correlate
         print("nid%d: %d --> %d trials after applying %g Hz trial rate thresh"
               % (nid, totalntrials, ntrials, MINTRIALRATE))
-        ## TODO: if the MINTRIALRATE thresh cuts down the number of trials by too much
-        ## (say 50%), maybe skip this neuron?
-        rhos, weights = core.pairwisecorr(cs, weighted=WEIGHTED)
+        # if MINTRIALRATE cuts down the number of trials by too much, skip this nid:
+        trialfraction = ntrials / totalntrials
+        if trialfraction < MINTRIALFRACTION:
+            print("nid%d has insufficient trials that pass rate thresh" % nid)
+            continue # not enough trials to correlate
+        rhos, weights = core.pairwisecorr(cs, weight=WEIGHT)
         n2rel[nid] = np.mean(rhos)
         #n2rel[nid] = np.median(rhos)
         #n2rel[nid] = (rhos*weights).sum()
@@ -97,7 +98,7 @@ cs = cs[totcs/trialwidth >= MINTRIALRATE]
 ntrials = len(cs)
 print("ntrials: %d --> %d after applying %g Hz trial rate thresh"
       % (totalntrials, ntrials, MINTRIALRATE))
-rhos, weights = core.pairwisecorr(cs, weighted=WEIGHTED)
+rhos, weights = core.pairwisecorr(cs, weight=WEIGHT)
 
 print("mean: %g, weighted mean: %g, median: %g"
       % (np.mean(rhos), (rhos*weights).sum(), np.median(rhos)))

@@ -2709,21 +2709,21 @@ def corrcoef(x, y):
     # this works just fine as well, easier to understand too:
     #return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std())
 
-def pairwisecorr(signals, weighted=False):
+def pairwisecorr(signals, weight=False):
     """Calculate all pairwise correlations between all rows in signals"""
     assert signals.ndim == 2
     N = len(signals)
     rhomat = np.corrcoef(signals) # returns entire corr matrix in one go
     uti = np.triu_indices(N, k=1)
     rhos = rhomat[uti] # pull out the upper triangle
-    if weighted:
+    if weight:
         sums = signals.sum(axis=1)
         # weight each pair by the one with the least signal:
         weights = np.vstack((sums[uti[0]], sums[uti[1]])).min(axis=0) # all pairs
         weights = weights / weights.sum() # normalize, ensure float division
         return rhos, weights
     else:
-        return rhos
+        return rhos, None
 
 def bin(i, minbits=8):
     """Return a string with the binary representation of an integer, or sequence of integers.
