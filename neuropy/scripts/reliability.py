@@ -18,7 +18,7 @@ strangesr10s = [(0, 1400e6), # r10 synched, us
 recs = ptc22tr1r08s + ptc22tr1r10s
 stranges = strangesr08s + strangesr10s
 
-MINTRIALRATE = 0.2 # Hz, that's at least 1 spike per trial for 4.5 s trials
+MINTRIALRATE = 0.5 # Hz, 0.2 is at least 1 spike per trial for 4.5 s trials
 WEIGHTED = True
 BINW, TRES = 0.02, 0.005
 BLANK = False
@@ -46,9 +46,11 @@ for rec, nids, strange in zip(recs, recsecnids, stranges):
             continue # not enough trials to correlate
         print("nid%d: %d --> %d trials after applying %g Hz trial rate thresh"
               % (nid, totalntrials, ntrials, MINTRIALRATE))
+        ## TODO: if the MINTRIALRATE thresh cuts down the number of trials by too much
+        ## (say 50%), maybe skip this neuron?
         rhos, weights = core.pairwisecorr(cs, weighted=WEIGHTED)
-        #n2rel[nid] = np.mean(rhos)
-        n2rel[nid] = np.median(rhos)
+        n2rel[nid] = np.mean(rhos)
+        #n2rel[nid] = np.median(rhos)
         #n2rel[nid] = (rhos*weights).sum()
     recsecrel.append(n2rel)
 
@@ -63,14 +65,17 @@ desynchrel1 = [ recsecrel[3][nid] for nid in nids1 ]
 # plot all transitions in one plot:
 synchrel = synchrel0 + synchrel1
 desynchrel = desynchrel0 + desynchrel1
+
 figure(figsize=figsize)
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
 # scatter plot reliability in the two states
-plot(synchrel, desynchrel, 'k.', alpha=0.5, mec='None')
+plot(synchrel, desynchrel, 'o', mec='k', mfc='None')
 xlabel('synchronized reliability')
 ylabel('desynchronized reliability')
-xlim(min(-0.1, min(synchrel)), 1)
-ylim(min(-0.1, min(desynchrel)), 1)
+xlim(min(-0.1, min(synchrel)), max(0.8, max(synchrel)))
+ylim(min(-0.1, min(desynchrel)), max(0.8, max(desynchrel)))
+xticks(np.arange(0, xlim()[1], 0.2))
+yticks(np.arange(0, ylim()[1], 0.2))
 x0, x1, y0, y1 = axis()
 gcfm().window.setWindowTitle('reliability')
 tight_layout(pad=0.3)
