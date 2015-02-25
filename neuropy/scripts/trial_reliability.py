@@ -5,7 +5,9 @@ that trial raster plot. See Goard & Dan, 2009"""
 
 from __future__ import division, print_function
 
-from core import get_ssnids
+from scipy.stats import mannwhitneyu
+
+from core import get_ssnids, ceilsigfig
 
 # copied from psthcorr.py:
 ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
@@ -20,11 +22,13 @@ stranges = strangesr08s + strangesr10s
 
 MINTRIALRATE = 0.5 # Hz, 0.2 is at least 1 spike per trial for 4.5 s trials
 MINTRIALFRACTION = 0.25
-WEIGHT = True
+WEIGHT = False
 BINW, TRES = 0.02, 0.005
 BLANK = False
 NIDSKIND = 'all' # 'active' or 'all'
-figsize = 3.5, 3.5
+RELSTEP = 0.05
+scatterfigsize = 3.5, 3.5
+histfigsize = 3, 3
 
 # get active or all neuron ids for each section of both r08 and r10:
 ssnids, recsecnids = get_ssnids(recs, stranges, kind=NIDSKIND)
@@ -63,22 +67,57 @@ synchrel0 = [ recsecrel[1][nid] for nid in nids0 ]
 nids1 = np.intersect1d(sorted(recsecrel[2]), sorted(recsecrel[3]))
 synchrel1 = [ recsecrel[2][nid] for nid in nids1 ]
 desynchrel1 = [ recsecrel[3][nid] for nid in nids1 ]
-# plot all transitions in one plot:
+# combine all transitions into one plot:
 synchrel = synchrel0 + synchrel1
 desynchrel = desynchrel0 + desynchrel1
 
-figure(figsize=figsize)
+# scatter plot reliability in the two states, note that some cells are discarded because
+# they don't have enough trials with enough spikes in only one of the states (usually
+# desynched):
+figure(figsize=scatterfigsize)
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
-# scatter plot reliability in the two states
 plot(synchrel, desynchrel, 'o', mec='k', mfc='None')
-xlabel('synchronized reliability')
-ylabel('desynchronized reliability')
-xlim(min(-0.1, min(synchrel)), max(0.8, max(synchrel)))
-ylim(min(-0.1, min(desynchrel)), max(0.8, max(desynchrel)))
+xlabel('synchronized trial reliability')
+ylabel('desynchronized trial reliability')
+xmin, xmax = min(-0.1, min(synchrel)), max(0.8, max(synchrel))
+ymin, ymax = min(-0.1, min(desynchrel)), max(0.8, max(desynchrel))
+xlim(xmin, xmax)
+ylim(ymin, ymax)
 xticks(np.arange(0, xlim()[1], 0.2))
 yticks(np.arange(0, ylim()[1], 0.2))
 x0, x1, y0, y1 = axis()
-gcfm().window.setWindowTitle('reliability')
+gcfm().window.setWindowTitle('trial reliability, MINTRIALRATE=%g, MINTRIALFRACTION=%g'
+                             % (MINTRIALRATE, MINTRIALFRACTION))
+tight_layout(pad=0.3)
+
+# plot distributions of trial reliability in the two states, gives higher N:
+figure(figsize=histfigsize)
+bins = np.arange(0, 1+RELSTEP, RELSTEP)
+synchrel = recsecrel[1].values() + recsecrel[2].values()
+desynchrel = recsecrel[0].values() + recsecrel[3].values()
+n1 = hist(synchrel, bins=bins, color='r')[0] # synched
+n0 = hist(desynchrel, bins=bins, color='b')[0] # desynched
+n = np.hstack([n0, n1])
+xlim(xmin=0, xmax=xmax)
+ylim(ymax=n.max()) # effectively normalizes the histogram
+xticks(np.arange(0, xmax, 0.2))
+xlabel('trial reliability')
+ylabel('cell count')
+
+#t, p = ttest_ind(desynchrel, synchrel, equal_var=False) # Welch's T-test
+u, p = mannwhitneyu(desynchrel, synchrel) # 1-sided
+# display means and p value:
+text(0.98, 0.98, '$\mu$ = %.2f' % mean(synchrel), # synched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='r')
+text(0.98, 0.90, '$\mu$ = %.2f' % mean(desynchrel), # desynched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
+text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+gcfm().window.setWindowTitle('trial reliability hist, MINTRIALRATE=%g, MINTRIALFRACTION=%g'
+                             % (MINTRIALRATE, MINTRIALFRACTION))
 tight_layout(pad=0.3)
 
 show()
