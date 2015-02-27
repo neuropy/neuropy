@@ -188,14 +188,12 @@ fwhmsrecsec = [] # fwhm values, for each recording section
 tsrecsec = [] # peak times, for each recording section
 heightsrecsec = [] # peak heights, for each recording section
 sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
-psthsrecsec = [] # psths with at least 1 peak, for each recording section
 for nids, t, psths, fmt in zip(recsecnids, ts, psthss, ['b-', 'r-', 'r-', 'b-']):
     psthparams = {} # params returned for each PSTH by get_psth_peaks
     psthsfwhms = [] # fwhm values from all PSTHs from this recording section
     psthsts = [] # times of all peaks in all PSTHs from this recording section
     psthsheights = [] # peak heights from all PSTHs from this recording section
     sparsenesses = {} # sparseness of each PSTH in this recording section, indexed by nid
-    peakpsths = [] # psths with peaks in this recording section
     for nid, psth in zip(nids, psths):
         psthparams[nid] = get_psth_peaks(t, psth, nid)
         if PLOTPSTH:
@@ -208,13 +206,11 @@ for nids, t, psths, fmt in zip(recsecnids, ts, psthss, ['b-', 'r-', 'r-', 'b-'])
         psthsts.append(peakis * TRES) # sec
         psthsheights.append(psth[peakis] - baseline) # peak height above baseline
         sparsenesses[nid] = sparseness(psth) # save for only those PSTHS with peaks
-        peakpsths.append(psth)
     psthparamsrecsec.append(psthparams)
     fwhmsrecsec.append(np.hstack(psthsfwhms))
     tsrecsec.append(np.hstack(psthsts))
     heightsrecsec.append(np.hstack(psthsheights))
     sparsrecsec.append(sparsenesses)
-    psthsrecsec.append(np.vstack(peakpsths))
     print('\n') # two newlines
 
 fwhms = [np.hstack([fwhmsrecsec[0], fwhmsrecsec[3]]), # desynched
@@ -444,20 +440,21 @@ for kind in ['all', 'active']:
     print('%s: npsths=%d' % (kind, npsths))
 
 # report numbers of responsive PSTHs:
-nresppsths = sum([ psths.shape[0] for psths in psthsrecsec ])
+nresppsths = len(spars[0]) + len(spars[1])
 print('responsive PSTHs (with at least 1 peak): %d' % nresppsths)
-nresppsthsdesynched = sum([psthsrecsec[0].shape[0], psthsrecsec[3].shape[0]])
+nresppsthsdesynched = len(spars[0])
 print('responsive PSTHs in desynched periods: %d' % nresppsthsdesynched)
-nresppsthssynched = sum([psthsrecsec[1].shape[0], psthsrecsec[2].shape[0]])
+nresppsthssynched = len(spars[1])
 print('responsive PSTHs in synched periods: %d' % nresppsthssynched)
 # report chi-square results of numbers of responsive PSTHs in both states:
 chi2, p = chisquare([nresppsthsdesynched, nresppsthssynched])
 print('chi2=%.3g, p=%.3g' % (chi2, p))
 
 # report chi-square results of numbers of peaks in both states:
-ndesynched, nsynched = len(fwhms[0]), len(fwhms[1]) # peak counts
-chi2, p = chisquare([ndesynched, nsynched])
+ndesynchedpeaks, nsynchedpeaks = len(fwhms[0]), len(fwhms[1]) # peak counts
+chi2, p = chisquare([ndesynchedpeaks, nsynchedpeaks])
 print('peak counts:')
-print('ndesynched=%d, nsynched=%d, chi2=%.3g, p=%.3g' % (ndesynched, nsynched, chi2, p))
+print('ndesynched=%d, nsynched=%d, chi2=%.3g, p=%.3g'
+      % (ndesynchedpeaks, nsynchedpeaks, chi2, p))
 
 pl.show()
