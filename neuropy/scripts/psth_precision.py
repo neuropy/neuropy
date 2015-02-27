@@ -396,22 +396,45 @@ gcfm().window.setWindowTitle('sparseness ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 '''
-# scatter-plot sparseness in synched vs desynched. INCOMPLETE:
+# nids in common during 1st transition: desynched to synched
+nids0 = np.intersect1d(sorted(sparsrecsec[0]), sorted(sparsrecsec[1]))
+# nids in common during 2nd transition: synched to desynched
+nids1 = np.intersect1d(sorted(sparsrecsec[2]), sorted(sparsrecsec[3]))
+'''
+# nids during at least one state on either side of 1st transition: desynched to synched
+nids0 = np.union1d(sorted(sparsrecsec[0]), sorted(sparsrecsec[1]))
+# nids in common during 2nd transition: synched to desynched
+nids1 = np.union1d(sorted(sparsrecsec[2]), sorted(sparsrecsec[3]))
 
-nids = [np.hstack([nidsrecsec[0], nidsrecsec[3]]), # desynched
-        np.hstack([nidsrecsec[1], nidsrecsec[2]])] # synched
+def filterdict(d, key, fallback=0):
+    try:
+        return d[key]
+    except KeyError:
+        return fallback
 
-
+# scatter-plot sparseness in neighbouring synched vs desynched periods.
+# Missing values (nids active in one neighbouring period but not the other)
+# are assigned a sparseness of 0 to indicate they're missing:
+# 1st transition: desynched to synched
+desynchspars0 = [ filterdict(sparsrecsec[0], nid) for nid in nids0 ]
+synchspars0 = [ filterdict(sparsrecsec[1], nid) for nid in nids0 ]
+# 2nd transition: synched to desynched
+synchspars1 = [ filterdict(sparsrecsec[2], nid) for nid in nids1 ]
+desynchspars1 = [ filterdict(sparsrecsec[3], nid) for nid in nids1 ]
+# combine all transitions into one plot:
+synchspars = synchspars0 + synchspars1
+desynchspars = desynchspars0 + desynchspars1
 figure(figsize=figsize)
-plot(spars[0], spars[1], 'k.')[0] # synched vs desynched
-xlabel('desynchronized sparseness')
-ylabel('synchronized sparseness')
+plot([-1, 1], [-1, 1], 'e--') # plot y=x line
+plot(synchspars, desynchspars, 'o', mec='k', mfc='None')
+xlabel('synchronized sparseness')
+ylabel('desynchronized sparseness')
+xlim(0, 1)
+ylim(0, 1)
+xticks(np.arange(0, 1+0.2, 0.2))
+yticks(np.arange(0, 1+0.2, 0.2))
 gcfm().window.setWindowTitle('sparseness scatter ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
-'''
-
-
-
 
 
 # report numbers of all and active PSTHs
