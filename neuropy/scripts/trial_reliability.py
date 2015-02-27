@@ -91,8 +91,7 @@ xlim(xmin, xmax)
 ylim(ymin, ymax)
 xticks(np.arange(0, xlim()[1], 0.2))
 yticks(np.arange(0, ylim()[1], 0.2))
-x0, x1, y0, y1 = axis()
-titlestr = 'trial reliability'
+titlestr = 'trial reliability ptc22.tr1.r08 ptc22.tr1.r10'
 gcfm().window.setWindowTitle(titlestr)
 #gcfm().window.setWindowTitle(titlestr+', MINTRIALRATE=%g, MINTRIALFRACTION=%g'
 #                             % (MINTRIALRATE, MINTRIALFRACTION))
@@ -111,7 +110,6 @@ ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(np.arange(0, xmax, 0.2))
 xlabel('trial reliability')
 ylabel('cell count')
-
 #t, p = ttest_ind(desynchrel, synchrel, equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(desynchrel, synchrel) # 1-sided
 # display means and p value:
@@ -124,34 +122,10 @@ text(0.98, 0.90, '$\mu$ = %.2f' % mean(desynchrel), # desynched
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-titlestr = 'trial reliability hist'
+titlestr = 'trial reliability hist ptc22.tr1.r08 ptc22.tr1.r10'
 gcfm().window.setWindowTitle(titlestr)
 #gcfm().window.setWindowTitle(titlestr+', MINTRIALRATE=%g, MINTRIALFRACTION=%g'
 #                             % (MINTRIALRATE, MINTRIALFRACTION))
 tight_layout(pad=0.3)
 
 show()
-
-'''
-# test single neuron in single recording section:
-nid = 17
-n2count, n2totcount, ts = ptc22.tr1.r08.bintraster(nids=[nid], blank=BLANK,
-                                                   strange=strangesr08s[0],
-                                                   binw=BINW, tres=TRES)
-cs = n2count[nid] # binned trial counts, ntrials x nbins
-totcs = n2totcount[nid] # total spike counts per trial
-trialwidth = ts[-1, 1] - ts[0, 0] # end of last bin minus start of first bin, in sec
-# filter out trials with too few spikes
-totalntrials = len(cs)
-cs = cs[totcs/trialwidth >= MINTRIALRATE]
-ntrials = len(cs)
-print("ntrials: %d --> %d after applying %g Hz trial rate thresh"
-      % (totalntrials, ntrials, MINTRIALRATE))
-rhos, weights = core.pairwisecorr(cs, weight=WEIGHT)
-
-print("mean: %g, weighted mean: %g, median: %g"
-      % (np.mean(rhos), (rhos*weights).sum(), np.median(rhos)))
-figure()
-hist(rhos, bins=100)
-show()
-'''
