@@ -188,15 +188,13 @@ fwhmsrecsec = [] # fwhm values, for each recording section
 tsrecsec = [] # peak times, for each recording section
 heightsrecsec = [] # peak heights, for each recording section
 sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
-nidsrecsec = [] # nids of cells with at least 1 peak, for each recording section
 psthsrecsec = [] # psths with at least 1 peak, for each recording section
 for nids, t, psths, fmt in zip(recsecnids, ts, psthss, ['b-', 'r-', 'r-', 'b-']):
     psthparams = {} # params returned for each PSTH by get_psth_peaks
     psthsfwhms = [] # fwhm values from all PSTHs from this recording section
     psthsts = [] # times of all peaks in all PSTHs from this recording section
     psthsheights = [] # peak heights from all PSTHs from this recording section
-    sparsenesses = [] # sparseness values for each PSTH in this recording section
-    peaknids = [] # nids with peaks in this recording section
+    sparsenesses = {} # sparseness of each PSTH in this recording section, indexed by nid
     peakpsths = [] # psths with peaks in this recording section
     for nid, psth in zip(nids, psths):
         psthparams[nid] = get_psth_peaks(t, psth, nid)
@@ -209,15 +207,13 @@ for nids, t, psths, fmt in zip(recsecnids, ts, psthss, ['b-', 'r-', 'r-', 'b-'])
         psthsfwhms.append(fwhms)
         psthsts.append(peakis * TRES) # sec
         psthsheights.append(psth[peakis] - baseline) # peak height above baseline
-        sparsenesses.append(sparseness(psth)) # for only those PSTHS with peaks
-        peaknids.append(nid) # this nid had at least one peak
+        sparsenesses[nid] = sparseness(psth) # save for only those PSTHS with peaks
         peakpsths.append(psth)
     psthparamsrecsec.append(psthparams)
     fwhmsrecsec.append(np.hstack(psthsfwhms))
     tsrecsec.append(np.hstack(psthsts))
     heightsrecsec.append(np.hstack(psthsheights))
-    sparsrecsec.append(np.hstack(sparsenesses))
-    nidsrecsec.append(np.hstack(peaknids))
+    sparsrecsec.append(sparsenesses)
     psthsrecsec.append(np.vstack(peakpsths))
     print('\n') # two newlines
 
@@ -230,8 +226,8 @@ ts = [np.hstack([tsrecsec[0], tsrecsec[3]]), # desynched
 heights = [np.hstack([heightsrecsec[0], heightsrecsec[3]]), # desynched
            np.hstack([heightsrecsec[1], heightsrecsec[2]])] # synched
 
-spars = [np.hstack([sparsrecsec[0], sparsrecsec[3]]), # desynched
-         np.hstack([sparsrecsec[1], sparsrecsec[2]])] # synched
+spars = [np.hstack([sparsrecsec[0].values(), sparsrecsec[3].values()]), # desynched
+         np.hstack([sparsrecsec[1].values(), sparsrecsec[2].values()])] # synched
 
  
 # plot FWHM distributions:
