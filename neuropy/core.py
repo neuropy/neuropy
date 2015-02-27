@@ -2709,11 +2709,14 @@ def corrcoef(x, y):
     # this works just fine as well, easier to understand too:
     #return ((x * y).mean() - x.mean() * y.mean()) / (x.std() * y.std())
 
-def pairwisecorr(signals, weight=False):
+def pairwisecorr(signals, weight=False, invalid='raise'):
     """Calculate all pairwise correlations between all rows in signals"""
     assert signals.ndim == 2
     N = len(signals)
+    # potentially allow 0/0 (nan) rhomat entries by ignoring 'invalid' errors (not 'divide'):
+    oldsettings = np.seterr(invalid=invalid)
     rhomat = np.corrcoef(signals) # returns entire corr matrix in one go
+    np.seterr(**oldsettings) # restore previous numpy error settings
     uti = np.triu_indices(N, k=1)
     rhos = rhomat[uti] # pull out the upper triangle
     if weight:

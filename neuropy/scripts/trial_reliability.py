@@ -20,14 +20,14 @@ strangesr10s = [(0, 1400e6), # r10 synched, us
 recs = ptc22tr1r08s + ptc22tr1r10s
 stranges = strangesr08s + strangesr10s
 
-MINTRIALRATE = 0.5 # Hz, 0.2 is at least 1 spike per trial for 4.5 s trials
-MINTRIALFRACTION = 0.25
+#MINTRIALRATE = 0.5 # Hz, 0.2 is at least 1 spike per trial for 4.5 s trials
+#MINTRIALFRACTION = 0.25
 WEIGHT = False
 BINW, TRES = 0.02, 0.005
 BLANK = False
 NIDSKIND = 'all' # 'active' or 'all'
 RELSTEP = 0.05
-scatterfigsize = 3.5, 3.5
+scatterfigsize = 3, 3
 histfigsize = 3, 3
 
 # get active or all neuron ids for each section of both r08 and r10:
@@ -40,6 +40,7 @@ for rec, nids, strange in zip(recs, recsecnids, stranges):
                                              binw=BINW, tres=TRES)
     for nid in nids:
         cs = n2count[nid] # trial counts
+        '''
         totcs = n2totcount[nid] # total spike counts per trial
         trialwidth = ts[-1, 1] - ts[0, 0] # end of last bin minus start of first bin, in sec
         totalntrials = len(cs)
@@ -53,7 +54,12 @@ for rec, nids, strange in zip(recs, recsecnids, stranges):
         if trialfraction < MINTRIALFRACTION:
             print("nid%d has insufficient trials that pass rate thresh" % nid)
             continue # not enough trials to correlate
-        rhos, weights = core.pairwisecorr(cs, weight=WEIGHT)
+        '''
+        rhos, weights = core.pairwisecorr(cs, weight=WEIGHT, invalid='ignore')
+        # replace any nans with 0s to represent corrs of pairs in which one or both trials
+        # have no spikes:
+        nanis = np.isnan(rhos)
+        rhos[nanis] = 0.0
         n2rel[nid] = np.mean(rhos)
         #n2rel[nid] = np.median(rhos)
         #n2rel[nid] = (rhos*weights).sum()
@@ -86,8 +92,10 @@ ylim(ymin, ymax)
 xticks(np.arange(0, xlim()[1], 0.2))
 yticks(np.arange(0, ylim()[1], 0.2))
 x0, x1, y0, y1 = axis()
-gcfm().window.setWindowTitle('trial reliability, MINTRIALRATE=%g, MINTRIALFRACTION=%g'
-                             % (MINTRIALRATE, MINTRIALFRACTION))
+titlestr = 'trial reliability'
+gcfm().window.setWindowTitle(titlestr)
+#gcfm().window.setWindowTitle(titlestr+', MINTRIALRATE=%g, MINTRIALFRACTION=%g'
+#                             % (MINTRIALRATE, MINTRIALFRACTION))
 tight_layout(pad=0.3)
 
 # plot distributions of trial reliability in the two states, gives higher N:
@@ -116,8 +124,10 @@ text(0.98, 0.90, '$\mu$ = %.2f' % mean(desynchrel), # desynched
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('trial reliability hist, MINTRIALRATE=%g, MINTRIALFRACTION=%g'
-                             % (MINTRIALRATE, MINTRIALFRACTION))
+titlestr = 'trial reliability hist'
+gcfm().window.setWindowTitle(titlestr)
+#gcfm().window.setWindowTitle(titlestr+', MINTRIALRATE=%g, MINTRIALFRACTION=%g'
+#                             % (MINTRIALRATE, MINTRIALFRACTION))
 tight_layout(pad=0.3)
 
 show()
