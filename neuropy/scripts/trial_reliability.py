@@ -33,7 +33,7 @@ histfigsize = 3, 3
 # get active or all neuron ids for each section of both r08 and r10:
 ssnids, recsecnids = get_ssnids(recs, stranges, kind=NIDSKIND)
 
-recsecrel = []
+rels = []
 for rec, nids, strange in zip(recs, recsecnids, stranges):
     n2rel = {} # nid:reliability mapping for this recsec
     n2count, n2totcount, ts = rec.bintraster(nids=nids, blank=BLANK, strange=strange,
@@ -63,16 +63,24 @@ for rec, nids, strange in zip(recs, recsecnids, stranges):
         n2rel[nid] = np.mean(rhos)
         #n2rel[nid] = np.median(rhos)
         #n2rel[nid] = (rhos*weights).sum()
-    recsecrel.append(n2rel)
+    rels.append(n2rel)
+
+# nids during at least one state on either side of 1st transition: desynched to synched
+nids0 = np.union1d(sorted(rels[0]), sorted(rels[1]))
+nids1 = np.union1d(sorted(rels[2]), sorted(rels[3]))
+
+def filterdict(d, key, fallback=0):
+    try:
+        return d[key]
+    except KeyError:
+        return fallback
 
 # 1st transition: desynched to synched
-nids0 = np.intersect1d(sorted(recsecrel[0]), sorted(recsecrel[1]))
-desynchrel0 = [ recsecrel[0][nid] for nid in nids0 ]
-synchrel0 = [ recsecrel[1][nid] for nid in nids0 ]
+desynchrel0 = [ filterdict(rels[0], nid) for nid in nids0 ]
+synchrel0 = [ filterdict(rels[1], nid) for nid in nids0 ]
 # 2nd transition: synched to desynched
-nids1 = np.intersect1d(sorted(recsecrel[2]), sorted(recsecrel[3]))
-synchrel1 = [ recsecrel[2][nid] for nid in nids1 ]
-desynchrel1 = [ recsecrel[3][nid] for nid in nids1 ]
+synchrel1 = [ filterdict(rels[2], nid) for nid in nids1 ]
+desynchrel1 = [ filterdict(rels[3], nid) for nid in nids1 ]
 # combine all transitions into one plot:
 synchrel = synchrel0 + synchrel1
 desynchrel = desynchrel0 + desynchrel1
@@ -100,8 +108,8 @@ tight_layout(pad=0.3)
 # plot distributions of trial reliability in the two states, gives higher N:
 figure(figsize=histfigsize)
 bins = np.arange(0, 1+RELSTEP, RELSTEP)
-synchrel = recsecrel[1].values() + recsecrel[2].values()
-desynchrel = recsecrel[0].values() + recsecrel[3].values()
+synchrel = rels[1].values() + rels[2].values()
+desynchrel = rels[0].values() + rels[3].values()
 n1 = hist(synchrel, bins=bins, color='r')[0] # synched
 n0 = hist(desynchrel, bins=bins, color='b')[0] # desynched
 n = np.hstack([n0, n1])
