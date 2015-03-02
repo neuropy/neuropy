@@ -32,7 +32,7 @@ EPS = np.spacing(1) # epsilon, smallest representable non-zero number
 NIDSKIND = 'all' # 'active' or 'all'
 
 BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
-TRASTERBINW, TRASTERTRES = 0.02, 0.0001 # trial raster bins, sec
+TRASTERBINW, TRASTERTRES = 0.02, 0.005 # trial raster bins, sec
 BLANK = False # consider blank periods between trials for reliability measure?
 WEIGHT = False # weight trials by spike count for reliability measure?
 # 2.5 Hz thresh is 1 spike in the same 20 ms wide bin every 20 trials, assuming 0 baseline:
@@ -48,7 +48,8 @@ FWHMMIN, FWHMSTEP, FWHMTICKSTEP = 0, 10, 50
 TSMAX, TSSTEP = 5.5, 0.25
 HEIGHTMIN, HEIGHTMAX, HEIGHTSTEP, HEIGHTTICKSTEP = 0, 100, 5, 25
 SPARSTEP = 0.1
-RELSTEP = 0.05
+#RELSTEP = 0.05
+NRELBINS = 15
 figsize = (3, 3) # inches
 
 # copied to psth_precision_inactive.py:
@@ -256,7 +257,7 @@ n = np.hstack([n0, n1])
 xlim(xmin=FWHMMIN, xmax=FWHMMAX)
 ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
-xlabel('FWHM (ms)')
+xlabel('peak FWHM (ms)')
 ylabel('PSTH peak count')
 #t, p = ttest_ind(fwhms[0], fwhms[1], equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(fwhms[0], fwhms[1]) # 1-sided
@@ -285,7 +286,7 @@ xlim(xmin=10**logmin, xmax=10**logmax)
 ylim(ymax=n.max()) # effectively normalizes the histogram
 #xticks(ticks)
 xscale('log')
-xlabel('FWHM (ms)')
+xlabel('peak FWHM (ms)')
 ylabel('PSTH peak count')
 #t, p = ttest_ind(log10(fwhms[0]), log10(fwhms[1]), equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(log10(fwhms[0]), log10(fwhms[1])) # 1-sided
@@ -384,32 +385,6 @@ text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
 gcfm().window.setWindowTitle('peak amplitude log ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
-# plot sparseness distributions:
-ticks = np.arange(0, 1, 0.25)
-bins = np.arange(0, 1+SPARSTEP, SPARSTEP)
-figure(figsize=figsize)
-n1 = hist(spars[1], bins=bins, color='r')[0] # synched
-n0 = hist(spars[0], bins=bins, color='b')[0] # desynched
-n = np.hstack([n0, n1])
-xlim(xmin=0, xmax=1)
-ylim(ymax=n.max()) # effectively normalizes the histogram
-xticks(ticks)
-xlabel('sparseness')
-ylabel('PSTH count')
-#t, p = ttest_ind(spars[0], spars[1], equal_var=False) # Welch's T-test
-u, p = mannwhitneyu(spars[0], spars[1]) # 1-sided
-# display means and p value:
-text(0.03, 0.98, '$\mu$ = %.2f' % spars[1].mean(), # synched
-                 horizontalalignment='left', verticalalignment='top',
-                 transform=gca().transAxes, color='r')
-text(0.03, 0.90, '$\mu$ = %.2f' % spars[0].mean(), # desynched
-                 horizontalalignment='left', verticalalignment='top',
-                 transform=gca().transAxes, color='b')
-text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
-                 horizontalalignment='left', verticalalignment='top',
-                 transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('sparseness ptc22.tr1.r08 ptc22.tr1.r10')
-tight_layout(pad=0.3)
 
 # nids during at least one state on either side of 1st transition: desynched to synched
 nids0 = np.union1d(sorted(sparsrecsec[0]), sorted(sparsrecsec[1]))
@@ -441,9 +416,36 @@ xlabel('synchronized sparseness')
 ylabel('desynchronized sparseness')
 xlim(-0.02, 1)
 ylim(-0.02, 1)
-xticks(np.arange(0, 1+0.2, 0.2))
-yticks(np.arange(0, 1+0.2, 0.2))
+sparsticks = (np.arange(0, 1+0.2, 0.2), ['0', '0.2', '0.4', '0.6', '0.8', '1'])
+xticks(*sparsticks)
+yticks(*sparsticks)
 gcfm().window.setWindowTitle('sparseness scatter ptc22.tr1.r08 ptc22.tr1.r10')
+tight_layout(pad=0.3)
+
+# plot sparseness distributions:
+bins = np.arange(0, 1+SPARSTEP, SPARSTEP)
+figure(figsize=figsize)
+n1 = hist(spars[1], bins=bins, histtype='step', color='r')[0] # synched
+n0 = hist(spars[0], bins=bins, histtype='step', color='b')[0] # desynched
+n = np.hstack([n0, n1])
+xlim(xmin=0, xmax=1)
+ylim(ymax=20) # ylim(ymax=n.max()) # effectively normalizes the histogram
+xticks(*sparsticks)
+xlabel('sparseness')
+ylabel('cell count')
+#t, p = ttest_ind(spars[0], spars[1], equal_var=False) # Welch's T-test
+u, p = mannwhitneyu(spars[0], spars[1]) # 1-sided
+# display means and p value:
+text(0.98, 0.98, '$\mu$ = %.2f' % spars[1].mean(), # synched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='r')
+text(0.98, 0.90, '$\mu$ = %.2f' % spars[0].mean(), # desynched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
+text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+gcfm().window.setWindowTitle('sparseness ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 
@@ -463,44 +465,57 @@ desynchrels = desynchrels0 + desynchrels1
 figure(figsize=figsize)
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
 plot(synchrels, desynchrels, 'o', mec='k', mfc='None')
-xlabel('synchronized trial reliability')
-ylabel('desynchronized trial reliability')
-xmin, xmax = min(-0.1, min(synchrels)), max(0.8, max(synchrels))
-ymin, ymax = min(-0.1, min(desynchrels)), max(0.8, max(desynchrels))
-xlim(xmin, xmax)
-ylim(ymin, ymax)
-xticks(np.arange(0, xlim()[1], 0.2))
-yticks(np.arange(0, ylim()[1], 0.2))
-titlestr = 'trial reliability ptc22.tr1.r08 ptc22.tr1.r10'
+xlabel('synchronized reliability')
+ylabel('desynchronized reliability')
+logxmin, logxmax = -3, 0 #np.floor(log10(min(synchrels))), np.ceil(log10(max(synchrels)))
+logymin, logymax = -5, 0 #np.floor(log10(min(desynchrels))), np.ceil(log10(max(desynchrels)))
+#xmin, xmax = min(-0.01, min(synchrels)), max(0.7, max(synchrels))
+#ymin, ymax = min(-0.01, min(desynchrels)), max(0.7, max(desynchrels))
+xscale('log')
+yscale('log')
+xlim(10**logxmin, 10**logxmax)
+ylim(10**logymin, 10**logymax)
+xticks(10**(np.arange(logxmin, logxmax, 1.0)))
+yticks(10**(np.arange(logymin, logymax, 1.0)))
+#yticks(np.arange(0, ylim()[1], 0.2))
+titlestr = 'reliability ptc22.tr1.r08 ptc22.tr1.r10'
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
 # plot distributions of trial reliability in the two states, gives higher N:
 figure(figsize=figsize)
-bins = np.arange(0, 1+RELSTEP, RELSTEP)
-synchrels = rels[1].values() + rels[2].values()
-desynchrels = rels[0].values() + rels[3].values()
-n1 = hist(synchrels, bins=bins, color='r')[0] # synched
-n0 = hist(desynchrels, bins=bins, color='b')[0] # desynched
+#bins = np.arange(0, 1+RELSTEP, RELSTEP)
+logmin = min(logxmin, logymin)
+bins = np.logspace(logmin, 0, NRELBINS)
+synchrels = np.asarray(rels[1].values() + rels[2].values())
+desynchrels = np.asarray(rels[0].values() + rels[3].values())
+n0 = hist(desynchrels, bins=bins, histtype='step', color='b')[0] # desynched
+n1 = hist(synchrels, bins=bins, histtype='step', color='r')[0] # synched
 n = np.hstack([n0, n1])
-xlim(xmin=0, xmax=xmax)
-ylim(ymax=n.max()) # effectively normalizes the histogram
-xticks(np.arange(0, xmax, 0.2))
-xlabel('trial reliability')
+#xlim(xmin=0, xmax=xmax)
+#ylim(ymax=n.max()) # effectively normalizes the histogram
+xscale('log')
+xlim(bins[0], bins[-1])
+ylim(ymax=20)
+#xticks(np.arange(0, xmax, 0.2))
+#yticks(np.arange(0, 20, 5))
+xlabel('reliability')
 ylabel('cell count')
 #t, p = ttest_ind(desynchrels, synchrels, equal_var=False) # Welch's T-test
-u, p = mannwhitneyu(desynchrels, synchrels) # 1-sided
-# display means and p value:
-text(0.98, 0.98, '$\mu$ = %.2f' % mean(synchrels), # synched
+dpis, spis = desynchrels > 0, synchrels > 0 # +ve indices, should be nearly all of them
+u, p = mannwhitneyu(log10(desynchrels[dpis]), log10(synchrels[spis])) # 1-sided
+# display geometric means and p value:
+text(0.98, 0.98, '$\mu$ = %.1g' % 10**(log10(synchrels[spis]).mean()), # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.98, 0.90, '$\mu$ = %.2f' % mean(desynchrels), # desynched
+text(0.98, 0.90, '$\mu$ = %.1g' % 10**(log10(desynchrels[dpis]).mean()), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
+np.seterr(**oldsett)
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-titlestr = 'trial reliability hist ptc22.tr1.r08 ptc22.tr1.r10'
+titlestr = 'reliability hist ptc22.tr1.r08 ptc22.tr1.r10'
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
