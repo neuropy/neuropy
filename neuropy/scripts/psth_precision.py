@@ -50,6 +50,8 @@ HEIGHTMIN, HEIGHTMAX, HEIGHTSTEP, HEIGHTTICKSTEP = 0, 100, 5, 25
 SPARSTEP = 0.1
 #RELSTEP = 0.05
 NRELBINS = 15
+LOGNULLREL = -4
+NULLREL = 10**LOGNULLREL
 figsize = (3, 3) # inches
 
 # copied to psth_precision_inactive.py:
@@ -138,7 +140,8 @@ def get_psth_peaks(t, psth, nid):
     baseline-exceeding points. Within each range, find the biggest value. If that value
     exceeds thresh, designate that as a peak. Slice out that baseline-exceeding range of data,
     and run argfwhm on it, with outer kwarg - ie search from the outer edges in when looking
-    for FWHM. If baseline is so high that it exceeds FWHM for that peak, discard the peak."""
+    for FWHM. If baseline is so high that it exceeds FWHM for that peak, discard the peak.
+    t is passed only so that it can be conveniently returned for plotting"""
     baseline = MEDIANX*np.median(psth)
     thresh = baseline + MINTHRESH # peak detection threshold
     # indices of all baseline-exceeding points in psth:
@@ -178,43 +181,32 @@ def get_psth_peaks(t, psth, nid):
     return t, psth, thresh, baseline, peakis, lis, ris
 
 
-## TODO: use only neurons qualitatively deemed responsive?
-# get active or all neuron ids for each section of r08:
-#ssnids, recsecnids = get_ssnids(ptc22tr1r08s, strangesr08s, kind=NIDSKIND)
 # get active or all neuron ids for each section of both r08 and r10:
 ssnids, recsecnids = get_ssnids(recs, stranges, kind=NIDSKIND)
 
-# calculate PSTHs for both sections of both recordings:
-ts, psthss, rels = [], [], []
-for rec, nids, strange in zip(recs, recsecnids, stranges):
-    t, psths = rec.psth(nids=nids, natexps=False, strange=strange, plot=False,
-                        binw=BINW, tres=TRES, norm='ntrials')
-    ts.append(t) # same time array for all PSTHs in this recording section
-    psthss.append(psths)
-    #figure(); #pl.plot(t, psths.T, '-')
-    n2rel = {} # nid:reliability mapping for this recording section
-    n2count = rec.bintraster(nids=nids, blank=BLANK, strange=strange,
-                             binw=TRASTERBINW, tres=TRASTERTRES)[0]
-    for nid in nids:
-        cs = n2count[nid] # 2D array of spike counts over time, one row per trial
-        rhos, weights = core.pairwisecorr(cs, weight=WEIGHT, invalid='ignore')
-        nanis = np.isnan(rhos)
-        rhos[nanis] = 0.0
-        n2rel[nid] = np.mean(rhos)
-    rels.append(n2rel)
-
-# collect data from each PSTH:
+# calculate PSTHs for both sections of both recordings, collect data from each PSTH with at
+# least 1 detected peak:
+psthss = []
 psthparamsrecsec = [] # params returned for each PSTH, for each recording section
 fwhmsrecsec = [] # fwhm values, for each recording section
 tsrecsec = [] # peak times, for each recording section
 heightsrecsec = [] # peak heights, for each recording section
 sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
-for nids, t, psths, fmt in zip(recsecnids, ts, psthss, ['b-', 'r-', 'r-', 'b-']):
-    psthparams = {} # params returned for each PSTH by get_psth_peaks
-    psthsfwhms = [] # fwhm values from all PSTHs from this recording section
-    psthsts = [] # times of all peaks in all PSTHs from this recording section
-    psthsheights = [] # peak heights from all PSTHs from this recording section
-    n2sparseness = {} # nid:sparseness mapping of each PSTH in this recording section
+relsrecsec = [] # reliability values of cells with at least 1 peak, for each recording section
+fmts = ['b-', 'r-', 'r-', 'b-']
+for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
+    psthparams = {} # params returned by get_psth_peaks of all nids in this recording section
+    psthsfwhms = [] # fwhm values of all nids in this recording section
+    psthsts = [] # times of all peaks of all nids in this recording section
+    psthsheights = [] # peak heights of all nids in this recording section
+    n2sparseness = {} # nid:sparseness mapping for this recording section
+    n2rel = {} # nid:reliability mapping for this recording section
+    t, psths = rec.psth(nids=nids, natexps=False, strange=strange, plot=False,
+                        binw=BINW, tres=TRES, norm='ntrials')
+    psthss.append(psths)
+    #figure(); #pl.plot(t, psths.T, '-')
+    n2count = rec.bintraster(nids=nids, blank=BLANK, strange=strange,
+                             binw=TRASTERBINW, tres=TRASTERTRES)[0]
     for nid, psth in zip(nids, psths):
         psthparams[nid] = get_psth_peaks(t, psth, nid)
         if PLOTPSTH:
@@ -226,12 +218,23 @@ for nids, t, psths, fmt in zip(recsecnids, ts, psthss, ['b-', 'r-', 'r-', 'b-'])
         psthsfwhms.append(fwhms)
         psthsts.append(peakis * TRES) # sec
         psthsheights.append(psth[peakis] - baseline) # peak height above baseline
-        n2sparseness[nid] = sparseness(psth) # save for only those PSTHS with peaks
+        n2sparseness[nid] = sparseness(psth)
+        # calculate reliability:
+        cs = n2count[nid] # 2D array of spike counts over time, one row per trial
+        rhos, weights = core.pairwisecorr(cs, weight=WEIGHT, invalid='ignore')
+        # set rho to 0 for trial pairs with undefined rho (one or both trials with < 2 spikes):
+        nanis = np.isnan(rhos)
+        rhos[nanis] = 0.0
+        # for log plotting convenience, replace any mean rhos <= 0 with NULLREL - commented
+        # out because it never seems to happen:
+        #n2rel[nid] = max(np.mean(rhos), NULLREL)
+        n2rel[nid] = np.mean(rhos)
     psthparamsrecsec.append(psthparams)
     fwhmsrecsec.append(np.hstack(psthsfwhms))
     tsrecsec.append(np.hstack(psthsts))
     heightsrecsec.append(np.hstack(psthsheights))
     sparsrecsec.append(n2sparseness)
+    relsrecsec.append(n2rel)
     print('\n') # two newlines
 
 fwhms = [np.hstack([fwhmsrecsec[0], fwhmsrecsec[3]]), # desynched
@@ -246,6 +249,8 @@ heights = [np.hstack([heightsrecsec[0], heightsrecsec[3]]), # desynched
 spars = [np.hstack([sparsrecsec[0].values(), sparsrecsec[3].values()]), # desynched
          np.hstack([sparsrecsec[1].values(), sparsrecsec[2].values()])] # synched
 
+rels = [np.hstack([relsrecsec[0].values(), relsrecsec[3].values()]), # desynched
+        np.hstack([relsrecsec[1].values(), relsrecsec[2].values()])] # synched
  
 # plot FWHM distributions:
 ticks = np.arange(FWHMMIN, FWHMMAX, FWHMTICKSTEP)
@@ -386,9 +391,9 @@ gcfm().window.setWindowTitle('peak amplitude log ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 
-# nids during at least one state on either side of 1st transition: desynched to synched
+# nids with at least one peak during at least one state on either side of 1st transition:
 nids0 = np.union1d(sorted(sparsrecsec[0]), sorted(sparsrecsec[1]))
-# nids during at least one state on either side of 2nd transition: desynched to synched
+# nids with at least one peak during at least one state on either side of 2nd transition:
 nids1 = np.union1d(sorted(sparsrecsec[2]), sorted(sparsrecsec[3]))
 
 def filterdict(d, key, fallback=0):
@@ -451,67 +456,63 @@ tight_layout(pad=0.3)
 
 # scatter plot reliability in neighbouring synched vs desynched periods.
 # Missing values (nids active in one neighbouring period but not the other)
-# are assigned a reliability of 0 to indicate they're missing:
+# are assigned a reliability of NULLREL to indicate they're missing:
 # 1st transition: desynched to synched
-desynchrels0 = [ filterdict(rels[0], nid) for nid in nids0 ]
-synchrels0 = [ filterdict(rels[1], nid) for nid in nids0 ]
+desynchrels0 = [ filterdict(relsrecsec[0], nid, NULLREL) for nid in nids0 ]
+synchrels0 = [ filterdict(relsrecsec[1], nid, NULLREL) for nid in nids0 ]
 # 2nd transition: synched to desynched
-synchrels1 = [ filterdict(rels[2], nid) for nid in nids1 ]
-desynchrels1 = [ filterdict(rels[3], nid) for nid in nids1 ]
+synchrels1 = [ filterdict(relsrecsec[2], nid, NULLREL) for nid in nids1 ]
+desynchrels1 = [ filterdict(relsrecsec[3], nid, NULLREL) for nid in nids1 ]
 # combine all transitions into one plot:
 synchrels = synchrels0 + synchrels1
 desynchrels = desynchrels0 + desynchrels1
-
 figure(figsize=figsize)
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
 plot(synchrels, desynchrels, 'o', mec='k', mfc='None')
 xlabel('synchronized reliability')
 ylabel('desynchronized reliability')
-logxmin, logxmax = -3, 0 #np.floor(log10(min(synchrels))), np.ceil(log10(max(synchrels)))
-logymin, logymax = -5, 0 #np.floor(log10(min(desynchrels))), np.ceil(log10(max(desynchrels)))
-#xmin, xmax = min(-0.01, min(synchrels)), max(0.7, max(synchrels))
-#ymin, ymax = min(-0.01, min(desynchrels)), max(0.7, max(desynchrels))
+logmin, logmax = LOGNULLREL, 0
 xscale('log')
 yscale('log')
-xlim(10**logxmin, 10**logxmax)
-ylim(10**logymin, 10**logymax)
-xticks(10**(np.arange(logxmin, logxmax, 1.0)))
-yticks(10**(np.arange(logymin, logymax, 1.0)))
-#yticks(np.arange(0, ylim()[1], 0.2))
+xlim(10**(logmin-0.1), 10**logmax)
+ylim(10**(logmin-0.1), 10**logmax)
+# replace 10^0 label with 1 to save horizontal space:
+ticks = 10**(np.arange(logmin, logmax+1.0, 1.0))
+ticklabels = ['$10^{%d}$' % logtick for logtick in range(logmin, 0)]
+ticklabels.append('1')
+xticks(ticks, ticklabels)
+yticks(ticks, ticklabels)
+#xticks(10**(np.arange(logmin, logmax+1.0, 1.0)))
+#yticks(10**(np.arange(logmin, logmax+1.0, 1.0)))
 titlestr = 'reliability ptc22.tr1.r08 ptc22.tr1.r10'
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
-# plot distributions of trial reliability in the two states, gives higher N:
+# plot reliability distributions:
+bins = np.logspace(LOGNULLREL, 0, NRELBINS)
 figure(figsize=figsize)
-#bins = np.arange(0, 1+RELSTEP, RELSTEP)
-logmin = min(logxmin, logymin)
-bins = np.logspace(logmin, 0, NRELBINS)
-synchrels = np.asarray(rels[1].values() + rels[2].values())
-desynchrels = np.asarray(rels[0].values() + rels[3].values())
-n0 = hist(desynchrels, bins=bins, histtype='step', color='b')[0] # desynched
-n1 = hist(synchrels, bins=bins, histtype='step', color='r')[0] # synched
+n0 = hist(rels[1], bins=bins, histtype='step', color='r')[0] # synched
+n1 = hist(rels[0], bins=bins, histtype='step', color='b')[0] # desynched
 n = np.hstack([n0, n1])
 #xlim(xmin=0, xmax=xmax)
 #ylim(ymax=n.max()) # effectively normalizes the histogram
 xscale('log')
 xlim(bins[0], bins[-1])
 ylim(ymax=20)
+xticks(ticks, ticklabels)
 #xticks(np.arange(0, xmax, 0.2))
 #yticks(np.arange(0, 20, 5))
 xlabel('reliability')
 ylabel('cell count')
-#t, p = ttest_ind(desynchrels, synchrels, equal_var=False) # Welch's T-test
-dpis, spis = desynchrels > 0, synchrels > 0 # +ve indices, should be nearly all of them
-u, p = mannwhitneyu(log10(desynchrels[dpis]), log10(synchrels[spis])) # 1-sided
+#t, p = ttest_ind(rels[1], rels[0], equal_var=False) # Welch's T-test
+u, p = mannwhitneyu(log10(rels[0]), log10(rels[1])) # 1-sided
 # display geometric means and p value:
-text(0.98, 0.98, '$\mu$ = %.1g' % 10**(log10(synchrels[spis]).mean()), # synched
+text(0.98, 0.98, '$\mu$ = %.1g' % 10**(log10(rels[1]).mean()), # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.98, 0.90, '$\mu$ = %.1g' % 10**(log10(desynchrels[dpis]).mean()), # desynched
+text(0.98, 0.90, '$\mu$ = %.1g' % 10**(log10(rels[0]).mean()), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-np.seterr(**oldsett)
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
