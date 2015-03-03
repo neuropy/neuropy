@@ -249,7 +249,7 @@ spars = [np.hstack([sparsrecsec[0].values(), sparsrecsec[3].values()]), # desync
 
 rels = [np.hstack([relsrecsec[0].values(), relsrecsec[3].values()]), # desynched
         np.hstack([relsrecsec[1].values(), relsrecsec[2].values()])] # synched
- 
+'''
 # plot FWHM distributions:
 ticks = np.arange(FWHMMIN, FWHMMAX, FWHMTICKSTEP)
 bins = np.arange(FWHMMIN, FWHMMAX+FWHMSTEP, FWHMSTEP)
@@ -276,7 +276,7 @@ text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  transform=gca().transAxes, color='k')
 gcfm().window.setWindowTitle('peak FWHM ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
-
+'''
 # plot FWHM distributions in log space:
 logmin, logmax = log10(10), log10(FWHMMAX)
 nbins = 20
@@ -331,7 +331,7 @@ text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  transform=gca().transAxes, color='k')
 gcfm().window.setWindowTitle('peak times ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
-
+'''
 # plot peak height distribution:
 ticks = np.arange(HEIGHTMIN, HEIGHTMAX, HEIGHTTICKSTEP)
 bins = np.arange(HEIGHTMIN, HEIGHTMAX+HEIGHTSTEP, HEIGHTSTEP)
@@ -358,7 +358,7 @@ text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  transform=gca().transAxes, color='k')
 gcfm().window.setWindowTitle('peak amplitude ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
-
+'''
 # plot peak height distribution in log space:
 logmin, logmax = log10(2), log10(200)
 nbins = 20
@@ -487,7 +487,7 @@ xticks(ticks, ticklabels)
 yticks(ticks, ticklabels)
 #xticks(10**(np.arange(logmin, logmax+1.0, 1.0)))
 #yticks(10**(np.arange(logmin, logmax+1.0, 1.0)))
-titlestr = 'reliability ptc22.tr1.r08 ptc22.tr1.r10'
+titlestr = 'reliability scatter ptc22.tr1.r08 ptc22.tr1.r10'
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
@@ -521,7 +521,7 @@ text(0.98, 0.90, '$\mu$ = %.1e' % 10**(log10(nndesynchrels).mean()), # desynched
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-titlestr = 'reliability hist ptc22.tr1.r08 ptc22.tr1.r10'
+titlestr = 'reliability ptc22.tr1.r08 ptc22.tr1.r10'
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
