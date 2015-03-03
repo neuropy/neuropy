@@ -47,8 +47,7 @@ PLOTPSTH = False
 FWHMMIN, FWHMSTEP, FWHMTICKSTEP = 0, 10, 50
 TSMAX, TSSTEP = 5.5, 0.25
 HEIGHTMIN, HEIGHTMAX, HEIGHTSTEP, HEIGHTTICKSTEP = 0, 100, 5, 25
-SPARSTEP = 0.1
-#RELSTEP = 0.05
+NSPARSBINS = 15
 NRELBINS = 15
 LOGNULLREL = -4
 NULLREL = 10**LOGNULLREL
@@ -428,7 +427,7 @@ gcfm().window.setWindowTitle('sparseness scatter ptc22.tr1.r08 ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 # plot sparseness distributions:
-bins = np.arange(0, 1+SPARSTEP, SPARSTEP)
+bins = np.linspace(0, 1, NSPARSBINS)
 figure(figsize=figsize)
 n1 = hist(spars[1], bins=bins, histtype='step', color='r')[0] # synched
 n0 = hist(spars[0], bins=bins, histtype='step', color='b')[0] # desynched
