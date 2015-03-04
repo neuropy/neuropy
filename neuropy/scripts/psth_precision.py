@@ -210,7 +210,7 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
         # calculate reliability for all nids regardless of PSTH peaks:
         cs = n2count[nid] # 2D array of spike counts over time, one row per trial
         rhos, weights = core.pairwisecorr(cs, weight=WEIGHT, invalid='ignore')
-        # set rho to 0 for trial pairs with undefined rho (one or both trials with < 2 spikes):
+        # set rho to 0 for trial pairs with undefined rho (one or both trials with 0 spikes):
         nanis = np.isnan(rhos)
         rhos[nanis] = 0.0
         # for log plotting convenience, replace any mean rhos <= 0 with NULLREL
@@ -410,11 +410,15 @@ synchspars0 = [ filterdict(sparsrecsec[1], nid) for nid in nids0 ]
 synchspars1 = [ filterdict(sparsrecsec[2], nid) for nid in nids1 ]
 desynchspars1 = [ filterdict(sparsrecsec[3], nid) for nid in nids1 ]
 # combine all transitions into one plot:
-synchspars = synchspars0 + synchspars1
-desynchspars = desynchspars0 + desynchspars1
+synchspars = np.asarray(synchspars0 + synchspars1)
+desynchspars = np.asarray(desynchspars0 + desynchspars1)
 figure(figsize=figsize)
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
 plot(synchspars, desynchspars, 'o', mec='k', mfc='None')
+nbelowsparsyxline = (synchspars > desynchspars).sum()
+nabovesparsyxline = (desynchspars > synchspars).sum()
+fractionbelowsparsyxline = nbelowsparsyxline / (nbelowsparsyxline + nabovesparsyxline)
+print('fractionbelowsparsyxline: %g' % fractionbelowsparsyxline)
 xlabel('synchronized sparseness')
 ylabel('desynchronized sparseness')
 xlim(-0.02, 1)
@@ -467,11 +471,15 @@ synchrels0 = [ filterdict(relsrecsec[1], nid, NULLREL) for nid in nids0 ]
 synchrels1 = [ filterdict(relsrecsec[2], nid, NULLREL) for nid in nids1 ]
 desynchrels1 = [ filterdict(relsrecsec[3], nid, NULLREL) for nid in nids1 ]
 # combine all transitions into one plot:
-synchrels = synchrels0 + synchrels1
-desynchrels = desynchrels0 + desynchrels1
+synchrels = np.asarray(synchrels0 + synchrels1)
+desynchrels = np.asarray(desynchrels0 + desynchrels1)
 figure(figsize=figsize)
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
 plot(synchrels, desynchrels, 'o', mec='k', mfc='None')
+nbelowrelsyxline = (synchrels > desynchrels).sum()
+naboverelsyxline = (desynchrels > synchrels).sum()
+fractionbelowrelsyxline = nbelowrelsyxline / (nbelowrelsyxline + naboverelsyxline)
+print('fractionbelowrelsyxline: %f' % fractionbelowrelsyxline)
 xlabel('synchronized reliability')
 ylabel('desynchronized reliability')
 logmin, logmax = LOGNULLREL, 0
