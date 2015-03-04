@@ -193,6 +193,7 @@ heightsrecsec = [] # peak heights, for each recording section
 sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
 relsrecsec = [] # reliability values of cells with at least 1 peak, for each recording section
 fmts = ['b-', 'r-', 'r-', 'b-']
+nreplacedbynullrel = 0
 for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     psthparams = {} # params returned by get_psth_peaks of all nids in this recording section
     psthsfwhms = [] # fwhm values of all nids in this recording section
@@ -213,8 +214,11 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
         # set rho to 0 for trial pairs with undefined rho (one or both trials with 0 spikes):
         nanis = np.isnan(rhos)
         rhos[nanis] = 0.0
-        # for log plotting convenience, replace any mean rhos <= 0 with NULLREL
-        n2rel[nid] = max(np.mean(rhos), NULLREL)
+        # for log plotting convenience, replace any mean rhos < NULLREL with NULLREL
+        n2rel[nid] = np.mean(rhos)
+        if n2rel[nid] < NULLREL:
+            n2rel[nid] = NULLREL
+            nreplacedbynullrel += 1
         # run PSTH peak detection:
         psthparams[nid] = get_psth_peaks(t, psth, nid)
         if PLOTPSTH:
@@ -557,5 +561,9 @@ chi2, p = chisquare([ndesynchedpeaks, nsynchedpeaks])
 print('peak counts:')
 print('ndesynched=%d, nsynched=%d, chi2=%.3g, p=%.3g'
       % (ndesynchedpeaks, nsynchedpeaks, chi2, p))
+
+nrelsrecsec = sum([len(d) for d in relsrecsec])
+print('fraction replaced by NULLREL due to rel < NULLREL: %f'
+      % (nreplacedbynullrel/nrelsrecsec))
 
 pl.show()
