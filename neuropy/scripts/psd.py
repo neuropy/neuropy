@@ -20,8 +20,8 @@ F0, F1 = 0.2, 110 # Hz
 P0, P1 = None, None
 chanis = -1
 width, tres = 10, 5 # sec
-figsize = (4, 4)
-XSCALE = 'log'
+figsize = (3.5, 3.5)
+XSCALE = 'linear'
 
 if width == None: # window width
     width = LFPWIDTH # sec
