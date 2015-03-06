@@ -10,7 +10,7 @@ import pylab as pl
 from pylab import get_current_fig_manager as gcfm
 from matplotlib.collections import LineCollection
 
-from core import intround, issorted, iterable, lastcmd, split_tranges
+from core import intround, issorted, iterable, lastcmd, split_tranges, tolist
 import filter
 
 
