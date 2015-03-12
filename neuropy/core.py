@@ -3649,3 +3649,21 @@ def trimtranges(tranges, trange):
     trangei1 = tranges[:, 1].searchsorted(trange[1])
     tranges = tranges[trangei0:trangei1]
     return tranges
+
+def scatterbin(x, y, xedges, average=np.mean):
+    """Given x and y used in a scatter plot, and xedges to bin the x values, return average x
+    and y in each bin, and the stdev of y in each bin. Useful for plotting a scatter plot
+    trendline with vertical error bars"""
+    sortis = np.argsort(x) # return a sorted copy
+    sortx = x[sortis]
+    sorty = y[sortis]
+    xis = sortx.searchsorted(xedges)
+    xavgs, yavgs, ystds = [], [], []
+    for xi0, xi1 in zip(xis[:-1], xis[1:]): # iterate over x bins
+        if xi0 == xi1: # no points in this bin
+            continue
+        xavgs.append(average(sortx[xi0:xi1])) # average x of points in this x bin
+        yslice = sorty[xi0:xi1] # y values in this x bin
+        yavgs.append(average(yslice)) # average y of points in this x bin
+        ystds.append(yslice.std()) # std of points in this x bin
+    return xavgs, yavgs, ystds
