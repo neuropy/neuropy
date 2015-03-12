@@ -376,9 +376,10 @@ class LFP(object):
            lfpwidth=None, lfptres=None, lowband=None, highband=None, plot=True,
            showxlabel=True, showylabel=True, showtitle=True, showtext=True,
            figsize=(20, 3.5), swapaxes=False):
-        """Calculate an LFP synchrony index, using potentially overlapping windows of
-        width and tres, in sec, from the LFP spectrogram, itself composed of bins of
-        lfpwidth and lfptres. Options for kind are:
+        """Calculate an LFP synchrony index, using potentially overlapping windows of width
+        and tres, in sec, from the LFP spectrogram, itself composed of bins of lfpwidth and
+        lfptres. Note that for power ratio methods (kind: L/(L+H) or L/H), width and tres are
+        not used, only lfpwidth and lfptres. Options for kind are:
 
         'L/(L+H)': fraction of power in low band vs total power (Saleem2010)
 
@@ -456,7 +457,7 @@ class LFP(object):
         else:
             # potentially overlapping bin time ranges:
             trange = Pt[0], Pt[-1]
-            tranges = split_tranges([trange], width, tres) # in us
+            tranges = split_tranges([trange], width, tres) # in sec
             ntranges = len(tranges)
             tis = Pt.searchsorted(tranges) # ntranges x 2 array
             # number of timepoints to use for each trange, almost all will be the same width:
