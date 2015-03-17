@@ -3643,12 +3643,11 @@ def sparseness(x):
     return (1 - (x.sum()/n)**2 / np.sum((x**2)/n)) / (1 - 1/n)
 
 def trimtranges(tranges, trange):
-    """Trim array of time ranges `tranges` to only those that fall entirely within `trange`"""
+    """Trim array of time ranges `tranges` to only those that fall entirely within `trange`.
+    Don't assume that tranges are sorted"""
     assert len(trange) == 2
-    trangei0 = tranges[:, 0].searchsorted(trange[0])
-    trangei1 = tranges[:, 1].searchsorted(trange[1])
-    tranges = tranges[trangei0:trangei1]
-    return tranges
+    rowis = (trange[0] <= tranges[:, 0]) * (tranges[:, 1] <= trange[1])
+    return tranges[rowis]
 
 def scatterbin(x, y, xedges, average=np.mean):
     """Given x and y used in a scatter plot, and xedges to bin the x values, return average x
