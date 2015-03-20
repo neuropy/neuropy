@@ -18,7 +18,7 @@ import matplotlib as mpl
 from pylab import get_current_fig_manager as gcfm
 
 import core
-from core import rstrip, getargstr, iterable, toiter, tolist, intround
+from core import rstrip, getargstr, iterable, toiter, tolist, intround, trimtranges
 from core import mean_accum, lastcmd, RevCorrWindow
 from core import PTCSNeuronRecord, SPKNeuronRecord
 from dimstimskeletal import Movie
@@ -767,7 +767,7 @@ class NeuronRevCorr(object):
 
 class Tune(object):
     """Stimulus tuning analysis object"""
-    def __init__(self, neuron=None, experiment=None, tdelay=None):
+    def __init__(self, neuron=None, experiment=None, tdelay=None, strange=None):
         """tdelay: time delay in us to use between stimulus and response"""
         self.neuron = neuron
         self.experiment = experiment
@@ -786,6 +786,13 @@ class Tune(object):
         # array of spike counts, one for each trange.
         self.counts = {} # index into using sweepi
         for sweepi, tranges in experiment.sweeptranges.items():
+            if strange != None:
+                # keep just those trials that fall entirely with strange:
+                oldntrials = len(tranges)
+                tranges = trimtranges(tranges, strange)
+                ntrials = len(tranges)
+                print('sweepi %d ntrials: %d --> %d after applying strange: %s'
+                      % (sweepi, oldntrials, ntrials, np.asarray(strange)))
             spikeis = spikes.searchsorted(tranges+tdelay) # include delay
             self.counts[sweepi] = np.diff(spikeis, axis=1).flatten()
         self.var = None # init
@@ -929,10 +936,10 @@ class Tune(object):
 
 class NeuronTune(object):
     """Mix-in class that defines stimulus tuning analysis method"""
-    def tune(self, eid=0, tdelay=None):
+    def tune(self, eid=0, tdelay=None, strange=None):
         """Return stimulus tuning analysis object"""
         experiment = self.sort.r.e[eid] # get experiment from parent recording
-        tuneo = Tune(self, experiment, tdelay)
+        tuneo = Tune(self, experiment, tdelay, strange)
         tuneo.calc()
         return tuneo
 

@@ -1616,7 +1616,7 @@ class RecordingRaster(BaseRecording):
         return t, lfptrials
 
     def tune(self, nids='all', alpha=0.01, eid=0, var='ori', fixed=None,
-             tdelay=None, plot=True):
+             tdelay=None, strange=None, plot=True):
         """Plot tuning curves for given neurons, based on stimulus info in experiment eid.
         alpha significance threshold only applied when var='ori'"""
         if nids == None:
@@ -1630,7 +1630,7 @@ class RecordingRaster(BaseRecording):
         tunes = []
         for nid in nids:
             n = self.alln[nid]
-            tune = n.tune(eid=eid, tdelay=tdelay)
+            tune = n.tune(eid=eid, tdelay=tdelay, strange=strange)
             #in ['ori', 'phase0']: # test circular variables for significance
             if var == 'ori':
                 theta, r, z, p = tune.pref(var=var, fixed=fixed)
