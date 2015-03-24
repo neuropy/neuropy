@@ -788,11 +788,11 @@ class Tune(object):
         for sweepi, tranges in experiment.sweeptranges.items():
             if strange != None:
                 # keep just those trials that fall entirely with strange:
-                oldntrials = len(tranges)
+                #oldntrials = len(tranges)
                 tranges = trimtranges(tranges, strange)
-                ntrials = len(tranges)
-                print('sweepi %d ntrials: %d --> %d after applying strange: %s'
-                      % (sweepi, oldntrials, ntrials, np.asarray(strange)))
+                #ntrials = len(tranges)
+                #print('sweepi %d ntrials: %d --> %d after applying strange: %s'
+                #      % (sweepi, oldntrials, ntrials, np.asarray(strange)))
             spikeis = spikes.searchsorted(tranges+tdelay) # include delay
             self.counts[sweepi] = np.diff(spikeis, axis=1).flatten()
         self.var = None # init
