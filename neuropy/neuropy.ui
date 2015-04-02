@@ -100,6 +100,7 @@
    <addaction name="separator"/>
    <addaction name="action_ptc15_tr7c"/>
    <addaction name="action_ptc18_tr1"/>
+   <addaction name="action_ptc18_tr2c"/>
    <addaction name="action_ptc22_tr1"/>
    <addaction name="action_ptc22_tr2"/>
    <addaction name="separator"/>
@@ -266,6 +267,14 @@
    </property>
    <property name="toolTip">
     <string>ptc20</string>
+   </property>
+  </action>
+  <action name="action_ptc18_tr2c">
+   <property name="text">
+    <string>ptc18.tr2c</string>
+   </property>
+   <property name="toolTip">
+    <string>ptc18.tr2c</string>
    </property>
   </action>
  </widget>
