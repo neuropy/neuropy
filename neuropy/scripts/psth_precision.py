@@ -17,7 +17,9 @@ from numpy import log10
 from core import argfwhm, get_ssnids, sparseness, intround, ceilsigfig
 
 # mapping of recording to list of desynched and synched trange, in that order:
-rec2tranges = {ptc22.tr1.r08:  [(0, 1500e6), # desynched trange
+rec2tranges = {ptc18.tr2c.r58: [(0, 750e6), # desynched trange
+                                (1000e6, np.inf)], # synched trange
+               ptc22.tr1.r08:  [(0, 1500e6), # desynched trange
                                 (1550e6, np.inf)], # synched trange
                ptc22.tr1.r10:  [(1480e6, np.inf), # desynched trange
                                 (0, 1400e6)], # synched trange
