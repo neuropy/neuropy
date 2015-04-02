@@ -333,58 +333,6 @@ text(0.98, 0.90, '$\mu$ = %.1f ms' % ts[0].mean(), # desynched
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('peak times ptc22.tr1.r08 ptc22.tr1.r10')
-tight_layout(pad=0.3)
-
-# plot PSTH peak time distributions for just the 1st movie:
-figure(figsize=figsize)
-n0 = hist(tsrecsec[1], bins=bins, color='r')[0] # synched
-n1 = hist(tsrecsec[0], bins=bins, color='b')[0] # desynched
-n = np.hstack([n0, n1])
-xlim(xmin=0, xmax=TSMAX)
-ylim(ymax=n.max()) # effectively normalizes the histogram
-#xticks(ticks)
-xlabel('PSTH peak times (sec)')
-ylabel('PSTH peak count')
-#t, p = ttest_ind(fwhms[0], fwhms[1], equal_var=False) # Welch's T-test
-u, p = mannwhitneyu(tsrecsec[0], tsrecsec[1]) # 1-sided
-# display means and p value:
-text(0.98, 0.98, '$\mu$ = %.1f ms' % tsrecsec[1].mean(), # synched
-                 horizontalalignment='right', verticalalignment='top',
-                 transform=gca().transAxes, color='r')
-text(0.98, 0.90, '$\mu$ = %.1f ms' % tsrecsec[0].mean(), # desynched
-                 horizontalalignment='right', verticalalignment='top',
-                 transform=gca().transAxes, color='b')
-text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
-                 horizontalalignment='right', verticalalignment='top',
-                 transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('peak times ptc22.tr1.r08')
-tight_layout(pad=0.3)
-
-# plot PSTH peak time distributions for just the 2nd movie:
-bins = np.arange(0, TSMAX+TSSTEP, TSSTEP)
-figure(figsize=figsize)
-n1 = hist(tsrecsec[2], bins=bins, color='r')[0] # synched
-n0 = hist(tsrecsec[3], bins=bins, color='b')[0] # synched
-n = np.hstack([n0, n1])
-xlim(xmin=0, xmax=TSMAX)
-ylim(ymax=n.max()) # effectively normalizes the histogram
-#xticks(ticks)
-xlabel('PSTH peak times (sec)')
-ylabel('PSTH peak count')
-#t, p = ttest_ind(fwhms[0], fwhms[1], equal_var=False) # Welch's T-test
-u, p = mannwhitneyu(tsrecsec[2], tsrecsec[3]) # 1-sided
-# display means and p value:
-text(0.98, 0.98, '$\mu$ = %.1f ms' % tsrecsec[2].mean(), # synched
-                 horizontalalignment='right', verticalalignment='top',
-                 transform=gca().transAxes, color='r')
-text(0.98, 0.90, '$\mu$ = %.1f ms' % tsrecsec[3].mean(), # desynched
-                 horizontalalignment='right', verticalalignment='top',
-                 transform=gca().transAxes, color='b')
-text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
-                 horizontalalignment='right', verticalalignment='top',
-                 transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('peak times ptc22.tr1.r10')
 tight_layout(pad=0.3)
 
 '''
