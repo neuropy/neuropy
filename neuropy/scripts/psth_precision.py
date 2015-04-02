@@ -1,6 +1,6 @@
 """Detect response events within PSTHs, count them, measure the FWHM of each one, and plot
-their distributions as a function of cortical state within each of the 2 natural scene movies
-in ptc22.tr1.
+their distributions as a function of cortical state within each of the natural scene movie
+recordings listed below.
 
 Also, measure trial raster plot reliability as a function of cortical state, by taking all
 pairwise correlations between all trials for a given neuron, and then averaging them to get a
@@ -16,16 +16,16 @@ from numpy import log10
 
 from core import argfwhm, get_ssnids, sparseness, intround, ceilsigfig
 
-# copied from psthcorr.py:
-ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
-strangesr08s = [(0, 1500e6), # r08 desynched, us
-                (1550e6, np.inf)] # r08 synched, us, end is ~ 2300s
-ptc22tr1r10s = [ptc22.tr1.r10, ptc22.tr1.r10]
-strangesr10s = [(0, 1400e6), # r10 synched, us
-                (1480e6, np.inf)] # r10 desynched, us, end is ~ 2300s
-
-recs = ptc22tr1r08s + ptc22tr1r10s
-stranges = strangesr08s + strangesr10s
+# mapping of recording to list of desynched and synched trange, in that order:
+rec2tranges = {ptc22.tr1.r08:  [(0, 1500e6), # desynched trange
+                                (1550e6, np.inf)], # synched trange
+               ptc22.tr1.r10:  [(1480e6, np.inf), # desynched trange
+                                (0, 1400e6)], # synched trange
+              }
+# compare and sort recordings by their absname:
+reccmp = lambda reca, recb: cmp(reca.absname, recb.absname)
+urecs = sorted(rec2tranges, cmp=reccmp) # unique recordings, no repetition
+urecnames = ' '.join([rec.absname for rec in urecs])
 
 EPS = np.spacing(1) # epsilon, smallest representable non-zero number
 
@@ -180,10 +180,22 @@ def get_psth_peaks(t, psth, nid):
     return t, psth, thresh, baseline, peakis, lis, ris
 
 
-# get active or all neuron ids for each section of both r08 and r10:
-ssnids, recsecnids = get_ssnids(recs, stranges, kind=NIDSKIND)
+# build corresponding lists of recs and stranges, even entries are desynched, odd are synched:
+recs, stranges = [], [] # recs has repetitions, not unique
+for rec in urecs: # iterate over sorted unique recs
+    tranges = rec2tranges[rec]
+    for trange in tranges:
+        recs.append(rec)
+        stranges.append(trange)
+nrecsec = len(recs)
+assert nrecsec == len(stranges)
+assert nrecsec % 2 == 0 # should always be an even number of recording sections
+fmts = ['b-', 'r-'] * (nrecsec // 2) # alternating plotting formats for desynched and synched
 
-# calculate PSTHs for both sections of both recordings, collect data from each PSTH with at
+# get active or all neuron ids for each section of each recording:
+recsecnids = get_ssnids(recs, stranges, kind=NIDSKIND)[1]
+
+# calculate PSTHs for all sections of all recordings, collect data from each PSTH with at
 # least 1 detected peak:
 psthss = []
 psthparamsrecsec = [] # params returned for each PSTH, for each recording section
@@ -192,7 +204,6 @@ tsrecsec = [] # peak times, for each recording section
 heightsrecsec = [] # peak heights, for each recording section
 sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
 relsrecsec = [] # reliability values of cells with at least 1 peak, for each recording section
-fmts = ['b-', 'r-', 'r-', 'b-']
 nreplacedbynullrel = 0
 for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     psthparams = {} # params returned by get_psth_peaks of all nids in this recording section
@@ -239,20 +250,22 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     relsrecsec.append(n2rel)
     print('\n') # two newlines
 
-fwhms = [np.hstack([fwhmsrecsec[0], fwhmsrecsec[3]]), # desynched
-         np.hstack([fwhmsrecsec[1], fwhmsrecsec[2]])] # synched
+# 0: desynched, 1: synched
+fwhms = [np.hstack(fwhmsrecsec[0::2]), # even are desynched
+         np.hstack(fwhmsrecsec[1::2])] # odd are synched
 
-ts = [np.hstack([tsrecsec[0], tsrecsec[3]]), # desynched
-      np.hstack([tsrecsec[1], tsrecsec[2]])] # synched
+ts = [np.hstack(tsrecsec[0::2]),
+      np.hstack(tsrecsec[1::2])]
 
-heights = [np.hstack([heightsrecsec[0], heightsrecsec[3]]), # desynched
-           np.hstack([heightsrecsec[1], heightsrecsec[2]])] # synched
+heights = [np.hstack(heightsrecsec[0::2]),
+           np.hstack(heightsrecsec[1::2])]
 
-spars = [np.hstack([sparsrecsec[0].values(), sparsrecsec[3].values()]), # desynched
-         np.hstack([sparsrecsec[1].values(), sparsrecsec[2].values()])] # synched
+spars = [np.hstack([ sparsrecsec[i].values() for i in range(0, nrecsec, 2) ]),
+         np.hstack([ sparsrecsec[i].values() for i in range(1, nrecsec, 2) ])]
 
-rels = [np.hstack([relsrecsec[0].values(), relsrecsec[3].values()]), # desynched
-        np.hstack([relsrecsec[1].values(), relsrecsec[2].values()])] # synched
+rels = [np.hstack([ relsrecsec[i].values() for i in range(0, nrecsec, 2) ]),
+        np.hstack([ relsrecsec[i].values() for i in range(1, nrecsec, 2) ])]
+
 '''
 # plot FWHM distributions:
 ticks = np.arange(FWHMMIN, FWHMMAX, FWHMTICKSTEP)
@@ -278,9 +291,11 @@ text(0.98, 0.90, '$\mu$ = %.1f ms' % fwhms[0].mean(), # desynched
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('peak FWHM ptc22.tr1.r08 ptc22.tr1.r10')
+titlestr = 'peak FWHM %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 '''
+
 # plot FWHM distributions in log space:
 logmin, logmax = log10(10), log10(FWHMMAX)
 nbins = 20
@@ -307,7 +322,8 @@ text(0.98, 0.90, '$\mu$ = %.1f ms' % 10**(log10(fwhms[0]).mean()), # desynched
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('peak FWHM log ptc22.tr1.r08 ptc22.tr1.r10')
+titlestr = 'peak FWHM log %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
 # plot PSTH peak time distributions:
@@ -333,6 +349,8 @@ text(0.98, 0.90, '$\mu$ = %.1f ms' % ts[0].mean(), # desynched
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
+titlestr = 'peak times %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
 '''
@@ -360,9 +378,11 @@ text(0.98, 0.90, '$\mu$ = %.1f Hz' % heights[0].mean(), # desynched
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('peak amplitude ptc22.tr1.r08 ptc22.tr1.r10')
+titlestr = 'peak amplitude %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 '''
+
 # plot peak height distribution in log space:
 logmin, logmax = log10(2), log10(200)
 nbins = 20
@@ -389,7 +409,8 @@ text(0.98, 0.90, '$\mu$ = %.1f Hz' % 10**(log10(heights[0]).mean()), # desynched
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('peak amplitude log ptc22.tr1.r08 ptc22.tr1.r10')
+titlestr = 'peak amplitude log %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
 
@@ -399,30 +420,28 @@ def filterdict(d, key, fallback=0):
     except KeyError:
         return fallback
 
-# nids with at least one peak during at least one state on either side of 1st transition:
-nids0 = np.union1d(sorted(sparsrecsec[0]), sorted(sparsrecsec[1]))
-# nids with at least one peak during at least one state on either side of 2nd transition:
-nids1 = np.union1d(sorted(sparsrecsec[2]), sorted(sparsrecsec[3]))
-
-# scatter plot sparseness in neighbouring synched vs desynched periods.
+# Scatter plot sparseness in neighbouring synched vs desynched periods.
 # Missing values (nids active in one neighbouring period but not the other)
-# are assigned a sparseness of 0 to indicate they're missing:
-# 1st transition: desynched to synched
-desynchspars0 = [ filterdict(sparsrecsec[0], nid) for nid in nids0 ]
-synchspars0 = [ filterdict(sparsrecsec[1], nid) for nid in nids0 ]
-# 2nd transition: synched to desynched
-synchspars1 = [ filterdict(sparsrecsec[2], nid) for nid in nids1 ]
-desynchspars1 = [ filterdict(sparsrecsec[3], nid) for nid in nids1 ]
-# combine all transitions into one plot:
-synchspars = np.asarray(synchspars0 + synchspars1)
-desynchspars = np.asarray(desynchspars0 + desynchspars1)
+# are assigned a sparseness of 0 to indicate they're missing.
+# Get supersets of nids, one set per state transition, with each nid having at least one peak
+# during at least one state on either side of the transition:
+scatnids = [ np.union1d(list(sparsrecsec[recseci]), list(sparsrecsec[recseci+1]))
+             for recseci in range(0, nrecsec, 2) ]
+ntrans = len(scatnids) # number of state transitions
+assert ntrans == nrecsec / 2 # should be half as many transitions as recording sections
+scatspars = [[], []]
+for trani in range(ntrans):
+    nids = scatnids[trani] # superset of nids for this state transition
+    for nid in nids:
+        scatspars[0].append(filterdict(sparsrecsec[2*trani], nid)) # desynched
+        scatspars[1].append(filterdict(sparsrecsec[2*trani+1], nid)) # synched
+scatspars = np.asarray(scatspars)
 figure(figsize=figsize)
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
-plot(synchspars, desynchspars, 'o', mec='k', mfc='None')
-nbelowsparsyxline = (synchspars > desynchspars).sum()
-nabovesparsyxline = (desynchspars > synchspars).sum()
+plot(scatspars[1], scatspars[0], 'o', mec='k', mfc='None')
+nbelowsparsyxline = (scatspars[1] > scatspars[0]).sum()
+nabovesparsyxline = (scatspars[0] > scatspars[1]).sum()
 fractionbelowsparsyxline = nbelowsparsyxline / (nbelowsparsyxline + nabovesparsyxline)
-print('fractionbelowsparsyxline: %g' % fractionbelowsparsyxline)
 xlabel('synchronized sparseness')
 ylabel('desynchronized sparseness')
 xlim(-0.02, 1)
@@ -430,7 +449,8 @@ ylim(-0.02, 1)
 sparsticks = (np.arange(0, 1+0.2, 0.2), ['0', '0.2', '0.4', '0.6', '0.8', '1'])
 xticks(*sparsticks)
 yticks(*sparsticks)
-gcfm().window.setWindowTitle('sparseness scatter ptc22.tr1.r08 ptc22.tr1.r10')
+titlestr = 'sparseness scatter %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
 # plot sparseness distributions:
@@ -456,34 +476,32 @@ text(0.98, 0.90, '$\mu$ = %.2f' % spars[0].mean(), # desynched
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('sparseness ptc22.tr1.r08 ptc22.tr1.r10')
+titlestr = 'sparseness %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
-
-# nids active in at least one state on either side of 1st transition:
-nids0 = np.union1d(sorted(relsrecsec[0]), sorted(relsrecsec[1]))
-# nids active in at least one state on either side of 2nd transition:
-nids1 = np.union1d(sorted(relsrecsec[2]), sorted(relsrecsec[3]))
-
-# scatter plot reliability in neighbouring synched vs desynched periods.
+# Scatter plot reliability in neighbouring synched vs desynched periods.
 # Missing values (nids active in one neighbouring period but not the other)
-# are assigned a reliability of NULLREL to indicate they're missing:
-# 1st transition: desynched to synched
-desynchrels0 = [ filterdict(relsrecsec[0], nid, NULLREL) for nid in nids0 ]
-synchrels0 = [ filterdict(relsrecsec[1], nid, NULLREL) for nid in nids0 ]
-# 2nd transition: synched to desynched
-synchrels1 = [ filterdict(relsrecsec[2], nid, NULLREL) for nid in nids1 ]
-desynchrels1 = [ filterdict(relsrecsec[3], nid, NULLREL) for nid in nids1 ]
-# combine all transitions into one plot:
-synchrels = np.asarray(synchrels0 + synchrels1)
-desynchrels = np.asarray(desynchrels0 + desynchrels1)
+# are assigned a reliability of NULLREL to indicate they're missing.
+# Get supersets of nids, one set per state transition, with each nid having at least one peak
+# during at least one state on either side of the transition:
+scatnids = [ np.union1d(list(relsrecsec[recseci]), list(relsrecsec[recseci+1]))
+             for recseci in range(0, nrecsec, 2) ]
+ntrans = len(scatnids) # number of state transitions
+assert ntrans == nrecsec / 2 # should be half as many transitions as recording sections
+scatrels = [[], []]
+for trani in range(ntrans):
+    nids = scatnids[trani] # superset of nids for this state transition
+    for nid in nids:
+        scatrels[0].append(filterdict(relsrecsec[2*trani], nid, NULLREL)) # desynched
+        scatrels[1].append(filterdict(relsrecsec[2*trani+1], nid, NULLREL)) # synched
+scatrels = np.asarray(scatrels)
 figure(figsize=figsize)
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
-plot(synchrels, desynchrels, 'o', mec='k', mfc='None')
-nbelowrelsyxline = (synchrels > desynchrels).sum()
-naboverelsyxline = (desynchrels > synchrels).sum()
+plot(scatrels[1], scatrels[0], 'o', mec='k', mfc='None')
+nbelowrelsyxline = (scatrels[1] > scatrels[0]).sum()
+naboverelsyxline = (scatrels[0] > scatrels[1]).sum()
 fractionbelowrelsyxline = nbelowrelsyxline / (nbelowrelsyxline + naboverelsyxline)
-print('fractionbelowrelsyxline: %f' % fractionbelowrelsyxline)
 xlabel('synchronized reliability')
 ylabel('desynchronized reliability')
 logmin, logmax = LOGNULLREL, 0
@@ -499,7 +517,7 @@ xticks(ticks, ticklabels)
 yticks(ticks, ticklabels)
 #xticks(10**(np.arange(logmin, logmax+1.0, 1.0)))
 #yticks(10**(np.arange(logmin, logmax+1.0, 1.0)))
-titlestr = 'reliability scatter ptc22.tr1.r08 ptc22.tr1.r10'
+titlestr = 'reliability scatter %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
@@ -533,14 +551,20 @@ text(0.98, 0.90, '$\mu$ = %.1e' % 10**(log10(nndesynchrels).mean()), # desynched
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-titlestr = 'reliability ptc22.tr1.r08 ptc22.tr1.r10'
+titlestr = 'reliability %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
+# report recordings:
+print('recordings: %s' % urecnames)
+
+# report scatter fractions:
+print('fractionbelowsparsyxline: %g' % fractionbelowsparsyxline)
+print('fractionbelowrelsyxline: %f' % fractionbelowrelsyxline)
 
 # report numbers of all and active PSTHs
 for kind in ['all', 'active']:
-    tempssnids, temprecsecnids = get_ssnids(recs, stranges, kind=kind)
+    temprecsecnids = get_ssnids(recs, stranges, kind=kind)[1]
     npsths = sum(nids.shape[0] for nids in temprecsecnids) # number that met NIDSKIND criterion
     print('%s: npsths=%d' % (kind, npsths))
 
