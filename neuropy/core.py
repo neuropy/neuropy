@@ -3501,13 +3501,15 @@ def parse_source(source):
 
 def get_ssnids(recs, stranges=None, kind='active'):
     """Return superset (and sets) of IDs of active or all (at least 1 spike) neurons of all
-    recordings in recs (all from the same track). Potentially constrict to spike tranges
-    only"""
-    recsecnids = [] # holds arrays of  nids of each recording section
+    recordings in recs. Superset is non-None only if all recordings are from the same track.
+    Potentially constrict to spike tranges only"""
+    recsecnids = [] # holds arrays of nids of each recording section
+    # check if they're all from the same track:
+    sametrack = True
     track = recs[0].tr
-    # make sure they're all from the same track:
-    for rec in recs:
-        assert rec.tr == track
+    for rec in recs[1:]:
+        if rec.tr != track:
+            sametrack = False
     if stranges == None:
         stranges = [None]*len(recs)
     # collect nids for each spike trange:
@@ -3517,7 +3519,9 @@ def get_ssnids(recs, stranges=None, kind='active'):
         else:
             tranges = [np.asarray(strange)]
         recsecnids.append(rec.get_nids(tranges=tranges, kind=kind))
-    ssnids = np.unique(np.hstack(recsecnids)) # superset of nids from rec sections
+    ssnids = None
+    if sametrack:
+        ssnids = np.unique(np.hstack(recsecnids)) # superset of nids from rec sections
     return ssnids, recsecnids
 
 def get_nids(recs, tracks, kind=None):
