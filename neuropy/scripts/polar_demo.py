@@ -20,7 +20,8 @@ from mpl_toolkits.axisartist.floating_axes import GridHelperCurveLinear, Floatin
 def fractional_polar_axes(f, thlim=(0, 180), rlim=(0, 1), step=(30, 0.2),
                           thlabel='theta', rlabel='r', ticklabels=True):
     """Return polar axes that adhere to desired theta (in deg) and r limits. steps for theta
-    and r are really just hints for the locators."""
+    and r are really just hints for the locators. Using negative values for rlim causes
+    problems for GridHelperCurveLinear for some reason"""
     th0, th1 = thlim # deg
     r0, r1 = rlim
     thstep, rstep = step
@@ -28,8 +29,8 @@ def fractional_polar_axes(f, thlim=(0, 180), rlim=(0, 1), step=(30, 0.2),
     # scale degrees to radians:
     tr_scale = Affine2D().scale(np.pi/180., 1.)
     tr = tr_scale + PolarAxes.PolarTransform()
-    theta_grid_locator = angle_helper.LocatorDMS((th1-th0)//thstep)
-    r_grid_locator = MaxNLocator((r1-r0)//rstep)
+    theta_grid_locator = angle_helper.LocatorDMS((th1-th0) // thstep)
+    r_grid_locator = MaxNLocator((r1-r0) // rstep)
     theta_tick_formatter = angle_helper.FormatterDMS()
     grid_helper = GridHelperCurveLinear(tr,
                                         extremes=(th0, th1, r0, r1),
@@ -94,7 +95,7 @@ if __name__ == '__main__':
     f1.show()
 
     f2 = plt.figure()
-    a2 = fractional_polar_axes(f2, thlim=(36, 135), rlim=(2,7), step=(15, 1))
+    a2 = fractional_polar_axes(f2, thlim=(36, 135), rlim=(2, 7), step=(15, 1))
     # example spiral plot:
     thstep = 10
     th = np.arange(36, 135+thstep, thstep) # deg
@@ -104,7 +105,7 @@ if __name__ == '__main__':
     f2.show()
 
     f3 = plt.figure()
-    a3 = fractional_polar_axes(f3, thlim=(36, 135), rlim=(2,7), step=(15, 1),
+    a3 = fractional_polar_axes(f3, thlim=(36, 135), rlim=(2, 7), step=(15, 1),
                                thlabel=None, rlabel=None, ticklabels=False)
     # example spiral plot:
     thstep = 10
@@ -113,3 +114,16 @@ if __name__ == '__main__':
     r = np.arange(2, 7+rstep, rstep)
     a3.plot(th, r, 'r')
     f3.show()
+    
+    '''
+    # using a -ve value in rlim crashes Python (segmentation fault):
+    f4 = plt.figure()
+    a4 = fractional_polar_axes(f4, rlim=(-1, 0))
+    # example spiral plot:
+    thstep = 10
+    th = np.arange(0, 180+thstep, thstep) # deg
+    rstep = 1/(len(th)-1)
+    r = np.arange(-1, 0+rstep, rstep)
+    a4.plot(th, r, 'b')
+    f4.show()
+    '''
