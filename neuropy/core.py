@@ -44,7 +44,8 @@ pyximport.install(build_in_temp=False, inplace=True)
 import util # .pyx file
 
 import filter
-from colour import CCWHITERGBDICT1
+from colour import CCWHITERGBDICT1, CCBLACKDICT0, CCBLACKDICT1
+
 
 TAB = '    ' # 4 spaces
 EPOCH = datetime.datetime(1899, 12, 30, 0, 0, 0) # epoch for datetime stamps in .ptcs
@@ -3670,3 +3671,123 @@ def scatterbin(x, y, xedges, average=np.mean):
         yavgs.append(average(yslice)) # average y of points in this x bin
         ystds.append(yslice.std()) # std of points in this x bin
     return xavgs, yavgs, ystds
+
+def plot_templates(this, chans='max', cindex='nidi'):
+    """Plot cell templates in their polytrode layout. `this` is either a Track or Recording.
+    chans can be 'max', 'nneigh', 'all'. cindex can be 'nidi' or 'nid', but best to colour
+    cells by nidi to maximize alternation."""
+    NNINCLRX = 1.5 # nearest neighbour inclusion radius multipler of minimal site spacing
+    HUMPERINCH = 80 # for setting figure size in inches
+    VUMPERINCH = 160 # for setting figure size in inches
+    USPERUM = 15
+    UVPERUM = 3
+    HBORDERUS = 50 # us, horizontal border around chans
+    VBORDERUV = 150 # uV, vertical border around plots
+    HBORDER = HBORDERUS / USPERUM
+    VBORDER = VBORDERUV / UVPERUM
+    BG = 'black'
+    SCALE = 500, 100 # scalebar size in (us, uV)
+    SCALE = SCALE[0]/USPERUM, SCALE[1]/UVPERUM # um
+    SCALEXOFFSET = 2 # um
+    SCALEYOFFSET = 4 # um
+
+    if chans not in ['max', 'nneigh', 'all',]:
+        raise ValueError('unknown chans arg %r' % chans)
+    if cindex == 'nidi':
+        ccdict = CCBLACKDICT0 # use nidi to maximize colour alternation
+    elif cindex == 'nid':
+        ccdict = CCBLACKDICT1 # use nid to have colours that correspond to those in spyke
+    else:
+        raise ValueError('unknown cindex arg %r' % cindex)
+
+    # for mpl, convert probe chanpos to center bottom origin instead of center top,
+    # i.e. invert the y values:
+    chanpos = this.sort.chanpos.copy()
+    maxy = chanpos[:, 1].max()
+    for chan, (x, y) in enumerate(chanpos):
+        chanpos[chan, 1] = maxy - y
+
+    if chans == 'nneigh': # generate dict of nearest neighbours indexed by maxchan
+        dm = eucd(chanpos) # distance matrix
+        minspace = dm[dm!=0].min()
+        rincl = minspace * NNINCLRX # inclusion radius
+        nneighs = {}
+        for maxchan, pos in enumerate(chanpos):
+            d = dm[maxchan]
+            nnchans = np.where(d < rincl)[0]
+            nneighs[maxchan] = nnchans
+
+    colxs = np.unique(chanpos[:, 0]) # unique column x positions, sorted
+    rowys = np.unique(chanpos[:, 1]) # unique row y positions, sorted
+    ncols = len(colxs)
+    nrows = len(rowys)
+    hspace = (colxs[-1]-colxs[0]) / (ncols-1)
+    vspace = (rowys[-1]-rowys[0]) / (nrows-1)
+
+    # setting figure size actually sets window size, including toolbar and statusbar
+    figwidth = (ncols*hspace + 2*HBORDER) / HUMPERINCH # inches
+    figheight = (nrows*vspace + 2*VBORDER) / VUMPERINCH # inches
+    dpi = mpl.rcParams['figure.dpi']
+    #figwidth = (ncols*hspace) / HUMPERINCH # inches
+    #figheight = (nrows*vspace) / VUMPERINCH # inches
+    figwidth = intround(figwidth * dpi) / dpi # inches, rounded to nearest pixel
+    figheight = intround(figheight * dpi) / dpi # inches, rounded to nearest pixel
+    figsize = figwidth, figheight
+    f = pl.figure(figsize=figsize, facecolor=BG, edgecolor=BG)
+    a = f.add_subplot(111)
+
+    # plot chan lines? maybe just the vertical lines?
+    #for pos in chanpos:
+
+    tres = this.sort.tres # time resolution, in us
+    nts = np.unique([ neuron.nt for neuron in this.alln.values() ])
+    if len(nts) != 1:
+        raise RuntimeError("Not all neuron templates have the same number of timepoints. "
+                           "That's probably bad.")
+    nt = nts[0]
+    ts = np.arange(0, neuron.nt*tres, tres) # time values in us
+
+    nids = sorted(this.alln)
+    for nidi, nid in enumerate(nids):
+        colour = ccdict[eval(cindex)]
+        neuron = this.alln[nid]
+        # ncs (neuron channels) should be 0-based channel IDs:
+        if chans == 'max':
+            ncs = [neuron.maxchan]
+        elif chans == 'nneigh':
+            ncs = nneighs[neuron.maxchan]
+        elif chans == 'all':
+            ncs = neuron.chans
+        # exclude channels of data within neigh that are missing from wavedata
+        ncs = [ nc for nc in ncs if nc in neuron.chans ]
+        # indices into neuron.chans, use to index into wavedata:
+        ncis = np.hstack([ np.where(neuron.chans == nc)[0] for nc in ncs ])
+        #import pdb; pdb.set_trace()
+        wavedata = neuron.wavedata[ncis]
+        # much less efficient, but much simpler than spyke code:
+        for c, wd in zip(ncs, wavedata):
+            x = chanpos[c, 0] + ts / USPERUM # um
+            y = chanpos[c, 1] + wd / UVPERUM # um
+            a.plot(x, y, ls='-', marker=None, lw=1, c=colour)
+
+    a.set_axis_bgcolor(BG)
+    a.set_xlabel('')
+    a.set_ylabel('')
+    a.xaxis.set_ticks([])
+    a.yaxis.set_ticks([]) # if displayed, y ticks would be distance from bottom chan
+
+    a.set_xlim(colxs[0]-HBORDER, colxs[-1]+nt*tres/USPERUM+HBORDER) # um
+    a.set_ylim(rowys[0]-VBORDER, rowys[-1]+VBORDER) # um
+
+    # add scale bars:
+    r, b = a.get_xlim()[1]-SCALEXOFFSET, a.get_ylim()[0]+SCALEYOFFSET # um
+    hbar = (r-SCALE[0], b), (r, b) # um
+    vbar = (r, b), (r, b+SCALE[1]) # um
+    scale = LineCollection([hbar, vbar], lw=1, colors='white', zorder=-1,
+                           antialiased=True, visible=True)
+    a.add_collection(scale) # add to axes' pool of LCs
+
+    f.tight_layout(pad=0)
+    #f.canvas.toolbar.hide()
+    #f.canvas.window().statusBar().hide()
+    f.canvas.set_window_title(lastcmd())

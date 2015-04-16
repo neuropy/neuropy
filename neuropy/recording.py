@@ -1068,6 +1068,13 @@ class BaseRecording(object):
         f.canvas.draw() # this is needed if a != None when passed as arg
         return a
 
+    def templates(self, chans='max', cindex='nidi'):
+        """Plot cell templates in their polytrode layout. chans can be 'max', 'nneigh', 'all'.
+        cindex can be 'nidi' or 'nid', but best to colour cells by nidi to maximize
+        alternation."""
+        core.plot_templates(self, chans=chans, cindex=cindex)
+
+
 
 class RecordingRevCorr(BaseRecording):
     """Mix-in class that defines reverse correlation related Recording methods"""
