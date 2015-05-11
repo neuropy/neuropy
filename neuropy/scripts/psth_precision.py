@@ -149,7 +149,7 @@ def get_psth_peaks(t, psth, nid):
     and run argfwhm on it, with outer kwarg - ie search from the outer edges in when looking
     for FWHM. If baseline is so high that it exceeds FWHM for that peak, discard the peak.
     t is passed only so that it can be conveniently returned for plotting"""
-    baseline = MEDIANX*np.median(psth)
+    baseline = MEDIANX * np.median(psth)
     thresh = baseline + MINTHRESH # peak detection threshold
     # indices of all baseline-exceeding points in psth:
     baselineis, = np.where(psth >= (baseline+EPS)) # add EPS because baseline is often 0
@@ -227,6 +227,7 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
                         binw=BINW, tres=TRES, norm='ntrials')
     psthss.append(psths)
     #figure(); #pl.plot(t, psths.T, '-')
+    # n2count is needed for calculating reliability:
     n2count = rec.bintraster(nids=nids, blank=BLANK, strange=strange,
                              binw=TRASTERBINW, tres=TRASTERTRES)[0]
     for nid, psth in zip(nids, psths):

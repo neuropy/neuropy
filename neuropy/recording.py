@@ -1153,7 +1153,7 @@ class RecordingRaster(BaseRecording):
 
     def trialtranges(self, sweepis=None, eids=None, natexps=False, t0=None, dt=None,
                      blank=True):
-        """Return array of trial time ranges, based kwarg options. Use designated sweep
+        """Return array of trial time ranges, based on kwarg options. Use designated sweep
         indices sweepis, based on stimulus info in experiments eids. natexps controls whether
         only natural scene movies are considered in ptc15 multiexperiment recordings. t0 and
         dt manually designate trial tranges. blank controls whether to include blank frames
@@ -1340,6 +1340,9 @@ class RecordingRaster(BaseRecording):
         if strange != None:
             # keep just those trials that fall entirely with strange:
             oldntrials = ntrials
+            ## TODO: make trimtranges also return the start and (inclusive?) end indices
+            ## of the trials its sliced out, for use in correctly labelling the vertical
+            ## trial axis in the trial raster plot
             ttranges = trimtranges(ttranges, strange)
             ntrials = len(ttranges)
             assert ntrials > 0 # if not, strange is too constrictive
@@ -1379,6 +1382,7 @@ class RecordingRaster(BaseRecording):
                 t = (spikes[si0:si1] - ttrange[0]) / 1e6
                 nspikes = len(t) # if nspikes == 0, append empty arrays to ts and trialis
                 ts.append(t) # x values for this trial
+                ## TODO: add offset to these for trials sliced out via strange:
                 trialis.append(np.tile(triali, nspikes)) # 0-based y values for this trial
             if len(ts) == 0: # no spikes for this neuron for this experiment
                 raise ValueError("n%d has no spikes, maybe due to use of eids or natexps or "
@@ -1545,8 +1549,6 @@ class RecordingRaster(BaseRecording):
         nids = sorted(n2ts)
         ntrials = len(n2ts[nids[0]]) # should be the same for all neurons
         n2totcount = { nid:len(n2ts[nid]) for nid in nids } # total spike count
-
-
         bins = core.split_tranges([(xmin, xmax)], binw, tres) # all in sec
         nbins = len(bins)
         n2count, n2totcount = {}, {}
@@ -1554,7 +1556,6 @@ class RecordingRaster(BaseRecording):
             count = np.zeros((ntrials, nbins), dtype=np.int64)
             totcount = np.zeros(ntrials, dtype=np.int64)
             ts = n2ts[nid]
-
             assert len(ts) == ntrials # should be the same for all neurons
             # don't think there's any way to avoid looping over each trial individually:
             for triali in range(ntrials):
