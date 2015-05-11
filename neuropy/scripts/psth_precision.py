@@ -35,7 +35,7 @@ NIDSKIND = 'all' # 'active' or 'all'
 
 BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
 TRASTERBINW, TRASTERTRES = 0.02, 0.005 # trial raster bins, sec
-BLANK = False # consider blank periods between trials for reliability measure?
+BLANK = False # consider blank periods between trials?
 WEIGHT = False # weight trials by spike count for reliability measure?
 # 2.5 Hz thresh is 1 spike in the same 20 ms wide bin every 20 trials, assuming 0 baseline:
 MINTHRESH = 3 # peak detection thresh, Hz
@@ -214,7 +214,7 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     psthsheights = [] # peak heights of all nids in this recording section
     n2sparseness = {} # nid:sparseness mapping for this recording section
     n2rel = {} # nid:reliability mapping for this recording section
-    t, psths = rec.psth(nids=nids, natexps=False, strange=strange, plot=False,
+    t, psths = rec.psth(nids=nids, natexps=False, blank=BLANK, strange=strange, plot=False,
                         binw=BINW, tres=TRES, norm='ntrials')
     psthss.append(psths)
     #figure(); #pl.plot(t, psths.T, '-')
