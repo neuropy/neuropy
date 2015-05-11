@@ -17,12 +17,18 @@ from numpy import log10
 from core import argfwhm, get_ssnids, sparseness, intround, ceilsigfig
 
 # mapping of recording to list of desynched and synched trange, in that order:
-rec2tranges = {ptc18.tr2c.r58: [(0, 750e6), # desynched trange
+rec2tranges = {ptc17.tr2b.r58: [(0, 700e6), # desynched trange, 66 Hz refresh rate
+                                (800e6, np.inf)], # synched trange, 66 Hz refresh rate
+               ptc18.tr1.r38:  [(0, 425e6), # desynched trange, ends ~ trial 76
+                                (550e6, np.inf)], # synched trange, starts ~ trial 98
+               ptc18.tr2c.r58: [(0, 750e6), # desynched trange
                                 (1000e6, np.inf)], # synched trange
                ptc22.tr1.r08:  [(0, 1500e6), # desynched trange
                                 (1550e6, np.inf)], # synched trange
                ptc22.tr1.r10:  [(1480e6, np.inf), # desynched trange
                                 (0, 1400e6)], # synched trange
+               ptc22.tr4b.r49: [(0, 1475e6), # desynched trange
+                                (1500e6, np.inf)], # synched trange
               }
 # compare and sort recordings by their absname:
 reccmp = lambda reca, recb: cmp(reca.absname, recb.absname)
@@ -307,7 +313,7 @@ n1 = hist(fwhms[1], bins=bins, color='r')[0] # synched
 n0 = hist(fwhms[0], bins=bins, color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=10**logmin, xmax=10**logmax)
-ylim(ymax=n.max()) # effectively normalizes the histogram
+ylim(ymax=n.max()+10) # effectively normalizes the histogram
 #xticks(ticks)
 xscale('log')
 xlabel('peak FWHM (ms)')
@@ -335,7 +341,7 @@ n1 = hist(ts[1], bins=bins, color='r')[0] # synched
 n0 = hist(ts[0], bins=bins, color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=0, xmax=TSMAX)
-ylim(ymax=n.max()) # effectively normalizes the histogram
+ylim(ymax=n.max()+10) # effectively normalizes the histogram
 #xticks(ticks)
 xlabel('PSTH peak times (sec)')
 ylabel('PSTH peak count')
@@ -364,7 +370,7 @@ n1 = hist(heights[1], bins=bins, color='r')[0] # synched
 n0 = hist(heights[0], bins=bins, color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=HEIGHTMIN, xmax=HEIGHTMAX)
-ylim(ymax=n.max()) # effectively normalizes the histogram
+ylim(ymax=n.max()+10) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('peak amplitude (Hz)')
 ylabel('PSTH peak count')
@@ -394,7 +400,7 @@ n1 = hist(heights[1], bins=bins, color='r')[0] # synched
 n0 = hist(heights[0], bins=bins, color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=10**0, xmax=10**logmax)
-ylim(ymax=n.max()) # effectively normalizes the histogram
+ylim(ymax=n.max()+10) # effectively normalizes the histogram
 #xticks(ticks)
 xscale('log')
 xlabel('peak amplitude (Hz)')
@@ -462,21 +468,21 @@ n1 = hist(spars[1], bins=bins, histtype='step', color='r')[0] # synched
 n0 = hist(spars[0], bins=bins, histtype='step', color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=0, xmax=1)
-ylim(ymax=20) # ylim(ymax=n.max()) # effectively normalizes the histogram
+ylim(ymax=35)
 xticks(*sparsticks)
 xlabel('sparseness')
 ylabel('cell count')
 #t, p = ttest_ind(spars[0], spars[1], equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(spars[0], spars[1]) # 1-sided
 # display means and p value:
-text(0.98, 0.98, '$\mu$ = %.2f' % spars[1].mean(), # synched
-                 horizontalalignment='right', verticalalignment='top',
+text(0.03, 0.98, '$\mu$ = %.2f' % spars[1].mean(), # synched
+                 horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.98, 0.90, '$\mu$ = %.2f' % spars[0].mean(), # desynched
-                 horizontalalignment='right', verticalalignment='top',
+text(0.03, 0.90, '$\mu$ = %.2f' % spars[0].mean(), # desynched
+                 horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
-                 horizontalalignment='right', verticalalignment='top',
+text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
+                 horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 titlestr = 'sparseness %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
@@ -535,7 +541,7 @@ n = np.hstack([n0, n1])
 #ylim(ymax=n.max()) # effectively normalizes the histogram
 xscale('log')
 xlim(bins[0], bins[-1])
-ylim(ymax=20)
+ylim(ymax=35)
 xticks(ticks, ticklabels)
 #xticks(np.arange(0, xmax, 0.2))
 #yticks(np.arange(0, 20, 5))
@@ -544,14 +550,14 @@ ylabel('cell count')
 #t, p = ttest_ind(rels[1], rels[0], equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(log10(nndesynchrels), log10(nnsynchrels)) # 1-sided
 # display geometric means and p value:
-text(0.98, 0.98, '$\mu$ = %.1e' % 10**(log10(nnsynchrels).mean()), # synched
-                 horizontalalignment='right', verticalalignment='top',
+text(0.03, 0.98, '$\mu$ = %.1e' % 10**(log10(nnsynchrels).mean()), # synched
+                 horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.98, 0.90, '$\mu$ = %.1e' % 10**(log10(nndesynchrels).mean()), # desynched
-                 horizontalalignment='right', verticalalignment='top',
+text(0.03, 0.90, '$\mu$ = %.1e' % 10**(log10(nndesynchrels).mean()), # desynched
+                 horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
-                 horizontalalignment='right', verticalalignment='top',
+text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
+                 horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 titlestr = 'reliability %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
