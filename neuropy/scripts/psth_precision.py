@@ -158,8 +158,11 @@ def get_psth_peaks(t, psth, nid):
     # other by at least one point below baseline:
     # indices into baselineis of breaks in baselineis, marking borders of contiguous ranges:
     splitis = np.where(np.diff(baselineis) > 1)[0] + 1
-    # list of arrays of indices, representing contiguous ranges of baseline-exceeding psth:
-    splitbaselineis = np.array_split(baselineis, splitis)
+    if len(splitis) == 0:
+        splitbaselineis = [] # this will cause nothing to happen in the for loop below
+    else:
+        # list of arrays of indices, representing contiguous ranges of baseline-exceeding psth:
+        splitbaselineis = np.array_split(baselineis, splitis)
     peakis, lis, ris = [], [], []
     print("n%d" % nid, end='')
     for baselineis in splitbaselineis: # for each contiguous baseline-exceeding range of points
