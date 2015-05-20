@@ -208,7 +208,7 @@ recsecnids = get_ssnids(recs, stranges, kind=NIDSKIND)[1]
 
 # calculate PSTHs for all sections of all recordings, collect data from each PSTH with at
 # least 1 detected peak:
-psthss = []
+psthss, spiketss = [], []
 psthparamsrecsec = [] # params returned for each PSTH, for each recording section
 fwhmsrecsec = [] # fwhm values, for each recording section
 tsrecsec = [] # peak times, for each recording section
@@ -223,14 +223,16 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     psthsheights = [] # peak heights of all nids in this recording section
     n2sparseness = {} # nid:sparseness mapping for this recording section
     n2rel = {} # nid:reliability mapping for this recording section
-    t, psths = rec.psth(nids=nids, natexps=False, blank=BLANK, strange=strange, plot=False,
-                        binw=BINW, tres=TRES, norm='ntrials')
+    # psths is a regular 2D array, spikets is a 2D ragged array (list of arrays):
+    t, psths, spikets = rec.psth(nids=nids, natexps=False, blank=BLANK, strange=strange,
+                                 plot=False, binw=BINW, tres=TRES, norm='ntrials')
     psthss.append(psths)
+    spiketss.append(spikets)
     #figure(); #pl.plot(t, psths.T, '-')
     # n2count is needed for calculating reliability:
     n2count = rec.bintraster(nids=nids, blank=BLANK, strange=strange,
                              binw=TRASTERBINW, tres=TRASTERTRES)[0]
-    for nid, psth in zip(nids, psths):
+    for nid, psth, ts in zip(nids, psths, spikets):
         # calculate reliability for all nids regardless of PSTH peaks:
         cs = n2count[nid] # 2D array of spike counts over time, one row per trial
         rhos, weights = core.pairwisecorr(cs, weight=WEIGHT, invalid='ignore')

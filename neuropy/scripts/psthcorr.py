@@ -53,8 +53,8 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
     nnss = len(ssnids)
     # note that using norm=True or norm='ntrials' doesn't seem to make a difference to the
     # results, probably doesn't matter for calculating corrs:
-    midbins, psths = rec.psth(nids=nids, natexps=natexps, strange=strange, plot=False,
-                              binw=0.02, tres=0.005, norm=True)
+    midbins, psths, spikets = rec.psth(nids=nids, natexps=natexps, strange=strange, plot=False,
+                                       binw=0.02, tres=0.005, norm=True)
     rho = np.corrcoef(psths) # defaults to bias=1
     rho[np.diag_indices(nn)] = np.nan # nan the diagonal, which imshow plots as white
     ssrho = np.zeros((nnss, nnss)) # superset rho matrix

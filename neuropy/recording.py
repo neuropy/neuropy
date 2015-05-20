@@ -1489,7 +1489,7 @@ class RecordingRaster(BaseRecording):
 
         bins = core.split_tranges([(xmin, xmax)], binw, tres) # all in sec
         midbins = bins.mean(axis=1)
-        psths = []
+        psths, spikets = [], []
         for nidi, nid in enumerate(nids):
             ts = n2ts[nid]
             assert len(ts) == ntrials # should be the same for all neurons
@@ -1505,9 +1505,10 @@ class RecordingRaster(BaseRecording):
                 # normalize by number of trials:
                 psth = psth / ntrials # ensure float division
             psths.append(psth) # save
+            spikets.append(ts) # ragged array of spike times collapsed over trials
 
         if plot == False:
-            return midbins, np.asarray(psths)
+            return midbins, np.asarray(psths), spikets
 
         for nidi, nid in enumerate(nids):
             if overlap and nidi > 0:
