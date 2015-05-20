@@ -16,6 +16,10 @@ from numpy import log10
 
 from core import argfwhm, get_ssnids, sparseness, intround, ceilsigfig
 
+spykepath = '/home/mspacek/dev/spyke/' # where spyke (http://spyke.github.io) is installed
+sys.path.append(spykepath)
+from spyke import gac
+
 # mapping of recording to list of desynched and synched trange, in that order:
 rec2tranges = {ptc17.tr2b.r58: [(0, 700e6), # desynched trange, 66 Hz refresh rate
                                 (800e6, np.inf)], # synched trange, 66 Hz refresh rate
@@ -140,9 +144,9 @@ def old_get_psth_peaks(t, psth, nid):
     ris = np.asarray(keepris)
 
     return t, psth, thresh, baseline, peakis, lis, ris
-'''
+
 # copied to psth_precision_inactive.py:
-def get_psth_peaks(t, psth, nid):
+def get_psth_peaks_simple(t, psth, nid):
     """Extract peaks from PSTH, simpler, faster, more robust method. Find contiguous ranges of
     baseline-exceeding points. Within each range, find the biggest value. If that value
     exceeds thresh, designate that as a peak. Slice out that baseline-exceeding range of data,
@@ -189,6 +193,47 @@ def get_psth_peaks(t, psth, nid):
         peakis, lis, ris = None, None, None
 
     return t, psth, thresh, baseline, peakis, lis, ris
+'''
+def get_psth_peaks_gac(ts, t, psth, thresh, sigma=0.02, alpha=1.0, minpoints=5,
+                       lowp=16, highp=84, checkthresh=True):
+    """Extract PSTH peaks from spike times ts collapsed across trials, by clustering them
+    using GAC. Then, optionally check each peak against its amplitude in the PSTH (and its
+    time stamps t), to ensure it passes thresh"""
+
+    ts2d = np.float32(ts[:, None]) # convert to 2D (one row per spike), contig float32
+    # get cluster IDs and positions corresponding to spikets:
+    cids, cpos = gac.gac(ts2d, sigma=sigma, alpha=alpha, minpoints=minpoints, returncpos=True)
+    ucids = np.unique(cids) # unique cluster IDs
+    ucids = ucids[ucids >= 0] # exclude junk cluster -1
+    #npeaks = len(ucids) # but not all of them will necessarily cross the PSTH threshold
+    peakis, lis, ris = [], [], []
+    for ucid, pos in zip(ucids, cpos):
+        spikeis, = np.where(cids == ucid)
+        cts = ts[spikeis] # this cluster's spike times
+        # search all spikes for argmax, same as using lowp=0 and highp=100:
+        #li, ri = t.searchsorted([cts[0], cts[-1]])
+        lt, rt = np.percentile(cts, [lowp, highp])
+        li, ri = t.searchsorted([lt, rt]) # search within percentiles for argmax
+        # indices of all local peaks within percentiles in psth
+        localpsth = psth[li:ri]
+        #allpeakiis, = argrelextrema(localpsth, np.greater)
+        #if len(allpeakiis) == 0:
+        #    continue # no peaks found for this cluster
+        # find peakii closest to pos:
+        #peakii = allpeakiis[abs((t[li + allpeakiis] - pos)).argmin()]
+        # find biggest peak:
+        #peakii = allpeakiis[localpsth[allpeakiis].argmax()]
+        peakii = localpsth.argmax() # find max point
+        if peakii == 0 or peakii == len(localpsth)-1:
+            continue # skip "peak" that's really just a start or end point of localpsth
+        peaki = li + peakii
+        if checkthresh and psth[peaki] < thresh:
+            continue # skip peak that doesn't meet thresh
+        peakis.append(peaki)
+        lis.append(li)
+        ris.append(ri)
+        print('.', end='') # indicate a peak has been found
+    return np.asarray(peakis), np.asarray(lis), np.asarray(ris)
 
 
 # build corresponding lists of recs and stranges, even entries are desynched, odd are synched:
@@ -217,7 +262,7 @@ sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each rec
 relsrecsec = [] # reliability values of cells with at least 1 peak, for each recording section
 nreplacedbynullrel = 0
 for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
-    psthparams = {} # params returned by get_psth_peaks of all nids in this recording section
+    psthparams = {} # various parameters for each PSTH
     psthsfwhms = [] # fwhm values of all nids in this recording section
     psthsts = [] # times of all peaks of all nids in this recording section
     psthsheights = [] # peak heights of all nids in this recording section
@@ -245,16 +290,22 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
             n2rel[nid] = NULLREL
             nreplacedbynullrel += 1
         # run PSTH peak detection:
-        psthparams[nid] = get_psth_peaks(t, psth, nid)
+        baseline = MEDIANX * np.median(psth)
+        thresh = baseline + MINTHRESH # peak detection threshold
+        print("n%d" % nid, end='')
+        peakis, lis, ris = get_psth_peaks_gac(ts, t, psth, thresh)
+        psthparams[nid] = t, psth, thresh, baseline, peakis, lis, ris
+        #psthparams[nid] = get_psth_peaks(t, psth, nid)
+        #t, psth, thresh, baseline, peakis, lis, ris = psthparams[nid] # unpack
         if PLOTPSTH:
             plot_psth(psthparams, nid, fmt)
-        t, psth, thresh, baseline, peakis, lis, ris = psthparams[nid] # unpack
-        if peakis == None:
+        if len(peakis) == 0:
             continue # this PSTH has no peaks, skip all subsequent measures
         fwhms = (ris - lis) * TRES * 1000 # ms
         psthsfwhms.append(fwhms)
         psthsts.append(peakis * TRES) # sec
         psthsheights.append(psth[peakis] - baseline) # peak height above baseline
+        #psthsheights.append(psth[peakis]) # peak height above 0
         n2sparseness[nid] = sparseness(psth)
     psthparamsrecsec.append(psthparams)
     fwhmsrecsec.append(np.hstack(psthsfwhms))
