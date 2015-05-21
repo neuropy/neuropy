@@ -67,7 +67,7 @@ NULLREL = 10**LOGNULLREL
 figsize = (3, 3) # inches
 
 # copied to psth_precision_inactive.py:
-def plot_psth(psthparams, nid, fmt='k-', ms=10):
+def plot_psth(psthparams, nid, fmt='k-', alpha=0.8, ms=6, mew=2):
     t, psth, thresh, baseline, peakis, lis, ris = psthparams[nid]
     figure(figsize=(24, 7))
     pl.plot(t, psth, fmt)
@@ -75,15 +75,16 @@ def plot_psth(psthparams, nid, fmt='k-', ms=10):
     axhline(y=thresh, c='r', ls='--')
     axhline(y=baseline, c='e', ls='--')
     # mark peaks and their edges:
-    if lis != None:
-        pl.plot(t[lis], psth[lis], 'co', ms=ms, mec='none') # left edges
-    if ris != None:
-        pl.plot(t[ris], psth[ris], 'bo', ms=ms, mec='none') # right edges
-    if peakis != None:
-        pl.plot(t[peakis], psth[peakis], 'ro', ms=ms, mec='none') # peaks
+    if len(lis) > 0:
+        pl.plot(t[lis], psth[lis], 'g+', alpha=alpha, ms=ms*1.5, mew=mew) # left edges
+    if len(ris) > 0:
+        pl.plot(t[ris-1], psth[ris-1], 'mx', alpha=alpha, ms=ms, mew=mew) # right edges
+    if len(peakis) > 0:
+        pl.plot(t[peakis], psth[peakis], 'ko', alpha=alpha, ms=ms, mec='none') # peaks
     xlim(xmax=t[-1])
     ylim(ymin=0)
-    gcfm().window.setWindowTitle('n%d, thresh=%g, baseline=%g' % (nid, thresh, baseline))
+    titlestr = 'n%d, thresh=%g, baseline=%g' % (nid, thresh, baseline)
+    gcfm().window.setWindowTitle(titlestr)
     gcf().tight_layout(pad=0.3) # crop figure to contents
 '''
 def old_get_psth_peaks(t, psth, nid):

@@ -1528,7 +1528,7 @@ class RecordingRaster(BaseRecording):
             a.set_xlim(xmin, xmax)
             a.set_xlabel("time (sec)")
             if ylabel:
-                if norm:
+                if norm == True:
                     a.set_ylabel("firing rate (AU)")
                     a.set_yticks([0, 1])
                 else:
