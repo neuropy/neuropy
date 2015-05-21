@@ -44,6 +44,7 @@ EPS = np.spacing(1) # epsilon, smallest representable non-zero number
 NIDSKIND = 'all' # 'active' or 'all'
 
 BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
+GAUSS = True # calculate PSTH by convolving collapsed spike train with Gaussian kernel?
 TRASTERBINW, TRASTERTRES = 0.02, 0.005 # trial raster bins, sec
 BLANK = False # consider blank periods between trials?
 WEIGHT = False # weight trials by spike count for reliability measure?
@@ -270,7 +271,7 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     n2rel = {} # nid:reliability mapping for this recording section
     # psths is a regular 2D array, spikets is a 2D ragged array (list of arrays):
     t, psths, spikets = rec.psth(nids=nids, natexps=False, blank=BLANK, strange=strange,
-                                 plot=False, binw=BINW, tres=TRES, norm='ntrials')
+                                 plot=False, binw=BINW, tres=TRES, gauss=GAUSS, norm='ntrials')
     psthss.append(psths)
     spiketss.append(spikets)
     #figure(); #pl.plot(t, psths.T, '-')
