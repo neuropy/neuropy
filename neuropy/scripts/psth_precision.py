@@ -1,4 +1,4 @@
-"""Detect response events within PSTHs, count them, measure the FWHM of each one, and plot
+"""Detect response events within PSTHs, count them, measure the width of each one, and plot
 their distributions as a function of cortical state within each of the natural scene movie
 recordings listed below.
 
@@ -52,12 +52,12 @@ WEIGHT = False # weight trials by spike count for reliability measure?
 MINTHRESH = 3 # peak detection thresh, Hz
 MEDIANX = 2 # PSTH median multiplier, Hz
 FWFRACTION = 0.5 # full width fraction of max
-FWHMMAX = 200 # maximum FWHM, ms
-FWHMMAXPOINTS = intround(FWHMMAX / 1000 / TRES) # maximum FWHM, number of PSTH timepoints
+WIDTHMAX = 200 # maximum peak width, ms
+#WIDTHMAXPOINTS = intround(WIDTHMAX / 1000 / TRES) # maximum width, number of PSTH timepoints
 
 # plotting params:
 PLOTPSTH = False
-FWHMMIN, FWHMSTEP, FWHMTICKSTEP = 0, 10, 50
+#WIDTHMIN, WIDTHSTEP, WIDTHTICKSTEP = 0, 10, 50
 TSMAX, TSSTEP = 5.5, 0.25
 HEIGHTMIN, HEIGHTMAX, HEIGHTSTEP, HEIGHTTICKSTEP = 0, 100, 5, 25
 NSPARSBINS = 15
@@ -180,7 +180,7 @@ def get_psth_peaks_simple(t, psth, nid):
             lii, rii = argfwhm(localpsth, peakii, fraction=FWFRACTION, method='outer')
         except ValueError: # peaki has no FWHM
             continue # skip to next range
-        if (rii - lii) > FWHMMAXPOINTS: # peak is too wide
+        if (rii - lii) > WIDTHMAXPOINTS: # peak is too wide
             continue # skip to next range
         offset = baselineis[0]
         peakis.append(offset + peakii)
@@ -259,7 +259,7 @@ recsecnids = get_ssnids(recs, stranges, kind=NIDSKIND)[1]
 # least 1 detected peak:
 psthss, spiketss = [], []
 psthparamsrecsec = [] # params returned for each PSTH, for each recording section
-fwhmsrecsec = [] # fwhm values, for each recording section
+widthsrecsec = [] # peak widths, for each recording section
 tsrecsec = [] # peak times, for each recording section
 heightsrecsec = [] # peak heights, for each recording section
 sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
@@ -267,7 +267,7 @@ relsrecsec = [] # reliability values of cells with at least 1 peak, for each rec
 nreplacedbynullrel = 0
 for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     psthparams = {} # various parameters for each PSTH
-    psthsfwhms = [] # fwhm values of all nids in this recording section
+    psthswidths = [] # peak width of all nids in this recording section
     psthsts = [] # times of all peaks of all nids in this recording section
     psthsheights = [] # peak heights of all nids in this recording section
     n2sparseness = {} # nid:sparseness mapping for this recording section
@@ -305,14 +305,14 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
             plot_psth(psthparams, nid, fmt)
         if len(peakis) == 0:
             continue # this PSTH has no peaks, skip all subsequent measures
-        fwhms = (ris - lis) * TRES * 1000 # ms
-        psthsfwhms.append(fwhms)
+        widths = (ris - lis) * TRES * 1000 # ms
+        psthswidths.append(widths)
         psthsts.append(peakis * TRES) # sec
         psthsheights.append(psth[peakis] - baseline) # peak height above baseline
         #psthsheights.append(psth[peakis]) # peak height above 0
         n2sparseness[nid] = sparseness(psth)
     psthparamsrecsec.append(psthparams)
-    fwhmsrecsec.append(np.hstack(psthsfwhms))
+    widthsrecsec.append(np.hstack(psthswidths))
     tsrecsec.append(np.hstack(psthsts))
     heightsrecsec.append(np.hstack(psthsheights))
     sparsrecsec.append(n2sparseness)
@@ -320,8 +320,8 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     print('\n') # two newlines
 
 # 0: desynched, 1: synched
-fwhms = [np.hstack(fwhmsrecsec[0::2]), # even are desynched
-         np.hstack(fwhmsrecsec[1::2])] # odd are synched
+widths = [np.hstack(widthsrecsec[0::2]), # even are desynched
+          np.hstack(widthsrecsec[1::2])] # odd are synched
 
 ts = [np.hstack(tsrecsec[0::2]),
       np.hstack(tsrecsec[1::2])]
@@ -336,62 +336,62 @@ rels = [np.hstack([ relsrecsec[i].values() for i in range(0, nrecsec, 2) ]),
         np.hstack([ relsrecsec[i].values() for i in range(1, nrecsec, 2) ])]
 
 '''
-# plot FWHM distributions:
-ticks = np.arange(FWHMMIN, FWHMMAX, FWHMTICKSTEP)
-bins = np.arange(FWHMMIN, FWHMMAX+FWHMSTEP, FWHMSTEP)
+# plot peak width distributions:
+ticks = np.arange(WIDTHMIN, WIDTHMAX, WIDTHTICKSTEP)
+bins = np.arange(WIDTHMIN, WIDTHMAX+WIDTHSTEP, WIDTHSTEP)
 figure(figsize=figsize)
-n1 = hist(fwhms[1], bins=bins, color='r')[0] # synched
-n0 = hist(fwhms[0], bins=bins, color='b')[0] # desynched
+n1 = hist(widths[1], bins=bins, color='r')[0] # synched
+n0 = hist(widths[0], bins=bins, color='b')[0] # desynched
 n = np.hstack([n0, n1])
-xlim(xmin=FWHMMIN, xmax=FWHMMAX)
+xlim(xmin=WIDTHMIN, xmax=WIDTHMAX)
 ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
-xlabel('peak FWHM (ms)')
+xlabel('peak width (ms)')
 ylabel('PSTH peak count')
-#t, p = ttest_ind(fwhms[0], fwhms[1], equal_var=False) # Welch's T-test
-u, p = mannwhitneyu(fwhms[0], fwhms[1]) # 1-sided
+#t, p = ttest_ind(widths[0], widths[1], equal_var=False) # Welch's T-test
+u, p = mannwhitneyu(widths[0], widths[1]) # 1-sided
 # display means and p value:
-text(0.98, 0.98, '$\mu$ = %.1f ms' % fwhms[1].mean(), # synched
+text(0.98, 0.98, '$\mu$ = %.1f ms' % widths[1].mean(), # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.98, 0.90, '$\mu$ = %.1f ms' % fwhms[0].mean(), # desynched
+text(0.98, 0.90, '$\mu$ = %.1f ms' % widths[0].mean(), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-titlestr = 'peak FWHM %s' % urecnames
+titlestr = 'peak width %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 '''
 
-# plot FWHM distributions in log space:
-logmin, logmax = log10(10), log10(FWHMMAX)
+# plot peak width distributions in log space:
+logmin, logmax = log10(10), log10(WIDTHMAX)
 nbins = 20
 bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
 figure(figsize=figsize)
-n1 = hist(fwhms[1], bins=bins, color='r')[0] # synched
-n0 = hist(fwhms[0], bins=bins, color='b')[0] # desynched
+n1 = hist(widths[1], bins=bins, color='r')[0] # synched
+n0 = hist(widths[0], bins=bins, color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=10**logmin, xmax=10**logmax)
 ylim(ymax=n.max()+10) # effectively normalizes the histogram
 #xticks(ticks)
 xscale('log')
-xlabel('peak FWHM (ms)')
+xlabel('peak width (ms)')
 ylabel('PSTH peak count')
-#t, p = ttest_ind(log10(fwhms[0]), log10(fwhms[1]), equal_var=False) # Welch's T-test
-u, p = mannwhitneyu(log10(fwhms[0]), log10(fwhms[1])) # 1-sided
+#t, p = ttest_ind(log10(widths[0]), log10(widths[1]), equal_var=False) # Welch's T-test
+u, p = mannwhitneyu(log10(widths[0]), log10(widths[1])) # 1-sided
 # display geometric means and p value:
-text(0.98, 0.98, '$\mu$ = %.1f ms' % 10**(log10(fwhms[1]).mean()), # synched
+text(0.98, 0.98, '$\mu$ = %.1f ms' % 10**(log10(widths[1]).mean()), # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.98, 0.90, '$\mu$ = %.1f ms' % 10**(log10(fwhms[0]).mean()), # desynched
+text(0.98, 0.90, '$\mu$ = %.1f ms' % 10**(log10(widths[0]).mean()), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-titlestr = 'peak FWHM log %s' % urecnames
+titlestr = 'peak width log %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
@@ -406,7 +406,7 @@ ylim(ymax=n.max()+10) # effectively normalizes the histogram
 #xticks(ticks)
 xlabel('PSTH peak times (sec)')
 ylabel('PSTH peak count')
-#t, p = ttest_ind(fwhms[0], fwhms[1], equal_var=False) # Welch's T-test
+#t, p = ttest_ind(widths[0], widths[1], equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(ts[0], ts[1]) # 1-sided
 # display means and p value:
 text(0.98, 0.98, '$\mu$ = %.1f ms' % ts[1].mean(), # synched
@@ -649,7 +649,7 @@ chi2, p = chisquare([nresppsthsdesynched, nresppsthssynched])
 print('chi2=%.3g, p=%.3g' % (chi2, p))
 
 # report chi-square results of numbers of peaks in both states:
-ndesynchedpeaks, nsynchedpeaks = len(fwhms[0]), len(fwhms[1]) # peak counts
+ndesynchedpeaks, nsynchedpeaks = len(widths[0]), len(widths[1]) # peak counts
 chi2, p = chisquare([ndesynchedpeaks, nsynchedpeaks])
 print('peak counts:')
 print('ndesynched=%d, nsynched=%d, chi2=%.3g, p=%.3g'
