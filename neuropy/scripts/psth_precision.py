@@ -266,6 +266,7 @@ sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each rec
 relsrecsec = [] # reliability values of cells with at least 1 peak, for each recording section
 nreplacedbynullrel = 0
 for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
+    print(rec.absname)
     psthparams = {} # various parameters for each PSTH
     psthswidths = [] # peak width of all nids in this recording section
     psthsts = [] # times of all peaks of all nids in this recording section
