@@ -209,7 +209,7 @@ def get_psth_peaks_gac(ts, t, psth, thresh, sigma=0.02, alpha=1.0, minpoints=5,
     ucids = ucids[ucids >= 0] # exclude junk cluster -1
     #npeaks = len(ucids) # but not all of them will necessarily cross the PSTH threshold
     peakis, lis, ris = [], [], []
-    for ucid, pos in zip(ucids, cpos):
+    for ucid, pos in zip(ucids, cpos): # clusters are numbered in order of decreasing size
         spikeis, = np.where(cids == ucid)
         cts = ts[spikeis] # this cluster's spike times
         # search all spikes for argmax, same as using lowp=0 and highp=100:
@@ -231,6 +231,8 @@ def get_psth_peaks_gac(ts, t, psth, thresh, sigma=0.02, alpha=1.0, minpoints=5,
         peaki = li + peakii
         if checkthresh and psth[peaki] < thresh:
             continue # skip peak that doesn't meet thresh
+        if peaki in peakis:
+            continue # this peak has already been detected by a preceding, larger, cluster
         peakis.append(peaki)
         lis.append(li)
         ris.append(ri)
