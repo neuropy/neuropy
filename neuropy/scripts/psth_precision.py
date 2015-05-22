@@ -628,8 +628,14 @@ tight_layout(pad=0.3)
 # report recordings:
 print('recordings: %s' % urecnames)
 
-# report scatter fractions:
+# report scatter fractions, numbers and p values for sparseness and reliability:
+chi2, p = chisquare([nabovesparsyxline, nbelowsparsyxline])
+print('nbelowsparsyxline=%d, nabovesparsyxline=%d, chi2=%.3g, p=%.3g' %
+      (nbelowsparsyxline, nabovesparsyxline, chi2, p))
 print('fractionbelowsparsyxline: %g' % fractionbelowsparsyxline)
+chi2, p = chisquare([naboverelsyxline, nbelowrelsyxline])
+print('nbelowrelsyxline=%d, naboverelsyxline=%d, chi2=%.3g, p=%.3g' %
+      (nbelowrelsyxline, naboverelsyxline, chi2, p))
 print('fractionbelowrelsyxline: %f' % fractionbelowrelsyxline)
 
 # report numbers of all and active PSTHs
