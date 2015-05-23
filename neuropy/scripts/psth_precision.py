@@ -22,17 +22,17 @@ from spyke import gac
 
 # mapping of recording to list of desynched and synched trange, in that order:
 rec2tranges = {ptc17.tr2b.r58: [(0, 700e6), # desynched trange, 66 Hz refresh rate
-                                (800e6, np.inf)], # synched trange, 66 Hz refresh rate
+                                (800e6, 1117e6)], # synched trange, 66 Hz refresh rate
                ptc18.tr1.r38:  [(0, 425e6), # desynched trange, ends ~ trial 76
-                                (550e6, np.inf)], # synched trange, starts ~ trial 98
+                                (550e6, 2243e6)], # synched trange, starts ~ trial 98
                ptc18.tr2c.r58: [(0, 750e6), # desynched trange
-                                (1000e6, np.inf)], # synched trange
+                                (1000e6, 2248e6)], # synched trange
                ptc22.tr1.r08:  [(0, 1500e6), # desynched trange
-                                (1550e6, np.inf)], # synched trange
-               ptc22.tr1.r10:  [(1480e6, np.inf), # desynched trange
+                                (1550e6, 2329e6)], # synched trange
+               ptc22.tr1.r10:  [(1480e6, 2331e6), # desynched trange
                                 (0, 1400e6)], # synched trange
                ptc22.tr4b.r49: [(0, 1475e6), # desynched trange
-                                (1500e6, np.inf)], # synched trange
+                                (1500e6, 2331e6)], # synched trange
               }
 # compare and sort recordings by their absname:
 reccmp = lambda reca, recb: cmp(reca.absname, recb.absname)
