@@ -666,4 +666,10 @@ nrelsrecsec = sum([len(d) for d in relsrecsec])
 print('fraction replaced by NULLREL due to rel < NULLREL: %f'
       % (nreplacedbynullrel/nrelsrecsec))
 
+# report recording duration in each state, in min:
+desynchedstranges = np.asarray(stranges[0::2]) # even are desynched
+synchedstranges = np.asarray(stranges[1::2]) # odd are synched
+tdesynched = np.diff(desynchedstranges, axis=1).sum() / 1e6 / 60 # in min
+tsynched = np.diff(synchedstranges, axis=1).sum() / 1e6 / 60 # in min
+print('tsynched=%.1f min, tdesynched=%.1f min' % (tsynched, tdesynched))
 pl.show()
