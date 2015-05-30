@@ -44,8 +44,8 @@ EPS = np.spacing(1) # epsilon, smallest representable non-zero number
 NIDSKIND = 'all' # 'active' or 'all'
 
 BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
-GAUSS = True # calculate PSTH by convolving collapsed spike train with Gaussian kernel?
-TRASTERBINW, TRASTERTRES = 0.02, 0.005 # trial raster bins, sec
+GAUSS = True # calculate PSTH and single trial rates by convolving with Gaussian kernel?
+TRASTERBINW, TRASTERTRES = 0.02, 0.001 # trial raster bins, sec
 BLANK = False # consider blank periods between trials?
 WEIGHT = False # weight trials by spike count for reliability measure?
 # 2.5 Hz thresh is 1 spike in the same 20 ms wide bin every 20 trials, assuming 0 baseline:
@@ -281,7 +281,7 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     #figure(); #pl.plot(t, psths.T, '-')
     # n2count is needed for calculating reliability:
     n2count = rec.bintraster(nids=nids, blank=BLANK, strange=strange,
-                             binw=TRASTERBINW, tres=TRASTERTRES)[0]
+                             binw=TRASTERBINW, tres=TRASTERTRES, gauss=GAUSS)[0]
     for nid, psth, ts in zip(nids, psths, spikets):
         # calculate reliability for all nids regardless of PSTH peaks:
         cs = n2count[nid] # 2D array of spike counts over time, one row per trial
