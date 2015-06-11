@@ -666,10 +666,34 @@ nrelsrecsec = sum([len(d) for d in relsrecsec])
 print('fraction replaced by NULLREL due to rel < NULLREL: %f'
       % (nreplacedbynullrel/nrelsrecsec))
 
+# report total recording duration:
+print()
+dt = 0
+for rec in rec2tranges:
+    dt += rec.dt
+dtmin = dt / 1e6 / 60
+dthour = dtmin / 60
+print('total recording duration: %.1f min, %.1f h' % (dtmin, dthour))
+
 # report recording duration in each state, in min:
 desynchedstranges = np.asarray(stranges[0::2]) # even are desynched
 synchedstranges = np.asarray(stranges[1::2]) # odd are synched
 tdesynched = np.diff(desynchedstranges, axis=1).sum() / 1e6 / 60 # in min
 tsynched = np.diff(synchedstranges, axis=1).sum() / 1e6 / 60 # in min
 print('tsynched=%.1f min, tdesynched=%.1f min' % (tsynched, tdesynched))
+
+print()
+print('per-track unit counts:')
+trackunits = {}
+for rec in rec2tranges:
+    try: units = trackunits[rec.tr.absname]
+    except KeyError: units = []
+    trackunits[rec.tr.absname] = np.unique(np.append(units, list(rec.alln)))
+total = 0
+for trackname in trackunits:
+    n = len(trackunits[trackname])
+    total += n
+    print(trackname, n)
+print('total units', total)
+
 pl.show()
