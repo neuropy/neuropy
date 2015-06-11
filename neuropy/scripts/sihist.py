@@ -3,7 +3,7 @@ using `run -i scripts/sihist.py`"""
 
 from __future__ import division
 
-figsize = (2.5, 2.5)
+figsize = (2, 2)
 lfpwidth = 30 # sec
 lfptres = 5 # sec
 binw = 0.02 # SI
@@ -55,6 +55,13 @@ def sihist(recs=None, basetitle='', sis=None):
 #sihist([ptc22.tr1.r08], 'ptc15.tr7c.r08')
 #sihist([ptc22.tr1.r10], 'ptc15.tr7c.r10')
 
+# plot for specific natscene movie recordings with state changes:
+nsrecs = [ptc17.tr2b.r58, ptc18.tr1.r38, ptc18.tr2c.r58, ptc22.tr1.r08,
+          ptc22.tr1.r10, ptc22.tr4b.r49]
+sihist(recs=nsrecs, basetitle='all data')
+dthourall = np.sum([ rec.dthour for rec in nsrecs ])
+print('all 6 recs: %.3f h' % dthourall)
+'''
 tracks = [ptc15.tr7c, ptc17.tr1, ptc17.tr2b, ptc18.tr1, ptc18.tr2c, ptc20.tr1, ptc20.tr2,
           ptc20.tr3, ptc21.tr2, ptc21.tr5c, ptc21.tr6b, ptc22.tr1, ptc22.tr2, ptc22.tr4b,
           ptc22.tr5b]
@@ -67,5 +74,5 @@ sis = np.hstack([ SICACHE[track.absname] for track in tracks ])
 sihist(basetitle='all tracks', sis=sis)
 dthourall = np.sum([ track.dthour for track in tracks ])
 print('all tracks: %.3f h' % dthourall)
-
+'''
 show()
