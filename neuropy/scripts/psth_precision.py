@@ -62,7 +62,7 @@ TSMAX, TSSTEP = 5.5, 0.25
 HEIGHTMIN, HEIGHTMAX, HEIGHTSTEP, HEIGHTTICKSTEP = 0, 100, 5, 25
 NSPARSBINS = 15
 NRELBINS = 15
-LOGNULLREL = -5
+LOGNULLREL = -3
 NULLREL = 10**LOGNULLREL
 figsize = (3, 3) # inches
 
@@ -377,7 +377,7 @@ n1 = hist(widths[1], bins=bins, color='r')[0] # synched
 n0 = hist(widths[0], bins=bins, color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=10**logmin, xmax=10**logmax)
-ylim(ymax=n.max()+10) # effectively normalizes the histogram
+ylim(ymax=130)
 #xticks(ticks)
 xscale('log')
 xlabel('peak width (ms)')
@@ -579,8 +579,8 @@ ylabel('desynchronized reliability')
 logmin, logmax = LOGNULLREL, 0
 xscale('log')
 yscale('log')
-xlim(10**(logmin-0.1), 10**logmax)
-ylim(10**(logmin-0.1), 10**logmax)
+xlim(10**(logmin-0.05), 10**logmax)
+ylim(10**(logmin-0.05), 10**logmax)
 # replace 10^0 label with 1 to save horizontal space:
 ticks = 10**(np.arange(logmin, logmax+1.0, 1.0))
 ticklabels = ['$10^{%d}$' % logtick for logtick in range(logmin, 0)]
@@ -605,7 +605,7 @@ n = np.hstack([n0, n1])
 #ylim(ymax=n.max()) # effectively normalizes the histogram
 xscale('log')
 xlim(bins[0], bins[-1])
-ylim(ymax=35)
+ylim(ymax=30)
 xticks(ticks, ticklabels)
 #xticks(np.arange(0, xmax, 0.2))
 #yticks(np.arange(0, 20, 5))
