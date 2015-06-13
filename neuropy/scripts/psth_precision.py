@@ -283,17 +283,6 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     n2count = rec.bintraster(nids=nids, blank=BLANK, strange=strange,
                              binw=TRASTERBINW, tres=TRASTERTRES, gauss=GAUSS)[0]
     for nid, psth, ts in zip(nids, psths, spikets):
-        # calculate reliability for all nids regardless of PSTH peaks:
-        cs = n2count[nid] # 2D array of spike counts over time, one row per trial
-        rhos, weights = core.pairwisecorr(cs, weight=WEIGHT, invalid='ignore')
-        # set rho to 0 for trial pairs with undefined rho (one or both trials with 0 spikes):
-        nanis = np.isnan(rhos)
-        rhos[nanis] = 0.0
-        # for log plotting convenience, replace any mean rhos < NULLREL with NULLREL
-        n2rel[nid] = np.mean(rhos)
-        if n2rel[nid] < NULLREL:
-            n2rel[nid] = NULLREL
-            nreplacedbynullrel += 1
         # run PSTH peak detection:
         baseline = MEDIANX * np.median(psth)
         thresh = baseline + MINTHRESH # peak detection threshold
@@ -306,11 +295,24 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
             plot_psth(psthparams, nid, fmt)
         if len(peakis) == 0:
             continue # this PSTH has no peaks, skip all subsequent measures
+        # calculate peak precision:
         widths = (ris - lis) * TRES * 1000 # ms
         psthswidths.append(widths)
         psthsts.append(peakis * TRES) # sec
         psthsheights.append(psth[peakis] - baseline) # peak height above baseline
         #psthsheights.append(psth[peakis]) # peak height above 0
+        # calculate reliability of responsive PSTHs:
+        cs = n2count[nid] # 2D array of spike counts over time, one row per trial
+        rhos, weights = core.pairwisecorr(cs, weight=WEIGHT, invalid='ignore')
+        # set rho to 0 for trial pairs with undefined rho (one or both trials with 0 spikes):
+        nanis = np.isnan(rhos)
+        rhos[nanis] = 0.0
+        # for log plotting convenience, replace any mean rhos < NULLREL with NULLREL
+        n2rel[nid] = np.mean(rhos)
+        if n2rel[nid] < NULLREL:
+            n2rel[nid] = NULLREL
+            nreplacedbynullrel += 1
+        # calculate sparseness of responsive PSTHs:
         n2sparseness[nid] = sparseness(psth)
     psthparamsrecsec.append(psthparams)
     widthsrecsec.append(np.hstack(psthswidths))
