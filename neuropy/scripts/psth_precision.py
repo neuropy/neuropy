@@ -435,15 +435,15 @@ titlestr = 'peak times %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
-'''
+
 # plot peak height distribution:
-ticks = np.arange(HEIGHTMIN, HEIGHTMAX, HEIGHTTICKSTEP)
-bins = np.arange(HEIGHTMIN, HEIGHTMAX+HEIGHTSTEP, HEIGHTSTEP)
+ticks = np.arange(0, 25, 5)
+bins = np.arange(0, 25, 1)
 figure(figsize=figsize)
 n1 = hist(heights[1], bins=bins, color='r')[0] # synched
 n0 = hist(heights[0], bins=bins, color='b')[0] # desynched
 n = np.hstack([n0, n1])
-xlim(xmin=HEIGHTMIN, xmax=HEIGHTMAX)
+#xlim(xmin=HEIGHTMIN, xmax=HEIGHTMAX)
 ylim(ymax=n.max()+10) # effectively normalizes the histogram
 xticks(ticks)
 xlabel('peak amplitude (Hz)')
@@ -463,7 +463,7 @@ text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
 titlestr = 'peak amplitude %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
-'''
+
 
 # plot peak height distribution in log space:
 logmin, logmax = log10(2), log10(200)
