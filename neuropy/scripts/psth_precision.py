@@ -262,6 +262,7 @@ psthparamsrecsec = [] # params returned for each PSTH, for each recording sectio
 widthsrecsec = [] # peak widths, for each recording section
 tsrecsec = [] # peak times, for each recording section
 heightsrecsec = [] # peak heights, for each recording section
+depthsrecsec = [] # physical depths of units for each peak, for each recording section
 sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
 relsrecsec = [] # reliability values of cells with at least 1 peak, for each recording section
 nreplacedbynullrel = 0
@@ -271,6 +272,7 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     psthswidths = [] # peak width of all nids in this recording section
     psthsts = [] # times of all peaks of all nids in this recording section
     psthsheights = [] # peak heights of all nids in this recording section
+    unitdepths = [] # physical unit depths of each peak
     n2sparseness = {} # nid:sparseness mapping for this recording section
     n2rel = {} # nid:reliability mapping for this recording section
     # psths is a regular 2D array, spikets is a 2D ragged array (list of arrays):
@@ -293,7 +295,8 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
         #t, psth, thresh, baseline, peakis, lis, ris = psthparams[nid] # unpack
         if PLOTPSTH:
             plot_psth(psthparams, nid, fmt)
-        if len(peakis) == 0:
+        npeaks = len(peakis)
+        if npeaks == 0:
             continue # this PSTH has no peaks, skip all subsequent measures
         # calculate peak precision:
         widths = (ris - lis) * TRES * 1000 # ms
@@ -301,6 +304,8 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
         psthsts.append(peakis * TRES) # sec
         psthsheights.append(psth[peakis] - baseline) # peak height above baseline
         #psthsheights.append(psth[peakis]) # peak height above 0
+        depth = rec.alln[nid].pos[1] # y position on polytrode, microns from top
+        unitdepths.append(np.tile([depth], npeaks))
         # calculate reliability of responsive PSTHs:
         cs = n2count[nid] # 2D array of spike counts over time, one row per trial
         rhos, weights = core.pairwisecorr(cs, weight=WEIGHT, invalid='ignore')
@@ -318,6 +323,7 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     widthsrecsec.append(np.hstack(psthswidths))
     tsrecsec.append(np.hstack(psthsts))
     heightsrecsec.append(np.hstack(psthsheights))
+    depthsrecsec.append(np.hstack(unitdepths))
     sparsrecsec.append(n2sparseness)
     relsrecsec.append(n2rel)
     print('\n') # two newlines
@@ -331,6 +337,9 @@ ts = [np.hstack(tsrecsec[0::2]),
 
 heights = [np.hstack(heightsrecsec[0::2]),
            np.hstack(heightsrecsec[1::2])]
+
+depths = [np.hstack(depthsrecsec[0::2]),
+          np.hstack(depthsrecsec[1::2])]
 
 spars = [np.hstack([ sparsrecsec[i].values() for i in range(0, nrecsec, 2) ]),
          np.hstack([ sparsrecsec[i].values() for i in range(1, nrecsec, 2) ])]
@@ -483,6 +492,22 @@ text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 titlestr = 'peak amplitude log %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+
+
+# scatter plot peak width vs unit height, in both cortical states:
+figure(figsize=figsize)
+#plot([-1, 1], [-1, 1], 'e--') # plot y=x line
+plot(depths[0], widths[0], 'b.', ms=2)#, mec='b', mfc='None') # desynched
+plot(depths[1], widths[1], 'r.', ms=2)#mec='r', mfc='None') # synched
+xlim(0, 1400)
+ylim(2, 200)
+xticks(np.arange(0, 1200+300, 300))
+yscale('log')
+xlabel('unit depth ($\mu$m)')
+ylabel('peak width (ms)')
+titlestr = 'peak depth log %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
