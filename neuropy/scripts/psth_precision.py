@@ -369,7 +369,7 @@ tight_layout(pad=0.3)
 '''
 
 # plot peak width distributions in log space:
-logmin, logmax = log10(10), log10(WIDTHMAX)
+logmin, logmax = 0.5, log10(WIDTHMAX)
 nbins = 20
 bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
 figure(figsize=figsize)
@@ -377,7 +377,7 @@ n1 = hist(widths[1], bins=bins, color='r')[0] # synched
 n0 = hist(widths[0], bins=bins, color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=10**logmin, xmax=10**logmax)
-ylim(ymax=130)
+ylim(ymax=n.max()+10)
 #xticks(ticks)
 xscale('log')
 xlabel('peak width (ms)')
@@ -385,18 +385,19 @@ ylabel('PSTH peak count')
 #t, p = ttest_ind(log10(widths[0]), log10(widths[1]), equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(log10(widths[0]), log10(widths[1])) # 1-sided
 # display geometric means and p value:
-text(0.98, 0.98, '$\mu$ = %.1f ms' % 10**(log10(widths[1]).mean()), # synched
-                 horizontalalignment='right', verticalalignment='top',
+text(0.03, 0.98, '$\mu$ = %.1f ms' % 10**(log10(widths[1]).mean()), # synched
+                 horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.98, 0.90, '$\mu$ = %.1f ms' % 10**(log10(widths[0]).mean()), # desynched
-                 horizontalalignment='right', verticalalignment='top',
+text(0.03, 0.90, '$\mu$ = %.1f ms' % 10**(log10(widths[0]).mean()), # desynched
+                 horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
-                 horizontalalignment='right', verticalalignment='top',
+text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
+                 horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 titlestr = 'peak width log %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
+
 
 # plot PSTH peak time distributions:
 bins = np.arange(0, TSMAX+TSSTEP, TSSTEP)
