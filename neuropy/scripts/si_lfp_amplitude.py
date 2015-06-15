@@ -68,7 +68,8 @@ stds = np.hstack(stds)
 figure(figsize=figsize)
 plot(Vpps, sis, 'k.', ms=4, alpha=0.02)
 Vppedges = np.arange(0.2, VPPMAX+0.15, 0.15) # mV
-Vppmeans, sismeans, sisstds = scatterbin(Vpps, sis, Vppedges, average=np.median)
+Vppmeans, sismeans, sisstds = scatterbin(Vpps, sis, Vppedges,
+                                         xaverage=np.median, yaverage=np.median)
 errorbar(Vppmeans, sismeans, yerr=sisstds, fmt='r.-', ms=5, lw=1, zorder=9999)
 xlim(xmin=0, xmax=VPPMAX)
 ylim(0, 1)
@@ -80,7 +81,8 @@ tight_layout(pad=0.3)
 figure(figsize=figsize)
 plot(stds, sis, 'k.', ms=4, alpha=0.02)
 stdedges = np.arange(20, STDMAX+20, 20) # mV
-stdmeans, sismeans, sisstds = scatterbin(stds, sis, stdedges, average=np.median)
+stdmeans, sismeans, sisstds = scatterbin(stds, sis, stdedges,
+                                         xaverage=np.median, yaverage=np.median)
 errorbar(stdmeans, sismeans, yerr=sisstds, fmt='r.-', ms=5, lw=1, zorder=9999)
 xlim(xmin=0, xmax=STDMAX)
 ylim(0, 1)

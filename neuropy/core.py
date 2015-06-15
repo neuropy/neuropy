@@ -3654,7 +3654,7 @@ def trimtranges(tranges, trange):
     rowis = (trange[0] <= tranges[:, 0]) * (tranges[:, 1] <= trange[1])
     return tranges[rowis]
 
-def scatterbin(x, y, xedges, average=np.mean):
+def scatterbin(x, y, xedges, xaverage=np.mean, yaverage=np.mean):
     """Given x and y used in a scatter plot, and xedges to bin the x values, return average x
     and y in each bin, and the stdev of y in each bin. Useful for plotting a scatter plot
     trendline with vertical error bars"""
@@ -3663,12 +3663,15 @@ def scatterbin(x, y, xedges, average=np.mean):
     sorty = y[sortis]
     xis = sortx.searchsorted(xedges)
     xavgs, yavgs, ystds = [], [], []
-    for xi0, xi1 in zip(xis[:-1], xis[1:]): # iterate over x bins
+    for bini, (xi0, xi1) in enumerate(zip(xis[:-1], xis[1:])): # iterate over x bins
         if xi0 == xi1: # no points in this bin
             continue
-        xavgs.append(average(sortx[xi0:xi1])) # average x of points in this x bin
+        if xaverage == None: # return midpoint of this bin
+            xavgs.append( (xedges[bini] + xedges[bini+1])/2 )
+        else:
+            xavgs.append(xaverage(sortx[xi0:xi1])) # average x of points in this x bin
         yslice = sorty[xi0:xi1] # y values in this x bin
-        yavgs.append(average(yslice)) # average y of points in this x bin
+        yavgs.append(yaverage(yslice)) # average y of points in this x bin
         ystds.append(yslice.std()) # std of points in this x bin
     return np.asarray(xavgs), np.asarray(yavgs), np.asarray(ystds)
 
