@@ -263,8 +263,8 @@ widthsrecsec = [] # peak widths, for each recording section
 tsrecsec = [] # peak times, for each recording section
 heightsrecsec = [] # peak heights, for each recording section
 depthsrecsec = [] # physical depths of units for each peak, for each recording section
-sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
 relsrecsec = [] # reliability values of cells with at least 1 peak, for each recording section
+sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
 nreplacedbynullrel = 0
 for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     print(rec.absname)
@@ -272,9 +272,9 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     psthswidths = [] # peak width of all nids in this recording section
     psthsts = [] # times of all peaks of all nids in this recording section
     psthsheights = [] # peak heights of all nids in this recording section
-    unitdepths = [] # physical unit depths of each peak
-    n2sparseness = {} # nid:sparseness mapping for this recording section
+    psthsdepths = [] # physical unit depths of each peak
     n2rel = {} # nid:reliability mapping for this recording section
+    n2sparseness = {} # nid:sparseness mapping for this recording section
     # psths is a regular 2D array, spikets is a 2D ragged array (list of arrays):
     t, psths, spikets = rec.psth(nids=nids, natexps=False, blank=BLANK, strange=strange,
                                  plot=False, binw=BINW, tres=TRES, gauss=GAUSS, norm='ntrials')
@@ -305,7 +305,7 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
         psthsheights.append(psth[peakis] - baseline) # peak height above baseline
         #psthsheights.append(psth[peakis]) # peak height above 0
         depth = rec.alln[nid].pos[1] # y position on polytrode, microns from top
-        unitdepths.append(np.tile([depth], npeaks))
+        psthsdepths.append(np.tile([depth], npeaks))
         # calculate reliability of responsive PSTHs:
         cs = n2count[nid] # 2D array of spike counts over time, one row per trial
         rhos, weights = core.pairwisecorr(cs, weight=WEIGHT, invalid='ignore')
@@ -323,9 +323,9 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     widthsrecsec.append(np.hstack(psthswidths))
     tsrecsec.append(np.hstack(psthsts))
     heightsrecsec.append(np.hstack(psthsheights))
-    depthsrecsec.append(np.hstack(unitdepths))
-    sparsrecsec.append(n2sparseness)
+    depthsrecsec.append(np.hstack(psthsdepths))
     relsrecsec.append(n2rel)
+    sparsrecsec.append(n2sparseness)
     print('\n') # two newlines
 
 # 0: desynched, 1: synched
