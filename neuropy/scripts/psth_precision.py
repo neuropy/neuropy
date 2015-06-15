@@ -546,86 +546,6 @@ def filterdict(d, key, fallback=0):
     except KeyError:
         return fallback
 
-# Scatter plot sparseness in neighbouring synched vs desynched periods.
-# Missing values (nids active in one neighbouring period but not the other)
-# are assigned a sparseness of 0 to indicate they're missing.
-# Get supersets of nids, one set per state transition, with each nid having at least one peak
-# during at least one state on either side of the transition:
-scatnids = [ np.union1d(list(sparsrecsec[recseci]), list(sparsrecsec[recseci+1]))
-             for recseci in range(0, nrecsec, 2) ]
-ntrans = len(scatnids) # number of state transitions
-assert ntrans == nrecsec / 2 # should be half as many transitions as recording sections
-scatspars = [[], []]
-for trani in range(ntrans):
-    nids = scatnids[trani] # superset of nids for this state transition
-    for nid in nids:
-        scatspars[0].append(filterdict(sparsrecsec[2*trani], nid)) # desynched
-        scatspars[1].append(filterdict(sparsrecsec[2*trani+1], nid)) # synched
-scatspars = np.asarray(scatspars)
-figure(figsize=figsize)
-plot([-1, 1], [-1, 1], 'e--') # plot y=x line
-plot(scatspars[1], scatspars[0], 'o', mec='k', mfc='None')
-nbelowsparsyxline = (scatspars[1] > scatspars[0]).sum()
-nabovesparsyxline = (scatspars[0] > scatspars[1]).sum()
-fractionbelowsparsyxline = nbelowsparsyxline / (nbelowsparsyxline + nabovesparsyxline)
-xlabel('synchronized sparseness')
-ylabel('desynchronized sparseness')
-xlim(-0.02, 1)
-ylim(-0.02, 1)
-sparsticks = (np.arange(0, 1+0.2, 0.2), ['0', '0.2', '0.4', '0.6', '0.8', '1'])
-xticks(*sparsticks)
-yticks(*sparsticks)
-titlestr = 'sparseness scatter %s' % urecnames
-gcfm().window.setWindowTitle(titlestr)
-tight_layout(pad=0.3)
-
-
-# plot sparseness distributions:
-bins = np.linspace(0, 1, NSPARSBINS)
-figure(figsize=figsize)
-n1 = hist(spars[1], bins=bins, histtype='step', color='r')[0] # synched
-n0 = hist(spars[0], bins=bins, histtype='step', color='b')[0] # desynched
-n = np.hstack([n0, n1])
-xlim(xmin=0, xmax=1)
-ylim(ymax=35)
-xticks(*sparsticks)
-xlabel('sparseness')
-ylabel('unit count')
-#t, p = ttest_ind(spars[0], spars[1], equal_var=False) # Welch's T-test
-u, p = mannwhitneyu(spars[0], spars[1]) # 1-sided
-# display means and p value:
-text(0.03, 0.98, '$\mu$ = %.2f' % spars[1].mean(), # synched
-                 horizontalalignment='left', verticalalignment='top',
-                 transform=gca().transAxes, color='r')
-text(0.03, 0.90, '$\mu$ = %.2f' % spars[0].mean(), # desynched
-                 horizontalalignment='left', verticalalignment='top',
-                 transform=gca().transAxes, color='b')
-text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
-                 horizontalalignment='left', verticalalignment='top',
-                 transform=gca().transAxes, color='k')
-titlestr = 'sparseness %s' % urecnames
-gcfm().window.setWindowTitle(titlestr)
-tight_layout(pad=0.3)
-
-
-# scatter plot sparseness vs unit depth, in both cortical states:
-figure(figsize=figsize)
-plot(ndepths[0], spars[0], 'b.', ms=2) # desynched
-plot(ndepths[1], spars[1], 'r.', ms=2) # synched
-edges = np.arange(0, 1400+200, 200)
-middd, meands, stdds = scatterbin(ndepths[0], spars[0], edges, xaverage=None)
-midsd, meanss, stdss = scatterbin(ndepths[1], spars[1], edges, xaverage=None)
-errorbar(middd, meands, yerr=stdds, fmt='b.-', ms=10, lw=2, zorder=999)
-errorbar(midsd, meanss, yerr=stdss, fmt='r.-', ms=10, lw=2, zorder=999)
-xlim(0, 1400)
-ylim(0, 1)
-xticks(np.arange(0, 1200+300, 300))
-xlabel('unit depth ($\mu$m)')
-ylabel('sparseness')
-titlestr = 'sparseness depth %s' % urecnames
-gcfm().window.setWindowTitle(titlestr)
-tight_layout(pad=0.3)
-
 
 # Scatter plot reliability in neighbouring synched vs desynched periods.
 # Missing values (nids active in one neighbouring period but not the other)
@@ -724,6 +644,87 @@ yscale('log')
 xlabel('unit depth ($\mu$m)')
 ylabel('reliability')
 titlestr = 'reliability depth log %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+
+
+# Scatter plot sparseness in neighbouring synched vs desynched periods.
+# Missing values (nids active in one neighbouring period but not the other)
+# are assigned a sparseness of 0 to indicate they're missing.
+# Get supersets of nids, one set per state transition, with each nid having at least one peak
+# during at least one state on either side of the transition:
+scatnids = [ np.union1d(list(sparsrecsec[recseci]), list(sparsrecsec[recseci+1]))
+             for recseci in range(0, nrecsec, 2) ]
+ntrans = len(scatnids) # number of state transitions
+assert ntrans == nrecsec / 2 # should be half as many transitions as recording sections
+scatspars = [[], []]
+for trani in range(ntrans):
+    nids = scatnids[trani] # superset of nids for this state transition
+    for nid in nids:
+        scatspars[0].append(filterdict(sparsrecsec[2*trani], nid)) # desynched
+        scatspars[1].append(filterdict(sparsrecsec[2*trani+1], nid)) # synched
+scatspars = np.asarray(scatspars)
+figure(figsize=figsize)
+plot([-1, 1], [-1, 1], 'e--') # plot y=x line
+plot(scatspars[1], scatspars[0], 'o', mec='k', mfc='None')
+nbelowsparsyxline = (scatspars[1] > scatspars[0]).sum()
+nabovesparsyxline = (scatspars[0] > scatspars[1]).sum()
+fractionbelowsparsyxline = nbelowsparsyxline / (nbelowsparsyxline + nabovesparsyxline)
+xlabel('synchronized sparseness')
+ylabel('desynchronized sparseness')
+xlim(-0.02, 1)
+ylim(-0.02, 1)
+sparsticks = (np.arange(0, 1+0.2, 0.2), ['0', '0.2', '0.4', '0.6', '0.8', '1'])
+xticks(*sparsticks)
+yticks(*sparsticks)
+titlestr = 'sparseness scatter %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+
+
+# plot sparseness distributions:
+bins = np.linspace(0, 1, NSPARSBINS)
+figure(figsize=figsize)
+n1 = hist(spars[1], bins=bins, histtype='step', color='r')[0] # synched
+n0 = hist(spars[0], bins=bins, histtype='step', color='b')[0] # desynched
+n = np.hstack([n0, n1])
+xlim(xmin=0, xmax=1)
+ylim(ymax=35)
+xticks(*sparsticks)
+xlabel('sparseness')
+ylabel('unit count')
+#t, p = ttest_ind(spars[0], spars[1], equal_var=False) # Welch's T-test
+u, p = mannwhitneyu(spars[0], spars[1]) # 1-sided
+# display means and p value:
+text(0.03, 0.98, '$\mu$ = %.2f' % spars[1].mean(), # synched
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='r')
+text(0.03, 0.90, '$\mu$ = %.2f' % spars[0].mean(), # desynched
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
+text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+titlestr = 'sparseness %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+
+
+# scatter plot sparseness vs unit depth, in both cortical states:
+figure(figsize=figsize)
+plot(ndepths[0], spars[0], 'b.', ms=2) # desynched
+plot(ndepths[1], spars[1], 'r.', ms=2) # synched
+edges = np.arange(0, 1400+200, 200)
+middd, meands, stdds = scatterbin(ndepths[0], spars[0], edges, xaverage=None)
+midsd, meanss, stdss = scatterbin(ndepths[1], spars[1], edges, xaverage=None)
+errorbar(middd, meands, yerr=stdds, fmt='b.-', ms=10, lw=2, zorder=999)
+errorbar(midsd, meanss, yerr=stdss, fmt='r.-', ms=10, lw=2, zorder=999)
+xlim(0, 1400)
+ylim(0, 1)
+xticks(np.arange(0, 1200+300, 300))
+xlabel('unit depth ($\mu$m)')
+ylabel('sparseness')
+titlestr = 'sparseness depth %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
