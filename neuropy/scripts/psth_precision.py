@@ -358,8 +358,8 @@ n = np.hstack([n0, n1])
 xlim(xmin=WIDTHMIN, xmax=WIDTHMAX)
 ylim(ymax=n.max()) # effectively normalizes the histogram
 xticks(ticks)
-xlabel('peak width (ms)')
-ylabel('PSTH peak count')
+xlabel('event width (ms)')
+ylabel('event count')
 #t, p = ttest_ind(widths[0], widths[1], equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(widths[0], widths[1]) # 1-sided
 # display means and p value:
@@ -389,8 +389,8 @@ xlim(xmin=10**logmin, xmax=10**logmax)
 ylim(ymax=n.max()+10)
 #xticks(ticks)
 xscale('log')
-xlabel('peak width (ms)')
-ylabel('PSTH peak count')
+xlabel('event width (ms)')
+ylabel('event count')
 #t, p = ttest_ind(log10(widths[0]), log10(widths[1]), equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(log10(widths[0]), log10(widths[1])) # 1-sided
 # display geometric means and p value:
@@ -417,8 +417,8 @@ n = np.hstack([n0, n1])
 xlim(xmin=0, xmax=TSMAX)
 ylim(ymax=n.max()+10) # effectively normalizes the histogram
 #xticks(ticks)
-xlabel('PSTH peak times (sec)')
-ylabel('PSTH peak count')
+xlabel('event times (sec)')
+ylabel('event count')
 #t, p = ttest_ind(widths[0], widths[1], equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(ts[0], ts[1]) # 1-sided
 # display means and p value:
@@ -446,8 +446,8 @@ n = np.hstack([n0, n1])
 #xlim(xmin=HEIGHTMIN, xmax=HEIGHTMAX)
 ylim(ymax=n.max()+10) # effectively normalizes the histogram
 xticks(ticks)
-xlabel('peak amplitude (Hz)')
-ylabel('PSTH peak count')
+xlabel('event amplitude (Hz)')
+ylabel('event count')
 #t, p = ttest_ind(heights[0], heights[1], equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(heights[0], heights[1]) # 1-sided
 # display means and p value:
@@ -477,8 +477,8 @@ xlim(xmin=10**0, xmax=10**logmax)
 ylim(ymax=n.max()+10) # effectively normalizes the histogram
 #xticks(ticks)
 xscale('log')
-xlabel('peak amplitude (Hz)')
-ylabel('PSTH peak count')
+xlabel('event amplitude (Hz)')
+ylabel('event count')
 #t, p = ttest_ind(log10(heights[0]), log10(heights[1]), equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(log10(heights[0]), log10(heights[1])) # 1-sided
 # display geometric means and p value:
