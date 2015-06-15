@@ -14,7 +14,7 @@ from scipy.signal import argrelextrema
 from scipy.stats import ttest_ind, chisquare, mannwhitneyu
 from numpy import log10
 
-from core import argfwhm, get_ssnids, sparseness, intround, ceilsigfig
+from core import argfwhm, get_ssnids, sparseness, intround, ceilsigfig, scatterbin
 
 spykepath = '/home/mspacek/dev/spyke/' # where spyke (http://spyke.github.io) is installed
 sys.path.append(spykepath)
@@ -501,12 +501,18 @@ figure(figsize=figsize)
 #plot([-1, 1], [-1, 1], 'e--') # plot y=x line
 plot(depths[0], widths[0], 'b.', ms=2)#, mec='b', mfc='None') # desynched
 plot(depths[1], widths[1], 'r.', ms=2)#mec='r', mfc='None') # synched
+# plot trends:
+edges = np.arange(0, 1400+200, 200)
+meandw, meandd, stddd = scatterbin(depths[0], widths[0], edges)
+meansw, meansd, stdsd = scatterbin(depths[1], widths[1], edges)
+errorbar(meandw, meandd, yerr=stddd, fmt='b.-', ms=10, lw=2)
+errorbar(meansw, meansd, yerr=stdsd, fmt='r.-', ms=10, lw=2)
 xlim(0, 1400)
-ylim(2, 200)
+ylim(5, 200)
 xticks(np.arange(0, 1200+300, 300))
 yscale('log')
 xlabel('unit depth ($\mu$m)')
-ylabel('peak width (ms)')
+ylabel('event width (ms)')
 titlestr = 'peak depth log %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
