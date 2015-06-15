@@ -499,14 +499,20 @@ tight_layout(pad=0.3)
 # scatter plot peak width vs unit height, in both cortical states:
 figure(figsize=figsize)
 #plot([-1, 1], [-1, 1], 'e--') # plot y=x line
-plot(depths[0], widths[0], 'b.', ms=2)#, mec='b', mfc='None') # desynched
-plot(depths[1], widths[1], 'r.', ms=2)#mec='r', mfc='None') # synched
-# plot trends:
+plot(depths[0], widths[0], 'b.', ms=2) # desynched
+plot(depths[1], widths[1], 'r.', ms=2) # synched
+# plot trends, note that the y axis (widths) will be plotted logarithmically:
 edges = np.arange(0, 1400+200, 200)
-meandw, meandd, stddd = scatterbin(depths[0], widths[0], edges)
-meansw, meansd, stdsd = scatterbin(depths[1], widths[1], edges)
-errorbar(meandw, meandd, yerr=stddd, fmt='b.-', ms=10, lw=2)
-errorbar(meansw, meansd, yerr=stdsd, fmt='r.-', ms=10, lw=2)
+midpoints = (edges[1:] + edges[:-1]) / 2
+#meandd, meandw, stddw = scatterbin(depths[0], widths[0], edges)
+#meansd, meansw, stdsw = scatterbin(depths[1], widths[1], edges)
+meandd, logmeandw, logstddw = scatterbin(depths[0], log10(widths[0]), edges)
+meansd, logmeansw, logstdsw = scatterbin(depths[1], log10(widths[1]), edges)
+# this is tricky, but correct. Gives equal sized log error bars above and below each point:
+desyncherr = [10**logmeandw-10**(logmeandw-logstddw), 10**(logmeandw+logstddw)-10**logmeandw]
+syncherr = [10**logmeansw-10**(logmeansw-logstdsw), 10**(logmeansw+logstdsw)-10**logmeansw]
+errorbar(midpoints, 10**logmeandw, yerr=desyncherr, fmt='b.-', ms=10, lw=2, zorder=999)
+errorbar(midpoints, 10**logmeansw, yerr=syncherr, fmt='r.-', ms=10, lw=2, zorder=999)
 xlim(0, 1400)
 ylim(5, 200)
 xticks(np.arange(0, 1200+300, 300))
