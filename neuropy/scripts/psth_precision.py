@@ -265,6 +265,7 @@ heightsrecsec = [] # peak heights, for each recording section
 depthsrecsec = [] # physical depths of units for each peak, for each recording section
 relsrecsec = [] # reliability values of cells with at least 1 peak, for each recording section
 sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
+neurondepthsrecsec = [] # physical depths of units with at least 1 peak, for each rec section
 nreplacedbynullrel = 0
 for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     print(rec.absname)
@@ -275,6 +276,7 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     psthsdepths = [] # physical unit depths of each peak
     n2rel = {} # nid:reliability mapping for this recording section
     n2sparseness = {} # nid:sparseness mapping for this recording section
+    n2depth = {} # nid:unit depth mapping for this recording section
     # psths is a regular 2D array, spikets is a 2D ragged array (list of arrays):
     t, psths, spikets = rec.psth(nids=nids, natexps=False, blank=BLANK, strange=strange,
                                  plot=False, binw=BINW, tres=TRES, gauss=GAUSS, norm='ntrials')
@@ -319,6 +321,7 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
             nreplacedbynullrel += 1
         # calculate sparseness of responsive PSTHs:
         n2sparseness[nid] = sparseness(psth)
+        n2depth[nid] = depth
     psthparamsrecsec.append(psthparams)
     widthsrecsec.append(np.hstack(psthswidths))
     tsrecsec.append(np.hstack(psthsts))
@@ -326,6 +329,7 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     depthsrecsec.append(np.hstack(psthsdepths))
     relsrecsec.append(n2rel)
     sparsrecsec.append(n2sparseness)
+    neurondepthsrecsec.append(n2depth)
     print('\n') # two newlines
 
 # 0: desynched, 1: synched
@@ -341,11 +345,27 @@ heights = [np.hstack(heightsrecsec[0::2]),
 depths = [np.hstack(depthsrecsec[0::2]),
           np.hstack(depthsrecsec[1::2])]
 
-spars = [np.hstack([ sparsrecsec[i].values() for i in range(0, nrecsec, 2) ]),
-         np.hstack([ sparsrecsec[i].values() for i in range(1, nrecsec, 2) ])]
+rels = [[], []]
+for i in range(nrecsec):
+    n2r = relsrecsec[i] # nid to reliability mapping for this recsec
+    rels[i%2].append( [ n2r[nid] for nid in sorted(n2r) ] ) # nid order
+rels[0] = np.hstack(rels[0])
+rels[1] = np.hstack(rels[1])
 
-rels = [np.hstack([ relsrecsec[i].values() for i in range(0, nrecsec, 2) ]),
-        np.hstack([ relsrecsec[i].values() for i in range(1, nrecsec, 2) ])]
+spars = [[], []]
+for i in range(nrecsec):
+    n2s = sparsrecsec[i] # nid to sparseness value mapping for this recsec
+    spars[i%2].append( [ n2s[nid] for nid in sorted(n2s) ] ) # nid order
+spars[0] = np.hstack(spars[0])
+spars[1] = np.hstack(spars[1])
+
+ndepths = [[], []]
+for i in range(nrecsec):
+    n2d = neurondepthsrecsec[i] # nid to unit depth mapping for this recsec
+    ndepths[i%2].append( [ n2d[nid] for nid in sorted(n2d) ] ) # nid order
+ndepths[0] = np.hstack(ndepths[0])
+ndepths[1] = np.hstack(ndepths[1])
+
 
 '''
 # plot peak width distributions:
@@ -559,6 +579,7 @@ titlestr = 'sparseness scatter %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
+
 # plot sparseness distributions:
 bins = np.linspace(0, 1, NSPARSBINS)
 figure(figsize=figsize)
@@ -569,7 +590,7 @@ xlim(xmin=0, xmax=1)
 ylim(ymax=35)
 xticks(*sparsticks)
 xlabel('sparseness')
-ylabel('cell count')
+ylabel('unit count')
 #t, p = ttest_ind(spars[0], spars[1], equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(spars[0], spars[1]) # 1-sided
 # display means and p value:
@@ -585,6 +606,26 @@ text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
 titlestr = 'sparseness %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
+
+
+# scatter plot sparseness vs unit depth, in both cortical states:
+figure(figsize=figsize)
+plot(ndepths[0], spars[0], 'b.', ms=2) # desynched
+plot(ndepths[1], spars[1], 'r.', ms=2) # synched
+edges = np.arange(0, 1400+200, 200)
+middd, meands, stdds = scatterbin(ndepths[0], spars[0], edges, xaverage=None)
+midsd, meanss, stdss = scatterbin(ndepths[1], spars[1], edges, xaverage=None)
+errorbar(middd, meands, yerr=stdds, fmt='b.-', ms=10, lw=2, zorder=999)
+errorbar(midsd, meanss, yerr=stdss, fmt='r.-', ms=10, lw=2, zorder=999)
+xlim(0, 1400)
+ylim(0, 1)
+xticks(np.arange(0, 1200+300, 300))
+xlabel('unit depth ($\mu$m)')
+ylabel('sparseness')
+titlestr = 'sparseness depth %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+
 
 # Scatter plot reliability in neighbouring synched vs desynched periods.
 # Missing values (nids active in one neighbouring period but not the other)
@@ -627,6 +668,7 @@ titlestr = 'reliability scatter %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
+
 # plot reliability distributions:
 bins = np.logspace(LOGNULLREL, 0, NRELBINS)
 figure(figsize=figsize)
@@ -644,7 +686,7 @@ xticks(ticks, ticklabels)
 #xticks(np.arange(0, xmax, 0.2))
 #yticks(np.arange(0, 20, 5))
 xlabel('reliability')
-ylabel('cell count')
+ylabel('unit count')
 #t, p = ttest_ind(rels[1], rels[0], equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(log10(nndesynchrels), log10(nnsynchrels)) # 1-sided
 # display geometric means and p value:
@@ -660,6 +702,31 @@ text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
 titlestr = 'reliability %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
+
+
+# scatter plot reliability vs unit depth, in both cortical states:
+figure(figsize=figsize)
+plot(ndepths[0], rels[0], 'b.', ms=2) # desynched
+plot(ndepths[1], rels[1], 'r.', ms=2) # synched
+# plot trends, note that the y axis (widths) will be plotted logarithmically:
+edges = np.arange(0, 1400+200, 200)
+middd, logmeandr, logstddr = scatterbin(ndepths[0], log10(rels[0]), edges, xaverage=None)
+midsd, logmeansr, logstdsr = scatterbin(ndepths[1], log10(rels[1]), edges, xaverage=None)
+# this is tricky, but correct. Gives equal sized log error bars above and below each point:
+desyncherr = [10**logmeandr-10**(logmeandr-logstddr), 10**(logmeandr+logstddr)-10**logmeandr]
+syncherr = [10**logmeansr-10**(logmeansr-logstdsr), 10**(logmeansr+logstdsr)-10**logmeansr]
+errorbar(middd, 10**logmeandr, yerr=desyncherr, fmt='b.-', ms=10, lw=2, zorder=999)
+errorbar(midsd, 10**logmeansr, yerr=syncherr, fmt='r.-', ms=10, lw=2, zorder=999)
+xlim(0, 1400)
+ylim(1e-3, 1)
+xticks(np.arange(0, 1200+300, 300))
+yscale('log')
+xlabel('unit depth ($\mu$m)')
+ylabel('reliability')
+titlestr = 'reliability depth log %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+
 
 # report recordings:
 print('recordings: %s' % urecnames)
