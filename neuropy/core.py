@@ -3670,7 +3670,7 @@ def scatterbin(x, y, xedges, average=np.mean):
         yslice = sorty[xi0:xi1] # y values in this x bin
         yavgs.append(average(yslice)) # average y of points in this x bin
         ystds.append(yslice.std()) # std of points in this x bin
-    return xavgs, yavgs, ystds
+    return np.asarray(xavgs), np.asarray(yavgs), np.asarray(ystds)
 
 def plot_templates(this, chans='max', cindex='nidi'):
     """Plot cell templates in their polytrode layout. `this` is either a Track or Recording.
