@@ -7,7 +7,7 @@ import pylab as pl
 from scipy.stats import ttest_1samp, ttest_ind, ks_2samp
 
 import core
-from core import get_ssnids, ceilsigfig, floorsigfig
+from core import get_ssnids, ceilsigfig, floorsigfig, scatterbin
 
 FIGSIZE = (3, 3)
 SHOWCOLORBAR = False # show colorbar
@@ -116,23 +116,15 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
     figure(figsize=FIGSIZE)
     # scatter plot:
     pl.plot(fssseps, fssrhol, 'k.')
+
     # bin seps and plot mean rho in each bin:
-    sortis = np.argsort(fssseps)
-    seps = fssseps[sortis]
-    rhos = fssrhol[sortis]
-    sepbins = np.arange(0, seps.max()+SEPBINW, SEPBINW) # left edges
-    sepis = seps.searchsorted(sepbins)
-    sepmeans, rhomeans, rhostds = [], [], []
-    for sepi0, sepi1 in zip(sepis[:-1], sepis[1:]): # iterate over sepbins
-        sepmeans.append(seps[sepi0:sepi1].mean()) # mean sep of all points in this sepbin
-        rhoslice = rhos[sepi0:sepi1] # rhos in this sepbin
-        rhomeans.append(rhoslice.mean()) # mean rho of all points in this sepbin
-        rhostds.append(rhoslice.std()) # std of rho in this sepbin
+    sepbins = np.arange(0, fssseps.max()+SEPBINW, SEPBINW) # left edges
+    sepmeans, rhomeans, rhostds = scatterbin(fssseps, fssrhol, sepbins)
     #pl.plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
     errorbar(sepmeans, rhomeans, yerr=rhostds, fmt='r.-', ms=10, lw=2, zorder=9999)
     xlim(xmin=0, xmax=SEPXMAX)
     ylim(ymin=RHOMIN, ymax=RHOMAX)
-    septicks = np.arange(0, seps.max()+100, 500)
+    septicks = np.arange(0, fssseps.max()+100, 500)
     xticks(septicks)
     yticks(rhoticks)
     gcfm().window.setWindowTitle(basetitle + '_rho_sep')
