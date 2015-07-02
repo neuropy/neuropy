@@ -4,6 +4,7 @@ within neuropy using `run -i scripts/psthcorr.py`"""
 
 from __future__ import division
 import pylab as pl
+import numpy as np
 from scipy.stats import ttest_1samp, ttest_ind, ks_2samp
 
 import core
@@ -20,28 +21,14 @@ ALPHA1 = 0.0005 # for comparing each cell type pair's rho distrib to 0
 ALPHA2 = 0.01 # for comparing each cell type pair's rho distrib to every other cell type pair
 VMIN, VMAX = 0, 0.13 # rho limits for psthcorrtype plots
 
-ptc15tr7crecs = [ptc15.tr7c.r74, ptc15.tr7c.r95b]
-nateids = [3, 4, 10, 12] # for both recs in ptc15.tr7c
-etrangesr74 = [ ptc15.tr7c.r74.e[nateid].trange for nateid in nateids ] # us
-etrangesr95b = [ ptc15.tr7c.r95b.e[nateid].trange for nateid in nateids ] # us
-
-# copied to psth_precision.py:
-ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
-strangesr08s = [(0, 1500e6), # r08 desynched, us
-                (1550e6, np.inf)] # r08 synched, us, end is ~ 2300s
-ptc22tr1r10s = [ptc22.tr1.r10, ptc22.tr1.r10]
-strangesr10s = [(0, 1400e6), # r10 synched, us
-                (1480e6, np.inf)] # r10 desynched, us, end is ~ 2300s
-
-ptc22tr1recs = [ptc22.tr1.r05, ptc22.tr1.r08, ptc22.tr1.r10, ptc22.tr1.r19]
-ptc22tr2recs = [ptc22.tr2.r28, ptc22.tr2.r33]
-
 celltype2int = {'fast':0, 'slow':1, 'fastasym':2, 'slowasym':3,
                 'simple':4, 'complex':5, 'LGN':6, None: 7}
 typelabels = ['fast', 'slow', 'fast asym', 'slow asym',
               'simple', 'complex', 'LGN aff', 'unknown']
 spiketypelabels = typelabels[:4]
 rftypelabels = typelabels[4:]
+
+listarr = np.frompyfunc(lambda x: [], 1, 1) # take input array, return list in each entry
 
 
 def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=None, plot=True):
@@ -393,129 +380,145 @@ def get_seps(ssnids, nd):
     seps = np.hstack(seps)
     return seps
 
-listarr = np.frompyfunc(lambda x: [], 1, 1) # take 1 input array, return 1 list in each entry
+
+if __name__ == "__main__":
+
+    ptc15tr7crecs = [ptc15.tr7c.r74, ptc15.tr7c.r95b]
+    nateids = [3, 4, 10, 12] # for both recs in ptc15.tr7c
+    etrangesr74 = [ ptc15.tr7c.r74.e[nateid].trange for nateid in nateids ] # us
+    etrangesr95b = [ ptc15.tr7c.r95b.e[nateid].trange for nateid in nateids ] # us
+
+    # copied to psth_precision.py:
+    ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
+    strangesr08s = [(0, 1500e6), # r08 desynched, us
+                    (1550e6, np.inf)] # r08 synched, us, end is ~ 2300s
+    ptc22tr1r10s = [ptc22.tr1.r10, ptc22.tr1.r10]
+    strangesr10s = [(0, 1400e6), # r10 synched, us
+                    (1480e6, np.inf)] # r10 desynched, us, end is ~ 2300s
+
+    ptc22tr1recs = [ptc22.tr1.r05, ptc22.tr1.r08, ptc22.tr1.r10, ptc22.tr1.r19]
+    ptc22tr2recs = [ptc22.tr2.r28, ptc22.tr2.r33]
+
+    # ptc15.tr7c:
+    SEPXMAX = 1675
+    # get superset of active nids for all natexps of both recs in ptc15tr7crecs:
+    stranges = etrangesr74 + etrangesr95b # 8 stranges in total
+    recs = [ptc15.tr7c.r74]*4 + [ptc15.tr7c.r95b]*4 # 8 recs corresponding to 8 stranges
+    ssnids, recsecnids = get_ssnids(recs, stranges)
+    ssseps = get_seps(ssnids, ptc15.tr7c.alln)
+    # get separate supersets of active nids for all 4 natexps in each recording:
+    ptc15tr7crecsecnids = [np.unique(np.hstack(recsecnids[:4])),
+                           np.unique(np.hstack(recsecnids[4:]))]
+    # do psthcorr plots and collect ssrho matrices:
+    ssrhos = []
+    for rec, nids in zip(ptc15tr7crecs, ptc15tr7crecsecnids):
+        ssrho = psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=True) # in sec
+        ssrhos.append(ssrho)
+    # plot differences in superset rho matrices for the two recordings:
+    psthcorrdiff(ssrhos, ssseps, 'r74-r95b')
+
+    ## rho for ns1 figure:
+    #In [124]: np.where(ssnids == 328)
+    #Out[124]: (array([31]),)
+    #In [125]: np.where(ssnids == 345)
+    #Out[125]: (array([34]),)
+    #In [126]: ssrhos[0][31,34]
+    #Out[126]: -0.11554163740884685
+
+    ## rho for ns2 figure:
+    #In [127]: np.where(ssnids == 87)
+    #Out[127]: (array([8]),)
+    #In [128]: np.where(ssnids == 93)
+    #Out[128]: (array([10]),)
+    #In [129]: ssrhos[0][8,10]
+    #Out[129]: 0.82907446734056678
+
+    '''
+    # ptc22.tr1.r08 sections:
+    SEPXMAX = 1200
+    ssnids, recsecnids = get_ssnids(ptc22tr1r08s, strangesr08s)
+    ssseps = get_seps(ssnids, ptc22.tr1.alln)
+    for rec, nids, strange in zip(ptc22tr1r08s, recsecnids, strangesr08s):
+        psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
+
+    # ptc22.tr1.r10 sections:
+    SEPXMAX = 1200
+    ssnids, recsecnids = get_ssnids(ptc22tr1r10s, strangesr10s)
+    ssseps = get_seps(ssnids, ptc22.tr1.alln)
+    for rec, nids, strange in zip(ptc22tr1r10s, recsecnids, strangesr10s):
+        psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
+    '''
+    # ptc22.tr1.r08 + ptc22.tr1.r10 sections:
+    plotpsthcorr = True
+    plotpsthcorrdiff = True
+    SEPXMAX = 1200
+    ptc22tr1s = ptc22tr1r08s+ptc22tr1r10s
+    stranges = strangesr08s+strangesr10s
+    ssnids, recsecnids = get_ssnids(ptc22tr1s, stranges)
+    ssseps = get_seps(ssnids, ptc22.tr1.alln)
+    # do psthcorr plots and collect ssrho matrices:
+    ssrhos = []
+    for rec, nids, strange in zip(ptc22tr1s, recsecnids, stranges):
+        ssrho = psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False,
+                         strange=strange, plot=plotpsthcorr)
+        ssrhos.append(ssrho)
+    ssrhos = np.asarray(ssrhos) # convert to 3D array
+    if plotpsthcorrdiff:
+        # plot differences in superset rho matrices for various pairs of recording sections:
+        psthcorrdiff([ssrhos[1], ssrhos[0]], ssseps, 'B-A')
+        psthcorrdiff([ssrhos[2], ssrhos[1]], ssseps, 'C-B')
+        psthcorrdiff([ssrhos[3], ssrhos[2]], ssseps, 'D-C')
+        #psthcorrdiff([ssrhos[3], ssrhos[0]], ssseps, 'D-A')
+        #psthcorrdiff([ssrhos[3], ssrhos[1]], ssseps, 'D-B')
+        #psthcorrdiff([ssrhos[2], ssrhos[0]], ssseps, 'C-A')
 
 
-# ptc15.tr7c:
-SEPXMAX = 1675
-# get superset of active nids for all natexps of both recs in ptc15tr7crecs:
-stranges = etrangesr74 + etrangesr95b # 8 stranges in total
-recs = [ptc15.tr7c.r74]*4 + [ptc15.tr7c.r95b]*4 # 8 recs corresponding to 8 stranges
-ssnids, recsecnids = get_ssnids(recs, stranges)
-ssseps = get_seps(ssnids, ptc15.tr7c.alln)
-# get separate supersets of active nids for all 4 natexps in each recording:
-ptc15tr7crecsecnids = [np.unique(np.hstack(recsecnids[:4])),
-                       np.unique(np.hstack(recsecnids[4:]))]
-# do psthcorr plots and collect ssrho matrices:
-ssrhos = []
-for rec, nids in zip(ptc15tr7crecs, ptc15tr7crecsecnids):
-    ssrho = psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=True) # in sec
-    ssrhos.append(ssrho)
-# plot differences in superset rho matrices for the two recordings:
-psthcorrdiff(ssrhos, ssseps, 'r74-r95b')
+    # run psthcorrtype and psthcorrtypestats on ptc15.tr7c:
+    trackrecs = [ptc15tr7crecs]
+    rhotype = psthcorrtype(trackrecs, pool=True, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
+                           separatetypeplots=True)
+    spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
+    print('\nptc15.tr7c')
+    psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=ALPHA2)
 
-## rho for ns1 figure:
-#In [124]: np.where(ssnids == 328)
-#Out[124]: (array([31]),)
-#In [125]: np.where(ssnids == 345)
-#Out[125]: (array([34]),)
-#In [126]: ssrhos[0][31,34]
-#Out[126]: -0.11554163740884685
+    # run psthcorrtype and psthcorrtypestats on ptc22.tr1:
+    trackrecs = [ptc22tr1recs]
+    rhotype = psthcorrtype(trackrecs, pool=True, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
+                           separatetypeplots=True)
+    spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
+    spsigis[0, 0] = True
+    rfsigis[1, 1] = True; #rfsigis[0, 2] = True
+    print('\nptc22.tr1')
+    psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=ALPHA2)
 
-## rho for ns2 figure:
-#In [127]: np.where(ssnids == 87)
-#Out[127]: (array([8]),)
-#In [128]: np.where(ssnids == 93)
-#Out[128]: (array([10]),)
-#In [129]: ssrhos[0][8,10]
-#Out[129]: 0.82907446734056678
+    # run psthcorrtype and psthcorrtypestats on ptc22.tr2:
+    trackrecs = [ptc22tr2recs]
+    rhotype = psthcorrtype(trackrecs, pool=True, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
+                           separatetypeplots=True)
+    spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
+    spsigis[0, 0] = True
+    rfsigis[1, 1] = True; #rfsigis[0, 2] = True
+    print('\nptc22.tr2')
+    psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=ALPHA2)
 
-'''
-# ptc22.tr1.r08 sections:
-SEPXMAX = 1200
-ssnids, recsecnids = get_ssnids(ptc22tr1r08s, strangesr08s)
-ssseps = get_seps(ssnids, ptc22.tr1.alln)
-for rec, nids, strange in zip(ptc22tr1r08s, recsecnids, strangesr08s):
-    psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
+    # run psthcorrtype and psthcorrtypestats on ptc22:
+    trackrecs = [ptc22tr1recs, ptc22tr2recs]
+    rhotype = psthcorrtype(trackrecs, pool=True, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
+                           separatetypeplots=True)
+    spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
+    spsigis[0, 0] = True
+    rfsigis[1, 1] = True; #rfsigis[0, 2] = True
+    print('\nptc22')
+    psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=ALPHA2)
 
-# ptc22.tr1.r10 sections:
-SEPXMAX = 1200
-ssnids, recsecnids = get_ssnids(ptc22tr1r10s, strangesr10s)
-ssseps = get_seps(ssnids, ptc22.tr1.alln)
-for rec, nids, strange in zip(ptc22tr1r10s, recsecnids, strangesr10s):
-    psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
-'''
-# ptc22.tr1.r08 + ptc22.tr1.r10 sections:
-plotpsthcorr = True
-plotpsthcorrdiff = True
-SEPXMAX = 1200
-ptc22tr1s = ptc22tr1r08s+ptc22tr1r10s
-stranges = strangesr08s+strangesr10s
-ssnids, recsecnids = get_ssnids(ptc22tr1s, stranges)
-ssseps = get_seps(ssnids, ptc22.tr1.alln)
-# do psthcorr plots and collect ssrho matrices:
-ssrhos = []
-for rec, nids, strange in zip(ptc22tr1s, recsecnids, stranges):
-    ssrho = psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False,
-                     strange=strange, plot=plotpsthcorr)
-    ssrhos.append(ssrho)
-ssrhos = np.asarray(ssrhos) # convert to 3D array
-if plotpsthcorrdiff:
-    # plot differences in superset rho matrices for various pairs of recording sections:
-    psthcorrdiff([ssrhos[1], ssrhos[0]], ssseps, 'B-A')
-    psthcorrdiff([ssrhos[2], ssrhos[1]], ssseps, 'C-B')
-    psthcorrdiff([ssrhos[3], ssrhos[2]], ssseps, 'D-C')
-    #psthcorrdiff([ssrhos[3], ssrhos[0]], ssseps, 'D-A')
-    #psthcorrdiff([ssrhos[3], ssrhos[1]], ssseps, 'D-B')
-    #psthcorrdiff([ssrhos[2], ssrhos[0]], ssseps, 'C-A')
+    # run psthcorrtype and psthcorrtypestats on all tracks:
+    trackrecs = [ptc15tr7crecs, ptc22tr1recs, ptc22tr2recs]
+    rhotype = psthcorrtype(trackrecs, pool=True, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
+                           separatetypeplots=True)
+    spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
+    print('\nall tracks pooled')
+    psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=ALPHA2)
 
 
-# run psthcorrtype and psthcorrtypestats on ptc15.tr7c:
-trackrecs = [ptc15tr7crecs]
-rhotype = psthcorrtype(trackrecs, pool=True, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
-                       separatetypeplots=True)
-spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
-print('\nptc15.tr7c')
-psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=ALPHA2)
-
-# run psthcorrtype and psthcorrtypestats on ptc22.tr1:
-trackrecs = [ptc22tr1recs]
-rhotype = psthcorrtype(trackrecs, pool=True, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
-                       separatetypeplots=True)
-spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
-spsigis[0, 0] = True
-rfsigis[1, 1] = True; #rfsigis[0, 2] = True
-print('\nptc22.tr1')
-psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=ALPHA2)
-
-# run psthcorrtype and psthcorrtypestats on ptc22.tr2:
-trackrecs = [ptc22tr2recs]
-rhotype = psthcorrtype(trackrecs, pool=True, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
-                       separatetypeplots=True)
-spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
-spsigis[0, 0] = True
-rfsigis[1, 1] = True; #rfsigis[0, 2] = True
-print('\nptc22.tr2')
-psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=ALPHA2)
-
-# run psthcorrtype and psthcorrtypestats on ptc22:
-trackrecs = [ptc22tr1recs, ptc22tr2recs]
-rhotype = psthcorrtype(trackrecs, pool=True, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
-                       separatetypeplots=True)
-spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
-spsigis[0, 0] = True
-rfsigis[1, 1] = True; #rfsigis[0, 2] = True
-print('\nptc22')
-psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=ALPHA2)
-
-# run psthcorrtype and psthcorrtypestats on all tracks:
-trackrecs = [ptc15tr7crecs, ptc22tr1recs, ptc22tr2recs]
-rhotype = psthcorrtype(trackrecs, pool=True, alpha=ALPHA1, vmin=VMIN, vmax=VMAX,
-                       separatetypeplots=True)
-spsigis, rfsigis = np.zeros((4,4), dtype=bool), np.zeros((4,4), dtype=bool)
-print('\nall tracks pooled')
-psthcorrtypestats(rhotype, sigiss=[spsigis, rfsigis], test=ttest_ind, alpha=ALPHA2)
-
-
-show()
+    show()
 
