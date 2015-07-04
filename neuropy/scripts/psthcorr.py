@@ -10,6 +10,8 @@ from scipy.stats import ttest_1samp, ttest_ind, ks_2samp
 import core
 from core import get_ssnids, ceilsigfig, floorsigfig, scatterbin
 
+from psth_funcs import get_seps
+
 FIGSIZE = (3, 3)
 SHOWCOLORBAR = False # show colorbar
 SEPBINW = 200 # separation bin width, um
@@ -103,13 +105,12 @@ def psthcorr(rec, nids=None, ssnids=None, ssseps=None, natexps=False, strange=No
     figure(figsize=FIGSIZE)
     # scatter plot:
     pl.plot(fssseps, fssrhol, 'k.')
-
     # bin seps and plot mean rho in each bin:
     sepbins = np.arange(0, fssseps.max()+SEPBINW, SEPBINW) # left edges
     sepmeans, rhomeans, rhostds = scatterbin(fssseps, fssrhol, sepbins)
     #pl.plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
     errorbar(sepmeans, rhomeans, yerr=rhostds, fmt='r.-', ms=10, lw=2, zorder=9999)
-    xlim(xmin=0, xmax=SEPXMAX)
+    xlim(xmin=0, xmax=SEPMAX)
     ylim(ymin=RHOMIN, ymax=RHOMAX)
     septicks = np.arange(0, fssseps.max()+100, 500)
     xticks(septicks)
@@ -186,7 +187,7 @@ def psthcorrdiff(rhos, seps, basetitle):
         rhostds.append(rhoslice.std()) # std of rho in this sepbin
     #pl.plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
     errorbar(sepmeans, rhomeans, yerr=rhostds, fmt='r.-', ms=10, lw=2, zorder=9999)
-    xlim(xmin=0, xmax=SEPXMAX)
+    xlim(xmin=0, xmax=SEPMAX)
     ylim(ymin=RHODIFFMIN, ymax=RHODIFFMAX)
     septicks = np.arange(0, seps.max()+100, 500)
     xticks(septicks)
@@ -368,18 +369,6 @@ def psthcorrtypestats(rhotype, sigiss=None, test=ttest_ind, alpha=ALPHA2):
                         print('%s-%s %s from %s-%s: p=%s, N=%r'
                               % (tai, taj, result, tbi, tbj, p, (len(a), len(b))))
 
-def get_seps(ssnids, nd):
-    """Build flattened array of distances between all unique pairs in ssnids, given neuron
-    dict nd"""
-    nnss = len(ssnids)
-    lti = np.tril_indices(nnss, -1) # lower triangle (below diagonal) indices, ie unique pairs
-    seps = []
-    for nidii0, nidii1 in np.asarray(lti).T:
-        sep = dist(nd[ssnids[nidii0]].pos, nd[ssnids[nidii1]].pos)
-        seps.append(sep)
-    seps = np.hstack(seps)
-    return seps
-
 
 if __name__ == "__main__":
 
@@ -400,7 +389,7 @@ if __name__ == "__main__":
     ptc22tr2recs = [ptc22.tr2.r28, ptc22.tr2.r33]
 
     # ptc15.tr7c:
-    SEPXMAX = 1675
+    SEPMAX = 1675
     # get superset of active nids for all natexps of both recs in ptc15tr7crecs:
     stranges = etrangesr74 + etrangesr95b # 8 stranges in total
     recs = [ptc15.tr7c.r74]*4 + [ptc15.tr7c.r95b]*4 # 8 recs corresponding to 8 stranges
@@ -435,14 +424,14 @@ if __name__ == "__main__":
 
     '''
     # ptc22.tr1.r08 sections:
-    SEPXMAX = 1200
+    SEPMAX = 1200
     ssnids, recsecnids = get_ssnids(ptc22tr1r08s, strangesr08s)
     ssseps = get_seps(ssnids, ptc22.tr1.alln)
     for rec, nids, strange in zip(ptc22tr1r08s, recsecnids, strangesr08s):
         psthcorr(rec, nids=nids, ssnids=ssnids, ssseps=ssseps, natexps=False, strange=strange)
 
     # ptc22.tr1.r10 sections:
-    SEPXMAX = 1200
+    SEPMAX = 1200
     ssnids, recsecnids = get_ssnids(ptc22tr1r10s, strangesr10s)
     ssseps = get_seps(ssnids, ptc22.tr1.alln)
     for rec, nids, strange in zip(ptc22tr1r10s, recsecnids, strangesr10s):
@@ -451,7 +440,7 @@ if __name__ == "__main__":
     # ptc22.tr1.r08 + ptc22.tr1.r10 sections:
     plotpsthcorr = True
     plotpsthcorrdiff = True
-    SEPXMAX = 1200
+    SEPMAX = 1200
     ptc22tr1s = ptc22tr1r08s+ptc22tr1r10s
     stranges = strangesr08s+strangesr10s
     ssnids, recsecnids = get_ssnids(ptc22tr1s, stranges)

@@ -8,7 +8,7 @@ import pylab as pl
 from pylab import get_current_fig_manager as gcfm
 import numpy as np
 
-from core import argfwhm
+from core import argfwhm, dist
 
 spykepath = '/home/mspacek/dev/spyke/' # where spyke (http://spyke.github.io) is installed
 sys.path.append(spykepath)
@@ -16,6 +16,18 @@ from spyke import gac
 
 EPS = np.spacing(1) # epsilon, smallest representable non-zero number
 
+
+def get_seps(nids, nd):
+    """Build flattened array of distances between all unique pairs in nids, given neuron
+    dict nd"""
+    nn = len(nids)
+    lti = np.tril_indices(nn, -1) # lower triangle (below diagonal) indices, ie unique pairs
+    seps = []
+    for nidi0, nidi1 in np.asarray(lti).T:
+        sep = dist(nd[nids[nidi0]].pos, nd[nids[nidi1]].pos)
+        seps.append(sep)
+    seps = np.hstack(seps)
+    return seps
 
 def plot_psth(psthparams, nid, fmt='k-', alpha=0.8, ms=6, mew=2, ymax=None, yticks=None,
               figsize=(24, 7)):
