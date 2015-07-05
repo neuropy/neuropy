@@ -17,6 +17,33 @@ from spyke import gac
 EPS = np.spacing(1) # epsilon, smallest representable non-zero number
 
 
+def get_nids_psths(rec, strange, kind='responsive', blank=False,
+                   binw=0.02, tres=0.0001, gauss=True, medianx=2, minthresh=3):
+    """Return responsive or active nids and corresponding PSTHs for strange in rec"""
+    if kind == 'responsive': # start with all nids, then weed out unresponsive ones
+        nids = rec.get_nids(tranges=[strange], kind='all')
+    else: # kind is 'active'
+        nids = rec.get_nids(tranges=[strange], kind='active')
+    t, psths, spikets = rec.psth(nids=nids, natexps=False, blank=blank, strange=strange,
+                                 plot=False, binw=binw, tres=tres, gauss=gauss, norm='ntrials')
+    if kind == 'responsive':
+        rnids, rpsths = [], [] # nids and PSTHS to return
+        for nid, psth, ts in zip(nids, psths, spikets):
+            # run PSTH peak detection on this PSTH:
+            baseline = medianx * np.median(psth)
+            thresh = baseline + minthresh # peak detection threshold
+            print("n%d" % nid, end='')
+            peakis, lis, ris = get_psth_peaks_gac(ts, t, psth, thresh)
+            npeaks = len(peakis)
+            if npeaks == 0:
+                continue # this PSTH has no peaks, this nid is unresponsive
+            rnids.append(nid)
+            rpsths.append(psth)
+        print()
+        return np.asarray(rnids), np.asarray(rpsths)
+    else: # kind is 'active'
+        return np.asarray(nids), np.asarray(psths)
+
 def get_seps(nids, nd):
     """Build flattened array of distances between all unique pairs in nids, given neuron
     dict nd"""
