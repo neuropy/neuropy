@@ -242,6 +242,14 @@ if __name__ == "__main__":
     yticks([0, nmax]) # turn off y ticks to save space
     xlabel(r'$\rho$')
     ylabel('cell pair count')
+    text(0.98, 0.98, r'p3=%.2g' % p3, color='k',
+         transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+    text(0.98, 0.90, r'p4=%.2g' % p4, color='k',
+         transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+    text(0.98, 0.82, r'p34d=%.2g' % p34d, color='b',
+         transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+    text(0.98, 0.74, r'p34s=%.2g' % p34s, color='r',
+         transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
     gcfm().window.setWindowTitle('rho_hist_r08_r10')
     tight_layout(pad=0.3)
 
