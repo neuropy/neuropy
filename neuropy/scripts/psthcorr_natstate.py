@@ -18,6 +18,7 @@ from psth_funcs import get_psth_peaks_gac, get_seps
 BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
 GAUSS = True # calculate PSTH and single trial rates by convolving with Gaussian kernel?
 BLANK = False # consider blank periods between trials?
+KIND = 'active' # 'responsive' or 'active'
 MINTHRESH = 3 # peak detection thresh, Hz
 MEDIANX = 2 # PSTH median multiplier, Hz
 
@@ -33,29 +34,31 @@ ALPHA = 0.05 # for comparing the means of psthcorr distribs to 0
 VMIN, VMAX = -1, 1 # rho limits for correlation matrices
 
 
-def getresponsivepsths(rec, strange):
-    """Return responsive nids and corresponding PSTHs for strange in rec"""
-    # all neurons that fired at least one spike during strange:
-    nids = rec.get_nids(tranges=[strange], kind='all')
+def get_nids_psths(rec, strange, kind='responsive'):
+    """Return responsive or active nids and corresponding PSTHs for strange in rec"""
+    if kind == 'responsive': # start with all nids, then weed out unresponsive ones
+        nids = rec.get_nids(tranges=[strange], kind='all')
+    else: # kind is 'active'
+        nids = rec.get_nids(tranges=[strange], kind='active')
     t, psths, spikets = rec.psth(nids=nids, natexps=False, blank=BLANK, strange=strange,
                                  plot=False, binw=BINW, tres=TRES, gauss=GAUSS, norm='ntrials')
-    rnids, rpsths = [], []
-    for nid, psth, ts in zip(nids, psths, spikets):
-        # run PSTH peak detection:
-        baseline = MEDIANX * np.median(psth)
-        thresh = baseline + MINTHRESH # peak detection threshold
-        print("n%d" % nid, end='')
-        peakis, lis, ris = get_psth_peaks_gac(ts, t, psth, thresh)
-        #psthparams[nid] = t, psth, thresh, baseline, peakis, lis, ris
-        #psthparams[nid] = get_psth_peaks(t, psth, nid)
-        #t, psth, thresh, baseline, peakis, lis, ris = psthparams[nid] # unpack
-        npeaks = len(peakis)
-        if npeaks == 0:
-            continue # this PSTH has no peaks, skip all subsequent measures
-        rnids.append(nid)
-        rpsths.append(psth)
-    print()
-    return np.asarray(rnids), np.asarray(rpsths)
+    if kind == 'responsive':
+        rnids, rpsths = [], [] # nids and PSTHS to return
+        for nid, psth, ts in zip(nids, psths, spikets):
+            # run PSTH peak detection on this PSTH:
+            baseline = MEDIANX * np.median(psth)
+            thresh = baseline + MINTHRESH # peak detection threshold
+            print("n%d" % nid, end='')
+            peakis, lis, ris = get_psth_peaks_gac(ts, t, psth, thresh)
+            npeaks = len(peakis)
+            if npeaks == 0:
+                continue # this PSTH has no peaks, this nid is unresponsive
+            rnids.append(nid)
+            rpsths.append(psth)
+        print()
+        return np.asarray(rnids), np.asarray(rpsths)
+    else: # kind is 'active'
+        return np.asarray(nids), np.asarray(psths)
 
 
 if __name__ == "__main__":
@@ -89,7 +92,7 @@ if __name__ == "__main__":
         for slabel, strange in zip(slabels, stranges):
             print()
             print(rec.absname, slabel, strange)
-            nids, psths = getresponsivepsths(rec, strange)
+            nids, psths = get_nids_psths(rec, strange, kind=KIND)
             nn = len(nids)
             rho = np.corrcoef(psths) # rho matrix, defaults to bias=1
             rho[np.diag_indices(nn)] = np.nan # nan the diagonal, which imshow plots as white
