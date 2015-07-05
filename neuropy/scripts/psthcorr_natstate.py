@@ -85,8 +85,8 @@ if __name__ == "__main__":
 
     slabels = ['desynch', 'synch'] # state labels
     colours = ['b', 'r'] # corresponding state colours
-    rhos = {'desynch': [], 'synch': []}
-    seps = {'desynch': [], 'synch': []}
+    rhoslist = {'desynch': [], 'synch': []}
+    sepslist = {'desynch': [], 'synch': []}
     for rec in urecs:
         stranges = rec2tranges[rec]
         for slabel, strange in zip(slabels, stranges):
@@ -99,10 +99,10 @@ if __name__ == "__main__":
 
             # collect rho values:
             lti = np.tril_indices(nn, -1) # lower triangle indices of rho matrix
-            rhos[slabel].append(rho[lti])
+            rhoslist[slabel].append(rho[lti])
 
             # collect corresponding pairwise neuron separation distances:
-            seps[slabel].append(get_seps(nids, rec.alln))
+            sepslist[slabel].append(get_seps(nids, rec.alln))
 
             if PLOTRHOMATRICES:
                 # plot rho matrix:
@@ -118,9 +118,10 @@ if __name__ == "__main__":
                 tight_layout(pad=0.3)
 
     # concatenate rho and sep lists into arrays:
+    rhos, seps = {}, {}
     for slabel in slabels:
-        rhos[slabel] = np.hstack(rhos[slabel])
-        seps[slabel] = np.hstack(seps[slabel])
+        rhos[slabel] = np.hstack(rhoslist[slabel])
+        seps[slabel] = np.hstack(sepslist[slabel])
 
     # plot rho histogram:
     dmean = rhos['desynch'].mean()
@@ -200,6 +201,47 @@ if __name__ == "__main__":
     xlabel(r'cell pair separation (${\mu}m$)')
     ylabel(r'$\rho$')
     gcfm().window.setWindowTitle('rho_sep')
+    tight_layout(pad=0.3)
+
+    # plot rho histograms for ptc22.tr1.r08 and ptc22.tr1.r10: same track, different movies:
+    d3mean = rhoslist['desynch'][3].mean()
+    s3mean = rhoslist['synch'][3].mean()
+    d4mean = rhoslist['desynch'][4].mean()
+    s4mean = rhoslist['synch'][4].mean()
+    p3 = mannwhitneyu(rhoslist['desynch'][3], rhoslist['synch'][3])[1] # 1-sided
+    p4 = mannwhitneyu(rhoslist['desynch'][4], rhoslist['synch'][4])[1] # 1-sided
+    p34d = mannwhitneyu(rhoslist['desynch'][3], rhoslist['desynch'][4])[1] # 1-sided
+    p34s = mannwhitneyu(rhoslist['synch'][3], rhoslist['synch'][4])[1] # 1-sided
+    print('p3=%.2g, p4=%.2g, p34d=%.2g, p34s=%.2g' % (p3, p4, p34d, p34s))
+    #if p < ALPHA:
+    #    pstring = '$p<%g$' % ceilsigfig(p)
+    #else:
+    #    pstring = '$p>%g$' % floorsigfig(p)
+    figure(figsize=FIGSIZE)
+    rhobins = np.arange(RHOMIN, RHOMAX+0.0667, 0.0667) # left edges + rightmost edge
+    # ptc22.tr1.r08 and ptc22.tr1.r10 are recording indices 3 and 4, respectively
+    nd3 = hist(rhoslist['desynch'][3], bins=rhobins, histtype='step', color='b')[0]
+    ns3 = hist(rhoslist['synch'][3], bins=rhobins, histtype='step', color='r')[0]
+    nd4 = hist(rhoslist['desynch'][4], bins=rhobins, histtype='step', color='b', alpha=0.5)[0]
+    ns4 = hist(rhoslist['synch'][4], bins=rhobins, histtype='step', color='r', alpha=0.5)[0]
+    nmax = max(np.hstack([nd3, ns3, nd4, ns4]))
+    axvline(x=0, c='e', ls='-') # draw vertical grey line at x=0
+    # draw arrows at means:
+    arrow(d3mean, nmax/2, 0, -10, head_width=0.05, head_length=5, length_includes_head=True,
+          color='b')
+    arrow(s3mean, nmax, 0, -10, head_width=0.05, head_length=5, length_includes_head=True,
+          color='r')
+    arrow(d4mean, nmax/2, 0, -10, head_width=0.05, head_length=5, length_includes_head=True,
+          color='b', alpha=0.5)
+    arrow(s4mean, nmax, 0, -10, head_width=0.05, head_length=5, length_includes_head=True,
+          color='r', alpha=0.5)
+    xlim(xmin=RHOMIN, xmax=RHOMAX)
+    ylim(ymax=nmax) # effectively normalizes the histogram
+    xticks(*rhoticks)
+    yticks([0, nmax]) # turn off y ticks to save space
+    xlabel(r'$\rho$')
+    ylabel('cell pair count')
+    gcfm().window.setWindowTitle('rho_hist_r08_r10')
     tight_layout(pad=0.3)
 
     show()
