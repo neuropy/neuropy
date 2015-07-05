@@ -15,10 +15,10 @@ from core import ceilsigfig, floorsigfig, scatterbin
 
 from psth_funcs import get_psth_peaks_gac, get_seps
 
+BLANK = False # consider blank periods between trials?
 BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
 GAUSS = True # calculate PSTH and single trial rates by convolving with Gaussian kernel?
-BLANK = False # consider blank periods between trials?
-KIND = 'active' # 'responsive' or 'active'
+KIND = 'responsive' # which type of neurons to use? 'responsive' or 'active'
 MINTHRESH = 3 # peak detection thresh, Hz
 MEDIANX = 2 # PSTH median multiplier, Hz
 
@@ -34,14 +34,15 @@ ALPHA = 0.05 # for comparing the means of psthcorr distribs to 0
 VMIN, VMAX = -1, 1 # rho limits for correlation matrices
 
 
-def get_nids_psths(rec, strange, kind='responsive'):
+def get_nids_psths(rec, strange, kind='responsive', blank=BLANK,
+                   binw=BINW, tres=TRES, gauss=GAUSS):
     """Return responsive or active nids and corresponding PSTHs for strange in rec"""
     if kind == 'responsive': # start with all nids, then weed out unresponsive ones
         nids = rec.get_nids(tranges=[strange], kind='all')
     else: # kind is 'active'
         nids = rec.get_nids(tranges=[strange], kind='active')
-    t, psths, spikets = rec.psth(nids=nids, natexps=False, blank=BLANK, strange=strange,
-                                 plot=False, binw=BINW, tres=TRES, gauss=GAUSS, norm='ntrials')
+    t, psths, spikets = rec.psth(nids=nids, natexps=False, blank=blank, strange=strange,
+                                 plot=False, binw=binw, tres=tres, gauss=gauss, norm='ntrials')
     if kind == 'responsive':
         rnids, rpsths = [], [] # nids and PSTHS to return
         for nid, psth, ts in zip(nids, psths, spikets):
