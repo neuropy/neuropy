@@ -122,21 +122,22 @@ if __name__ == "__main__":
         spstring = '$p>%g$' % floorsigfig(sp)
     '''
     figure(figsize=FIGSIZE)
-    rhobins = np.arange(RHOMIN, RHOMAX+0.0333, 0.0333) # left edges + rightmost edge
+    rhobins = np.arange(RHOMIN, RHOMAX+0.05, 0.05) # left edges + rightmost edge
     nd = hist(rhos['desynch'], bins=rhobins, histtype='step', color='b')[0]
     ns = hist(rhos['synch'], bins=rhobins, histtype='step', color='r')[0]
-    nmax = max(nd.max(), ns.max())
-    axvline(x=0, c='e', ls='-') # draw vertical grey line at x=0
+    nmax = max(np.hstack([nd, ns]))
+    axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
     # draw arrows at means:
-    arrow(dmean, 162, 0, -20, head_width=0.05, head_length=10, length_includes_head=True,
+    ah = nmax / 8 # arrow height
+    arrow(dmean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
           color='b')
-    arrow(smean, 162, 0, -20, head_width=0.05, head_length=10, length_includes_head=True,
+    arrow(smean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
           color='r')
     # draw vertical lines at means
     #axvline(x=dmean, c='b', ls='--')
     #axvline(x=smean, c='r', ls='--')
     xlim(xmin=RHOMIN, xmax=RHOMAX)
-    ylim(ymax=nmax) # effectively normalizes the histogram
+    ylim(ymax=nmax*1.01)
     # remove unnecessary decimal places:
     rhoticks = [-0.25, 0, 0.25, 0.5, 0.75, 1], ['-0.25', '0', '0.25', '0.5', '0.75', '1']
     #rhoticks = np.arange(-0.4, 1+0.2, 0.2)
@@ -154,7 +155,7 @@ if __name__ == "__main__":
     #     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
     #text(0.98, 0.74, '%s' % spstring, color='r',
     #     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-    gcfm().window.setWindowTitle('rho_hist')
+    gcfm().window.setWindowTitle('rho_hist_'+KIND)
     tight_layout(pad=0.3)
 
     # plot rho vs separation:
@@ -175,7 +176,7 @@ if __name__ == "__main__":
     yticks(*rhoticks)
     xlabel(r'cell pair separation (${\mu}m$)')
     ylabel(r'$\rho$')
-    gcfm().window.setWindowTitle('rho_sep')
+    gcfm().window.setWindowTitle('rho_sep_'+KIND)
     tight_layout(pad=0.3)
 
     # plot rho histograms for ptc22.tr1.r08 and ptc22.tr1.r10: same track, different movies:
@@ -200,18 +201,19 @@ if __name__ == "__main__":
     nd4 = hist(rhoslist['desynch'][4], bins=rhobins, histtype='step', color='b', alpha=0.5)[0]
     ns4 = hist(rhoslist['synch'][4], bins=rhobins, histtype='step', color='r', alpha=0.5)[0]
     nmax = max(np.hstack([nd3, ns3, nd4, ns4]))
-    axvline(x=0, c='e', ls='-') # draw vertical grey line at x=0
+    axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
     # draw arrows at means:
-    arrow(d3mean, nmax/2, 0, -10, head_width=0.05, head_length=5, length_includes_head=True,
-          color='b')
-    arrow(s3mean, nmax, 0, -10, head_width=0.05, head_length=5, length_includes_head=True,
-          color='r')
-    arrow(d4mean, nmax/2, 0, -10, head_width=0.05, head_length=5, length_includes_head=True,
-          color='b', alpha=0.5)
-    arrow(s4mean, nmax, 0, -10, head_width=0.05, head_length=5, length_includes_head=True,
-          color='r', alpha=0.5)
+    ah = nmax / 8 # arrow height
+    arrow(d3mean, nmax/2, 0, -ah, head_width=0.05, head_length=ah/2,
+          length_includes_head=True, color='b')
+    arrow(s3mean, nmax, 0, -ah, head_width=0.05, head_length=ah/2,
+          length_includes_head=True, color='r')
+    arrow(d4mean, nmax/2, 0, -ah, head_width=0.05, head_length=ah/2,
+          length_includes_head=True, color='b', alpha=0.5)
+    arrow(s4mean, nmax, 0, -ah, head_width=0.05, head_length=ah/2,
+          length_includes_head=True, color='r', alpha=0.5)
     xlim(xmin=RHOMIN, xmax=RHOMAX)
-    ylim(ymax=nmax) # effectively normalizes the histogram
+    ylim(ymax=nmax*1.01)
     xticks(*rhoticks)
     yticks([0, nmax]) # turn off y ticks to save space
     xlabel(r'$\rho$')
@@ -224,7 +226,7 @@ if __name__ == "__main__":
          transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
     text(0.98, 0.74, r'p34s=%.2g' % p34s, color='r',
          transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-    gcfm().window.setWindowTitle('rho_hist_r08_r10')
+    gcfm().window.setWindowTitle('rho_hist_r08_r10_'+KIND)
     tight_layout(pad=0.3)
 
     show()
