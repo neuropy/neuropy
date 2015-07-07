@@ -98,9 +98,15 @@ def get_psth_peaks_gac(ts, t, psth, thresh, sigma=0.02, alpha=1.0, minpoints=5,
         cts = ts[spikeis] # this cluster's spike times
         # search all spikes for argmax, same as using lowp=0 and highp=100:
         #li, ri = t.searchsorted([cts[0], cts[-1]])
+        # search within percentiles for argmax:
         lt, rt = np.percentile(cts, [lowp, highp])
-        li, ri = t.searchsorted([lt, rt]) # search within percentiles for argmax
-        # indices of all local peaks within percentiles in psth
+        # indices of all local peaks within percentiles in psth:
+        li, ri = t.searchsorted([lt, rt])
+        if li == ri:
+            # start and end indices are identical, cluster probably falls before first or
+            # after last spike time:
+            assert li == 0 or li == len(psth)
+            continue # no peak to be found in psth for this cluster
         localpsth = psth[li:ri]
         #allpeakiis, = argrelextrema(localpsth, np.greater)
         #if len(allpeakiis) == 0:
