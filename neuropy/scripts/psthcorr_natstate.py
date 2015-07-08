@@ -12,14 +12,19 @@ import numpy as np
 from scipy.stats import mannwhitneyu, chisquare, ttest_1samp #, ttest_ind, ks_2samp
 
 import core
-from core import ceilsigfig, floorsigfig, scatterbin
+from core import ceilsigfig, floorsigfig, scatterbin, intround
 
 from psth_funcs import get_nids_psths, get_psth_peaks_gac, get_seps
 
 BLANK = False # consider blank periods between trials?
 BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
+BINWMS = '%dms' % intround(BINW * 1000)
 GAUSS = True # calculate PSTH and single trial rates by convolving with Gaussian kernel?
-KIND = 'responsive' # which type of neurons to use? 'responsive' or 'active'
+if GAUSS:
+    KERNEL = 'gauss'
+else:
+    KERNEL = 'square'
+KIND = 'active' # which type of neurons to use? 'responsive' or 'active'
 MEDIANX = 2 # PSTH median multiplier, Hz
 MINTHRESH = 3 # peak detection thresh, Hz
 
@@ -92,7 +97,7 @@ if __name__ == "__main__":
                 yticks(nidticks)
                 if SHOWCOLORBAR:
                     colorbar(ticks=[-1, 0, 1])
-                titlestr = rec.absname + '_' + ('%s' % slabel) + '_rho_mat_' + KIND
+                titlestr = '_'.join([rec.absname, 'rho_mat', slabel, KIND, KERNEL, BINWMS])
                 gcfm().window.setWindowTitle(titlestr)
                 tight_layout(pad=0.3)
 
@@ -159,7 +164,8 @@ if __name__ == "__main__":
     #     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
     #text(0.98, 0.74, '%s' % spstring, color='r',
     #     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-    gcfm().window.setWindowTitle('rho_hist_'+KIND)
+    titlestr = '_'.join(['rho_hist', KIND, KERNEL, BINWMS])
+    gcfm().window.setWindowTitle(titlestr)
     tight_layout(pad=0.3)
 
     # plot rho vs separation:
@@ -182,7 +188,8 @@ if __name__ == "__main__":
     yticks(*rhoticks)
     xlabel(r'cell pair separation (${\mu}m$)')
     ylabel(r'$\rho$')
-    gcfm().window.setWindowTitle('rho_sep_'+KIND)
+    titlestr = '_'.join(['rho_sep', KIND, KERNEL, BINWMS])
+    gcfm().window.setWindowTitle(titlestr)
     tight_layout(pad=0.3)
 
     # plot rho histograms for ptc22.tr1.r08 and ptc22.tr1.r10: same track, different movies:
@@ -232,7 +239,8 @@ if __name__ == "__main__":
          transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
     text(0.98, 0.74, r'p34s=%.2g' % p34s, color='r',
          transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-    gcfm().window.setWindowTitle('rho_hist_r08_r10_'+KIND)
+    titlestr = '_'.join(['rho_hist_r08_r10', KIND, KERNEL, BINWMS])
+    gcfm().window.setWindowTitle(titlestr)
     tight_layout(pad=0.3)
 
     # Scatter plot synched and desynched rho for the cells that are responsive in both
@@ -267,6 +275,7 @@ if __name__ == "__main__":
     ylabel(r'desynchronized $\rho$')
     xticks(*rhoticks)
     yticks(*rhoticks)
-    gcfm().window.setWindowTitle('rho_scatter_'+KIND)
+    titlestr = '_'.join(['rho_scatter', KIND, KERNEL, BINWMS])
+    gcfm().window.setWindowTitle(titlestr)
     tight_layout(pad=0.3)
     show()
