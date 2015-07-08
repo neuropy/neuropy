@@ -168,30 +168,6 @@ if __name__ == "__main__":
     gcfm().window.setWindowTitle(titlestr)
     tight_layout(pad=0.3)
 
-    # plot rho vs separation:
-    figure(figsize=FIGSIZE)
-    #pl.plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
-    for slabel, c in zip(slabels, colours):
-        # scatter plot:
-        pl.plot(seps[slabel], rhos[slabel], c+'.', alpha=0.5, ms=2)
-        # bin seps and plot mean rho in each bin:
-        sepbins = np.arange(0, SEPMAX+SEPBINW, SEPBINW) # bin edges
-        sepbins[-1] = 2000 # make last right edge include all remaining data
-        midseps, rhomeans, rhostds = scatterbin(seps[slabel], rhos[slabel], sepbins,
-                                                xaverage=None)
-        midseps[-1] = midseps[-2] + SEPBINW # fix last midsep value
-        errorbar(midseps, rhomeans, yerr=rhostds, fmt=c+'.-', ms=10, lw=2, zorder=9999)
-    xlim(xmin=0, xmax=SEPMAX)
-    ylim(ymin=RHOMIN, ymax=RHOMAX)
-    septicks = np.arange(0, SEPMAX+100, 500)
-    xticks(septicks)
-    yticks(*rhoticks)
-    xlabel(r'cell pair separation (${\mu}m$)')
-    ylabel(r'$\rho$')
-    titlestr = '_'.join(['rho_sep', KIND, KERNEL, BINWMS])
-    gcfm().window.setWindowTitle(titlestr)
-    tight_layout(pad=0.3)
-
     # plot rho histograms for ptc22.tr1.r08 and ptc22.tr1.r10: same track, different movies:
     d3mean = rhoslist['desynch'][3].mean()
     s3mean = rhoslist['synch'][3].mean()
@@ -278,4 +254,28 @@ if __name__ == "__main__":
     titlestr = '_'.join(['rho_scatter', KIND, KERNEL, BINWMS])
     gcfm().window.setWindowTitle(titlestr)
     tight_layout(pad=0.3)
+    # plot rho vs separation:
+    figure(figsize=FIGSIZE)
+    #pl.plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
+    for slabel, c in zip(slabels, colours):
+        # scatter plot:
+        pl.plot(seps[slabel], rhos[slabel], c+'.', alpha=0.5, ms=2)
+        # bin seps and plot mean rho in each bin:
+        sepbins = np.arange(0, SEPMAX+SEPBINW, SEPBINW) # bin edges
+        sepbins[-1] = 2000 # make last right edge include all remaining data
+        midseps, rhomeans, rhostds = scatterbin(seps[slabel], rhos[slabel], sepbins,
+                                                xaverage=None)
+        midseps[-1] = midseps[-2] + SEPBINW # fix last midsep value
+        errorbar(midseps, rhomeans, yerr=rhostds, fmt=c+'.-', ms=10, lw=2, zorder=9999)
+    xlim(xmin=0, xmax=SEPMAX)
+    ylim(ymin=RHOMIN, ymax=RHOMAX)
+    septicks = np.arange(0, SEPMAX+100, 500)
+    xticks(septicks)
+    yticks(*rhoticks)
+    xlabel(r'cell pair separation (${\mu}m$)')
+    ylabel(r'$\rho$')
+    titlestr = '_'.join(['rho_sep', KIND, KERNEL, BINWMS])
+    gcfm().window.setWindowTitle(titlestr)
+    tight_layout(pad=0.3)
+
     show()
