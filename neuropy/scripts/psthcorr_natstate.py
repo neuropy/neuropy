@@ -92,7 +92,7 @@ if __name__ == "__main__":
                 yticks(nidticks)
                 if SHOWCOLORBAR:
                     colorbar(ticks=[-1, 0, 1])
-                titlestr = rec.absname + '_' + ('%s' % slabel) + '_rho_mat'
+                titlestr = rec.absname + '_' + ('%s' % slabel) + '_rho_mat_' + KIND
                 gcfm().window.setWindowTitle(titlestr)
                 tight_layout(pad=0.3)
 
