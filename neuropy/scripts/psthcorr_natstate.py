@@ -28,7 +28,7 @@ PLOTRHOMATRICES = False
 SHOWCOLORBAR = False # show colorbar for rho matrices?
 SEPBINW = 200 # separation bin width, um
 RHOMIN, RHOMAX = -0.4, 1
-SEPMAX = 1375 # max pairwise separation, um
+SEPMAX = 1200 # max pairwise separation, um
 
 ALPHA = 0.05 # for comparing the means of psthcorr distribs to 0
 VMIN, VMAX = -1, 1 # rho limits for correlation matrices
@@ -165,9 +165,11 @@ if __name__ == "__main__":
         # scatter plot:
         pl.plot(seps[slabel], rhos[slabel], c+'.', alpha=0.5, ms=2)
         # bin seps and plot mean rho in each bin:
-        sepbins = np.arange(0, SEPMAX+SEPBINW, SEPBINW) # left edges
+        sepbins = np.arange(0, SEPMAX+SEPBINW, SEPBINW) # bin edges
+        sepbins[-1] = 2000 # make last right edge include all remaining data
         midseps, rhomeans, rhostds = scatterbin(seps[slabel], rhos[slabel], sepbins,
                                                 xaverage=None)
+        midseps[-1] = midseps[-2] + SEPBINW # fix last midsep value
         errorbar(midseps, rhomeans, yerr=rhostds, fmt=c+'.-', ms=10, lw=2, zorder=9999)
     xlim(xmin=0, xmax=SEPMAX)
     ylim(ymin=RHOMIN, ymax=RHOMAX)
