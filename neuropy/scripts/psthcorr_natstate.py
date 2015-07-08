@@ -6,9 +6,10 @@ within neuropy using `run -i scripts/psthcorr.py`"""
 #do i just want to plot two distribs, or do i want to try scatter plots? probably both
 
 from __future__ import division, print_function
+
 import pylab as pl
 import numpy as np
-from scipy.stats import mannwhitneyu, ttest_1samp #, ttest_ind, ks_2samp
+from scipy.stats import mannwhitneyu, chisquare, ttest_1samp #, ttest_ind, ks_2samp
 
 import core
 from core import ceilsigfig, floorsigfig, scatterbin
@@ -54,12 +55,14 @@ if __name__ == "__main__":
     # compare and sort recordings by their absname:
     reccmp = lambda reca, recb: cmp(reca.absname, recb.absname)
     urecs = sorted(rec2tranges, cmp=reccmp) # unique recordings, no repetition, sorted
+    nrecs = len(urecs)
     urecnames = ' '.join([rec.absname for rec in urecs])
 
     slabels = ['desynch', 'synch'] # state labels
     colours = ['b', 'r'] # corresponding state colours
     rhoslist = {'desynch': [], 'synch': []}
     sepslist = {'desynch': [], 'synch': []}
+    nidslist = {'desynch': [], 'synch': []}
     for rec in urecs:
         stranges = rec2tranges[rec]
         for slabel, strange in zip(slabels, stranges):
@@ -69,6 +72,7 @@ if __name__ == "__main__":
                                          binw=BINW, tres=TRES, gauss=GAUSS,
                                          medianx=MEDIANX, minthresh=MINTHRESH)
             nn = len(nids)
+            nidslist[slabel].append(nids)
             rho = np.corrcoef(psths) # rho matrix, defaults to bias=1
             rho[np.diag_indices(nn)] = np.nan # nan the diagonal, which imshow plots as white
 
@@ -231,4 +235,38 @@ if __name__ == "__main__":
     gcfm().window.setWindowTitle('rho_hist_r08_r10_'+KIND)
     tight_layout(pad=0.3)
 
+    # Scatter plot synched and desynched rho for the cells that are responsive in both
+    # states within each recording
+    figure(figsize=FIGSIZE)
+    allsynchrhos, alldesynchrhos = [], []
+    for reci in range(nrecs):
+        synchnids = nidslist['synch'][reci]
+        desynchnids = nidslist['desynch'][reci]
+        # set of responsive nids common to both states:
+        nids = np.intersect1d(synchnids, desynchnids)
+        synchnidis = synchnids.searchsorted(nids)
+        desynchnidis = desynchnids.searchsorted(nids)
+        synchrhos = rhoslist['synch'][reci][synchnidis]
+        desynchrhos = rhoslist['desynch'][reci][desynchnidis]
+        plot([-1, 1], [-1, 1], 'e--') # plot y=x line
+        plot(synchrhos, desynchrhos, 'o', mec='k', mfc='None')
+        allsynchrhos.append(synchrhos)
+        alldesynchrhos.append(desynchrhos)
+    allsynchrhos = np.hstack(allsynchrhos)
+    alldesynchrhos = np.hstack(alldesynchrhos)
+    nbelowyxline = (allsynchrhos > alldesynchrhos).sum()
+    naboveyxline = (alldesynchrhos > allsynchrhos).sum()
+    chi2, p = chisquare([naboveyxline, nbelowyxline])
+    text(0.03, 0.98, '%d < %d' % (naboveyxline, nbelowyxline), color='k',
+         transform=gca().transAxes, horizontalalignment='left', verticalalignment='top')
+    text(0.03, 0.90, 'p=%.2g' % p, color='k',
+         transform=gca().transAxes, horizontalalignment='left', verticalalignment='top')
+    xlim(xmin=RHOMIN, xmax=RHOMAX)
+    ylim(ymin=RHOMIN, ymax=RHOMAX)
+    xlabel(r'synchronized $\rho$')
+    ylabel(r'desynchronized $\rho$')
+    xticks(*rhoticks)
+    yticks(*rhoticks)
+    gcfm().window.setWindowTitle('rho_scatter_'+KIND)
+    tight_layout(pad=0.3)
     show()
