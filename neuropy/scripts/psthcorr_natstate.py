@@ -65,12 +65,12 @@ if __name__ == "__main__":
 
     slabels = ['desynch', 'synch'] # state labels
     colours = ['b', 'r'] # corresponding state colours
-    rhoslist = {'desynch': [], 'synch': []}
-    sepslist = {'desynch': [], 'synch': []}
-    nidslist = {'desynch': [], 'synch': []}
+    rhoslist = {None: [], 'desynch': [], 'synch': []} # None means state is ignored
+    sepslist = {None: [], 'desynch': [], 'synch': []}
+    nidslist = {None: [], 'desynch': [], 'synch': []}
     for rec in urecs:
         stranges = rec2tranges[rec]
-        for slabel, strange in zip(slabels, stranges):
+        for slabel, strange in zip([None]+slabels, [None]+stranges):
             print()
             print(rec.absname, slabel, strange)
             nids, psths = get_nids_psths(rec, strange, kind=KIND, blank=BLANK,
@@ -97,13 +97,14 @@ if __name__ == "__main__":
                 yticks(nidticks)
                 if SHOWCOLORBAR:
                     colorbar(ticks=[-1, 0, 1])
-                titlestr = '_'.join([rec.absname, 'rho_mat', slabel, KIND, KERNEL, BINWMS])
+                titlestr = '_'.join([rec.absname, 'rho_mat', str(slabel),
+                                     KIND, KERNEL, BINWMS])
                 gcfm().window.setWindowTitle(titlestr)
                 tight_layout(pad=0.3)
 
     # concatenate rho and sep lists into arrays:
     rhos, seps = {}, {}
-    for slabel in slabels:
+    for slabel in ([None]+slabels):
         rhos[slabel] = np.hstack(rhoslist[slabel])
         seps[slabel] = np.hstack(sepslist[slabel])
 
@@ -168,7 +169,9 @@ if __name__ == "__main__":
     gcfm().window.setWindowTitle(titlestr)
     tight_layout(pad=0.3)
 
-    # plot rho histograms for ptc22.tr1.r08 and ptc22.tr1.r10: same track, different movies:
+    # plot rho histograms for ptc22.tr1.r08 and ptc22.tr1.r10: same track, different movies.
+    # Thought the stats would show distribs are significantly different between states
+    # but not between movies within state. That didn't pan out for this pair of recordings:
     d3mean = rhoslist['desynch'][3].mean()
     s3mean = rhoslist['synch'][3].mean()
     d4mean = rhoslist['desynch'][4].mean()
@@ -177,6 +180,9 @@ if __name__ == "__main__":
     p4 = mannwhitneyu(rhoslist['desynch'][4], rhoslist['synch'][4])[1] # 1-sided
     p34d = mannwhitneyu(rhoslist['desynch'][3], rhoslist['desynch'][4])[1] # 1-sided
     p34s = mannwhitneyu(rhoslist['synch'][3], rhoslist['synch'][4])[1] # 1-sided
+    print()
+    print('d3mean=%.3g, s3mean=%.3g, s4mean=%.3g, d4mean=%.2g' %
+          (d3mean, s3mean, s4mean, d4mean))
     print('p3=%.2g, p4=%.2g, p34d=%.2g, p34s=%.2g' % (p3, p4, p34d, p34s))
     #if p < ALPHA:
     #    pstring = '$p<%g$' % ceilsigfig(p)
