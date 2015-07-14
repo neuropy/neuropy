@@ -155,9 +155,9 @@ if __name__ == "__main__":
     yticks([0, nmax]) # turn off y ticks to save space
     xlabel(r'$\rho$')
     ylabel('cell pair count')
-    text(0.98, 0.98, r'$\mu$=%.2g' % dmean, color='b',
+    text(0.98, 0.98, r'$\mu$=%.4g' % dmean, color='b',
          transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-    text(0.98, 0.90, r'$\mu$=%.2g' % smean, color='r',
+    text(0.98, 0.90, r'$\mu$=%.4g' % smean, color='r',
          transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
     text(0.98, 0.82, '%s' % pstring, color='k',
          transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
