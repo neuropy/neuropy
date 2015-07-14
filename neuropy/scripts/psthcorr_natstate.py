@@ -225,7 +225,7 @@ if __name__ == "__main__":
     gcfm().window.setWindowTitle(titlestr)
     tight_layout(pad=0.3)
 
-    # Scatter plot synched and desynched rho for the cells that are responsive in both
+    # Scatter plot synched and desynched rho for the cells that are responsive/active in both
     # states within each recording
     figure(figsize=FIGSIZE)
     allsynchrhos, alldesynchrhos = [], []
@@ -260,6 +260,79 @@ if __name__ == "__main__":
     titlestr = '_'.join(['rho_scatter', KIND, KERNEL, BINWMS])
     gcfm().window.setWindowTitle(titlestr)
     tight_layout(pad=0.3)
+
+    # For r08 and r10, check if chi2 is significant in synched vs desynched plot,
+    # but not for movie 1 vs 2 plot. It seems it isn't:
+
+    # Scatter plot rho of r08 (movie 1) vs r10 (movie 2), regardless of state:
+    figure(figsize=FIGSIZE)
+    nids = []
+    for reci in [3, 4]:
+        # collect sets of units:
+        nids.append(nidslist[None][reci])
+    # set of responsive/active nids common to both movies:
+    ssnids = core.intersect1d(nids)
+    r08nidis = nids[0].searchsorted(ssnids)
+    r10nidis = nids[1].searchsorted(ssnids)
+    r08rhos = rhoslist[None][3][r08nidis] # movie 1
+    r10rhos = rhoslist[None][4][r10nidis] # movie 2
+    plot([-1, 1], [-1, 1], 'e--') # plot y=x line
+    plot(r08rhos, r10rhos, 'o', mec='k', mfc='None') # movie 2 vs movie 1
+    nbelowyxline = (r08rhos > r10rhos).sum()
+    naboveyxline = (r10rhos > r08rhos).sum()
+    chi2, p = chisquare([naboveyxline, nbelowyxline])
+    text(0.03, 0.98, '%d < %d' % (naboveyxline, nbelowyxline), color='k',
+         transform=gca().transAxes, horizontalalignment='left', verticalalignment='top')
+    text(0.03, 0.90, 'p=%.2g' % p, color='k',
+         transform=gca().transAxes, horizontalalignment='left', verticalalignment='top')
+    xlim(xmin=RHOMIN, xmax=RHOMAX)
+    ylim(ymin=RHOMIN, ymax=RHOMAX)
+    xlabel(r'movie 1 $\rho$')
+    ylabel(r'movie 2 $\rho$')
+    xticks(*rhoticks)
+    yticks(*rhoticks)
+    titlestr = '_'.join(['rho_scatter_r08_r10', KIND, KERNEL, BINWMS])
+    gcfm().window.setWindowTitle(titlestr)
+    tight_layout(pad=0.3)
+
+    # Scatter plot synched and desynched rho for the cells that are responsive in both
+    # states within each of recordings ptc22.tr1.r08 and ptc22.tr1.r10
+    figure(figsize=FIGSIZE)
+    allsynchrhos, alldesynchrhos = [], []
+    nids = []
+    for reci in [3, 4]:
+        # collect sets of units:
+        synchnids = nidslist['synch'][reci]
+        desynchnids = nidslist['desynch'][reci]
+        # set of responsive nids common to both states:
+        nids = np.intersect1d(synchnids, desynchnids)
+        synchnidis = synchnids.searchsorted(nids)
+        desynchnidis = desynchnids.searchsorted(nids)
+        synchrhos = rhoslist['synch'][reci][synchnidis]
+        desynchrhos = rhoslist['desynch'][reci][desynchnidis]
+        plot([-1, 1], [-1, 1], 'e--') # plot y=x line
+        plot(synchrhos, desynchrhos, 'o', mec='k', mfc='None')
+        allsynchrhos.append(synchrhos)
+        alldesynchrhos.append(desynchrhos)
+    allsynchrhos = np.hstack(allsynchrhos)
+    alldesynchrhos = np.hstack(alldesynchrhos)
+    nbelowyxline = (allsynchrhos > alldesynchrhos).sum()
+    naboveyxline = (alldesynchrhos > allsynchrhos).sum()
+    chi2, p = chisquare([naboveyxline, nbelowyxline])
+    text(0.03, 0.98, '%d < %d' % (naboveyxline, nbelowyxline), color='k',
+         transform=gca().transAxes, horizontalalignment='left', verticalalignment='top')
+    text(0.03, 0.90, 'p=%.2g' % p, color='k',
+         transform=gca().transAxes, horizontalalignment='left', verticalalignment='top')
+    xlim(xmin=RHOMIN, xmax=RHOMAX)
+    ylim(ymin=RHOMIN, ymax=RHOMAX)
+    xlabel(r'synchronized $\rho$')
+    ylabel(r'desynchronized $\rho$')
+    xticks(*rhoticks)
+    yticks(*rhoticks)
+    titlestr = '_'.join(['rho_scatter_state_r08_r10', KIND, KERNEL, BINWMS])
+    gcfm().window.setWindowTitle(titlestr)
+    tight_layout(pad=0.3)
+    
     # plot rho vs separation:
     figure(figsize=FIGSIZE)
     #pl.plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
