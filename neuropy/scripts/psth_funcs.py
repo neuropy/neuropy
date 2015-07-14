@@ -20,10 +20,14 @@ EPS = np.spacing(1) # epsilon, smallest representable non-zero number
 def get_nids_psths(rec, strange, kind='responsive', blank=False,
                    binw=0.02, tres=0.0001, gauss=True, medianx=2, minthresh=3):
     """Return responsive or active nids and corresponding PSTHs for strange in rec"""
+    if strange == None:
+        tranges = None
+    else:
+        tranges = [strange] # tranges kwarg expects a list
     if kind == 'responsive': # start with all nids, then weed out unresponsive ones
-        nids = rec.get_nids(tranges=[strange], kind='all')
+        nids = rec.get_nids(tranges=tranges, kind='all')
     else: # kind is 'active'
-        nids = rec.get_nids(tranges=[strange], kind='active')
+        nids = rec.get_nids(tranges=tranges, kind='active')
     t, psths, spikets = rec.psth(nids=nids, natexps=False, blank=blank, strange=strange,
                                  plot=False, binw=binw, tres=tres, gauss=gauss, norm='ntrials')
     if kind == 'responsive':
