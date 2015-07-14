@@ -22,6 +22,9 @@ from psth_funcs import plot_psth, get_psth_peaks_gac
 
 ## TODO: also take average peak widths for each cell in each state, scatter plot them vs state
 
+## TODO: plot difference in mean response reliability between synched and desynched, as a
+## function of gaussian sigma
+
 # mapping of recording to list of desynched and synched trange, in that order:
 rec2tranges = {ptc17.tr2b.r58: [(0, 700e6), # desynched trange, 66 Hz refresh rate
                                 (800e6, 1117e6)], # synched trange, 66 Hz refresh rate
