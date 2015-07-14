@@ -24,7 +24,7 @@ if GAUSS:
     KERNEL = 'gauss'
 else:
     KERNEL = 'square'
-KIND = 'active' # which type of neurons to use? 'responsive' or 'active'
+KIND = 'responsive' # which type of neurons to use? 'responsive' or 'active'
 MEDIANX = 2 # PSTH median multiplier, Hz
 MINTHRESH = 3 # peak detection thresh, Hz
 
