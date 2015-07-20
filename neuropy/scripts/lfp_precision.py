@@ -1,27 +1,40 @@
-"""Examine trial-averaged LFP during synched and desynched state of the 2 natural scene movies
-in ptc22.tr1. Run from within neuropy using `run -i scripts/lfp_precision.py`"""
+"""Examine trial-averaged LFP during synched and desynched state of the specified natural
+scene movies. Run from within neuropy using `run -i scripts/lfp_precision.py`"""
 
 from __future__ import division, print_function
 
 from core import sparseness
 
-# copied from psthcorr.py:
-ptc22tr1r08s = [ptc22.tr1.r08, ptc22.tr1.r08]
-strangesr08s = [(0, 1500e6), # r08 desynched, us
-                (1550e6, np.inf)] # r08 synched, us, end is ~ 2300s
-ptc22tr1r10s = [ptc22.tr1.r10, ptc22.tr1.r10]
-strangesr10s = [(0, 1400e6), # r10 synched, us
-                (1480e6, np.inf)] # r10 desynched, us, end is ~ 2300s
+# copied from psth_precision.py:
+rec2tranges = {ptc17.tr2b.r58: [(0, 700e6), # desynched trange, 66 Hz refresh rate
+                                (800e6, 1117e6)], # synched trange, 66 Hz refresh rate
+               ptc18.tr1.r38:  [(0, 425e6), # desynched trange, ends ~ trial 76
+                                (550e6, 2243e6)], # synched trange, starts ~ trial 98
+               ptc18.tr2c.r58: [(0, 750e6), # desynched trange
+                                (1000e6, 2248e6)], # synched trange
+               ptc22.tr1.r08:  [(0, 1500e6), # desynched trange
+                                (1550e6, 2329e6)], # synched trange
+               ptc22.tr1.r10:  [(1480e6, 2331e6), # desynched trange
+                                (0, 1400e6)], # synched trange
+               ptc22.tr4b.r49: [(0, 1475e6), # desynched trange
+                                (1500e6, 2331e6)], # synched trange
+              }
 
-figsize=(10, 3)
-for recs, stranges, fmts in zip((ptc22tr1r08s, ptc22tr1r10s),
-                                (strangesr08s, strangesr10s),
-                                (('b-', 'r-'), ('r-', 'b-'))):
-    LFPf = pl.figure(figsize=figsize)
+FIGSIZE = (10, 3)
+
+reccmp = lambda reca, recb: cmp(reca.absname, recb.absname)
+urecs = sorted(rec2tranges, cmp=reccmp) # unique recordings, no repetition, sorted
+#urecnames = ' '.join([rec.absname for rec in urecs])
+fmts = ('b-', 'r-') # desynched and synched
+
+for rec in urecs:
+    print(rec.absname)
+    LFPf = pl.figure(figsize=FIGSIZE)
     LFPa = LFPf.add_subplot(111)
-    SNf = pl.figure(figsize=figsize)
-    SNa = SNf.add_subplot(111)
-    for rec, strange, fmt, delta in zip(recs, stranges, fmts, (0.5, -0.5)):
+    SNRf = pl.figure(figsize=FIGSIZE)
+    SNRa = SNRf.add_subplot(111)
+    stranges = rec2tranges[rec]
+    for strange, fmt, delta in zip(stranges, fmts, (0.5, -0.5)): # desynched, then synched
         t, lfptrials = rec.tlfp(trange=strange, plot=False)
         lfpmean, lfpstd = lfptrials.mean(axis=0), lfptrials.std(axis=0)
         ntrials = len(lfptrials)
@@ -40,16 +53,15 @@ for recs, stranges, fmts in zip((ptc22tr1r08s, ptc22tr1r10s),
         LFPf.canvas.manager.set_window_title("tLFP %s" % rec.absname)
         LFPf.tight_layout(pad=0.3) # crop figure to contents
         # Fano-factor and CV don't work very well when mean approaches zero
-        #SN = np.abs(lfpmean) / lfpstd # something like S/N ratio
-        SN = lfpmean**2 / lfpstd**2 # something like S/N ratio
-        SNa.plot(t, SN, fmt)
-        SNa.set_xlim(xmax=5.5)
-        SNa.set_xlabel("time (sec)")
-        #SNa.set_ylabel("trial-averaged LFP $\mu^{2}/\sigma^{2}$")
-        SNa.set_ylabel("trial-averaged LFP S/N")
-        SNf.canvas.manager.set_window_title("tLFP SN %s" % rec.absname)
+        SNR = np.abs(lfpmean) / lfpstd # something like S/N ratio
+        #SNR = lfpmean**2 / lfpstd**2 # something like S/N ratio
+        SNRa.plot(t, SNR, fmt)
+        SNRa.set_xlim(xmax=5.5)
+        SNRa.set_xlabel("time (sec)")
+        SNRa.set_ylabel(r"LFP S/N ($|\mu|/\sigma)$")
+        SNRf.canvas.manager.set_window_title("tLFP SNR %s" % rec.absname)
         print('sparseness:', sparseness(np.abs(lfpmean)))
-        print('mean tLFP S/N:', SN.mean())
-        SNf.tight_layout(pad=0.3) # crop figure to contents
+        print('mean tLFP S/N:', SNR.mean())
+        SNRf.tight_layout(pad=0.3) # crop figure to contents
 
 pl.show()
