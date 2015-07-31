@@ -23,8 +23,8 @@ rec2tranges = {ptc17.tr2b.r58: [(0, 700e6), # desynched trange, 66 Hz refresh ra
                                 (1500e6, 2331e6)], # synched trange
               }
 
-FIGSIZE = (10, 5)
-YLABELX = -0.05
+FIGSIZE = (8, 4)
+YLABELX = -0.06
 
 reccmp = lambda reca, recb: cmp(reca.absname, recb.absname)
 urecs = sorted(rec2tranges, cmp=reccmp) # unique recordings, no repetition, sorted
@@ -67,16 +67,16 @@ for rec in urecs:
         SNRs[statei].append(SNR)
         #SNR = lfpmean**2 / lfpstd**2 # something like (S/N)**2 ratio
         SNRa.plot(t, SNR, fmt)
-        SNRa.set_xlim(xmax=5.5)
-        SNRa.set_ylim(0, 3)
-        SNRa.set_yticks([0, 1, 2, 3])
-        SNRa.set_xlabel("time (s)")
-        SNRa.set_ylabel(r"LFP S/N ($|\mu|/\sigma)$")
-        SNRa.yaxis.set_label_coords(YLABELX+0.0012, 0.5) # has a descender
-        f.canvas.manager.set_window_title("LFP reliability %s" % rec.absname)
         print('sparseness:', sparseness(np.abs(lfpmean)))
         print('mean tLFP S/N:', SNR.mean())
-        f.tight_layout(pad=0.3) # crop figure to contents
+    SNRa.set_xlim(xmax=5.5)
+    SNRa.set_ylim(0, 3)
+    SNRa.set_yticks([0, 1, 2, 3])
+    SNRa.set_xlabel("time (s)")
+    SNRa.set_ylabel(r"LFP S/N ($|\mu|/\sigma)$")
+    SNRa.yaxis.set_label_coords(YLABELX+0.0012, 0.5) # has a descender
+    f.canvas.manager.set_window_title("LFP reliability %s" % rec.absname)
+    f.tight_layout(pad=0.3) # crop figure to contents
 
 #  collapse SNRs across recs:
 for statei in range(2):
