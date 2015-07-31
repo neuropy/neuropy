@@ -1,5 +1,5 @@
 """Examine trial-averaged LFP during synched and desynched state of the specified natural
-scene movies. Run from within neuropy using `run -i scripts/lfp_precision.py`"""
+scene movies. Run from within neuropy using `run -i scripts/lfp_reliability.py`"""
 
 from __future__ import division, print_function
 
