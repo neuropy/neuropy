@@ -27,10 +27,14 @@ motion = {}
 for rec in recs:
     name = rec.absname
     print(name)
-    motion[name] = [] # optic flow magnitudes, one per frame interval
-    rec.e0.e.load() # load movie data for this recording, flips frames vertically by default
-    frames = np.asarray(rec.e0.e.frames)
-    frameis = np.asarray(rec.e0.d.framei) # movie frame indices used by this recording
+    motion[name] = [] # optic flow magnitudes, in deg/sec, one per frame interval
+    e0 = rec.e0
+    movie = e0.e
+    movie.load() # load movie data for this recording, flips frames vertically by default
+    degpermoviepix = e0.s.widthDeg / movie.ncellswide
+    dt = e0.d.sweepSec # frame duration in seconds
+    frames = np.asarray(e0.e.frames)
+    frameis = np.asarray(e0.d.framei) # movie frame indices used by this recording
     frames = frames[frameis] # dereference
     frame0 = frames[0] # init
     for frame1 in frames[1:]:
@@ -38,16 +42,17 @@ for rec in recs:
         ## vs. what's expected by cv2.calcOpticalFlowFarneback. Should frames be flipped?
         flow = cv2.calcOpticalFlowFarneback(frame0, frame1, pyr_scale, levels, winsize,
                                             iterations, poly_n, poly_sigma, flags)
-        mag, ang = cv2.cartToPolar(flow[:, :, 0], flow[:, :, 1])
-        motion[name].append(mag.mean()) # average over entire vector flow field in space
+        mag, ang = cv2.cartToPolar(flow[:, :, 0], flow[:, :, 1]) # mag is in pix/frame
+        # average over entire vector flow field in space, convert from pix/frame to deg/sec:
+        motion[name].append(mag.mean() * degpermoviepix / dt)
         frame0 = frame1 # update for next iteration
 
     motion[name] = np.asarray(motion[name])
     figure(figsize=FIGSIZE)
     plot(frameis[1:], motion[name], 'k-', lw=1.5)
     xlabel('frame index')
-    ylabel('motion amplitude (pixels/frame?)')
-    text(0.99, 0.98, '%s' % os.path.basename(rec.e0.s.fname), # movie file name
+    ylabel('motion amplitude (deg/s)')
+    text(0.99, 0.98, '%s' % os.path.basename(e0.s.fname), # movie file name
                      horizontalalignment='right', verticalalignment='top',
                      transform=gca().transAxes, color='k')
     gcfm().window.setWindowTitle('movie_global_motion_%s' % name)

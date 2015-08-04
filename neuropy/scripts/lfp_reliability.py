@@ -78,10 +78,9 @@ for rec in urecs:
     f.canvas.manager.set_window_title("LFP reliability %s" % rec.absname)
     f.tight_layout(pad=0.3) # crop figure to contents
 
-#  collapse SNRs across recs:
+# collapse SNRs across recs:
 for statei in range(2):
     SNRs[statei] = np.hstack(SNRs[statei])
-
 
 SNRBINW = 0.1
 snrbins = np.arange(0, 3+SNRBINW, SNRBINW) # left edges + rightmost edge
