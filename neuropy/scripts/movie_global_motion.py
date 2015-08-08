@@ -68,10 +68,10 @@ for rec in urecs:
     # was told to display them for:
     tmotion[name] = np.arange(1, len(frames)) * dt
     figure(figsize=FIGSIZE)
-    plot(frameis[1:], motion[name], 'k-', lw=1.5)
-    xlabel('frame index')
-    #plot(tmotion[name], motion[name], 'k-', lw=1.5)
-    #xlabel('t (s)')
+    #plot(frameis[1:], motion[name], 'k-', lw=1.5)
+    #xlabel('frame index')
+    plot(tmotion[name], motion[name], 'k-', lw=1.5)
+    xlabel('t (s)')
     ylabel('motion amplitude (deg/s)')
     text(0.99, 0.98, '%s' % os.path.basename(e0.s.fname), # movie file name
                      horizontalalignment='right', verticalalignment='top',
@@ -95,7 +95,7 @@ GAUSS = True # calculate PSTH and single trial rates by convolving with Gaussian
 BLANK = False # consider blank periods between trials?
 MINTHRESH = 3 # peak detection thresh, Hz
 MEDIANX = 2 # PSTH median multiplier, Hz
-CORRDELAY = 0.105 # correlation delay to use between stimulus and response, sec
+CORRDELAY = 0.030 # correlation delay to use between stimulus and response, sec
 RHOMIN, RHOMAX = -0.5, 1
 
 # build corresponding lists of recs and stranges, even entries are desynched, odd are synched:
@@ -167,17 +167,53 @@ rhoticks = ([-0.5, -0.25, 0, 0.25, 0.5, 0.75, 1],
             ['-0.5', '-0.25', '0', '0.25', '0.5', '0.75', '1'])
 xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
-xlabel('motion correlation')
+xlabel('PSTH-motion correlation')
 ylabel('cell count')
-text(0.98, 0.98, '$\mu$ = %.3f' % dmean, # desynched
+text(0.98, 0.98, 'delay = %d ms' % intround(CORRDELAY*1000),
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+text(0.98, 0.90, '$\mu$ = %.3f' % dmean, # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.98, 0.90, '$\mu$ = %.3f' % smean, # synched
+text(0.98, 0.82, '$\mu$ = %.3f' % smean, # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.98, 0.82, '%s' % pstring, color='k',
+text(0.98, 0.74, '%s' % pstring, color='k',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 gcfm().window.setWindowTitle('movie_global_motion_correlation_%dms' % intround(CORRDELAY*1000))
+tight_layout(pad=0.3)
+
+# plot rho vs motion stimulus-response delay
+#            delay desynch synch
+rhovsdelay = [[-90, -0.019, -0.041],
+              [-75, -0.009, -0.025],
+              [-60,  0.000, -0.011],
+              [-45,  0.010,  0.006],
+              [-30,  0.020,  0.028],
+              [-15,  0.031,  0.053],
+              [  0,  0.039,  0.075],
+              [ 15,  0.043,  0.090],
+              [ 30,  0.044,  0.094],
+              [ 45,  0.045,  0.085],
+              [ 60,  0.048,  0.065],
+              [ 75,  0.047,  0.036],
+              [ 90,  0.041,  0.005],
+              [105,  0.030, -0.022],
+              [120,  0.019, -0.042]]
+rhovsdelay = np.asarray(rhovsdelay)
+figure(figsize=(3, 3))
+plot(rhovsdelay[:, 0], rhovsdelay[:, 1], 'b.-')
+plot(rhovsdelay[:, 0], rhovsdelay[:, 2], 'r.-')
+axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
+ymax = 0.12
+ah = 0.021
+arrow(30, ymax, 0, -ah, head_width=10, head_length=ah/2, length_includes_head=True,
+      color='k')
+ylim(-0.05, ymax)
+yticks(np.arange(-0.05, ymax, 0.05))
+xlabel('delay (ms)')
+ylabel('mean PSTH-motion correlation')
+gcfm().window.setWindowTitle('movie_global_motion_rhovsdelay')
 tight_layout(pad=0.3)
 
 pl.show()
