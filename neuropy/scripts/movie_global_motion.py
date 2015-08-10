@@ -35,7 +35,7 @@ poly_n = 5
 poly_sigma = 1.2
 flags = 0
 
-FIGSIZE = (8, 4)
+FIGSIZE = (6, 3)
 
 # calculate optic flow vector field between neighbouring pairs of frames, average their
 # magnitudes to get global motion:
@@ -80,13 +80,36 @@ for rec in urecs:
     tight_layout(pad=0.3)
 
 
+# plot motion distribution and compare to Gaussian:
+MOTIONBINW = 4 # deg/s
+figure(figsize=(3, 3))
+allmotion = np.hstack(list(motion.values()))
+motionbins = np.arange(0, 300+MOTIONBINW, MOTIONBINW) # deg/s
+midbins = motionbins[:-1] + MOTIONBINW / 2
+count = np.histogram(allmotion, bins=motionbins)[0]
+A = count.max()
+gauss = core.g(0, allmotion.std(), midbins) # same std as data
+gauss /= gauss.sum() / count.sum() # normalize to get same area under the curve
+plot(midbins, gauss, 'e-', lw=2)
+plot(midbins, count, 'k-', lw=2)
+xlabel('motion amplitude (deg/s)')
+ylabel('frame count')
+ylim(ymax=count.max())
+xticks([0, 100, 200, 300])
+yticks([0, count.max()])
+gcfm().window.setWindowTitle('movie_global_motion_distrib')
+tight_layout(pad=0.3)
+
+
 """Calculate PSTHs as in psth_precision.py, then correlate each one with its respective movie
 motion signal."""
 
 ## TODO: also scatter plot their correlation on desynched vs synched axes.
 
+from scipy.stats import mannwhitneyu
+
 import core
-from core import intround
+from core import intround, ceilsigfig
 from psth_funcs import get_psth_peaks_gac
 
 NIDSKIND = 'all' # 'active' or 'all'
@@ -184,7 +207,7 @@ gcfm().window.setWindowTitle('movie_global_motion_correlation_%dms' % intround(C
 tight_layout(pad=0.3)
 
 # plot rho vs motion stimulus-response delay
-#            delay desynch synch
+#            delay  desynch  synch
 rhovsdelay = [[-90, -0.019, -0.041],
               [-75, -0.009, -0.025],
               [-60,  0.000, -0.011],
@@ -212,7 +235,7 @@ arrow(30, ymax, 0, -ah, head_width=10, head_length=ah/2, length_includes_head=Tr
 ylim(-0.05, ymax)
 yticks(np.arange(-0.05, ymax, 0.05))
 xlabel('delay (ms)')
-ylabel('mean PSTH-motion correlation')
+ylabel('PSTH-motion correlation')
 gcfm().window.setWindowTitle('movie_global_motion_rhovsdelay')
 tight_layout(pad=0.3)
 
