@@ -8,6 +8,8 @@ from __future__ import division, print_function
 import cv2
 import numpy as np
 
+from scipy.stats import kurtosis, kurtosistest
+
 # mapping of recording to list of desynched and synched trange, in that order, copied from
 # psth_precision.py:
 rec2tranges = {ptc17.tr2b.r58: [(0, 700e6), # desynched trange, 66 Hz refresh rate
@@ -81,20 +83,44 @@ for rec in urecs:
     tight_layout(pad=0.3)
 
 
-# plot motion distribution and compare to Gaussian:
+# plot motion distribution and compare to normal distribution:
 MOTIONBINW = 4 # deg/s
 figure(figsize=(3, 3))
 allmotion = np.hstack(list(motion.values()))
-motionbins = np.arange(0, 300+MOTIONBINW, MOTIONBINW) # deg/s
+allmotion = np.hstack([allmotion, -allmotion]) # make it symmetric around 0
+motionbins = np.arange(-300, 300+MOTIONBINW, MOTIONBINW) # deg/s, symmetric around 0
 midbins = motionbins[:-1] + MOTIONBINW / 2
-count = np.histogram(allmotion, bins=motionbins)[0]
-A = count.max()
-gauss = core.g(0, allmotion.std(), midbins) # same std as data
-gauss /= gauss.sum() / count.sum() # normalize to get same area under the curve
-plot(midbins, gauss, 'e-', lw=2)
-plot(midbins, count, 'k-', lw=2)
+motioncount = np.histogram(allmotion, bins=motionbins)[0]
+k = kurtosis(allmotion)
+# kurtosistest() seems to use the method of Anscombe & Glynn (1983),
+# http://biomet.oxfordjournals.org/content/70/1/227
+z, p = kurtosistest(allmotion)
+# normally distributed signal with same std as data, to check that its kurtosis is 0:
+#nsamples = 10000000
+#normal = scipy.random.normal(0, allmotion.std(), nsamples)
+#normalcount = np.histogram(normal, bins=motionbins)[0]
+normalcount = core.g(0, allmotion.std(), midbins) # generate normal distrib directly
+# normalize to get same probability mass:
+normalcount = normalcount / normalcount.sum() * motioncount.sum()
+plot(midbins, normalcount, marker=None, ls='-', c='0.7', lw=2)
+plot(midbins, motioncount, marker=None, ls='-', c='k', lw=2)
+text(0.98, 0.98, 'k=%.1f' % k, # kurtosis
+     horizontalalignment='right', verticalalignment='top',
+     transform=gca().transAxes, color='k')
+text(0.98, 0.90, 'p=%.1g' % p, # p-value of null (normal) hypothesis of kurtosis test
+     horizontalalignment='right', verticalalignment='top',
+     transform=gca().transAxes, color='k')
+#k = kurtosis(normal)
+#z, p = kurtosistest(normal)
+#text(0.98, 0.82, 'k=%.1f' % k, # kurtosis
+#     horizontalalignment='right', verticalalignment='top',
+#     transform=gca().transAxes, color='e')
+#text(0.98, 0.74, 'p=%.1g' % p, # p-value of null (normal) hypothesis of kurtosis test
+#     horizontalalignment='right', verticalalignment='top',
+#     transform=gca().transAxes, color='e')
 xlabel('motion amplitude (deg/s)')
 ylabel('frame count')
+xlim(0, 300)
 ylim(ymax=count.max())
 xticks([0, 100, 200, 300])
 yticks([0, count.max()])
