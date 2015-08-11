@@ -39,7 +39,7 @@ FIGSIZE = (6, 3)
 
 # calculate optic flow vector field between neighbouring pairs of frames, average their
 # magnitudes to get global motion:
-motion, tmotion = {}, {}
+motion, tmotion, motionspars = {}, {}, {}
 for rec in urecs:
     name = rec.absname
     print(name)
@@ -67,6 +67,7 @@ for rec in urecs:
     # display time to differ, on average, over all trials and recordings, vs how long dimstim
     # was told to display them for:
     tmotion[name] = np.arange(1, len(frames)) * dt
+    motionspars[name] = core.sparseness(motion[name])
     figure(figsize=FIGSIZE)
     #plot(frameis[1:], motion[name], 'k-', lw=1.5)
     #xlabel('frame index')
@@ -136,14 +137,17 @@ states = ['desynch', 'synch'] * (nrecsec // 2) # alternating states
 # get active or all neuron ids for each section of each recording:
 recsecnids = core.get_ssnids(recs, stranges, kind=NIDSKIND)[1]
 
-# correlate each PSTH in each recording section with the movie motion signal:
+# correlate each PSTH in each recording section with the movie motion signal. Also, collect
+# movie motion-PSTH sparseness pairs:
 rhos = {'desynch': [], 'synch': []}
+spars = {'desynch': [], 'synch': []}
 for rec, nids, strange, state in zip(recs, recsecnids, stranges, states):
     print(rec.absname, state)
     t, psths, spikets = rec.psth(nids=nids, natexps=False, blank=BLANK, strange=strange,
                                  plot=False, binw=BINW, tres=TRES, gauss=GAUSS, norm='ntrials')
     m = motion[rec.absname]
     tm = tmotion[rec.absname]
+    ms = motionspars[rec.absname]
     psthis = t.searchsorted(tm) # PSTH indices closest to movie frame times
     dt = rec.e0.d.sweepSec # frame duration in seconds
     ntdelay = intround(CORRDELAY / dt) # num timepoints to delay movie-PSTH correlation by
@@ -161,10 +165,12 @@ for rec, nids, strange, state in zip(recs, recsecnids, stranges, states):
         if len(peakis) == 0: # not a responsive PSTH
             continue
         rhos[state].append(core.corrcoef(m[motionis], psth[psthis]))
+        spars[state].append([ms, core.sparseness(psth)])
     print('\n') # two newlines
 
 for state in ['desynch', 'synch']:
     rhos[state] = np.asarray(rhos[state])
+    spars[state] = np.asarray(spars[state])
 
 # plot rho histograms:
 figure(figsize=(3, 3))
@@ -237,6 +243,32 @@ yticks(np.arange(-0.05, ymax, 0.05))
 xlabel('delay (ms)')
 ylabel('PSTH-motion correlation')
 gcfm().window.setWindowTitle('movie_global_motion_rhovsdelay')
+tight_layout(pad=0.3)
+
+# scatter plot PSTH sparseness vs. movie motion sparseness. No significant correlation in
+# either state:
+figure(figsize=(3, 3))
+plot(spars['synch'][:, 0], spars['synch'][:, 1], 'r.', ms=2)
+plot(spars['desynch'][:, 0], spars['desynch'][:, 1], 'b.', ms=2)
+xlim(0, 1)
+ylim(0, 1)
+xr = np.asarray(xlim()) # x range
+m, b, r, p, stderr = scipy.stats.linregress(spars['synch'])
+plot(xr, m*xr+b, 'r', ls='--', lw=2, alpha=0.7)
+text(0.02, 0.02, 'r=%.2f, p=%.1g' % (r, p), color='r',
+     transform=gca().transAxes, horizontalalignment='left', verticalalignment='bottom')
+m, b, r, p, stderr = scipy.stats.linregress(spars['desynch'])
+plot(xr, m*xr+b, 'b', ls='--', lw=2, alpha=0.7)
+text(0.02, 0.1, 'r=%.2f, p=%.1g' % (r, p), color='b',
+     transform=gca().transAxes, horizontalalignment='left', verticalalignment='bottom')
+allspars = np.vstack(spars.values())
+m, b, r, p, stderr = scipy.stats.linregress(allspars)
+plot(xr, m*xr+b, 'k', ls='--', lw=2, alpha=0.7)
+text(0.02, 0.18, 'r=%.2f, p=%.1g' % (r, p), color='k',
+     transform=gca().transAxes, horizontalalignment='left', verticalalignment='bottom')
+xlabel('movie motion sparseness')
+ylabel('PSTH sparseness')
+gcfm().window.setWindowTitle('movie_PSTH_sparseness')
 tight_layout(pad=0.3)
 
 pl.show()
