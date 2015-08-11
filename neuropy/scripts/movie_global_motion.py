@@ -133,7 +133,7 @@ motion signal."""
 
 ## TODO: also scatter plot their correlation on desynched vs synched axes.
 
-from scipy.stats import mannwhitneyu
+from scipy.stats import mannwhitneyu, linregress
 
 import core
 from core import intround, ceilsigfig
@@ -279,16 +279,16 @@ plot(spars['desynch'][:, 0], spars['desynch'][:, 1], 'b.', ms=2)
 xlim(0, 1)
 ylim(0, 1)
 xr = np.asarray(xlim()) # x range
-m, b, r, p, stderr = scipy.stats.linregress(spars['synch'])
+m, b, r, p, stderr = linregress(spars['synch'])
 plot(xr, m*xr+b, 'r', ls='--', lw=2, alpha=0.7)
 text(0.02, 0.02, 'r=%.2f, p=%.1g' % (r, p), color='r',
      transform=gca().transAxes, horizontalalignment='left', verticalalignment='bottom')
-m, b, r, p, stderr = scipy.stats.linregress(spars['desynch'])
+m, b, r, p, stderr = linregress(spars['desynch'])
 plot(xr, m*xr+b, 'b', ls='--', lw=2, alpha=0.7)
 text(0.02, 0.1, 'r=%.2f, p=%.1g' % (r, p), color='b',
      transform=gca().transAxes, horizontalalignment='left', verticalalignment='bottom')
 allspars = np.vstack(spars.values())
-m, b, r, p, stderr = scipy.stats.linregress(allspars)
+m, b, r, p, stderr = linregress(allspars)
 plot(xr, m*xr+b, 'k', ls='--', lw=2, alpha=0.7)
 text(0.02, 0.18, 'r=%.2f, p=%.1g' % (r, p), color='k',
      transform=gca().transAxes, horizontalalignment='left', verticalalignment='bottom')
