@@ -131,9 +131,7 @@ tight_layout(pad=0.3)
 """Calculate PSTHs as in psth_precision.py, then correlate each one with its respective movie
 motion signal."""
 
-## TODO: also scatter plot their correlation on desynched vs synched axes.
-
-from scipy.stats import mannwhitneyu, linregress
+from scipy.stats import chisquare, mannwhitneyu, linregress
 
 import core
 from core import intround, ceilsigfig
@@ -146,6 +144,7 @@ BLANK = False # consider blank periods between trials?
 MINTHRESH = 3 # peak detection thresh, Hz
 MEDIANX = 2 # PSTH median multiplier, Hz
 CORRDELAY = 0.030 # correlation delay to use between stimulus and response, sec
+CORRDELAYMS = intround(CORRDELAY*1000)
 RHOMIN, RHOMAX = -0.5, 1
 
 # build corresponding lists of recs and stranges, even entries are desynched, odd are synched:
@@ -167,8 +166,16 @@ recsecnids = core.get_ssnids(recs, stranges, kind=NIDSKIND)[1]
 # movie motion-PSTH sparseness pairs:
 rhos = {'desynch': [], 'synch': []}
 spars = {'desynch': [], 'synch': []}
+NULLRHO = -1
+recsecscatrhos = {} # index into with [rec.absname][nid][statei], first 2 are dict keys
 for rec, nids, strange, state in zip(recs, recsecnids, stranges, states):
     print(rec.absname, state)
+    if rec.absname not in recsecscatrhos:
+        recsecscatrhos[rec.absname] = {} # init
+    if state == 'desynch':
+        statei = 0
+    else: # state == 'synch'
+        statei = 1
     t, psths, spikets = rec.psth(nids=nids, natexps=False, blank=BLANK, strange=strange,
                                  plot=False, binw=BINW, tres=TRES, gauss=GAUSS, norm='ntrials')
     m = motion[rec.absname]
@@ -190,13 +197,46 @@ for rec, nids, strange, state in zip(recs, recsecnids, stranges, states):
         peakis, lis, ris = get_psth_peaks_gac(ts, t, psth, thresh)
         if len(peakis) == 0: # not a responsive PSTH
             continue
-        rhos[state].append(core.corrcoef(m[motionis], psth[psthis]))
+        rho = core.corrcoef(m[motionis], psth[psthis])
+        rhos[state].append(rho)
         spars[state].append([ms, core.sparseness(psth)])
+        if nid not in recsecscatrhos[rec.absname]:
+            recsecscatrhos[rec.absname][nid] = [NULLRHO, NULLRHO] # init list for this nid
+        recsecscatrhos[rec.absname][nid][statei] = rho
+
     print('\n') # two newlines
+
+scatrhos = []
+for rec in urecs:
+    scatrhos.append(recsecscatrhos[rec.absname].values())
+    
+scatrhos = np.vstack(scatrhos)
 
 for state in ['desynch', 'synch']:
     rhos[state] = np.asarray(rhos[state])
     spars[state] = np.asarray(spars[state])
+
+# scatter plot motion-PSTH correlation in desynched vs synched state:
+figure(figsize=(3, 3))
+plot([-1, 1], [-1, 1], 'e--') # plot y=x line
+plot(scatrhos[:, 1], scatrhos[:, 0], 'o', mec='k', mfc='None')
+text(0.02, 0.98, 'delay = %d ms' % CORRDELAYMS,
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+xlabel('synchronized', color='r')
+ylabel('desynchronized', color='b')
+xlim(-1.035, 1)
+ylim(-1.035, 1)
+gcfm().window.setWindowTitle('movie_global_motion_correlation_scatter_%dms' % CORRDELAYMS)
+tight_layout(pad=0.3)
+# report numbers, fractions and chi2 p values for PSTH-motion scatter plot:
+nbelowmotionyxline = (scatrhos[:, 1] > scatrhos[:, 0]).sum()
+nabovemotionyxline = (scatrhos[:, 0] > scatrhos[:, 1]).sum()
+fractionbelowrelsyxline = nbelowmotionyxline / (nbelowmotionyxline + nabovemotionyxline)
+chi2, p = chisquare([nabovemotionyxline, nbelowmotionyxline])
+print('nbelowmotionyxline=%d, nabovemotionyxline=%d, fractionbelowrelsyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowmotionyxline, nabovemotionyxline, fractionbelowrelsyxline,
+                             chi2, p))
 
 # plot rho histograms:
 figure(figsize=(3, 3))
@@ -224,7 +264,7 @@ xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel('PSTH-motion correlation')
 ylabel('cell count')
-text(0.98, 0.98, 'delay = %d ms' % intround(CORRDELAY*1000),
+text(0.98, 0.98, 'delay = %d ms' % CORRDELAYMS,
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 text(0.98, 0.90, '$\mu$ = %.3f' % dmean, # desynched
@@ -235,7 +275,7 @@ text(0.98, 0.82, '$\mu$ = %.3f' % smean, # synched
                  transform=gca().transAxes, color='r')
 text(0.98, 0.74, '%s' % pstring, color='k',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-gcfm().window.setWindowTitle('movie_global_motion_correlation_%dms' % intround(CORRDELAY*1000))
+gcfm().window.setWindowTitle('movie_global_motion_correlation_%dms' % CORRDELAYMS)
 tight_layout(pad=0.3)
 
 # plot rho vs motion stimulus-response delay
