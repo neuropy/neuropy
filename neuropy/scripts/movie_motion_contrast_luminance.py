@@ -319,10 +319,10 @@ tight_layout(pad=0.3)
 # report numbers, fractions and chi2 p values for PSTH-motion scatter plot:
 nbelowmotyxline = (motscatrhos[:, 1] > motscatrhos[:, 0]).sum()
 nabovemotyxline = (motscatrhos[:, 0] > motscatrhos[:, 1]).sum()
-fractionbelowrelsyxline = nbelowmotyxline / (nbelowmotyxline + nabovemotyxline)
+fractionbelowmotyxline = nbelowmotyxline / (nbelowmotyxline + nabovemotyxline)
 chi2, p = chisquare([nabovemotyxline, nbelowmotyxline])
-print('nbelowmotyxline=%d, nabovemotyxline=%d, fractionbelowrelsyxline=%.3g, '
-      'chi2=%.3g, p=%.3g' % (nbelowmotyxline, nabovemotyxline, fractionbelowrelsyxline,
+print('nbelowmotyxline=%d, nabovemotyxline=%d, fractionbelowmotyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowmotyxline, nabovemotyxline, fractionbelowmotyxline,
                              chi2, p))
 
 # plot motion rho histograms:
@@ -439,10 +439,10 @@ tight_layout(pad=0.3)
 # report numbers, fractions and chi2 p values for PSTH-contrast scatter plot:
 nbelowconyxline = (conscatrhos[:, 1] > conscatrhos[:, 0]).sum()
 naboveconyxline = (conscatrhos[:, 0] > conscatrhos[:, 1]).sum()
-fractionbelowrelsyxline = nbelowconyxline / (nbelowconyxline + naboveconyxline)
+fractionbelowconyxline = nbelowconyxline / (nbelowconyxline + naboveconyxline)
 chi2, p = chisquare([naboveconyxline, nbelowconyxline])
-print('nbelowconyxline=%d, naboveconyxline=%d, fractionbelowrelsyxline=%.3g, '
-      'chi2=%.3g, p=%.3g' % (nbelowconyxline, naboveconyxline, fractionbelowrelsyxline,
+print('nbelowconyxline=%d, naboveconyxline=%d, fractionbelowconyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowconyxline, naboveconyxline, fractionbelowconyxline,
                              chi2, p))
 
 # plot contrast rho histograms:
@@ -500,10 +500,10 @@ tight_layout(pad=0.3)
 # report numbers, fractions and chi2 p values for PSTH-luminance scatter plot:
 nbelowlumyxline = (lumscatrhos[:, 1] > lumscatrhos[:, 0]).sum()
 nabovelumyxline = (lumscatrhos[:, 0] > lumscatrhos[:, 1]).sum()
-fractionbelowrelsyxline = nbelowlumyxline / (nbelowlumyxline + nabovelumyxline)
+fractionbelowlumyxline = nbelowlumyxline / (nbelowlumyxline + nabovelumyxline)
 chi2, p = chisquare([nabovelumyxline, nbelowlumyxline])
-print('nbelowlumyxline=%d, nabovelumyxline=%d, fractionbelowrelsyxline=%.3g, '
-      'chi2=%.3g, p=%.3g' % (nbelowlumyxline, nabovelumyxline, fractionbelowrelsyxline,
+print('nbelowlumyxline=%d, nabovelumyxline=%d, fractionbelowlumyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowlumyxline, nabovelumyxline, fractionbelowlumyxline,
                              chi2, p))
 
 # plot luminance rho histograms:
