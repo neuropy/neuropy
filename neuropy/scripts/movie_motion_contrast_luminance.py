@@ -1,7 +1,7 @@
 """Extract optic flow vector fields from natural scene movies, average them to calculate
 global motion within each movie for each specified recording. Adapted from
 opencv/samples/python2/opt_flow.py. Run from within neuropy using `run -i
-scripts/movie_global_motion.py`"""
+scripts/movie_motion_contrast_luminance.py`"""
 
 from __future__ import division, print_function
 
@@ -38,13 +38,17 @@ poly_sigma = 1.2
 flags = 0
 
 FIGSIZE = (6, 3)
-PLOTMOVIESIGNALS = True
+PLOTMOVIESIGNALS = False
 
 # calculate optic flow vector field between neighbouring pairs of frames, average their
 # magnitudes to get global motion:
 mot = {}
 motspars = {} # sparseness of each motion signal
 tmovie = {} # movie timepoints, times of all frames excluding the first
+con = {} # contrast of each frame, excluding the first one
+dcon = {} # change in contrast between successive frames
+lum = {} # luminance of each frame, excluding the first one
+dlum = {} # change in luminance between successive frames
 for rec in urecs:
     name = rec.absname
     print(name)
@@ -60,6 +64,10 @@ for rec in urecs:
     frame0 = frames[0] # init
     # optic flow magnitudes, in deg/sec, one per frame interval:
     mot[name] = np.zeros(nframeintervals)
+    con[name] = np.zeros(nframeintervals)
+    dcon[name] = np.zeros(nframeintervals)
+    lum[name] = np.zeros(nframeintervals)
+    dlum[name] = np.zeros(nframeintervals)
     for i, frame1 in enumerate(frames[1:]):
         ## TODO: if interested in flow direction, double-check vertical order of movie frames
         ## vs. what's expected by cv2.calcOpticalFlowFarneback. Should frames be flipped?
@@ -68,6 +76,10 @@ for rec in urecs:
         mag, ang = cv2.cartToPolar(flow[:, :, 0], flow[:, :, 1]) # mag is in pix/frame
         # average over entire vector flow field in space, convert from pix/frame to deg/sec:
         mot[name][i] = mag.mean() * degpermoviepix / dt
+        con[name][i] = frame1.std()
+        dcon[name][i] = frame1.std() - frame0.std()
+        lum[name][i] = frame1.mean()
+        dlum[name][i] = frame1.mean() - frame0.mean()
         frame0 = frame1 # update for next iteration
 
     motspars[name] = core.sparseness(mot[name])
@@ -90,6 +102,50 @@ for rec in urecs:
                      horizontalalignment='right', verticalalignment='top',
                      transform=gca().transAxes, color='k')
     gcfm().window.setWindowTitle('movie_global_motion_%s' % name)
+    tight_layout(pad=0.3)
+
+    # plot contrast:
+    figure(figsize=FIGSIZE)
+    plot(tmovie[name], con[name], 'k-', lw=1.5)
+    xlabel('t (s)')
+    ylabel('contrast (?)')
+    text(0.99, 0.98, '%s' % os.path.basename(e0.s.fname), # movie file name
+                     horizontalalignment='right', verticalalignment='top',
+                     transform=gca().transAxes, color='k')
+    gcfm().window.setWindowTitle('movie_global_contrast_%s' % name)
+    tight_layout(pad=0.3)
+
+    # plot delta contrast:
+    figure(figsize=FIGSIZE)
+    plot(tmovie[name], dcon[name], 'k-', lw=1.5)
+    xlabel('t (s)')
+    ylabel(r'$\Delta$ contrast (?)')
+    text(0.99, 0.98, '%s' % os.path.basename(e0.s.fname), # movie file name
+                     horizontalalignment='right', verticalalignment='top',
+                     transform=gca().transAxes, color='k')
+    gcfm().window.setWindowTitle('movie_global_dcontrast_%s' % name)
+    tight_layout(pad=0.3)
+
+    # plot lum:
+    figure(figsize=FIGSIZE)
+    plot(tmovie[name], lum[name], 'k-', lw=1.5)
+    xlabel('t (s)')
+    ylabel('luminance (?)')
+    text(0.99, 0.98, '%s' % os.path.basename(e0.s.fname), # movie file name
+                     horizontalalignment='right', verticalalignment='top',
+                     transform=gca().transAxes, color='k')
+    gcfm().window.setWindowTitle('movie_global_luminance_%s' % name)
+    tight_layout(pad=0.3)
+
+    # plot dlum:
+    figure(figsize=FIGSIZE)
+    plot(tmovie[name], dlum[name], 'k-', lw=1.5)
+    xlabel('t (s)')
+    ylabel(r'$\Delta$ luminance (?)')
+    text(0.99, 0.98, '%s' % os.path.basename(e0.s.fname), # movie file name
+                     horizontalalignment='right', verticalalignment='top',
+                     transform=gca().transAxes, color='k')
+    gcfm().window.setWindowTitle('movie_global_dluminance_%s' % name)
     tight_layout(pad=0.3)
 
 
@@ -139,7 +195,7 @@ tight_layout(pad=0.3)
 
 
 """Calculate PSTHs as in psth_precision.py, then correlate each one with its respective movie
-motion signal."""
+motion, contrast and luminance signal."""
 
 from scipy.stats import chisquare, mannwhitneyu, linregress
 
@@ -155,7 +211,7 @@ MINTHRESH = 3 # peak detection thresh, Hz
 MEDIANX = 2 # PSTH median multiplier, Hz
 CORRDELAY = 0.030 # correlation delay to use between stimulus and response, sec
 CORRDELAYMS = intround(CORRDELAY*1000)
-RHOMIN, RHOMAX = -0.5, 1
+RHOMIN, RHOMAX = -1, 1
 RHOBINS = np.arange(RHOMIN, RHOMAX+0.1, 0.1) # left edges + rightmost edge
 
 # build corresponding lists of recs and stranges, even entries are desynched, odd are synched:
@@ -176,20 +232,26 @@ recsecnids = core.get_ssnids(recs, stranges, kind=NIDSKIND)[1]
 # correlate each PSTH in each recording section with movie signals. Also, collect
 # movie motion-PSTH sparseness pairs:
 motrhos = {'desynch': [], 'synch': []}
+conrhos = {'desynch': [], 'synch': []}
+lumrhos = {'desynch': [], 'synch': []}
 motscatspars = {'desynch': [], 'synch': []}
 NULLRHO = -1
 recsecscatmotrhos = {} # index into with [rec.absname][nid][statei], first 2 are dict keys
+recsecscatconrhos = {}
+recsecscatlumrhos = {}
 for rec, nids, strange, state in zip(recs, recsecnids, stranges, states):
     print(rec.absname, state)
     if rec.absname not in recsecscatmotrhos:
         recsecscatmotrhos[rec.absname] = {} # init
+        recsecscatconrhos[rec.absname] = {}
+        recsecscatlumrhos[rec.absname] = {}
     if state == 'desynch':
         statei = 0
     else: # state == 'synch'
         statei = 1
     t, psths, spikets = rec.psth(nids=nids, natexps=False, blank=BLANK, strange=strange,
                                  plot=False, binw=BINW, tres=TRES, gauss=GAUSS, norm='ntrials')
-    m = mot[rec.absname]
+    m, c, l = mot[rec.absname], con[rec.absname], lum[rec.absname]
     tm = tmovie[rec.absname]
     ms = motspars[rec.absname]
     psthis = t.searchsorted(tm) # PSTH indices closest to movie frame times
@@ -197,10 +259,10 @@ for rec, nids, strange, state in zip(recs, recsecnids, stranges, states):
     ntdelay = intround(CORRDELAY / dt) # num timepoints to delay movie-PSTH correlation by
     if ntdelay >= 0:
         psthis = psthis[ntdelay:]
-        motionis = np.arange(0, len(tm)-ntdelay)
+        movieis = np.arange(0, len(tm)-ntdelay)
     else: # ntdelay is -ve
         psthis = psthis[:ntdelay]
-        motionis = np.arange(abs(ntdelay), len(tm))
+        movieis = np.arange(abs(ntdelay), len(tm))
     for nid, psth, ts in zip(nids, psths, spikets):
         # run PSTH peak detection:
         baseline = MEDIANX * np.median(psth)
@@ -208,23 +270,37 @@ for rec, nids, strange, state in zip(recs, recsecnids, stranges, states):
         peakis, lis, ris = get_psth_peaks_gac(ts, t, psth, thresh)
         if len(peakis) == 0: # not a responsive PSTH
             continue
-        motrho = core.corrcoef(m[motionis], psth[psthis])
+        motrho = core.corrcoef(m[movieis], psth[psthis])
+        conrho = core.corrcoef(c[movieis], psth[psthis])
+        lumrho = core.corrcoef(l[movieis], psth[psthis])
         motrhos[state].append(motrho)
+        conrhos[state].append(conrho)
+        lumrhos[state].append(lumrho)
         motscatspars[state].append([ms, core.sparseness(psth)])
         if nid not in recsecscatmotrhos[rec.absname]:
             recsecscatmotrhos[rec.absname][nid] = [NULLRHO, NULLRHO] # init list for this nid
+            recsecscatconrhos[rec.absname][nid] = [NULLRHO, NULLRHO]
+            recsecscatlumrhos[rec.absname][nid] = [NULLRHO, NULLRHO]
         recsecscatmotrhos[rec.absname][nid][statei] = motrho
+        recsecscatconrhos[rec.absname][nid][statei] = conrho
+        recsecscatlumrhos[rec.absname][nid][statei] = lumrho
 
     print('\n') # two newlines
 
-motscatrhos = []
+motscatrhos, conscatrhos, lumscatrhos = [], [], []
 for rec in urecs:
     motscatrhos.append(recsecscatmotrhos[rec.absname].values())
-    
+    conscatrhos.append(recsecscatconrhos[rec.absname].values())
+    lumscatrhos.append(recsecscatlumrhos[rec.absname].values())
+
 motscatrhos = np.vstack(motscatrhos)
+conscatrhos = np.vstack(conscatrhos)
+lumscatrhos = np.vstack(lumscatrhos)
 
 for state in ['desynch', 'synch']:
     motrhos[state] = np.asarray(motrhos[state])
+    conrhos[state] = np.asarray(conrhos[state])
+    lumrhos[state] = np.asarray(lumrhos[state])
     motscatspars[state] = np.asarray(motscatspars[state])
 
 # scatter plot motion-PSTH correlation in desynched vs synched state:
@@ -346,5 +422,128 @@ xlabel('movie motion sparseness')
 ylabel('PSTH sparseness')
 gcfm().window.setWindowTitle('movie_PSTH_sparseness')
 tight_layout(pad=0.3)
+
+# scatter plot contrast-PSTH correlation in desynched vs synched state:
+figure(figsize=(3, 3))
+plot([-1, 1], [-1, 1], 'e--') # plot y=x line
+plot(conscatrhos[:, 1], conscatrhos[:, 0], 'o', mec='k', mfc='None')
+text(0.02, 0.98, 'delay = %d ms' % CORRDELAYMS,
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+xlabel('synchronized', color='r')
+ylabel('desynchronized', color='b')
+xlim(-1.035, 1)
+ylim(-1.035, 1)
+gcfm().window.setWindowTitle('movie_global_contrast_correlation_scatter_%dms' % CORRDELAYMS)
+tight_layout(pad=0.3)
+# report numbers, fractions and chi2 p values for PSTH-contrast scatter plot:
+nbelowconyxline = (conscatrhos[:, 1] > conscatrhos[:, 0]).sum()
+naboveconyxline = (conscatrhos[:, 0] > conscatrhos[:, 1]).sum()
+fractionbelowrelsyxline = nbelowconyxline / (nbelowconyxline + naboveconyxline)
+chi2, p = chisquare([naboveconyxline, nbelowconyxline])
+print('nbelowconyxline=%d, naboveconyxline=%d, fractionbelowrelsyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowconyxline, naboveconyxline, fractionbelowrelsyxline,
+                             chi2, p))
+
+# plot contrast rho histograms:
+figure(figsize=(3, 3))
+dmean = conrhos['desynch'].mean()
+smean = conrhos['synch'].mean()
+u, p = mannwhitneyu(conrhos['desynch'], conrhos['synch']) # 1-sided
+pstring = '$p<%g$' % ceilsigfig(p)
+nd = hist(conrhos['desynch'], bins=RHOBINS, histtype='step', color='b')[0]
+ns = hist(conrhos['synch'], bins=RHOBINS, histtype='step', color='r')[0]
+nmax = max(np.hstack([nd, ns]))
+axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
+# draw arrows at means:
+ah = nmax / 8 # arrow height
+arrow(dmean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+      color='b')
+arrow(smean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+      color='r')
+xlim(xmin=RHOMIN, xmax=RHOMAX)
+ylim(ymax=nmax*1.01)
+# remove unnecessary decimal places:
+rhoticks = ([-1, -0.5, 0, 0.5, 1],
+            ['-1', '-0.5', '0', '0.5', '1'])
+xticks(*rhoticks)
+yticks([0, nmax]) # turn off y ticks to save space
+xlabel('PSTH-contrast correlation')
+ylabel('cell count')
+text(0.98, 0.98, 'delay = %d ms' % CORRDELAYMS,
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+text(0.98, 0.90, '$\mu$ = %.3f' % dmean, # desynched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
+text(0.98, 0.82, '$\mu$ = %.3f' % smean, # synched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='r')
+text(0.98, 0.74, '%s' % pstring, color='k',
+     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+gcfm().window.setWindowTitle('movie_global_contrast_correlation_%dms' % CORRDELAYMS)
+tight_layout(pad=0.3)
+
+# scatter plot luminance-PSTH correlation in desynched vs synched state:
+figure(figsize=(3, 3))
+plot([-1, 1], [-1, 1], 'e--') # plot y=x line
+plot(lumscatrhos[:, 1], lumscatrhos[:, 0], 'o', mec='k', mfc='None')
+text(0.02, 0.98, 'delay = %d ms' % CORRDELAYMS,
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+xlabel('synchronized', color='r')
+ylabel('desynchronized', color='b')
+xlim(-1.035, 1)
+ylim(-1.035, 1)
+gcfm().window.setWindowTitle('movie_global_luminance_correlation_scatter_%dms' % CORRDELAYMS)
+tight_layout(pad=0.3)
+# report numbers, fractions and chi2 p values for PSTH-luminance scatter plot:
+nbelowlumyxline = (lumscatrhos[:, 1] > lumscatrhos[:, 0]).sum()
+nabovelumyxline = (lumscatrhos[:, 0] > lumscatrhos[:, 1]).sum()
+fractionbelowrelsyxline = nbelowlumyxline / (nbelowlumyxline + nabovelumyxline)
+chi2, p = chisquare([nabovelumyxline, nbelowlumyxline])
+print('nbelowlumyxline=%d, nabovelumyxline=%d, fractionbelowrelsyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowlumyxline, nabovelumyxline, fractionbelowrelsyxline,
+                             chi2, p))
+
+# plot luminance rho histograms:
+figure(figsize=(3, 3))
+dmean = lumrhos['desynch'].mean()
+smean = lumrhos['synch'].mean()
+u, p = mannwhitneyu(lumrhos['desynch'], lumrhos['synch']) # 1-sided
+pstring = '$p<%g$' % ceilsigfig(p)
+nd = hist(lumrhos['desynch'], bins=RHOBINS, histtype='step', color='b')[0]
+ns = hist(lumrhos['synch'], bins=RHOBINS, histtype='step', color='r')[0]
+nmax = max(np.hstack([nd, ns]))
+axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
+# draw arrows at means:
+ah = nmax / 8 # arrow height
+arrow(dmean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+      color='b')
+arrow(smean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+      color='r')
+xlim(xmin=RHOMIN, xmax=RHOMAX)
+ylim(ymax=nmax*1.01)
+# remove unnecessary decimal places:
+rhoticks = ([-1, -0.5, 0, 0.5, 1],
+            ['-1', '-0.5', '0', '0.5', '1'])
+xticks(*rhoticks)
+yticks([0, nmax]) # turn off y ticks to save space
+xlabel('PSTH-luminance correlation')
+ylabel('cell count')
+text(0.98, 0.98, 'delay = %d ms' % CORRDELAYMS,
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+text(0.98, 0.90, '$\mu$ = %.3f' % dmean, # desynched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
+text(0.98, 0.82, '$\mu$ = %.3f' % smean, # synched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='r')
+text(0.98, 0.74, '%s' % pstring, color='k',
+     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+gcfm().window.setWindowTitle('movie_global_luminance_correlation_%dms' % CORRDELAYMS)
+tight_layout(pad=0.3)
+
 
 pl.show()
