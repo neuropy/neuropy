@@ -121,9 +121,9 @@ text(0.98, 0.90, 'p=%.1g' % p, # p-value of null (normal) hypothesis of kurtosis
 xlabel('motion amplitude (deg/s)')
 ylabel('frame count')
 xlim(0, 300)
-ylim(ymax=count.max())
+ylim(ymax=motioncount.max())
 xticks([0, 100, 200, 300])
-yticks([0, count.max()])
+yticks([0, motioncount.max()])
 gcfm().window.setWindowTitle('movie_global_motion_distrib')
 tight_layout(pad=0.3)
 
