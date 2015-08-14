@@ -380,16 +380,20 @@ rhovsdelay = [[-90, -0.019, -0.041],
               [ 75,  0.047,  0.036],
               [ 90,  0.041,  0.005],
               [105,  0.030, -0.022],
-              [120,  0.019, -0.042]]
+              [120,  0.019, -0.042],
+              #[150,  0.001, -0.056] # no need to go this far
+              ]
 rhovsdelay = np.asarray(rhovsdelay)
 figure(figsize=(3, 3))
 plot(rhovsdelay[:, 0], rhovsdelay[:, 1], 'b.-')
 plot(rhovsdelay[:, 0], rhovsdelay[:, 2], 'r.-')
 axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
+axhline(y=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw horizontal grey line at y=0
 ymax = 0.12
 ah = 0.021
 arrow(30, ymax, 0, -ah, head_width=10, head_length=ah/2, length_includes_head=True,
       color='k')
+xlim(-100, 130)
 ylim(-0.05, ymax)
 yticks(np.arange(-0.05, ymax, 0.05))
 xlabel('delay (ms)')
@@ -484,6 +488,43 @@ text(0.98, 0.74, '%s' % pstring, color='k',
 gcfm().window.setWindowTitle('movie_global_contrast_correlation_%dms' % CORRDELAYMS)
 tight_layout(pad=0.3)
 
+# plot rho vs contrast stimulus-response delay
+#            delay  desynch  synch
+rhovsdelay = [#[-90, ],
+              #[-75, ],
+              [-60, -0.009, -0.003],
+              #[-45, ],
+              [-30, -0.024, -0.028],
+              #[-15, ],
+              [  0, -0.048, -0.070],
+              [ 15, -0.061, -0.091],
+              [ 30, -0.070, -0.105],
+              [ 45, -0.075, -0.108],
+              [ 60, -0.079, -0.100],
+              [ 75, -0.080, -0.080],
+              [ 90, -0.077, -0.054],
+              [105, -0.068, -0.026],
+              [120, -0.056, -0.001],
+              [150, -0.029,  0.025]
+              ]
+rhovsdelay = np.asarray(rhovsdelay)
+figure(figsize=(3, 3))
+plot(rhovsdelay[:, 0], rhovsdelay[:, 1], 'b.-')
+plot(rhovsdelay[:, 0], rhovsdelay[:, 2], 'r.-')
+axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
+axhline(y=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw horizontal grey line at y=0
+ymin, ymax = -0.132, 0.04
+ah = 0.02
+arrow(45, ymin, 0, ah, head_width=10, head_length=ah/2, length_includes_head=True,
+      color='k')
+xlim(-70, 160)
+ylim(ymin, ymax)
+yticks(np.arange(-0.1, ymax+0.05, 0.05))
+xlabel('delay (ms)')
+ylabel('PSTH-contrast correlation')
+gcfm().window.setWindowTitle('movie_global_contrast_rhovsdelay')
+tight_layout(pad=0.3)
+
 # scatter plot luminance-PSTH correlation in desynched vs synched state:
 figure(figsize=(3, 3))
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
@@ -545,5 +586,41 @@ text(0.98, 0.74, '%s' % pstring, color='k',
 gcfm().window.setWindowTitle('movie_global_luminance_correlation_%dms' % CORRDELAYMS)
 tight_layout(pad=0.3)
 
+# plot rho vs luminance stimulus-response delay
+#            delay  desynch  synch
+rhovsdelay = [#[-90, ],
+              #[-75, ],
+              [-60, -0.060, -0.061],
+              #[-45, ],
+              [-30, -0.049, -0.051],
+              #[-15, ],
+              [  0, -0.030, -0.026],
+              [ 15, -0.020, -0.012],
+              [ 30, -0.012, -0.001],
+              [ 45, -0.005,  0.006],
+              [ 60,  0.001,  0.008],
+              [ 75,  0.006,  0.004],
+              [ 90,  0.007, -0.003],
+              [105,  0.007, -0.011],
+              [120,  0.005, -0.017],
+              [150,  0.000, -0.020]
+              ]
+rhovsdelay = np.asarray(rhovsdelay)
+figure(figsize=(3, 3))
+plot(rhovsdelay[:, 0], rhovsdelay[:, 1], 'b.-')
+plot(rhovsdelay[:, 0], rhovsdelay[:, 2], 'r.-')
+axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
+axhline(y=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw horizontal grey line at y=0
+ymax = 0.02
+ah = 0.01
+arrow(60, ymax, 0, -ah, head_width=10, head_length=ah/2, length_includes_head=True,
+      color='k')
+xlim(-70, 160)
+ylim(-0.07, ymax)
+yticks(np.arange(-0.06, ymax+0.02, 0.02))
+xlabel('delay (ms)')
+ylabel('PSTH-luminance correlation')
+gcfm().window.setWindowTitle('movie_global_luminance_rhovsdelay')
+tight_layout(pad=0.3)
 
 pl.show()
