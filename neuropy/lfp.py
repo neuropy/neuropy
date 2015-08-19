@@ -257,14 +257,15 @@ class LFP(object):
         return P, freqs
         
     def specgram(self, t0=None, t1=None, f0=0.1, f1=100, p0=-60, p1=None, chanis=-1,
-                 width=None, tres=None, cm=None, colorbar=False, title=True,
+                 width=None, tres=None, cm=None, colorbar=False, title=True, relative2t0=False,
                  figsize=(20, 6.5)):
         """Plot a spectrogram from t0 to t1 in sec, from f0 to f1 in Hz, and clip power values
         from p0 to p1 in dB, based on channel index chani of LFP data. chanis=0 uses most
         superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, take mean of
         specified chanis. width and tres are in sec. As an alternative to cm.jet (the
         default), cm.gray, cm.hsv cm.terrain, and cm.cubehelix_r colormaps seem to bring out
-        the most structure in the spectrogram"""
+        the most structure in the spectrogram. relative2t0 controls whether to plot relative
+        to t0, or relative to start of ADC clock"""
         uns = get_ipython().user_ns
         self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
@@ -293,8 +294,8 @@ class LFP(object):
         # start of data. I think P is in mV^2?:
         P, freqs, t = mpl.mlab.specgram(data/1e3, NFFT=NFFT, Fs=self.sampfreq,
                                         noverlap=noverlap)
-        # convert t to time from start of acquisition:
-        t += t0
+        if not relative2t0:
+            t += t0 # convert t to time from start of ADC clock:
         # keep only freqs between f0 and f1:
         if f0 == None:
             f0 = freqs[0]
@@ -325,7 +326,8 @@ class LFP(object):
         im = a.imshow(P[::-1], extent=extent, cmap=cm)
         a.autoscale(enable=True, tight=True)
         a.axis('tight')
-        a.set_xlim(xmin=0) # acquisition starts at t=0
+        # depending on relative2t0 above, x=0 represents either t0 or time ADC clock started:
+        a.set_xlim(xmin=0)
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
@@ -456,7 +458,7 @@ class LFP(object):
         P, freqs, Pt = mpl.mlab.specgram(x, NFFT=NFFT, Fs=self.sampfreq, noverlap=noverlap)
         # don't convert power to dB, just washes out the signal in the ratio:
         #P = 10. * np.log10(P)
-        # convert t to time from start of acquisition:
+        # convert t to time from start of ADC clock:
         Pt += ts[0]
         nfreqs = len(freqs)
 
@@ -624,7 +626,7 @@ class LFP(object):
                          title=lastcmd(), showtext=showtext, text=self.r.name, hlines=hlines,
                          figsize=figsize, swapaxes=swapaxes)
         #np.seterr(**old_settings) # restore old settings
-        return si, t # t are midpoints of bins, from start of acquisition
+        return si, t # t are midpoints of bins, from start of ADC clock
     '''
     def si_hilbert(self, chani=-1, lowband=None, highband=None, ratio='L/(L+H)',
                    plot=True):
