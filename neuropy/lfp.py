@@ -71,7 +71,7 @@ class LFP(object):
         return np.arange(self.t0/1e6, self.t1/1e6, self.tres/1e6)
 
     def plot(self, t0=None, t1=None, chanis=None, gain=1, c='k', alpha=1.0, yunits='um',
-             yticks=None, title=True, xlabel=True, relative2t0=False, scalebar=True,
+             yticks=None, title=True, xlabel=True, relative2t0=False, scalebar=True, lw=4,
              figsize=(20, 6.5)):
         """Plot chanis of LFP data between t0 and t1 in sec. Unfortunatley, setting an alpha <
         1 doesn't seem to reveal detail when a line obscures itself, such as when plotting a
@@ -120,7 +120,7 @@ class LFP(object):
         a.add_collection(lc) # add to axes' pool of LCs
         if scalebar: # add vertical scale bar at end of last channel to represent 1 mV:
             ymin, ymax = maxypos-500*totalgain, maxypos+500*totalgain # +/- 0.5 mV
-            a.vlines(ts.max()*0.99, ymin, ymax, lw=4, colors='e')
+            a.vlines(ts.max()*0.99, ymin, ymax, lw=lw, colors='e')
         a.autoscale(enable=True, tight=True)
         # depending on relative2t0 above, x=0 represents either t0 or time ADC clock started:
         a.set_xlim(xmin=0)
