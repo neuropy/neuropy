@@ -50,7 +50,7 @@ class BZData(LFP):
         self.chans = np.arange(8)
         self.t0 = 0
         self.t1 = (nt-1) * self.tres
-        self.PLOTGAIN = 20
+        self.UV2UM = 20
 
     def specgram(self, t0=None, t1=None, f0=None, f1=2000, p0=None, p1=None, chanis=-1,
                  width=2**16, tres=2**16-2**15, cm=None, colorbar=False, figsize=(20, 6.5)):

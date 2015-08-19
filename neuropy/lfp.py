@@ -50,7 +50,7 @@ class LFP(object):
         self.sampfreq = intround(1e6 / self.tres) # in Hz
         assert self.sampfreq == 1000 # should be 1000 Hz
         self.data = self.data * self.uVperAD # convert to float uV
-        self.PLOTGAIN = 2
+        self.UV2UM = 0.05 # transforms LFP voltage in uV to position in um
 
     def save(self):
         ## TODO: option to overwrite original .lfp.zip file from spyke with filtered data,
@@ -87,8 +87,9 @@ class LFP(object):
         ts = ts[t0i:t1i] # constrained set of timestamps, in sec
         chanis = tolist(chanis)
         nchans = len(chanis)
-        # grab desired channels and time range, and AD values to uV:
-        data = self.data[chanis][:, t0i:t1i] * self.uVperAD * self.PLOTGAIN * gain
+        # grab desired channels and time range, convert uV to um:
+        totalgain = self.UV2UM * gain
+        data = self.data[chanis][:, t0i:t1i] * totalgain
         nt = len(ts)
         assert nt == data.shape[1]
         x = np.tile(ts, nchans)
@@ -96,10 +97,10 @@ class LFP(object):
         segments = np.zeros((nchans, nt, 2)) # x vals in col 0, yvals in col 1
         segments[:, :, 0] = x
         segments[:, :, 1] = -data # set to -ve here because of invert_yaxis() below
-        # add offsets:
+        # add y offsets:
         for chanii, chani in enumerate(chanis):
             chan = self.chans[chani]
-            ypos = self.chanpos[chan][1]
+            ypos = self.chanpos[chan][1] # in um
             segments[chanii, :, 1] += ypos # vertical distance below top of probe
         if yunits == 'mm':
             segments[:, :, 1] /= 1000
