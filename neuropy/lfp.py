@@ -266,8 +266,8 @@ class LFP(object):
         specified chanis. width and tres are in sec. As an alternative to cm.jet (the
         default), cm.gray, cm.hsv cm.terrain, and cm.cubehelix_r colormaps seem to bring out
         the most structure in the spectrogram. desynch and synch are tuples that demarcate
-        desynchronized and synchronized periods. relative2t0 controls whether to plot relative
-        to t0, or relative to start of ADC clock"""
+        desynchronized and synchronized periods, relative to start of ADC clock. relative2t0
+        controls whether to plot relative to t0, or relative to start of ADC clock"""
         uns = get_ipython().user_ns
         self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
@@ -329,8 +329,12 @@ class LFP(object):
         # plot horizontal lines demarcating desynched and synched periods:
         df = f1 - f0
         if desynch:
+            if relative2t0:
+                desynch = np.asarray(desynch) - t0
             a.hlines(f0+df*0.02, desynch[0], desynch[1], colors='b', lw=lw, alpha=alpha)
         if synch:
+            if relative2t0:
+                synch = np.asarray(synch) - t0
             a.hlines(f0+df*0.98, synch[0], synch[1], colors='r', lw=lw, alpha=alpha)
         a.autoscale(enable=True, tight=True)
         a.axis('tight')
