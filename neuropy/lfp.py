@@ -24,7 +24,7 @@ class LFP(object):
                     spatial order
         self.data: LFP voltage values, channels in rows (in vertical spatial order),
                    timepoints in columns
-        self.t0: time in us of first LFP timepoint, from start of recording acquisition
+        self.t0: time in us of first LFP timepoint, from start of ADC clock
         self.t1: time in us of last LFP timepoint
         self.tres: temporal resolution in us of each LFP timepoint
         self.uVperAd: number of uV per AD voltage value in LFP data
@@ -71,10 +71,12 @@ class LFP(object):
         return np.arange(self.t0/1e6, self.t1/1e6, self.tres/1e6)
 
     def plot(self, t0=None, t1=None, chanis=None, gain=1, c='k', alpha=1.0, yunits='um',
-             title=True, xlabel=True, figsize=(20, 6.5)):
+             yticks=None, title=True, xlabel=True, relative2t0=False, scalebar=True,
+             figsize=(20, 6.5)):
         """Plot chanis of LFP data between t0 and t1 in sec. Unfortunatley, setting an alpha <
         1 doesn't seem to reveal detail when a line obscures itself, such as when plotting a
-        very long time series"""
+        very long time series. relative2t0 controls whether to plot relative to t0, or
+        relative to start of ADC clock"""
         self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
         if t0 == None:
@@ -92,25 +94,39 @@ class LFP(object):
         data = self.data[chanis][:, t0i:t1i] * totalgain
         nt = len(ts)
         assert nt == data.shape[1]
+        if relative2t0:
+            # convert ts to time from t0, otherwise plot time from start of ADC clock:
+            ts -= t0
         x = np.tile(ts, nchans)
         x.shape = nchans, nt
         segments = np.zeros((nchans, nt, 2)) # x vals in col 0, yvals in col 1
         segments[:, :, 0] = x
         segments[:, :, 1] = -data # set to -ve here because of invert_yaxis() below
         # add y offsets:
+        maxypos = 0
         for chanii, chani in enumerate(chanis):
             chan = self.chans[chani]
             ypos = self.chanpos[chan][1] # in um
             segments[chanii, :, 1] += ypos # vertical distance below top of probe
-        if yunits == 'mm':
+            maxypos = max(maxypos, ypos)
+        if yunits == 'mm': # convert from um to mm
             segments[:, :, 1] /= 1000
+            maxypos = maxypos / 1000 # convert from int to float
+            totalgain = totalgain / 1000
         lc = LineCollection(segments, linewidth=1, linestyle='-', colors=c, alpha=alpha,
                             antialiased=True, visible=True)
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         a.add_collection(lc) # add to axes' pool of LCs
+        if scalebar: # add vertical scale bar at end of last channel to represent 1 mV:
+            ymin, ymax = maxypos-500*totalgain, maxypos+500*totalgain # +/- 0.5 mV
+            a.vlines(ts.max()*0.99, ymin, ymax, lw=4, colors='e')
         a.autoscale(enable=True, tight=True)
+        # depending on relative2t0 above, x=0 represents either t0 or time ADC clock started:
+        a.set_xlim(xmin=0)
         a.invert_yaxis()
+        if yticks != None:
+            a.set_yticks(yticks)
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
@@ -156,7 +172,7 @@ class LFP(object):
         a = f.add_subplot(111)
         a.plot(tranges[:, 0], stds, fmt)
         a.autoscale(enable=True, tight=True)
-        a.set_xlim(xmin=0) # acquisition starts at t=0
+        a.set_xlim(xmin=0) # ADC clock starts at t=0
         a.set_xlabel('time (sec)')
         a.set_ylabel('LFP $\sigma$ ($\mu$V)')
         titlestr = lastcmd()
