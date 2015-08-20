@@ -10,24 +10,8 @@ import numpy as np
 
 from scipy.stats import kurtosis, kurtosistest
 
-# mapping of recording to list of desynched and synched trange, in that order, copied from
-# psth_precision.py:
-rec2tranges = {ptc17.tr2b.r58: [(0, 700e6), # desynched trange, 66 Hz refresh rate
-                                (800e6, 1117e6)], # synched trange, 66 Hz refresh rate
-               ptc18.tr1.r38:  [(0, 425e6), # desynched trange, ends ~ trial 76
-                                (550e6, 2243e6)], # synched trange, starts ~ trial 98
-               ptc18.tr2c.r58: [(0, 750e6), # desynched trange
-                                (1000e6, 2248e6)], # synched trange
-               ptc22.tr1.r08:  [(0, 1500e6), # desynched trange
-                                (1550e6, 2329e6)], # synched trange
-               ptc22.tr1.r10:  [(1480e6, 2331e6), # desynched trange
-                                (0, 1400e6)], # synched trange
-               ptc22.tr4b.r49: [(0, 1475e6), # desynched trange
-                                (1500e6, 2331e6)], # synched trange
-              }
-# compare and sort recordings by their absname:
-reccmp = lambda reca, recb: cmp(reca.absname, recb.absname)
-urecs = sorted(rec2tranges, cmp=reccmp) # unique recordings, no repetition, sorted
+# sort recordings by their absname:
+urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
 
 pyr_scale = 0.5
 levels = 3
@@ -217,7 +201,7 @@ RHOBINS = np.arange(RHOMIN, RHOMAX+0.1, 0.1) # left edges + rightmost edge
 # build corresponding lists of recs and stranges, even entries are desynched, odd are synched:
 recs, stranges = [], [] # recs has repetitions, not unique
 for rec in urecs: # iterate over sorted unique recs
-    tranges = rec2tranges[rec]
+    tranges = REC2STATETRANGES[rec.absname]
     for trange in tranges:
         recs.append(rec)
         stranges.append(trange)

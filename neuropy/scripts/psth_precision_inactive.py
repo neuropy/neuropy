@@ -8,7 +8,7 @@ from core import intround
 from psth_funcs import get_psth_peaks_simple, plot_psth
 
 rec = ptc22.tr1.r08
-strange = 1550e6, np.inf # r08 synched, us, end is ~ 2300s
+strange = REC2STATETRANGES[rec.absname][1] # r08 synched, us
 nids = [5, 23, 24] # 3 example inactive yet responsive nids in ptc22.tr1.r08
 
 EPS = np.spacing(1) # epsilon, smallest representable non-zero number

@@ -42,24 +42,8 @@ VMIN, VMAX = -1, 1 # rho limits for correlation matrices
 
 if __name__ == "__main__":
 
-    # mapping of recording to list of desynched and synched trange, in that order, copied from
-    # psth_precision.py:
-    rec2tranges = {ptc17.tr2b.r58: [(0, 700e6), # desynched trange, 66 Hz refresh rate
-                                    (800e6, 1117e6)], # synched trange, 66 Hz refresh rate
-                   ptc18.tr1.r38:  [(0, 425e6), # desynched trange, ends ~ trial 76
-                                    (550e6, 2243e6)], # synched trange, starts ~ trial 98
-                   ptc18.tr2c.r58: [(0, 750e6), # desynched trange
-                                    (1000e6, 2248e6)], # synched trange
-                   ptc22.tr1.r08:  [(0, 1500e6), # desynched trange
-                                    (1550e6, 2329e6)], # synched trange
-                   ptc22.tr1.r10:  [(1480e6, 2331e6), # desynched trange
-                                    (0, 1400e6)], # synched trange
-                   ptc22.tr4b.r49: [(0, 1475e6), # desynched trange
-                                    (1500e6, 2331e6)], # synched trange
-                  }
-    # compare and sort recordings by their absname:
-    reccmp = lambda reca, recb: cmp(reca.absname, recb.absname)
-    urecs = sorted(rec2tranges, cmp=reccmp) # unique recordings, no repetition, sorted
+    # sort recordings by their absname:
+    urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
     nrecs = len(urecs)
     urecnames = ' '.join([rec.absname for rec in urecs])
 
@@ -69,7 +53,7 @@ if __name__ == "__main__":
     sepslist = {None: [], 'desynch': [], 'synch': []}
     nidslist = {None: [], 'desynch': [], 'synch': []}
     for rec in urecs:
-        stranges = rec2tranges[rec]
+        stranges = REC2STATETRANGES[rec.absname]
         for slabel, strange in zip([None]+slabels, [None]+stranges):
             print()
             print(rec.absname, slabel, strange)

@@ -8,26 +8,11 @@ from matplotlib import gridspec
 
 from core import sparseness, ceilsigfig
 
-# copied from psth_precision.py:
-rec2tranges = {ptc17.tr2b.r58: [(0, 700e6), # desynched trange, 66 Hz refresh rate
-                                (800e6, 1117e6)], # synched trange, 66 Hz refresh rate
-               ptc18.tr1.r38:  [(0, 425e6), # desynched trange, ends ~ trial 76
-                                (550e6, 2243e6)], # synched trange, starts ~ trial 98
-               ptc18.tr2c.r58: [(0, 750e6), # desynched trange
-                                (1000e6, 2248e6)], # synched trange
-               ptc22.tr1.r08:  [(0, 1500e6), # desynched trange
-                                (1550e6, 2329e6)], # synched trange
-               ptc22.tr1.r10:  [(1480e6, 2331e6), # desynched trange
-                                (0, 1400e6)], # synched trange
-               ptc22.tr4b.r49: [(0, 1475e6), # desynched trange
-                                (1500e6, 2331e6)], # synched trange
-              }
-
 FIGSIZE = (8, 4)
 YLABELX = -0.06
 
-reccmp = lambda reca, recb: cmp(reca.absname, recb.absname)
-urecs = sorted(rec2tranges, cmp=reccmp) # unique recordings, no repetition, sorted
+# sort recordings by their absname:
+urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
 #urecnames = ' '.join([rec.absname for rec in urecs])
 fmts = ('b-', 'r-') # desynched and synched
 SNRs = [[], []] # desynched and synched
@@ -44,7 +29,7 @@ for rec in urecs:
     SNRa = f.add_subplot(gs[2], sharex=LFPa1)
     plt.setp(LFPa1.get_xticklabels(), visible=False)
     plt.setp(LFPa2.get_xticklabels(), visible=False)
-    stranges = rec2tranges[rec]
+    stranges = REC2STATETRANGES[rec.absname]
     for statei, (strange, fmt, LFPa) in enumerate(zip(stranges, fmts, LFPas)): # desynched, then synched
         t, lfptrials = rec.tlfp(trange=strange, plot=False)
         lfpmean, lfpstd = lfptrials.mean(axis=0), lfptrials.std(axis=0)
