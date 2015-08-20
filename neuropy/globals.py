@@ -129,16 +129,16 @@ ALPHA = 0.05 # threshold p value for rejecting null hypothesis
 
 # mapping of recording absname to list of desynched and synched tranges, in that order.
 # tranges are in us relative to start of ADC clock:
-REC2STATETRANGES = {'ptc17.tr2b.r58': [(0, 700e6), # desynched trange, 66 Hz refresh rate
-                                       (800e6, 1117e6)], # synched trange, 66 Hz refresh rate
-                    'ptc18.tr1.r38':  [(0, 425e6), # desynched trange, ends ~ trial 76
-                                       (550e6, 2243e6)], # synched trange, starts ~ trial 98
-                    'ptc18.tr2c.r58': [(0, 750e6), # desynched trange
-                                       (1000e6, 2248e6)], # synched trange
-                    'ptc22.tr1.r08':  [(0, 1500e6), # desynched trange
-                                       (1550e6, 2329e6)], # synched trange
-                    'ptc22.tr1.r10':  [(1480e6, 2331e6), # desynched trange
-                                       (0, 1400e6)], # synched trange
-                    'ptc22.tr4b.r49': [(0, 1475e6), # desynched trange
-                                       (1500e6, 2331e6)], # synched trange
+REC2STATETRANGES = {'ptc17.tr2b.r58': [(5.7e6, 700e6), # desynched trange, 66 Hz refresh rate
+                                       (800e6, 1117.1e6)], # synched trange, 66 Hz refresh rate
+                    'ptc18.tr1.r38':  [(43.8e6, 425e6), # desynched trange, ends ~ trial 76
+                                       (550e6, 2243.8e6)], # synched trange, starts ~ trial 98
+                    'ptc18.tr2c.r58': [(49e6, 750e6), # desynched trange
+                                       (1000e6, 2248.9e6)], # synched trange
+                    'ptc22.tr1.r08':  [(11e6, 1500e6), # desynched trange
+                                       (1550e6, 2329.9e6)], # synched trange
+                    'ptc22.tr1.r10':  [(1480e6, 2330.9e6), # desynched trange
+                                       (12.1e6, 1400e6)], # synched trange
+                    'ptc22.tr4b.r49': [(12.7e6, 1475e6), # desynched trange
+                                       (1500e6, 2331.6e6)], # synched trange
                    }

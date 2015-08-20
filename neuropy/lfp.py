@@ -339,7 +339,7 @@ class LFP(object):
         a.autoscale(enable=True, tight=True)
         a.axis('tight')
         # depending on relative2t0 above, x=0 represents either t0 or time ADC clock started:
-        a.set_xlim(xmin=0)
+        a.set_xlim(xmin=0, xmax=t[-1])
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
