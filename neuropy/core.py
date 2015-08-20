@@ -1672,7 +1672,7 @@ class SpikeCorr(object):
         a.plot(t, corrs[2], 'g.-', label='middle (%d)' % npairs[2])
         a.plot(t, corrs[3], 'b.-', label='deep (%d)' % npairs[3])
         a.plot(t, corrs[4], 'y.-', label='other (%d)' % npairs[4], zorder=0)
-        a.set_xlabel("time (sec)")
+        a.set_xlabel("time (s)")
         ylabel = ylabel + " (%d pairs)" % self.npairs
         a.set_ylabel(ylabel)
         # limit plot to duration of acquistion, in sec:

@@ -131,7 +131,7 @@ class LFP(object):
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
         if xlabel:
-            a.set_xlabel("time (sec)")
+            a.set_xlabel("time (s)")
         if yunits == 'um':
             a.set_ylabel("depth ($\mu$m)")
         elif yunits == 'mm':
@@ -173,7 +173,7 @@ class LFP(object):
         a.plot(tranges[:, 0], stds, fmt)
         a.autoscale(enable=True, tight=True)
         a.set_xlim(xmin=0) # ADC clock starts at t=0
-        a.set_xlabel('time (sec)')
+        a.set_xlabel('time (s)')
         a.set_ylabel('LFP $\sigma$ ($\mu$V)')
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
@@ -342,7 +342,7 @@ class LFP(object):
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
-        a.set_xlabel("time (sec)")
+        a.set_xlabel("time (s)")
         a.set_ylabel("frequency (Hz)")
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
@@ -695,7 +695,7 @@ class LFP(object):
             a = f.add_subplot(111)
 
         xlim = t0, t1
-        xlabel = "time (sec)"
+        xlabel = "time (s)"
         if ylabel == None:
             ylabel = "synchrony index (AU?)"
 

@@ -384,7 +384,7 @@ class BaseRecording(object):
             a.plot(t, rates[1], 'r-', label='superficial (%d)' % n[1])
             a.plot(t, rates[2], 'g-', label='middle (%d)' % n[2])
             a.plot(t, rates[3], 'b-', label='deep (%d)' % n[3])
-        a.set_xlabel("time (sec)")
+        a.set_xlabel("time (s)")
         a.set_ylabel(ylabel)
         # limit plot to duration of acquistion, in sec:
         t0, t1 = np.asarray(self.trange) / 1000000
@@ -1452,7 +1452,7 @@ class RecordingRaster(BaseRecording):
             # turn off annoying "+2.41e3" type offset on x axis:
             formatter = mpl.ticker.ScalarFormatter(useOffset=False)
             a.xaxis.set_major_formatter(formatter)
-            a.set_xlabel("time (sec)")
+            a.set_xlabel("time (s)")
             if ylabel:
                 a.set_ylabel("trial index") # sweep index order, not necessarily temporal order
             else:
@@ -1527,7 +1527,7 @@ class RecordingRaster(BaseRecording):
                 a = f.add_subplot(111)
             a.plot(midbins, psths[nidi], c=n2cs[nid], ls='-', marker=None)
             a.set_xlim(xmin, xmax)
-            a.set_xlabel("time (sec)")
+            a.set_xlabel("time (s)")
             if ylabel:
                 if norm == True:
                     a.set_ylabel("firing rate (AU)")
@@ -1632,7 +1632,7 @@ class RecordingRaster(BaseRecording):
             a.plot(t, lfpmean+lfpstd, 'r-') # upper std
             a.plot(t, lfpmean-lfpstd, 'r-') # lower std
             a.autoscale(enable=True, tight=True)
-            a.set_xlabel("time (sec)")
+            a.set_xlabel("time (s)")
             a.set_ylabel("LFP ($\mu$V)")
             titlestr = lastcmd()
             gcfm().window.setWindowTitle(titlestr)

@@ -3,8 +3,6 @@ natural scene 5s movie clip recordings with cortical state changes in them. Also
 correlation distributions, and correlations as a function of cell pair separation. Run from
 within neuropy using `run -i scripts/psthcorr_natstate.py`"""
 
-#do i just want to plot two distribs, or do i want to try scatter plots? probably both
-
 from __future__ import division, print_function
 
 import pylab as pl
