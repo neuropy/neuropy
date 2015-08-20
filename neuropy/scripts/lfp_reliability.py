@@ -6,6 +6,8 @@ from __future__ import division, print_function
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 
+from scipy.stats import mannwhitneyu
+
 from core import sparseness, ceilsigfig
 
 FIGSIZE = (8, 4)
