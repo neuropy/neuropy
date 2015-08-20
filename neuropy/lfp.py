@@ -257,17 +257,16 @@ class LFP(object):
         return P, freqs
         
     def specgram(self, t0=None, t1=None, f0=0.1, f1=100, p0=-60, p1=None, chanis=-1,
-                 width=None, tres=None, cm=None, colorbar=False, desynch=None, synch=None,
-                 lw=5, alpha=1, relative2t0=False, title=True, reclabel=True,
-                 figsize=(20, 6.5)):
+                 width=None, tres=None, cm=None, colorbar=False, states=False, lw=5, alpha=1,
+                 relative2t0=False, title=True, reclabel=True, figsize=(20, 6.5)):
         """Plot a spectrogram from t0 to t1 in sec, from f0 to f1 in Hz, and clip power values
         from p0 to p1 in dB, based on channel index chani of LFP data. chanis=0 uses most
         superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, take mean of
         specified chanis. width and tres are in sec. As an alternative to cm.jet (the
         default), cm.gray, cm.hsv cm.terrain, and cm.cubehelix_r colormaps seem to bring out
-        the most structure in the spectrogram. desynch and synch are tuples that demarcate
-        desynchronized and synchronized periods, relative to start of ADC clock. relative2t0
-        controls whether to plot relative to t0, or relative to start of ADC clock"""
+        the most structure in the spectrogram. states controls whether to plot lines
+        demarcating desynchronized and synchronized periods. relative2t0 controls whether to
+        plot relative to t0, or relative to start of ADC clock"""
         uns = get_ipython().user_ns
         self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
@@ -328,14 +327,14 @@ class LFP(object):
         im = a.imshow(P[::-1], extent=extent, cmap=cm)
         # plot horizontal lines demarcating desynched and synched periods:
         df = f1 - f0
-        if desynch:
+        REC2STATETRANGES = uns['REC2STATETRANGES']
+        if states:
+            dtrange, strange = np.asarray(REC2STATETRANGES[self.r.absname]) / 1e6
             if relative2t0:
-                desynch = np.asarray(desynch) - t0
-            a.hlines(f0+df*0.02, desynch[0], desynch[1], colors='b', lw=lw, alpha=alpha)
-        if synch:
-            if relative2t0:
-                synch = np.asarray(synch) - t0
-            a.hlines(f0+df*0.98, synch[0], synch[1], colors='r', lw=lw, alpha=alpha)
+                 dtrange = dtrange - t0
+                 strange = strange - t0
+            a.hlines(f0+df*0.02, dtrange[0], dtrange[1], colors='b', lw=lw, alpha=alpha)
+            a.hlines(f0+df*0.98, strange[0], strange[1], colors='r', lw=lw, alpha=alpha)
         a.autoscale(enable=True, tight=True)
         a.axis('tight')
         # depending on relative2t0 above, x=0 represents either t0 or time ADC clock started:
