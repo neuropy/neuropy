@@ -405,8 +405,8 @@ class LFP(object):
 
     def si(self, kind=None, chani=-1, width=None, tres=None,
            lfpwidth=None, lfptres=None, lowband=None, highband=None, plot=True,
-           showxlabel=True, showylabel=True, showtitle=True, showtext=True,
-           figsize=(20, 3.5), swapaxes=False):
+           states=False, lw=4, alpha=1, relative2t0=False, showxlabel=True, showylabel=True,
+           showtitle=True, showtext=True, swapaxes=False, figsize=(20, 3.5)):
         """Calculate an LFP synchrony index, using potentially overlapping windows of width
         and tres, in sec, from the LFP spectrogram, itself composed of bins of lfpwidth and
         lfptres. Note that for power ratio methods (kind: L/(L+H) or L/H), width and tres are
@@ -470,8 +470,8 @@ class LFP(object):
         P, freqs, Pt = mpl.mlab.specgram(x, NFFT=NFFT, Fs=self.sampfreq, noverlap=noverlap)
         # don't convert power to dB, just washes out the signal in the ratio:
         #P = 10. * np.log10(P)
-        # convert t to time from start of ADC clock:
-        Pt += ts[0]
+        if not relative2t0:
+            Pt += ts[0] # convert t to time from start of ADC clock:
         nfreqs = len(freqs)
 
         # keep only freqs between f0 and f1, and f2 and f3:
@@ -633,10 +633,16 @@ class LFP(object):
         else:
             raise ValueError('unknown kind %r' % kind)
         if plot:
-            self.si_plot(t, si, t0=0, t1=t[-1], ylim=ylim, showxlabel=showxlabel,
-                         showylabel=showylabel, ylabel=ylabel, showtitle=showtitle,
+            # calculate xlim, always start from 0, add half a bin width to xmax:
+            if pratio:
+                xlim = (0, t[-1]+lfpwidth/2)
+            else:
+                xlim = (0, t[-1]+width/2)
+            self.si_plot(t, si, t0=ts[0], xlim=xlim, ylim=ylim, ylabel=ylabel,
+                         showxlabel=showxlabel, showylabel=showylabel, showtitle=showtitle,
                          title=lastcmd(), showtext=showtext, text=self.r.name, hlines=hlines,
-                         figsize=figsize, swapaxes=swapaxes)
+                         states=states, lw=lw, alpha=alpha, relative2t0=relative2t0,
+                         swapaxes=swapaxes, figsize=figsize)
         #np.seterr(**old_settings) # restore old settings
         return si, t # t are midpoints of bins, from start of ADC clock
     '''
@@ -678,15 +684,16 @@ class LFP(object):
             raise ValueError
         if plot:
             ylabel = 'LFP synchrony index (%s)' % ratio
-            self.si_plot(t, r, t0, t1, ylabel, title=lastcmd(), text=self.r.name)
+            self.si_plot(t, r, t0, ylabel, title=lastcmd(), text=self.r.name)
         return r, t
     '''
-    def si_plot(self, t, si, t0=None, t1=None, ylim=None, ylabel=None,
+    def si_plot(self, t, si, t0=None, xlim=None, ylim=None, ylabel=None,
                 showxlabel=True, showylabel=True, showtitle=True,
-                title=None, showtext=True, text=None, hlines=[0], figsize=(20, 6.5),
-                swapaxes=False):
+                title=None, showtext=True, text=None, hlines=[0], states=False, lw=4, alpha=1,
+                relative2t0=False, swapaxes=False, figsize=(20, 6.5)):
         """Plot synchrony index as a function of time, with hopefully the same
         temporal scale as some of the other plots in self"""
+        uns = get_ipython().user_ns
         if figsize == None:
             f = pl.gcf()
             a = pl.gca()
@@ -694,7 +701,6 @@ class LFP(object):
             f = pl.figure(figsize=figsize)
             a = f.add_subplot(111)
 
-        xlim = t0, t1
         xlabel = "time (s)"
         if ylabel == None:
             ylabel = "synchrony index (AU?)"
@@ -713,7 +719,20 @@ class LFP(object):
             for hline in hlines:
                 a.axhline(y=hline, c='e', ls='--', marker=None)
 
+        # plot horizontal lines demarcating desynched and synched periods:
+        y0, y1 = ylim
+        dy = abs(y1 - y0)
+        REC2STATETRANGES = uns['REC2STATETRANGES']
+        if states:
+            dtrange, strange = np.asarray(REC2STATETRANGES[self.r.absname]) / 1e6
+            if relative2t0:
+                 dtrange = dtrange - t0
+                 strange = strange - t0
+            a.hlines(y0+dy*0.2, dtrange[0], dtrange[1], colors='b', lw=lw, alpha=alpha)
+            a.hlines(y0+dy*0.9, strange[0], strange[1], colors='r', lw=lw, alpha=alpha)
+
         a.plot(t, si, 'k-')
+        # depending on relative2t0 above, x=0 represents either t0 or time ADC clock started:
         a.set_xlim(xlim) # low/high limits are unchanged if None
         a.set_ylim(ylim)
         if showxlabel:
