@@ -318,13 +318,6 @@ class LFP(object):
         if p1 != None:
             P[P > p1] = p1
         #self.P = P
-        # Label far left, right, top and bottom edges of imshow image. imshow interpolates
-        # between these to place the axes ticks. Time limits are
-        # set from midpoints of specgram time bins
-        extent = t[0], t[-1], freqs[0], freqs[-1]
-        #print('specgram extent: %r' % (extent,))
-        # flip P vertically for compatibility with imshow:
-        im = a.imshow(P[::-1], extent=extent, cmap=cm)
         # plot horizontal lines demarcating desynched and synched periods:
         df = f1 - f0
         REC2STATETRANGES = uns['REC2STATETRANGES']
@@ -333,12 +326,23 @@ class LFP(object):
             if relative2t0:
                  dtrange = dtrange - t0
                  strange = strange - t0
-            a.hlines(f0+df*0.02, dtrange[0], dtrange[1], colors='b', lw=lw, alpha=alpha)
-            a.hlines(f0+df*0.98, strange[0], strange[1], colors='r', lw=lw, alpha=alpha)
+            # plot horizontal lines just below x axis:
+            a.hlines(f0-df*0.015, dtrange[0], dtrange[1], colors='b', lw=lw, alpha=alpha,
+                     clip_on=False)
+            a.hlines(f0-df*0.015, strange[0], strange[1], colors='r', lw=lw, alpha=alpha,
+                     clip_on=False)
+        # Label far left, right, top and bottom edges of imshow image. imshow interpolates
+        # between these to place the axes ticks. Time limits are
+        # set from midpoints of specgram time bins
+        extent = t[0], t[-1], freqs[0], freqs[-1]
+        #print('specgram extent: %r' % (extent,))
+        # flip P vertically for compatibility with imshow:
+        im = a.imshow(P[::-1], extent=extent, cmap=cm)
         a.autoscale(enable=True, tight=True)
         a.axis('tight')
         # depending on relative2t0 above, x=0 represents either t0 or time ADC clock started:
         a.set_xlim(xmin=0, xmax=t[-1])
+        a.set_ylim(ymin=freqs[0], ymax=freqs[-1])
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
