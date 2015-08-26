@@ -128,6 +128,20 @@ class BaseExperiment(object):
         self.dtmin = self.dtsec / 60
         self.dthour = self.dtmin / 60
 
+    def get_nonnulltrange(self):
+        """Find outermost non-NULL din times, such as at the end and beginning of pre and post
+        experiment periods of blank screen, respectively"""
+        uns = get_ipython().user_ns
+        NULLDIN = uns['NULLDIN']
+        dint, dinval = self.din[:, 0], self.din[:, 1]
+        nni, = np.where(dinval != NULLDIN)
+        assert len(nni) > 0
+        nn0i, nn1i = nni[0], nni[-1]
+        return dint[[nn0i, nn1i]]
+
+    nonnulltrange = property(get_nonnulltrange) # generate only on use
+        
+
     def loadptc15exp(self):
         ## TODO: - fake a .e dimstim.Experiment object, to replace what used to be the
         ## .stims object for movie experiments
