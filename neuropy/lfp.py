@@ -81,12 +81,13 @@ class LFP(object):
         return t0, t1
 
     def plot(self, t0=None, t1=None, chanis=None, gain=1, c='k', alpha=1.0, yunits='um',
-             yticks=None, title=True, xlabel=True, relative2t0=False, scalebar=True, lw=4,
-             figsize=(20, 6.5)):
+             yticks=None, title=True, xlabel=True, relative2t0=False, lim2stim=False,
+             scalebar=True, lw=4, figsize=(20, 6.5)):
         """Plot chanis of LFP data between t0 and t1 in sec. Unfortunatley, setting an alpha <
         1 doesn't seem to reveal detail when a line obscures itself, such as when plotting a
         very long time series. relative2t0 controls whether to plot relative to t0, or
-        relative to start of ADC clock"""
+        relative to start of ADC clock. lim2stim limits the time range only to when a stimulus
+        was on screen, i.e. to the outermost times of non-NULL din"""
         self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
         if t0 == None:
@@ -95,6 +96,8 @@ class LFP(object):
             t1 = t0 + 10 # 10 sec window
         if chanis == None:
             chanis = range(len(self.chans)) # all chans
+        if lim2stim:
+            t0, t1 = self.apply_lim2stim(t0, t1)
         t0i, t1i = ts.searchsorted((t0, t1))
         ts = ts[t0i:t1i] # constrained set of timestamps, in sec
         chanis = tolist(chanis)
@@ -425,8 +428,9 @@ class LFP(object):
 
     def si(self, kind=None, chani=-1, width=None, tres=None,
            lfpwidth=None, lfptres=None, lowband=None, highband=None, plot=True,
-           states=False, lw=4, alpha=1, relative2t0=False, showxlabel=True, showylabel=True,
-           showtitle=True, showtext=True, swapaxes=False, figsize=(20, 3.5)):
+           states=False, lw=4, alpha=1, relative2t0=False, lim2stim=False,
+           showxlabel=True, showylabel=True, showtitle=True, showtext=True, swapaxes=False,
+           figsize=(20, 3.5)):
         """Calculate an LFP synchrony index, using potentially overlapping windows of width
         and tres, in sec, from the LFP spectrogram, itself composed of bins of lfpwidth and
         lfptres. Note that for power ratio methods (kind: L/(L+H) or L/H), width and tres are
@@ -446,6 +450,9 @@ class LFP(object):
 
         'n3stdmean': normalized 3stdmean: (3*std - mean) / (3*std + mean)
 
+        relative2t0 controls whether to plot relative to t0, or relative to start of ADC
+        clock. lim2stim limits the time range only to when a stimulus was presented, i.e. to
+        the outermost times of non-NULL din.
         """
         uns = get_ipython().user_ns
         if kind == None:
@@ -457,7 +464,11 @@ class LFP(object):
 
         data = self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
-        x = data[chani] / 1e3 # convert from uV to mV
+        t0, t1 = ts[0], ts[-1]
+        if lim2stim:
+            t0, t1 = self.apply_lim2stim(t0, t1)
+        t0i, t1i = ts.searchsorted((t0, t1))
+        x = data[chani, t0i:t1i] / 1e3 # slice data, convert from uV to mV
         x = filter.notch(x)[0] # remove 60 Hz mains noise
         try:
             rr = self.r.e0.I['REFRESHRATE']
@@ -491,7 +502,7 @@ class LFP(object):
         # don't convert power to dB, just washes out the signal in the ratio:
         #P = 10. * np.log10(P)
         if not relative2t0:
-            Pt += ts[0] # convert t to time from start of ADC clock:
+            Pt += t0 # convert t to time from start of ADC clock:
         nfreqs = len(freqs)
 
         # keep only freqs between f0 and f1, and f2 and f3:
@@ -658,7 +669,7 @@ class LFP(object):
                 xlim = (0, t[-1]+lfpwidth/2)
             else:
                 xlim = (0, t[-1]+width/2)
-            self.si_plot(t, si, t0=ts[0], xlim=xlim, ylim=ylim, ylabel=ylabel,
+            self.si_plot(t, si, t0=t0, t1=t1, xlim=xlim, ylim=ylim, ylabel=ylabel,
                          showxlabel=showxlabel, showylabel=showylabel, showtitle=showtitle,
                          title=lastcmd(), showtext=showtext, text=self.r.name, hlines=hlines,
                          states=states, lw=lw, alpha=alpha, relative2t0=relative2t0,
@@ -707,7 +718,7 @@ class LFP(object):
             self.si_plot(t, r, t0, ylabel, title=lastcmd(), text=self.r.name)
         return r, t
     '''
-    def si_plot(self, t, si, t0=None, xlim=None, ylim=None, ylabel=None,
+    def si_plot(self, t, si, t0=None, t1=None, xlim=None, ylim=None, ylabel=None,
                 showxlabel=True, showylabel=True, showtitle=True,
                 title=None, showtext=True, text=None, hlines=[0], states=False, lw=4, alpha=1,
                 relative2t0=False, swapaxes=False, figsize=(20, 6.5)):
@@ -745,6 +756,8 @@ class LFP(object):
         REC2STATETRANGES = uns['REC2STATETRANGES']
         if states:
             dtrange, strange = np.asarray(REC2STATETRANGES[self.r.absname]) / 1e6
+            dtrange = max(dtrange[0], t0), min(dtrange[1], t1) # clip desynch trange to t0, t1
+            strange = max(strange[0], t0), min(strange[1], t1) # clip synch trange to t0, t1
             if relative2t0:
                  dtrange = dtrange - t0
                  strange = strange - t0
