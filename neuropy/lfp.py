@@ -70,6 +70,16 @@ class LFP(object):
         """Return full set of timestamps, in sec"""
         return np.arange(self.t0/1e6, self.t1/1e6, self.tres/1e6)
 
+    def apply_lim2stim(self, t0, t1):
+        """Limit t0 and t1 (in sec) to exclude outermost NULL din times, such as pre and post
+        experiment periods of blank screen"""
+        nnt = self.r.e0.nonnulltrange # in us
+        print("original trange: %r" % ((t0, t1),))
+        print("lim2stim trange: %r" % ((nnt[0]/1e6, nnt[1]/1e6),))
+        t0 = max(t0, nnt[0]/1e6)
+        t1 = min(t1, nnt[1]/1e6)
+        return t0, t1
+
     def plot(self, t0=None, t1=None, chanis=None, gain=1, c='k', alpha=1.0, yunits='um',
              yticks=None, title=True, xlabel=True, relative2t0=False, scalebar=True, lw=4,
              figsize=(20, 6.5)):
@@ -268,7 +278,7 @@ class LFP(object):
         the most structure in the spectrogram. states controls whether to plot lines
         demarcating desynchronized and synchronized periods. relative2t0 controls whether to
         plot relative to t0, or relative to start of ADC clock. lim2stim limits the time range
-        only to when a stimulus was presented, i.e. to the outermost times of non-NULL din"""
+        only to when a stimulus was on screen, i.e. to the outermost times of non-NULL din"""
         uns = get_ipython().user_ns
         self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
@@ -277,13 +287,7 @@ class LFP(object):
         if t1 == None:
             t1 = t0 + 10 # 10 sec window
         if lim2stim:
-            # limit t0 and t1 to exclude outermost NULL din times, such as pre and post
-            # experiment periods of blank screen:
-            nnt = self.r.e0.nonnulltrange # in us
-            print("original trange: %r" % ((t0, t1),))
-            print("lim2stim trange: %r" % ((nnt[0]/1e6, nnt[1]/1e6),))
-            t0 = max(t0, nnt[0]/1e6)
-            t1 = min(t1, nnt[1]/1e6)
+            t0, t1 = self.apply_lim2stim(t0, t1)
         if width == None:
             width = uns['LFPWIDTH'] # sec
         if tres == None:
