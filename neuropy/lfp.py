@@ -336,7 +336,6 @@ class LFP(object):
             P[P > p1] = p1
         #self.P = P
         # plot horizontal lines demarcating desynched and synched periods:
-        df = f1 - f0
         REC2STATETRANGES = uns['REC2STATETRANGES']
         if states:
             dtrange, strange = np.asarray(REC2STATETRANGES[self.r.absname]) / 1e6
@@ -345,6 +344,7 @@ class LFP(object):
             if relative2t0:
                  dtrange = dtrange - t0
                  strange = strange - t0
+            df = f1 - f0
             # plot horizontal lines just below x axis:
             a.hlines(f0-df*0.015, dtrange[0], dtrange[1], colors='b', lw=lw, alpha=alpha,
                      clip_on=False)
