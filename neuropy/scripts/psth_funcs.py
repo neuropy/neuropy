@@ -92,9 +92,10 @@ def get_psth_peaks_gac(ts, t, psth, thresh, sigma=0.02, alpha=1.0, minpoints=5,
     the resolution of the PSTH isn't high enough (TRES=0.0001 is plenty)"""
 
     ts2d = np.float32(ts[:, None]) # convert to 2D (one row per spike), contig float32
-    # get cluster IDs and positions corresponding to spikets:
+    # get cluster IDs and positions corresponding to spikets, cpos is indexed into using
+    # cids:
     cids, cpos = gac.gac(ts2d, sigma=sigma, alpha=alpha, minpoints=minpoints, returncpos=True)
-    ucids = np.unique(cids) # unique cluster IDs
+    ucids = np.unique(cids) # unique cluster IDs across all spikets
     ucids = ucids[ucids >= 0] # exclude junk cluster -1
     #npeaks = len(ucids) # but not all of them will necessarily cross the PSTH threshold
     peakis, lis, ris = [], [], []
