@@ -1466,7 +1466,7 @@ class RecordingRaster(BaseRecording):
             f.tight_layout(pad=0.3) # crop figure to contents
 
     def psth(self, nids=None, sweepis=None, eids=None, natexps=False, t0=None, dt=None,
-             blank=True, strange=None, binw=0.02, tres=0.005, gauss=False, norm=True,
+             blank=True, strange=None, binw=0.02, tres=0.0001, gauss=False, norm=True,
              plot=True, overlap=False, title=False, ylabel=True, c=None, figsize=(7.5, 3)):
         """Create a peristimulus time histogram for each given neuron ('all' and 'quiet' are
         valid values), one figure for each neuron, or overlapping using different colours in a

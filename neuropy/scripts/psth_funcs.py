@@ -88,7 +88,8 @@ def get_psth_peaks_gac(ts, t, psth, thresh, sigma=0.02, alpha=1.0, minpoints=5,
                        lowp=16, highp=84, checkthresh=True):
     """Extract PSTH peaks from spike times ts collapsed across trials, by clustering them
     using GAC. Then, optionally check each peak against its amplitude in the PSTH (and its
-    time stamps t), to ensure it passes thresh"""
+    time stamps t), to ensure it passes thresh. Note that very narrow peaks will be missed if
+    the resolution of the PSTH isn't high enough (TRES=0.0001 is plenty)"""
 
     ts2d = np.float32(ts[:, None]) # convert to 2D (one row per spike), contig float32
     # get cluster IDs and positions corresponding to spikets:
