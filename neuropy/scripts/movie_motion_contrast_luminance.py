@@ -5,6 +5,8 @@ scripts/movie_motion_contrast_luminance.py`"""
 
 from __future__ import division, print_function
 
+import os
+
 import cv2
 import numpy as np
 
@@ -133,10 +135,18 @@ for rec in urecs:
     tight_layout(pad=0.3)
 
 
-# plot motion distribution and compare to normal distribution:
+# plot motion distribution of unique movies and compare to normal distribution:
 MOTIONBINW = 4 # deg/s
 figure(figsize=(3, 3))
-allmotion = np.hstack(list(mot.values()))
+# map (movie name, framei0) tuple to motion signal (2 recs share the same movie frames):
+mvi2mot = {}
+for recname in mot:
+    rec = eval(recname)
+    mviname = os.path.basename(rec.e0.s.fname)
+    framei0 = rec.e0.d.framei[0]
+    print(recname, (mviname, framei0))
+    mvi2mot[(mviname, framei0)] = mot[recname]
+allmotion = np.hstack(list(mvi2mot.values()))
 allmotion = np.hstack([allmotion, -allmotion]) # make it symmetric around 0
 motionbins = np.arange(-300, 300+MOTIONBINW, MOTIONBINW) # deg/s, symmetric around 0
 midbins = motionbins[:-1] + MOTIONBINW / 2
