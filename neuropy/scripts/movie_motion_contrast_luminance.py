@@ -26,6 +26,12 @@ flags = 0
 FIGSIZE = (6, 3)
 PLOTMOVIESIGNALS = False
 
+# plot example synched and desynched PSTH on movie motion plot, and point it out in
+# PSTH-motion correlation plot:
+EXAMPLERECNAME = 'ptc17.tr2b.r58'
+EXAMPLENID = 48
+EXAMPLEPSTH = [None, None]
+
 # calculate optic flow vector field between neighbouring pairs of frames, average their
 # magnitudes to get global motion:
 mot = {}
@@ -140,7 +146,7 @@ MOTIONBINW = 4 # deg/s
 figure(figsize=(3, 3))
 # map (movie name, framei0) tuple to motion signal (2 recs share the same movie frames):
 mvi2mot = {}
-for recname in mot:
+for recname in sorted(mot):
     rec = eval(recname)
     mviname = os.path.basename(rec.e0.s.fname)
     framei0 = rec.e0.d.framei[0]
@@ -239,23 +245,20 @@ for rec, nids, strange, state in zip(recs, recsecnids, stranges, states):
         recsecscatmotrhos[rec.absname] = {} # init
         recsecscatconrhos[rec.absname] = {}
         recsecscatlumrhos[rec.absname] = {}
-    if state == 'desynch':
-        statei = 0
-    else: # state == 'synch'
-        statei = 1
+    statei = {'desynch': 0, 'synch': 1}[state]
     t, psths, spikets = rec.psth(nids=nids, natexps=False, blank=BLANK, strange=strange,
                                  plot=False, binw=BINW, tres=TRES, gauss=GAUSS, norm='ntrials')
     m, c, l = mot[rec.absname], con[rec.absname], lum[rec.absname]
     tm = tmovie[rec.absname]
     ms = motspars[rec.absname]
-    psthis = t.searchsorted(tm) # PSTH indices closest to movie frame times
+    psthis0d = t.searchsorted(tm) # PSTH indices closest to movie frame times, no delay
     dt = rec.e0.d.sweepSec # frame duration in seconds
     ntdelay = intround(CORRDELAY / dt) # num timepoints to delay movie-PSTH correlation by
     if ntdelay >= 0:
-        psthis = psthis[ntdelay:]
+        psthis = psthis0d[ntdelay:]
         movieis = np.arange(0, len(tm)-ntdelay)
     else: # ntdelay is -ve
-        psthis = psthis[:ntdelay]
+        psthis = psthis0d[:ntdelay]
         movieis = np.arange(abs(ntdelay), len(tm))
     for nid, psth, ts in zip(nids, psths, spikets):
         # run PSTH peak detection:
@@ -279,7 +282,31 @@ for rec, nids, strange, state in zip(recs, recsecnids, stranges, states):
         recsecscatconrhos[rec.absname][nid][statei] = conrho
         recsecscatlumrhos[rec.absname][nid][statei] = lumrho
 
+        if rec.absname == EXAMPLERECNAME and nid == EXAMPLENID:
+            EXAMPLEPSTH[statei] = psth[psthis0d]
+
     print('\n') # two newlines
+
+# plot motion and PSTHs of example, on the same plot:
+figure(figsize=FIGSIZE)
+#plot(frameis[1:], mot[name], 'k-', lw=1.5)
+#xlabel('frame index')
+plot(tmovie[EXAMPLERECNAME], mot[EXAMPLERECNAME], 'k-', lw=1.5)
+xlabel('t (s)')
+ylabel('motion amplitude (deg/s)')
+b = gca().twinx()
+EXAMPLEPSTH[0] /= EXAMPLEPSTH[0].max() # normalize to arbitrary units
+EXAMPLEPSTH[1] /= EXAMPLEPSTH[1].max()
+b.plot(tmovie[EXAMPLERECNAME], EXAMPLEPSTH[0], 'b-', lw=1.5, alpha=0.5) # desynched
+b.plot(tmovie[EXAMPLERECNAME], EXAMPLEPSTH[1], 'r-', lw=1.5, alpha=0.5) # synched
+b.set_yticks([])
+b.set_ylabel('firing rate (AU)')
+mviname = os.path.basename(eval(EXAMPLERECNAME).e0.s.fname)
+text(0.99, 0.98, '%s' % mviname, # movie file name
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+gcfm().window.setWindowTitle('movie_global_motion_%s' % EXAMPLERECNAME)
+tight_layout(pad=0.3)
 
 motscatrhos, conscatrhos, lumscatrhos = [], [], []
 for rec in urecs:
@@ -301,6 +328,11 @@ for state in ['desynch', 'synch']:
 figure(figsize=(3, 3))
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
 plot(motscatrhos[:, 1], motscatrhos[:, 0], 'o', mec='k', mfc='None')
+examplerhos = recsecscatmotrhos[EXAMPLERECNAME][EXAMPLENID]
+#plot(examplerhos[1], examplerhos[0], 'o', mec='r', mfc='None')
+# instead of colouring it, draw an arrow to highlight example point:
+arrow(0.65, -0.4, -0.2, 0.2, head_width=0.08, head_length=0.15, length_includes_head=True,
+      color='k')
 text(0.02, 0.98, 'delay = %d ms' % CORRDELAYMS,
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
