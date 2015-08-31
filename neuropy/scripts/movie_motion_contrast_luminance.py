@@ -12,6 +12,9 @@ import numpy as np
 
 from scipy.stats import kurtosis, kurtosistest
 
+import core
+from core import intround, ceilsigfig
+
 # sort recordings by their absname:
 urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
 
@@ -200,8 +203,6 @@ motion, contrast and luminance signal."""
 
 from scipy.stats import chisquare, mannwhitneyu, linregress
 
-import core
-from core import intround, ceilsigfig
 from psth_funcs import get_psth_peaks_gac
 
 NIDSKIND = 'all' # 'active' or 'all'
@@ -471,16 +472,16 @@ truerows = (conscatrhos != -1).all(axis=1) # exclude rows with -1 by collapsing 
 falserows = (conscatrhos == -1).any(axis=1)
 conscatrhostrue = conscatrhos[truerows]
 conscatrhosfalse = conscatrhos[falserows]
-# report numbers, fractions and chi2 p values for PSTH-motion scatter plot.
+# report numbers, fractions and chi2 p values for PSTH-contrast scatter plot.
 # Exclude units that were manually assigned a value of -1 in a state due to being
 # nonresponsive in that state:
-nbelowmotyxline = (conscatrhostrue[:, 1] > conscatrhostrue[:, 0]).sum()
-nabovemotyxline = (conscatrhostrue[:, 0] > conscatrhostrue[:, 1]).sum()
-fractionbelowmotyxline = nbelowmotyxline / (nbelowmotyxline + nabovemotyxline)
-chi2, p = chisquare([nabovemotyxline, nbelowmotyxline])
+nbelowconyxline = (conscatrhostrue[:, 1] > conscatrhostrue[:, 0]).sum()
+naboveconyxline = (conscatrhostrue[:, 0] > conscatrhostrue[:, 1]).sum()
+fractionbelowconyxline = nbelowconyxline / (nbelowconyxline + naboveconyxline)
+chi2, p = chisquare([naboveconyxline, nbelowconyxline])
 pstring = '$p<%g$' % ceilsigfig(p)
-print('nbelowmotyxline=%d, nabovemotyxline=%d, fractionbelowmotyxline=%.3g, '
-      'chi2=%.3g, p=%.3g' % (nbelowmotyxline, nabovemotyxline, fractionbelowmotyxline,
+print('nbelowconyxline=%d, naboveconyxline=%d, fractionbelowconyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowconyxline, naboveconyxline, fractionbelowconyxline,
                              chi2, p))
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
 plot(conscatrhostrue[:, 1], conscatrhostrue[:, 0], 'o', mec='k', mfc='None')
@@ -580,16 +581,16 @@ truerows = (lumscatrhos != -1).all(axis=1) # exclude rows with -1 by collapsing 
 falserows = (lumscatrhos == -1).any(axis=1)
 lumscatrhostrue = lumscatrhos[truerows]
 lumscatrhosfalse = lumscatrhos[falserows]
-# report numbers, fractions and chi2 p values for PSTH-motion scatter plot.
+# report numbers, fractions and chi2 p values for PSTH-luminance scatter plot.
 # Exclude units that were manually assigned a value of -1 in a state due to being
 # nonresponsive in that state:
-nbelowmotyxline = (lumscatrhostrue[:, 1] > lumscatrhostrue[:, 0]).sum()
-nabovemotyxline = (lumscatrhostrue[:, 0] > lumscatrhostrue[:, 1]).sum()
-fractionbelowmotyxline = nbelowmotyxline / (nbelowmotyxline + nabovemotyxline)
-chi2, p = chisquare([nabovemotyxline, nbelowmotyxline])
+nbelowlumyxline = (lumscatrhostrue[:, 1] > lumscatrhostrue[:, 0]).sum()
+nabovelumyxline = (lumscatrhostrue[:, 0] > lumscatrhostrue[:, 1]).sum()
+fractionbelowlumyxline = nbelowlumyxline / (nbelowlumyxline + nabovelumyxline)
+chi2, p = chisquare([nabovelumyxline, nbelowlumyxline])
 pstring = '$p<%g$' % ceilsigfig(p)
-print('nbelowmotyxline=%d, nabovemotyxline=%d, fractionbelowmotyxline=%.3g, '
-      'chi2=%.3g, p=%.3g' % (nbelowmotyxline, nabovemotyxline, fractionbelowmotyxline,
+print('nbelowlumyxline=%d, nabovelumyxline=%d, fractionbelowlumyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowlumyxline, nabovelumyxline, fractionbelowlumyxline,
                              chi2, p))
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
 plot(lumscatrhostrue[:, 1], lumscatrhostrue[:, 0], 'o', mec='k', mfc='None')
