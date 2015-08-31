@@ -511,12 +511,13 @@ nmax = max(np.hstack([nd, ns]))
 axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
 # draw arrows at means:
 ah = nmax / 8 # arrow height
-arrow(dmean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+ymax = nmax * 1.15
+arrow(dmean, nmax*1.05, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
       color='b')
-arrow(smean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+arrow(smean, nmax*1.05, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
       color='r')
 xlim(xmin=RHOMIN, xmax=RHOMAX)
-ylim(ymax=nmax*1.01)
+ylim(ymax=ymax)
 # remove unnecessary decimal places:
 rhoticks = ([-1, -0.5, 0, 0.5, 1],
             ['-1', '-0.5', '0', '0.5', '1'])
@@ -620,12 +621,13 @@ nmax = max(np.hstack([nd, ns]))
 axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
 # draw arrows at means:
 ah = nmax / 8 # arrow height
-arrow(dmean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+ymax = nmax * 1.15
+arrow(dmean, nmax*1.05, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
       color='b')
-arrow(smean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+arrow(smean, nmax*1.05, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
       color='r')
 xlim(xmin=RHOMIN, xmax=RHOMAX)
-ylim(ymax=nmax*1.01)
+ylim(ymax=ymax)
 # remove unnecessary decimal places:
 rhoticks = ([-1, -0.5, 0, 0.5, 1],
             ['-1', '-0.5', '0', '0.5', '1'])
