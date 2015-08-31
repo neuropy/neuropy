@@ -331,7 +331,7 @@ plot(motscatrhos[:, 1], motscatrhos[:, 0], 'o', mec='k', mfc='None')
 examplerhos = recsecscatmotrhos[EXAMPLERECNAME][EXAMPLENID]
 #plot(examplerhos[1], examplerhos[0], 'o', mec='r', mfc='None')
 # instead of colouring it, draw an arrow to highlight example point:
-arrow(0.65, -0.4, -0.2, 0.2, head_width=0.08, head_length=0.15, length_includes_head=True,
+arrow(0.6, -0.35, -0.15, 0.15, head_width=0.08, head_length=0.12, length_includes_head=True,
       color='k')
 text(0.02, 0.98, 'delay = %d ms' % CORRDELAYMS,
                  horizontalalignment='left', verticalalignment='top',
