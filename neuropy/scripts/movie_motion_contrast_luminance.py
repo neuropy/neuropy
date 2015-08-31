@@ -161,6 +161,7 @@ k = kurtosis(allmotion)
 # kurtosistest() seems to use the method of Anscombe & Glynn (1983),
 # http://biomet.oxfordjournals.org/content/70/1/227
 z, p = kurtosistest(allmotion)
+pstring = '$p<%g$' % ceilsigfig(p)
 # normally distributed signal with same std as data, to check that its kurtosis is 0:
 #nsamples = 10000000
 #normal = scipy.random.normal(0, allmotion.std(), nsamples)
@@ -173,7 +174,7 @@ plot(midbins, motioncount, marker=None, ls='-', c='k', lw=2)
 text(0.98, 0.98, 'k=%.1f' % k, # kurtosis
      horizontalalignment='right', verticalalignment='top',
      transform=gca().transAxes, color='k')
-text(0.98, 0.90, 'p=%.1g' % p, # p-value of null (normal) hypothesis of kurtosis test
+text(0.98, 0.90, '%s' % pstring, # p-value of null (normal) hypothesis of kurtosis test
      horizontalalignment='right', verticalalignment='top',
      transform=gca().transAxes, color='k')
 #k = kurtosis(normal)
@@ -326,8 +327,24 @@ for state in ['desynch', 'synch']:
 
 # scatter plot motion-PSTH correlation in desynched vs synched state:
 figure(figsize=(3, 3))
+truerows = (motscatrhos != -1).all(axis=1) # exclude rows with -1 by collapsing across columns
+falserows = (motscatrhos == -1).any(axis=1)
+motscatrhostrue = motscatrhos[truerows]
+motscatrhosfalse = motscatrhos[falserows]
+# report numbers, fractions and chi2 p values for PSTH-motion scatter plot.
+# Exclude units that were manually assigned a value of -1 in a state due to being
+# nonresponsive in that state:
+nbelowmotyxline = (motscatrhostrue[:, 1] > motscatrhostrue[:, 0]).sum()
+nabovemotyxline = (motscatrhostrue[:, 0] > motscatrhostrue[:, 1]).sum()
+fractionbelowmotyxline = nbelowmotyxline / (nbelowmotyxline + nabovemotyxline)
+chi2, p = chisquare([nabovemotyxline, nbelowmotyxline])
+pstring = '$p<%g$' % ceilsigfig(p)
+print('nbelowmotyxline=%d, nabovemotyxline=%d, fractionbelowmotyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowmotyxline, nabovemotyxline, fractionbelowmotyxline,
+                             chi2, p))
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
-plot(motscatrhos[:, 1], motscatrhos[:, 0], 'o', mec='k', mfc='None')
+plot(motscatrhostrue[:, 1], motscatrhostrue[:, 0], 'o', mec='k', mfc='None')
+plot(motscatrhosfalse[:, 1], motscatrhosfalse[:, 0], 'o', mec='e', mfc='None')
 examplerhos = recsecscatmotrhos[EXAMPLERECNAME][EXAMPLENID]
 #plot(examplerhos[1], examplerhos[0], 'o', mec='r', mfc='None')
 # instead of colouring it, draw an arrow to highlight example point:
@@ -336,20 +353,15 @@ arrow(0.6, -0.35, -0.15, 0.15, head_width=0.08, head_length=0.12, length_include
 text(0.02, 0.98, 'delay = %d ms' % CORRDELAYMS,
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
+text(0.02, 0.90, '%s' % pstring,
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
 xlabel('synchronized', color='r')
 ylabel('desynchronized', color='b')
 xlim(-1.035, 1)
 ylim(-1.035, 1)
 gcfm().window.setWindowTitle('movie_global_motion_correlation_scatter_%dms' % CORRDELAYMS)
 tight_layout(pad=0.3)
-# report numbers, fractions and chi2 p values for PSTH-motion scatter plot:
-nbelowmotyxline = (motscatrhos[:, 1] > motscatrhos[:, 0]).sum()
-nabovemotyxline = (motscatrhos[:, 0] > motscatrhos[:, 1]).sum()
-fractionbelowmotyxline = nbelowmotyxline / (nbelowmotyxline + nabovemotyxline)
-chi2, p = chisquare([nabovemotyxline, nbelowmotyxline])
-print('nbelowmotyxline=%d, nabovemotyxline=%d, fractionbelowmotyxline=%.3g, '
-      'chi2=%.3g, p=%.3g' % (nbelowmotyxline, nabovemotyxline, fractionbelowmotyxline,
-                             chi2, p))
 
 # plot motion rho histograms:
 figure(figsize=(3, 3))
@@ -455,9 +467,28 @@ tight_layout(pad=0.3)
 
 # scatter plot contrast-PSTH correlation in desynched vs synched state:
 figure(figsize=(3, 3))
+truerows = (conscatrhos != -1).all(axis=1) # exclude rows with -1 by collapsing across columns
+falserows = (conscatrhos == -1).any(axis=1)
+conscatrhostrue = conscatrhos[truerows]
+conscatrhosfalse = conscatrhos[falserows]
+# report numbers, fractions and chi2 p values for PSTH-motion scatter plot.
+# Exclude units that were manually assigned a value of -1 in a state due to being
+# nonresponsive in that state:
+nbelowmotyxline = (conscatrhostrue[:, 1] > conscatrhostrue[:, 0]).sum()
+nabovemotyxline = (conscatrhostrue[:, 0] > conscatrhostrue[:, 1]).sum()
+fractionbelowmotyxline = nbelowmotyxline / (nbelowmotyxline + nabovemotyxline)
+chi2, p = chisquare([nabovemotyxline, nbelowmotyxline])
+pstring = '$p<%g$' % ceilsigfig(p)
+print('nbelowmotyxline=%d, nabovemotyxline=%d, fractionbelowmotyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowmotyxline, nabovemotyxline, fractionbelowmotyxline,
+                             chi2, p))
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
-plot(conscatrhos[:, 1], conscatrhos[:, 0], 'o', mec='k', mfc='None')
+plot(conscatrhostrue[:, 1], conscatrhostrue[:, 0], 'o', mec='k', mfc='None')
+plot(conscatrhosfalse[:, 1], conscatrhosfalse[:, 0], 'o', mec='e', mfc='None')
 text(0.02, 0.98, 'delay = %d ms' % CORRDELAYMS,
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+text(0.02, 0.90, '%s' % pstring,
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 xlabel('synchronized', color='r')
@@ -466,14 +497,6 @@ xlim(-1.035, 1)
 ylim(-1.035, 1)
 gcfm().window.setWindowTitle('movie_global_contrast_correlation_scatter_%dms' % CORRDELAYMS)
 tight_layout(pad=0.3)
-# report numbers, fractions and chi2 p values for PSTH-contrast scatter plot:
-nbelowconyxline = (conscatrhos[:, 1] > conscatrhos[:, 0]).sum()
-naboveconyxline = (conscatrhos[:, 0] > conscatrhos[:, 1]).sum()
-fractionbelowconyxline = nbelowconyxline / (nbelowconyxline + naboveconyxline)
-chi2, p = chisquare([naboveconyxline, nbelowconyxline])
-print('nbelowconyxline=%d, naboveconyxline=%d, fractionbelowconyxline=%.3g, '
-      'chi2=%.3g, p=%.3g' % (nbelowconyxline, naboveconyxline, fractionbelowconyxline,
-                             chi2, p))
 
 # plot contrast rho histograms:
 figure(figsize=(3, 3))
@@ -553,9 +576,28 @@ tight_layout(pad=0.3)
 
 # scatter plot luminance-PSTH correlation in desynched vs synched state:
 figure(figsize=(3, 3))
+truerows = (lumscatrhos != -1).all(axis=1) # exclude rows with -1 by collapsing across columns
+falserows = (lumscatrhos == -1).any(axis=1)
+lumscatrhostrue = lumscatrhos[truerows]
+lumscatrhosfalse = lumscatrhos[falserows]
+# report numbers, fractions and chi2 p values for PSTH-motion scatter plot.
+# Exclude units that were manually assigned a value of -1 in a state due to being
+# nonresponsive in that state:
+nbelowmotyxline = (lumscatrhostrue[:, 1] > lumscatrhostrue[:, 0]).sum()
+nabovemotyxline = (lumscatrhostrue[:, 0] > lumscatrhostrue[:, 1]).sum()
+fractionbelowmotyxline = nbelowmotyxline / (nbelowmotyxline + nabovemotyxline)
+chi2, p = chisquare([nabovemotyxline, nbelowmotyxline])
+pstring = '$p<%g$' % ceilsigfig(p)
+print('nbelowmotyxline=%d, nabovemotyxline=%d, fractionbelowmotyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowmotyxline, nabovemotyxline, fractionbelowmotyxline,
+                             chi2, p))
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
-plot(lumscatrhos[:, 1], lumscatrhos[:, 0], 'o', mec='k', mfc='None')
+plot(lumscatrhostrue[:, 1], lumscatrhostrue[:, 0], 'o', mec='k', mfc='None')
+plot(lumscatrhosfalse[:, 1], lumscatrhosfalse[:, 0], 'o', mec='e', mfc='None')
 text(0.02, 0.98, 'delay = %d ms' % CORRDELAYMS,
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+text(0.02, 0.90, '%s' % pstring,
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 xlabel('synchronized', color='r')
@@ -564,14 +606,6 @@ xlim(-1.035, 1)
 ylim(-1.035, 1)
 gcfm().window.setWindowTitle('movie_global_luminance_correlation_scatter_%dms' % CORRDELAYMS)
 tight_layout(pad=0.3)
-# report numbers, fractions and chi2 p values for PSTH-luminance scatter plot:
-nbelowlumyxline = (lumscatrhos[:, 1] > lumscatrhos[:, 0]).sum()
-nabovelumyxline = (lumscatrhos[:, 0] > lumscatrhos[:, 1]).sum()
-fractionbelowlumyxline = nbelowlumyxline / (nbelowlumyxline + nabovelumyxline)
-chi2, p = chisquare([nabovelumyxline, nbelowlumyxline])
-print('nbelowlumyxline=%d, nabovelumyxline=%d, fractionbelowlumyxline=%.3g, '
-      'chi2=%.3g, p=%.3g' % (nbelowlumyxline, nabovelumyxline, fractionbelowlumyxline,
-                             chi2, p))
 
 # plot luminance rho histograms:
 figure(figsize=(3, 3))
