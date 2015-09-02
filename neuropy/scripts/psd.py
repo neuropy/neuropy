@@ -12,16 +12,18 @@ from core import intround
 import filter
 
 #tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
-tracks = [ptc15.tr7c, ptc17.tr1, ptc17.tr2b, ptc18.tr1, ptc18.tr2c, ptc20.tr1, ptc20.tr2,
-          ptc20.tr3, ptc21.tr2, ptc21.tr5c, ptc21.tr6b, ptc22.tr1, ptc22.tr2, ptc22.tr4b,
-          ptc22.tr5b]
+#tracks = [ptc15.tr7c, ptc17.tr1, ptc17.tr2b, ptc18.tr1, ptc18.tr2c, ptc20.tr1, ptc20.tr2,
+#          ptc20.tr3, ptc21.tr2, ptc21.tr5c, ptc21.tr6b, ptc22.tr1, ptc22.tr2, ptc22.tr4b,
+#          ptc22.tr5b]
+
+urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
 
 F0, F1 = 0.2, 110 # Hz
 P0, P1 = None, None
 chanis = -1
 width, tres = 10, 5 # sec
-figsize = (3.5, 3.5)
-XSCALE = 'linear'
+figsize = (2.5, 2.5)
+XSCALE = 'log'
 
 if width == None: # window width
     width = LFPWIDTH # sec
@@ -74,7 +76,7 @@ def plot_psd(data, titlestr):
     gcfm().window.setWindowTitle(titlestr+' '+XSCALE)
     f.tight_layout(pad=0.3) # crop figure to contents
 
-
+'''
 # collect LFP data from all recordings in all tracks:
 alldata = []
 for track in tracks:
@@ -108,5 +110,27 @@ for track in tracks:
 alldata = np.hstack(alldata)
 
 plot_psd(alldata, 'all tracks PSD')
+
+pl.show()
+'''
+
+# collect LFP data from all specified recordings:
+alldata = []
+for rec in urecs:
+    print(rec.absname)
+    lfp = rec.lfp
+    data = lfp.get_data()
+    assert lfp.sampfreq == SAMPFREQ
+    if iterable(chanis):
+        data = data[chanis].mean(axis=0) # take mean of data on chanis
+    else:
+        data = data[chanis] # get single row of data at chanis
+    alldata.append(data)
+    # keeping all 10 chans for each LFP uses lots of memory:
+    del data
+    del lfp.data
+alldata = np.hstack(alldata)
+
+plot_psd(alldata, 'natstate PSD')
 
 pl.show()
