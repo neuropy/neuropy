@@ -18,16 +18,18 @@ import filter
 #          ptc22.tr5b]
 # ptc21 has is an outlier in these plots
 # all cats except ptc21:
-tracks = [ptc15.tr7c, ptc17.tr1, ptc17.tr2b, ptc18.tr1, ptc18.tr2c, ptc20.tr1, ptc20.tr2,
-          ptc20.tr3, ptc22.tr1, ptc22.tr2, ptc22.tr4b, ptc22.tr5b]
+#tracks = [ptc15.tr7c, ptc17.tr1, ptc17.tr2b, ptc18.tr1, ptc18.tr2c, ptc20.tr1, ptc20.tr2,
+#          ptc20.tr3, ptc22.tr1, ptc22.tr2, ptc22.tr4b, ptc22.tr5b]
 
+urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
 
 lfpwidth, lfptres = 30, 5 # sec
 chani = -1
 kind = 'L/(L+H)'
-figsize = (3.5, 3.5)
+figsize = (3, 3)
 VPPMAX = 2 # mV
-STDMAX = 250 # uV
+STDMAX = 225 # uV
+ALPHA = 0.1
 
 if lfpwidth == None: # LFP window width
     lfpwidth = LFPSIWIDTH # sec
@@ -37,10 +39,12 @@ assert lfptres <= lfpwidth
 
 # collect SI and LFP Vpp from all recordings in all tracks:
 sis, Vpps, stds = [], [], []
-for track in tracks:
-    print(track.absname)
-    for rid in sorted(track.r):
-        rec = track.r[rid]
+#for track in tracks:
+for rec in urecs:
+    #print(track.absname)
+    #for rid in sorted(track.r):
+        #rec = track.r[rid]
+        print(rec.absname)
         rname = rec.name.lower()
         if rname.count('freqsweep') > 0 or rname.count('csd') > 0:
             # it's a freqsweep or CSD recording:
@@ -59,33 +63,35 @@ for track in tracks:
         # keeping all 10 chans for each LFP for all tracks gives MemoryError:
         del data
         del rec.lfp.data
-        print('.', end='')
-    print()
+        #print('.', end='')
+    #print()
 sis = np.hstack(sis)
 Vpps = np.hstack(Vpps) / 1e3 # convert from uV to mV
 stds = np.hstack(stds)
 
 figure(figsize=figsize)
-plot(Vpps, sis, 'k.', ms=4, alpha=0.02)
-Vppedges = np.arange(0.2, VPPMAX+0.15, 0.15) # mV
+#plot(Vpps, sis, 'k.', ms=4, alpha=ALPHA)
+Vppedges = np.arange(0.25, VPPMAX+0.25, 0.25) # mV
 Vppmeans, sismeans, sisstds = scatterbin(Vpps, sis, Vppedges,
-                                         xaverage=np.median, yaverage=np.median)
-errorbar(Vppmeans, sismeans, yerr=sisstds, fmt='r.-', ms=5, lw=1, zorder=9999)
+                                         xaverage=None, yaverage=np.mean)
+errorbar(Vppmeans, sismeans, yerr=sisstds, fmt='k.-', ms=6, lw=1, zorder=9999)
 xlim(xmin=0, xmax=VPPMAX)
-ylim(0, 1)
+ylim(0.2, 1)
+yticks([0.2, 0.4, 0.6, 0.8, 1])
 xlabel('LFP $V_{pp}$ (mV)')
 ylabel('SI (L/(L+H))')
 gcfm().window.setWindowTitle('SI vs Vpp lfpwidth=%g lfptres=%g' % (lfpwidth, lfptres))
 tight_layout(pad=0.3)
 
 figure(figsize=figsize)
-plot(stds, sis, 'k.', ms=4, alpha=0.02)
-stdedges = np.arange(20, STDMAX+20, 20) # mV
+#plot(stds, sis, 'k.', ms=4, alpha=ALPHA)
+stdedges = np.arange(25, STDMAX+25, 25) # uV
 stdmeans, sismeans, sisstds = scatterbin(stds, sis, stdedges,
-                                         xaverage=np.median, yaverage=np.median)
-errorbar(stdmeans, sismeans, yerr=sisstds, fmt='r.-', ms=5, lw=1, zorder=9999)
+                                         xaverage=None, yaverage=np.mean)
+errorbar(stdmeans, sismeans, yerr=sisstds, fmt='k.-', ms=6, lw=1, zorder=9999)
 xlim(xmin=0, xmax=STDMAX)
-ylim(0, 1)
+ylim(0.2, 1)
+yticks([0.2, 0.4, 0.6, 0.8, 1])
 xlabel('LFP $\sigma$ ($\mu$V)')
 ylabel('SI (L/(L+H))')
 gcfm().window.setWindowTitle('SI vs sigma lfpwidth=%g lfptres=%g' % (lfpwidth, lfptres))
