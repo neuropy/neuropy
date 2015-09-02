@@ -64,6 +64,9 @@ API](http://ipython.org/ipython-doc/dev/interactive/reference.html#pyqt-and-pysi
 IPython, run `export QT_API=pyqt` at the command line before running neuropy, or add it to
 your `.bashrc` or `.bash_aliases` file.
 
+Some analyses assume the use of custom matplotlib default settings in the included
+[matplotlibrc](matplotlibrc) file.
+
 neuropy is developed in Xubuntu 14.04. It should work in other Linux distributions. In
 principle, it should also work in Windows and OSX.
 
