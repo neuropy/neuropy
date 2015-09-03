@@ -51,6 +51,7 @@ NSPARSBINS = 15
 NRELBINS = 15
 LOGNULLREL = -3
 NULLREL = 10**LOGNULLREL
+NULLSPARS = 0
 figsize = (3, 3) # inches
 
 
@@ -378,16 +379,22 @@ for trani in range(ntrans):
         scatrels[1].append(filterdict(relsrecsec[2*trani+1], nid, NULLREL)) # synched
 scatrels = np.asarray(scatrels).T # nrows x 2 cols
 figure(figsize=figsize)
-truerows = (scatrels != NULLREL).all(axis=1) # exclude NULLREL rows by collapsing across columns
+truerows = (scatrels != NULLREL).all(axis=1) # exclude NULLREL rows
 falserows = (scatrels == NULLREL).any(axis=1)
 scatrelstrue = scatrels[truerows]
 scatrelsfalse = scatrels[falserows]
+# report numbers, fractions and chi2 p values for reliability scatter plot.
+nbelowrelsyxline = (scatrels[:, 1] > scatrels[:, 0]).sum()
+naboverelsyxline = (scatrels[:, 0] > scatrels[:, 1]).sum()
+fractionbelowrelsyxline = nbelowrelsyxline / (nbelowrelsyxline + naboverelsyxline)
+chi2, p = chisquare([naboverelsyxline, nbelowrelsyxline])
+pstring = '$p<%g$' % ceilsigfig(p)
+print('nbelowrelsyxline=%d, naboverelsyxline=%d, fractionbelowrelsyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowrelsyxline, naboverelsyxline,
+                             fractionbelowrelsyxline, chi2, p))
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
 plot(scatrelstrue[:, 1], scatrelstrue[:, 0], 'o', mec='k', mfc='None')
 plot(scatrelsfalse[:, 1], scatrelsfalse[:, 0], 'o', mec='e', mfc='None')
-nbelowrelsyxline = (scatrels[1] > scatrels[0]).sum()
-naboverelsyxline = (scatrels[0] > scatrels[1]).sum()
-fractionbelowrelsyxline = nbelowrelsyxline / (nbelowrelsyxline + naboverelsyxline)
 xlabel('synchronized reliability')
 ylabel('desynchronized reliability')
 logmin, logmax = LOGNULLREL, 0
@@ -403,6 +410,8 @@ xticks(ticks, ticklabels)
 yticks(ticks, ticklabels)
 #xticks(10**(np.arange(logmin, logmax+1.0, 1.0)))
 #yticks(10**(np.arange(logmin, logmax+1.0, 1.0)))
+text(0.03, 0.98, '%s' % pstring, horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
 titlestr = 'reliability scatter %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
@@ -469,7 +478,7 @@ tight_layout(pad=0.3)
 
 # Scatter plot sparseness in neighbouring synched vs desynched periods.
 # Missing values (nids active in one neighbouring period but not the other)
-# are assigned a sparseness of 0 to indicate they're missing.
+# are assigned a sparseness of NULLSPARS to indicate they're missing.
 # Get supersets of nids, one set per state transition, with each nid having at least one peak
 # during at least one state on either side of the transition:
 scatnids = [ np.union1d(list(sparsrecsec[recseci]), list(sparsrecsec[recseci+1]))
@@ -480,20 +489,26 @@ scatspars = [[], []]
 for trani in range(ntrans):
     nids = scatnids[trani] # superset of nids for this state transition
     for nid in nids:
-        scatspars[0].append(filterdict(sparsrecsec[2*trani], nid)) # desynched
-        scatspars[1].append(filterdict(sparsrecsec[2*trani+1], nid)) # synched
+        scatspars[0].append(filterdict(sparsrecsec[2*trani], nid, NULLSPARS)) # desynched
+        scatspars[1].append(filterdict(sparsrecsec[2*trani+1], nid, NULLSPARS)) # synched
 scatspars = np.asarray(scatspars).T # nrows x 2 cols
 figure(figsize=figsize)
-truerows = (scatspars != 0).all(axis=1) # exclude rows with 0 by collapsing across columns
-falserows = (scatspars == 0).any(axis=1)
+truerows = (scatspars != NULLSPARS).all(axis=1) # exclude NULLSPARS rows
+falserows = (scatspars == NULLSPARS).any(axis=1)
 scatsparstrue = scatspars[truerows]
 scatsparsfalse = scatspars[falserows]
+# report numbers, fractions and chi2 p values for sparseness scatter plot.
+nbelowsparsyxline = (scatspars[:, 1] > scatspars[:, 0]).sum()
+nabovesparsyxline = (scatspars[:, 0] > scatspars[:, 1]).sum()
+fractionbelowsparsyxline = nbelowsparsyxline / (nbelowsparsyxline + nabovesparsyxline)
+chi2, p = chisquare([nabovesparsyxline, nbelowsparsyxline])
+pstring = '$p<%g$' % ceilsigfig(p)
+print('nbelowsparsyxline=%d, nabovesparsyxline=%d, fractionbelowsparsyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowsparsyxline, nabovesparsyxline,
+                             fractionbelowsparsyxline, chi2, p))
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
 plot(scatsparstrue[:, 1], scatsparstrue[:, 0], 'o', mec='k', mfc='None')
 plot(scatsparsfalse[:, 1], scatsparsfalse[:, 0], 'o', mec='e', mfc='None')
-nbelowsparsyxline = (scatspars[1] > scatspars[0]).sum()
-nabovesparsyxline = (scatspars[0] > scatspars[1]).sum()
-fractionbelowsparsyxline = nbelowsparsyxline / (nbelowsparsyxline + nabovesparsyxline)
 xlabel('synchronized sparseness')
 ylabel('desynchronized sparseness')
 xlim(-0.02, 1)
@@ -501,6 +516,8 @@ ylim(-0.02, 1)
 sparsticks = (np.arange(0, 1+0.2, 0.2), ['0', '0.2', '0.4', '0.6', '0.8', '1'])
 xticks(*sparsticks)
 yticks(*sparsticks)
+text(0.03, 0.98, '%s' % pstring, horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
 titlestr = 'sparseness scatter %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
@@ -555,16 +572,6 @@ tight_layout(pad=0.3)
 
 # report recordings:
 print('recordings: %s' % urecnames)
-
-# report scatter fractions, numbers and p values for sparseness and reliability:
-chi2, p = chisquare([nabovesparsyxline, nbelowsparsyxline])
-print('nbelowsparsyxline=%d, nabovesparsyxline=%d, chi2=%.3g, p=%.3g' %
-      (nbelowsparsyxline, nabovesparsyxline, chi2, p))
-print('fractionbelowsparsyxline: %g' % fractionbelowsparsyxline)
-chi2, p = chisquare([naboverelsyxline, nbelowrelsyxline])
-print('nbelowrelsyxline=%d, naboverelsyxline=%d, chi2=%.3g, p=%.3g' %
-      (nbelowrelsyxline, naboverelsyxline, chi2, p))
-print('fractionbelowrelsyxline: %f' % fractionbelowrelsyxline)
 
 # report numbers of all and active PSTHs
 for kind in ['all', 'active']:
