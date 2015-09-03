@@ -22,8 +22,9 @@ F0, F1 = 0.2, 110 # Hz
 P0, P1 = None, None
 chanis = -1
 width, tres = 10, 5 # sec
-figsize = (2.5, 2.5)
+figsize = (3, 3)
 XSCALE = 'log'
+YLIMS = -64, -21
 
 if width == None: # window width
     width = LFPWIDTH # sec
@@ -35,44 +36,44 @@ SAMPFREQ = 1000 # Hz, should be the same for all LFPs
 NFFT = intround(width * SAMPFREQ)
 NOVERLAP = intround(NFFT - tres * SAMPFREQ)
 
-def plot_psd(data, titlestr):
-    data = filter.notch(data)[0] # remove 60 Hz mains noise, as for SI calc
-    # convert data from uV to mV. I think P is in mV^2?:
-    P, freqs = mpl.mlab.psd(data/1e3, NFFT=NFFT, Fs=SAMPFREQ, noverlap=NOVERLAP)
-    # keep only freqs between F0 and F1:
-    f0, f1 = F0, F1 # need to set different local names, since they're not read-only
-    if f0 == None:
-        f0 = freqs[0]
-    if f1 == None:
-        f1 = freqs[-1]
-    lo, hi = freqs.searchsorted([f0, f1])
-    P, freqs = P[lo:hi], freqs[lo:hi]
-    # check for and replace zero power values (ostensibly due to gaps in recording)
-    # before attempting to convert to dB:
-    zis = np.where(P == 0.0) # row and column indices where P has zero power
-    if len(zis[0]) > 0: # at least one hit
-        P[zis] = np.finfo(np.float64).max # temporarily replace zeros with max float
-        minnzval = P.min() # get minimum nonzero value
-        P[zis] = minnzval # replace with min nonzero values
-    P = 10. * np.log10(P) # convert power to dB wrt 1 mV^2?
-    # for better visualization, clip power values to within (P0, P1) dB
-    if P0 != None:
-        P[P < P0] = P0
-    if P1 != None:
-        P[P > P1] = P1
-    f = pl.figure(figsize=figsize)
-    a = f.add_subplot(111)
-    a.plot(freqs, P, 'k-')
-    # add SI frequency band limits:
-    a.axvline(x=LFPSILOWBAND[0], c='r', ls='--')
-    a.axvline(x=LFPSILOWBAND[1], c='r', ls='--')
-    a.axvline(x=LFPSIHIGHBAND[0], c='b', ls='--')
-    a.axvline(x=LFPSIHIGHBAND[1], c='b', ls='--')
-    a.axis('tight')
-    a.set_xscale(XSCALE)
-    a.set_ylim(ymin=P[-1]) # use last power value to set ymin
-    a.set_xlabel("frequency (Hz)")
-    a.set_ylabel("power (dB)")
+def plot_psd(datas, cs=None, ylims=None, titlestr=''):
+    f = figure(figsize=figsize)
+    for data, c in zip(datas, cs):
+        data = filter.notch(data)[0] # remove 60 Hz mains noise, as for SI calc
+        # convert data from uV to mV. I think P is in mV^2?:
+        P, freqs = mpl.mlab.psd(data/1e3, NFFT=NFFT, Fs=SAMPFREQ, noverlap=NOVERLAP)
+        # keep only freqs between F0 and F1:
+        f0, f1 = F0, F1 # need to set different local names, since they're not read-only
+        if f0 == None:
+            f0 = freqs[0]
+        if f1 == None:
+            f1 = freqs[-1]
+        lo, hi = freqs.searchsorted([f0, f1])
+        P, freqs = P[lo:hi], freqs[lo:hi]
+        # check for and replace zero power values (ostensibly due to gaps in recording)
+        # before attempting to convert to dB:
+        zis = np.where(P == 0.0) # row and column indices where P has zero power
+        if len(zis[0]) > 0: # at least one hit
+            P[zis] = np.finfo(np.float64).max # temporarily replace zeros with max float
+            minnzval = P.min() # get minimum nonzero value
+            P[zis] = minnzval # replace with min nonzero values
+        P = 10. * np.log10(P) # convert power to dB wrt 1 mV^2?
+        # for better visualization, clip power values to within (P0, P1) dB
+        if P0 != None:
+            P[P < P0] = P0
+        if P1 != None:
+            P[P > P1] = P1
+        plot(freqs, P, c=c, ls='-', marker=None)
+    # demarcate SI frequency bands with horizontal lines:
+    hlines(y=-50, xmin=LFPSILOWBAND[0], xmax=LFPSILOWBAND[1], colors='e',
+           linestyles='-', lw=5)
+    hlines(y=-30, xmin=LFPSIHIGHBAND[0], xmax=LFPSIHIGHBAND[1], colors='e',
+           linestyles='-', lw=5)
+    axis('tight')
+    xscale(XSCALE)
+    ylim(ylims)
+    xlabel("frequency (Hz)")
+    ylabel("power (dB)")
     gcfm().window.setWindowTitle(titlestr+' '+XSCALE)
     f.tight_layout(pad=0.3) # crop figure to contents
 
@@ -115,22 +116,32 @@ pl.show()
 '''
 
 # collect LFP data from all specified recordings:
-alldata = []
+alldata, desynchdata, synchdata = [], [], []
 for rec in urecs:
     print(rec.absname)
+    desynchtrange, synchtrange = REC2STATETRANGES[rec.absname] # in us
     lfp = rec.lfp
     data = lfp.get_data()
+    ts = lfp.get_ts() # in us
     assert lfp.sampfreq == SAMPFREQ
     if iterable(chanis):
         data = data[chanis].mean(axis=0) # take mean of data on chanis
     else:
         data = data[chanis] # get single row of data at chanis
+    dsi = ts.searchsorted(desynchtrange)
+    si = ts.searchsorted(synchtrange)
     alldata.append(data)
+    desynchdata.append(data[dsi[0]:dsi[1]])
+    synchdata.append(data[si[0]:si[1]])
     # keeping all 10 chans for each LFP uses lots of memory:
     del data
     del lfp.data
 alldata = np.hstack(alldata)
+desynchdata = np.hstack(desynchdata)
+synchdata = np.hstack(synchdata)
 
-plot_psd(alldata, 'natstate PSD')
+plot_psd([alldata], cs=['k'], ylims=YLIMS, titlestr='natstate PSD')
+plot_psd([desynchdata, synchdata], cs=['b', 'r'], ylims=YLIMS,
+         titlestr='natstate PSD synch desynch')
 
 pl.show()
