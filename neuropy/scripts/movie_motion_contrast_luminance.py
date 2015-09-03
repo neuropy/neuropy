@@ -91,7 +91,7 @@ for rec in urecs:
     #plot(frameis[1:], mot[name], 'k-', lw=1.5)
     #xlabel('frame index')
     plot(tmovie[name], mot[name], 'k-', lw=1.5)
-    xlabel('t (s)')
+    xlabel('time (s)')
     ylabel('motion amplitude (deg/s)')
     text(0.99, 0.98, '%s' % os.path.basename(e0.s.fname), # movie file name
                      horizontalalignment='right', verticalalignment='top',
@@ -102,7 +102,7 @@ for rec in urecs:
     # plot contrast:
     figure(figsize=FIGSIZE)
     plot(tmovie[name], con[name], 'k-', lw=1.5)
-    xlabel('t (s)')
+    xlabel('time (s)')
     ylabel('contrast (?)')
     text(0.99, 0.98, '%s' % os.path.basename(e0.s.fname), # movie file name
                      horizontalalignment='right', verticalalignment='top',
@@ -113,7 +113,7 @@ for rec in urecs:
     # plot delta contrast:
     figure(figsize=FIGSIZE)
     plot(tmovie[name], dcon[name], 'k-', lw=1.5)
-    xlabel('t (s)')
+    xlabel('time (s)')
     ylabel(r'$\Delta$ contrast (?)')
     text(0.99, 0.98, '%s' % os.path.basename(e0.s.fname), # movie file name
                      horizontalalignment='right', verticalalignment='top',
@@ -124,7 +124,7 @@ for rec in urecs:
     # plot lum:
     figure(figsize=FIGSIZE)
     plot(tmovie[name], lum[name], 'k-', lw=1.5)
-    xlabel('t (s)')
+    xlabel('time (s)')
     ylabel('luminance (?)')
     text(0.99, 0.98, '%s' % os.path.basename(e0.s.fname), # movie file name
                      horizontalalignment='right', verticalalignment='top',
@@ -135,7 +135,7 @@ for rec in urecs:
     # plot dlum:
     figure(figsize=FIGSIZE)
     plot(tmovie[name], dlum[name], 'k-', lw=1.5)
-    xlabel('t (s)')
+    xlabel('time (s)')
     ylabel(r'$\Delta$ luminance (?)')
     text(0.99, 0.98, '%s' % os.path.basename(e0.s.fname), # movie file name
                      horizontalalignment='right', verticalalignment='top',
@@ -294,7 +294,7 @@ figure(figsize=FIGSIZE)
 #plot(frameis[1:], mot[name], 'k-', lw=1.5)
 #xlabel('frame index')
 plot(tmovie[EXAMPLERECNAME], mot[EXAMPLERECNAME], 'k-', lw=1.5)
-xlabel('t (s)')
+xlabel('time (s)')
 ylabel('motion amplitude (deg/s)')
 b = gca().twinx()
 EXAMPLEPSTH[0] /= EXAMPLEPSTH[0].max() # normalize to arbitrary units
