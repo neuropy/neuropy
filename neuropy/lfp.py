@@ -66,9 +66,13 @@ class LFP(object):
             self.load()
         return self.data
 
+    def get_ts(self):
+        """Return full set of timestamps, in us"""
+        return np.arange(self.t0, self.t1, self.tres)
+
     def get_tssec(self):
-        """Return full set of timestamps, in sec"""
-        return np.arange(self.t0/1e6, self.t1/1e6, self.tres/1e6)
+        """Return full set of timestamps, in s"""
+        return self.get_ts() / 1e6
 
     def apply_lim2stim(self, t0, t1):
         """Limit t0 and t1 (in sec) to exclude outermost NULL din times, such as pre and post
