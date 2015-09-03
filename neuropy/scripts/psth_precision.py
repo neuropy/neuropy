@@ -376,10 +376,15 @@ for trani in range(ntrans):
     for nid in nids:
         scatrels[0].append(filterdict(relsrecsec[2*trani], nid, NULLREL)) # desynched
         scatrels[1].append(filterdict(relsrecsec[2*trani+1], nid, NULLREL)) # synched
-scatrels = np.asarray(scatrels)
+scatrels = np.asarray(scatrels).T # nrows x 2 cols
 figure(figsize=figsize)
+truerows = (scatrels != NULLREL).all(axis=1) # exclude NULLREL rows by collapsing across columns
+falserows = (scatrels == NULLREL).any(axis=1)
+scatrelstrue = scatrels[truerows]
+scatrelsfalse = scatrels[falserows]
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
-plot(scatrels[1], scatrels[0], 'o', mec='k', mfc='None')
+plot(scatrelstrue[:, 1], scatrelstrue[:, 0], 'o', mec='k', mfc='None')
+plot(scatrelsfalse[:, 1], scatrelsfalse[:, 0], 'o', mec='e', mfc='None')
 nbelowrelsyxline = (scatrels[1] > scatrels[0]).sum()
 naboverelsyxline = (scatrels[0] > scatrels[1]).sum()
 fractionbelowrelsyxline = nbelowrelsyxline / (nbelowrelsyxline + naboverelsyxline)
@@ -477,10 +482,15 @@ for trani in range(ntrans):
     for nid in nids:
         scatspars[0].append(filterdict(sparsrecsec[2*trani], nid)) # desynched
         scatspars[1].append(filterdict(sparsrecsec[2*trani+1], nid)) # synched
-scatspars = np.asarray(scatspars)
+scatspars = np.asarray(scatspars).T # nrows x 2 cols
 figure(figsize=figsize)
+truerows = (scatspars != 0).all(axis=1) # exclude rows with 0 by collapsing across columns
+falserows = (scatspars == 0).any(axis=1)
+scatsparstrue = scatspars[truerows]
+scatsparsfalse = scatspars[falserows]
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
-plot(scatspars[1], scatspars[0], 'o', mec='k', mfc='None')
+plot(scatsparstrue[:, 1], scatsparstrue[:, 0], 'o', mec='k', mfc='None')
+plot(scatsparsfalse[:, 1], scatsparsfalse[:, 0], 'o', mec='e', mfc='None')
 nbelowsparsyxline = (scatspars[1] > scatspars[0]).sum()
 nabovesparsyxline = (scatspars[0] > scatspars[1]).sum()
 fractionbelowsparsyxline = nbelowsparsyxline / (nbelowsparsyxline + nabovesparsyxline)
