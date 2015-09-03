@@ -187,8 +187,8 @@ ndepths[1] = np.hstack(ndepths[1])
 ticks = np.arange(WIDTHMIN, WIDTHMAX, WIDTHTICKSTEP)
 bins = np.arange(WIDTHMIN, WIDTHMAX+WIDTHSTEP, WIDTHSTEP)
 figure(figsize=figsize)
-n1 = hist(widths[1], bins=bins, color='r')[0] # synched
-n0 = hist(widths[0], bins=bins, color='b')[0] # desynched
+n1 = hist(widths[1], bins=bins, histtype='step', color='r')[0] # synched
+n0 = hist(widths[0], bins=bins, histtype='step', color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=WIDTHMIN, xmax=WIDTHMAX)
 ylim(ymax=n.max()) # effectively normalizes the histogram
@@ -217,8 +217,8 @@ logmin, logmax = 0.5, log10(WIDTHMAX)
 nbins = 20
 bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
 figure(figsize=figsize)
-n1 = hist(widths[1], bins=bins, color='r')[0] # synched
-n0 = hist(widths[0], bins=bins, color='b')[0] # desynched
+n1 = hist(widths[1], bins=bins, histtype='step', color='r')[0] # synched
+n0 = hist(widths[0], bins=bins, histtype='step', color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=10**logmin, xmax=10**logmax)
 ylim(ymax=n.max()+10)
@@ -246,8 +246,8 @@ tight_layout(pad=0.3)
 # plot PSTH peak time distributions:
 bins = np.arange(0, TSMAX+TSSTEP, TSSTEP)
 figure(figsize=figsize)
-n1 = hist(ts[1], bins=bins, color='r')[0] # synched
-n0 = hist(ts[0], bins=bins, color='b')[0] # desynched
+n1 = hist(ts[1], bins=bins, histtype='step', color='r')[0] # synched
+n0 = hist(ts[0], bins=bins, histtype='step', color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=0, xmax=TSMAX)
 ylim(ymax=n.max()+10) # effectively normalizes the histogram
@@ -275,8 +275,8 @@ tight_layout(pad=0.3)
 ticks = np.arange(0, 25, 5)
 bins = np.arange(0, 25, 1)
 figure(figsize=figsize)
-n1 = hist(heights[1], bins=bins, color='r')[0] # synched
-n0 = hist(heights[0], bins=bins, color='b')[0] # desynched
+n1 = hist(heights[1], bins=bins, histtype='step', color='r')[0] # synched
+n0 = hist(heights[0], bins=bins, histtype='step', color='b')[0] # desynched
 n = np.hstack([n0, n1])
 #xlim(xmin=HEIGHTMIN, xmax=HEIGHTMAX)
 ylim(ymax=n.max()+10) # effectively normalizes the histogram
@@ -305,8 +305,8 @@ logmin, logmax = log10(2), log10(200)
 nbins = 20
 bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
 figure(figsize=figsize)
-n1 = hist(heights[1], bins=bins, color='r')[0] # synched
-n0 = hist(heights[0], bins=bins, color='b')[0] # desynched
+n1 = hist(heights[1], bins=bins, histtype='step', color='r')[0] # synched
+n0 = hist(heights[0], bins=bins, histtype='step', color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=10**0, xmax=10**logmax)
 ylim(ymax=n.max()+10) # effectively normalizes the histogram
