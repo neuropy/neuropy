@@ -228,16 +228,25 @@ xlabel('event width (ms)')
 ylabel('event count')
 #t, p = ttest_ind(log10(widths[0]), log10(widths[1]), equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(log10(widths[0]), log10(widths[1])) # 1-sided
+smean = 10**(log10(widths[1]).mean()) # geometric
+dmean = 10**(log10(widths[0]).mean())
 # display geometric means and p value:
-text(0.03, 0.98, '$\mu$ = %.1f ms' % 10**(log10(widths[1]).mean()), # synched
+text(0.03, 0.98, '$\mu$ = %.1f ms' % smean, # synched
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.03, 0.90, '$\mu$ = %.1f ms' % 10**(log10(widths[0]).mean()), # desynched
+text(0.03, 0.90, '$\mu$ = %.1f ms' % dmean, # desynched
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='b')
 text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
+# arrow doesn't display correctly on log axis, use annotate instead:
+annotate('', xy=(smean, (6/7)*164), xycoords='data', # synched
+             xytext=(smean, 164), textcoords='data',
+             arrowprops=dict(fc='r', ec='none', width=1.3, headwidth=7, frac=0.5))
+annotate('', xy=(dmean, 130-(1/7)*164), xycoords='data', # desynched
+             xytext=(dmean, 130), textcoords='data',
+             arrowprops=dict(fc='b', ec='none', width=1.3, headwidth=7, frac=0.5))
 titlestr = 'peak width log %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
@@ -316,16 +325,24 @@ xlabel('event amplitude (Hz)')
 ylabel('event count')
 #t, p = ttest_ind(log10(heights[0]), log10(heights[1]), equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(log10(heights[0]), log10(heights[1])) # 1-sided
+smean = 10**(log10(heights[1]).mean()) # geometric
+dmean = 10**(log10(heights[0]).mean())
 # display geometric means and p value:
-text(0.98, 0.98, '$\mu$ = %.1f Hz' % 10**(log10(heights[1]).mean()), # synched
+text(0.98, 0.98, '$\mu$ = %.1f Hz' % smean, # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.98, 0.90, '$\mu$ = %.1f Hz' % 10**(log10(heights[0]).mean()), # desynched
+text(0.98, 0.90, '$\mu$ = %.1f Hz' % dmean, # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
+annotate('', xy=(smean, (6/7)*126), xycoords='data', # synched
+             xytext=(smean, 126), textcoords='data',
+             arrowprops=dict(fc='r', ec='none', width=1.3, headwidth=7, frac=0.5))
+annotate('', xy=(dmean, (6/7)*126), xycoords='data', # desynched
+             xytext=(dmean, 126), textcoords='data',
+             arrowprops=dict(fc='b', ec='none', width=1.3, headwidth=7, frac=0.5))
 titlestr = 'peak amplitude log %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
@@ -437,16 +454,25 @@ xlabel('reliability')
 ylabel('unit count')
 #t, p = ttest_ind(rels[1], rels[0], equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(log10(nndesynchrels), log10(nnsynchrels)) # 1-sided
+smean = 10**(log10(nnsynchrels).mean()) # geometric mean
+dmean = 10**(log10(nndesynchrels).mean())
 # display geometric means and p value:
-text(0.03, 0.98, '$\mu$ = %.1e' % 10**(log10(nnsynchrels).mean()), # synched
+text(0.03, 0.98, '$\mu$ = %.1e' % smean, # synched
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.03, 0.90, '$\mu$ = %.1e' % 10**(log10(nndesynchrels).mean()), # desynched
+text(0.03, 0.90, '$\mu$ = %.1e' % dmean, # desynched
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='b')
 text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
+# arrow doesn't display correctly on log axis, use annotate instead:
+annotate('', xy=(smean, (6/7)*30), xycoords='data', # synched
+             xytext=(smean, 30), textcoords='data',
+             arrowprops=dict(fc='r', ec='none', width=1.3, headwidth=7, frac=0.5))
+annotate('', xy=(dmean, (6/7)*30), xycoords='data', # desynched
+             xytext=(dmean, 30), textcoords='data',
+             arrowprops=dict(fc='b', ec='none', width=1.3, headwidth=7, frac=0.5))
 titlestr = 'reliability %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
@@ -537,6 +563,7 @@ ylabel('unit count')
 #t, p = ttest_ind(spars[0], spars[1], equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(spars[0], spars[1]) # 1-sided
 # display means and p value:
+dmean, smean = spars[0].mean(), spars[1].mean()
 text(0.03, 0.98, '$\mu$ = %.2f' % spars[1].mean(), # synched
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='r')
@@ -546,6 +573,13 @@ text(0.03, 0.90, '$\mu$ = %.2f' % spars[0].mean(), # desynched
 text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
+# arrow doesn't display correctly on log axis, use annotate instead:
+annotate('', xy=(smean, (6/7)*35), xycoords='data', # synched
+             xytext=(smean, 35), textcoords='data',
+             arrowprops=dict(fc='r', ec='none', width=1.3, headwidth=7, frac=0.5))
+annotate('', xy=(dmean, 30), xycoords='data', # desynched
+             xytext=(dmean, 35), textcoords='data',
+             arrowprops=dict(fc='b', ec='none', width=1.3, headwidth=7, frac=0.5))
 titlestr = 'sparseness %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
