@@ -12,6 +12,7 @@ Also, measure sparseness of responsive PSTHs.
 Run from within neuropy using `run -i scripts/psth_precision.py`"""
 
 from __future__ import division, print_function
+
 from scipy.signal import argrelextrema
 from scipy.stats import ttest_ind, chisquare, mannwhitneyu
 from numpy import log10
@@ -632,8 +633,8 @@ print('ndesynched=%d, nsynched=%d, chi2=%.3g, p=%.3g'
       % (ndesynchedpeaks, nsynchedpeaks, chi2, p))
 
 nrelsrecsec = sum([len(d) for d in relsrecsec])
-print('fraction replaced by NULLREL due to rel < NULLREL: %f'
-      % (nreplacedbynullrel/nrelsrecsec))
+print('fraction replaced by %g due to rel < %g: %f'
+      % (NULLREL, NULLREL, nreplacedbynullrel/nrelsrecsec))
 
 # report total recording duration:
 print()
@@ -650,6 +651,7 @@ synchedstranges = np.asarray(stranges[1::2]) # odd are synched
 tdesynched = np.diff(desynchedstranges, axis=1).sum() / 1e6 / 60 # in min
 tsynched = np.diff(synchedstranges, axis=1).sum() / 1e6 / 60 # in min
 print('tsynched=%.1f min, tdesynched=%.1f min' % (tsynched, tdesynched))
+print('tundefined=%.1f min' % (dtmin-tsynched-tdesynched))
 
 print()
 print('per-track unit counts:')
@@ -659,7 +661,7 @@ for rec in urecs:
     except KeyError: units = []
     trackunits[rec.tr.absname] = np.unique(np.append(units, list(rec.alln)))
 total = 0
-for trackname in trackunits:
+for trackname in sorted(trackunits):
     n = len(trackunits[trackname])
     total += n
     print(trackname, n)
