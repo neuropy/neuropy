@@ -325,7 +325,7 @@ class BaseRecording(object):
         n = np.asarray([nn, nsup, nmid, ndeep])
         if plot:
             self.plot_mua(rates, t, n, layers=layers, title=title, figsize=figsize)
-        return rates, t, n
+        return rates, t, n # rates in spikes/s per neuron, t in s
 
     def calc_mua(self, spikes, nn, width, tres, gauss=None):
         """Take sorted multiunit spike train from nn neurons, desired bin width and tres, and
@@ -1580,7 +1580,7 @@ class RecordingRaster(BaseRecording):
         ttranges, ttrangesweepis, exptrialis = self.trialtranges(
             sweepis=sweepis, eids=eids, natexps=natexps, t0=t0, dt=dt, blank=blank)
         lfp = self.lfp.get_data()[chani]
-        t = np.arange(self.lfp.t0, self.lfp.t1, self.lfp.tres)
+        t = np.arange(self.lfp.t0, self.lfp.t1, self.lfp.tres) # in us
         assert len(lfp) == len(t)
         ntrials = len(ttranges)
         if trange != None:
@@ -1606,8 +1606,8 @@ class RecordingRaster(BaseRecording):
         for triali in range(ntrials):
             lfptrials[triali] = lfptrials[triali][:minnt]
         lfptrials = np.vstack(lfptrials)
-        t = t[:minnt]/1e6
-        t -= t[0]
+        t = t[:minnt] / 1e6 # trial time, in s
+        t -= t[0] # start trial time at 0
         if plot:
             lfpmean, lfpstd = lfptrials.mean(axis=0), lfptrials.std(axis=0)
             f = pl.figure(figsize=figsize)
