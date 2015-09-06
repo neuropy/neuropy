@@ -1626,6 +1626,65 @@ class RecordingRaster(BaseRecording):
             f.tight_layout(pad=0.3) # crop figure to contents
         return t, lfptrials
 
+    def tmua(self, width=None, tres=None, gauss=True, sweepis=None, eids=None, natexps=False,
+             t0=None, dt=None, blank=True, trange=None, plot=True, figsize=(20, 6.5)):
+        """Calculate MUA averaged over trials, constrained to trange"""
+        uns = get_ipython().user_ns
+        if width == None:
+            width = uns['TMUAWIDTH']
+        if tres == None:
+            tres = uns['TMUATRES']
+        ttranges, ttrangesweepis, exptrialis = self.trialtranges(
+            sweepis=sweepis, eids=eids, natexps=natexps, t0=t0, dt=dt, blank=blank)
+        rates, t, n = self.mua(width=width, tres=tres, gauss=gauss, plot=False)
+        t = intround(t * 1e6) # convert to us for compatibility with ttranges
+        mua, nn = rates[0], n[0] # allrates
+        ntrials = len(ttranges)
+        if trange != None:
+            # keep just those trials that fall entirely with trange:
+            oldntrials = ntrials
+            ttranges = trimtranges(ttranges, trange)
+            ntrials = len(ttranges)
+            assert ntrials > 0 # if not, trange wis too constrictive
+            print('ntrials: %d --> %d after applying trange: %s'
+                  % (oldntrials, ntrials, np.asarray(trange)))
+        muatrials = []
+        minnt = len(t) # can't be any greater than this
+        for ttrange in ttranges:
+            ti0, ti1 = t.searchsorted(ttrange)
+            nt = ti1 - ti0
+            if nt < minnt:
+                minnt = nt
+            #print('%d ' % nt, end='')
+            # slice out MUA signal that falls within ttranges of this trial:
+            muatrial = mua[ti0:ti1] # not all will be exactly the same length
+            muatrials.append(muatrial)
+        # slice each muatrial down to length of the shortest:
+        for triali in range(ntrials):
+            muatrials[triali] = muatrials[triali][:minnt]
+        muatrials = np.vstack(muatrials)
+        t = t[:minnt] / 1e6 # trial time, in s
+        t -= t[0] # start trial time at 0
+        if plot:
+            muamean, muastd = muatrials.mean(axis=0), muatrials.std(axis=0)
+            f = pl.figure(figsize=figsize)
+            a = f.add_subplot(111)
+            a.plot(t, muamean, 'k-')
+            a.plot(t, muamean+muastd, 'r-') # upper std
+            a.plot(t, muamean-muastd, 'r-') # lower std
+            a.autoscale(enable=True, tight=True)
+            a.set_xlabel("time (s)")
+            a.set_ylabel("MUA (Hz/unit)")
+            titlestr = lastcmd()
+            gcfm().window.setWindowTitle(titlestr)
+            a.set_title(titlestr)
+            a.text(0.998, 0.99, '%s' % self.name, transform=a.transAxes,
+                   horizontalalignment='right', verticalalignment='top')
+            a.text(0.998, 0.95, 'width, tres = %g, %g' % (width, tres), transform=a.transAxes,
+                   horizontalalignment='right', verticalalignment='top')
+            f.tight_layout(pad=0.3) # crop figure to contents
+        return t, muatrials
+
     def tune(self, nids='all', alpha=0.01, eid=0, var='ori', fixed=None,
              tdelay=None, strange=None, plot=True):
         """Plot tuning curves for given neurons, based on stimulus info in experiment eid.
