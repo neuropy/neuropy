@@ -1817,11 +1817,11 @@ class SpikeCorr(object):
         a.legend(loc='upper left', handlelength=1, handletextpad=0.5, labelspacing=0.1)
         f.tight_layout(pad=0.3) # crop figure to contents
 
-    def mua(self, method='mean', inclusive=False, smooth=False, figsize=(7.5, 6.5)):
+    def mua(self, method='mean', inclusive=False, gauss=False, figsize=(7.5, 6.5)):
         """Scatter plot spike correlations vs multiunit activity"""
         ## TODO: update for multiple recs
         corrs, npairs, ct, ylabel = self.sct(method=method, inclusive=inclusive)
-        mua, muat, n = self.r.mua(smooth=smooth, plot=False)
+        mua, muat, n = self.r.mua(gauss=gauss, plot=False)
         # keep only MUA of all neurons, throw away laminar MUA information (for now at least):
         mua = mua[0] # 1D array
 
