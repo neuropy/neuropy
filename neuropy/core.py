@@ -2413,6 +2413,8 @@ def roundto(val, nearest):
 def sigfig(x, n=1):
     """Return x rounded to n significant figures. Modified from
     http://code.activestate.com/lists/python-tutor/70739/"""
+    if x == 0:
+        return x
     return round(x, int(n - np.ceil(np.log10(abs(x)))))
 
 def e10(x):
