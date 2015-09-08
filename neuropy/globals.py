@@ -47,6 +47,8 @@ SCLIMITS = -0.01, 0.13
 """Multiunit activity time range windows"""
 MUAWIDTH = 0.25 # sec
 MUATRES = 0.1 # sec
+TMUAWIDTH = 0.02 # sec
+TMUATRES = 0.005 # sec
 
 """MUA synchrony index time range windows"""
 MUASIWIDTH = 10 # sec
