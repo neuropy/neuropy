@@ -21,21 +21,25 @@ LFPSNRs = [[], []] # desynched and synched
 MUASNRs = [[], []]
 
 TLFP, TMUA = {}, {} # dicts storing results from rec.tlfp() and rec.tmua()
+MAXMUA = {}
 
 # calculate LFP and MUA time series, one per trial:
 for rec in urecs:
     print(rec.absname)
     TLFP[rec.absname] = [] # one entry per state
     TMUA[rec.absname] = []
+    MAXMUA[rec.absname] = 0 # init, used for setting y limits during plotting
     stranges = REC2STATETRANGES[rec.absname]
     for strange in stranges: # desynched, then synched
         lfpt, lfptrials = rec.tlfp(trange=strange, plot=False)
         muat, muatrials = rec.tmua(trange=strange, plot=False) # Hz/unit
         TLFP[rec.absname].append((lfpt, lfptrials))
         TMUA[rec.absname].append((muat, muatrials))
+        MAXMUA[rec.absname] = max(MAXMUA[rec.absname], muatrials.max())
 
 # plot LFP and MUA time series, plus mean and stdevs, and SNR time series:
 for rec in urecs:
+    print(rec.absname)
     # subplotting trickery from
     # http://stackoverflow.com/questions/22511550/gridspec-with-shared-axes-in-python
     lfpf = plt.figure(figsize=FIGSIZE)
@@ -87,8 +91,9 @@ for rec in urecs:
         MUAa.plot(muat, (muamean+muastd), 'k-', alpha=1)
         MUAa.plot(muat, (muamean-muastd), 'k-', alpha=1)
         MUAa.set_xlim(xmax=5.5)
-        MUAa.set_ylim(0, 50) # mV
-        MUAa.set_yticks([0, 50])
+        maxmua = intround(MAXMUA[rec.absname])
+        MUAa.set_ylim(0, maxmua) # Hz/unit
+        MUAa.set_yticks([0, maxmua])
         MUAa.set_ylabel("MUA (Hz/unit)")
         MUAa.yaxis.set_label_coords(YLABELX, 0.5)
         # Fano-factor and CV don't work very well when mean approaches zero
