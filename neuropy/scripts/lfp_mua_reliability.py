@@ -20,8 +20,22 @@ fmts = ('b-', 'r-') # desynched and synched
 LFPSNRs = [[], []] # desynched and synched
 MUASNRs = [[], []]
 
+TLFP, TMUA = {}, {} # dicts storing results from rec.tlfp() and rec.tmua()
+
+# calculate LFP and MUA time series, one per trial:
 for rec in urecs:
     print(rec.absname)
+    TLFP[rec.absname] = [] # one entry per state
+    TMUA[rec.absname] = []
+    stranges = REC2STATETRANGES[rec.absname]
+    for strange in stranges: # desynched, then synched
+        lfpt, lfptrials = rec.tlfp(trange=strange, plot=False)
+        muat, muatrials = rec.tmua(trange=strange, plot=False) # Hz/unit
+        TLFP[rec.absname].append((lfpt, lfptrials))
+        TMUA[rec.absname].append((muat, muatrials))
+
+# plot LFP and MUA time series, plus mean and stdevs, and SNR time series:
+for rec in urecs:
     # subplotting trickery from
     # http://stackoverflow.com/questions/22511550/gridspec-with-shared-axes-in-python
     lfpf = plt.figure(figsize=FIGSIZE)
@@ -39,11 +53,10 @@ for rec in urecs:
     MUASNRa = muaf.add_subplot(gs[2], sharex=MUAa1)
     plt.setp(MUAa1.get_xticklabels(), visible=False)
     plt.setp(MUAa2.get_xticklabels(), visible=False)
-    stranges = REC2STATETRANGES[rec.absname]
     # desynched, then synched:
-    for statei, (strange, fmt, LFPa, MUAa) in enumerate(zip(stranges, fmts, LFPas, MUAas)):
-        lfpt, lfptrials = rec.tlfp(trange=strange, plot=False)
-        muat, muatrials = rec.tmua(trange=strange, plot=False) # Hz/unit
+    for statei, (fmt, LFPa, MUAa) in enumerate(zip(fmts, LFPas, MUAas)):
+        lfpt, lfptrials = TLFP[rec.absname][statei]
+        muat, muatrials = TMUA[rec.absname][statei]
         lfpmean, lfpstd = lfptrials.mean(axis=0), lfptrials.std(axis=0)
         muamean, muastd = muatrials.mean(axis=0), muatrials.std(axis=0)
         ntrials = len(lfptrials)
@@ -105,7 +118,7 @@ for rec in urecs:
     muaf.canvas.manager.set_window_title("MUA reliability %s" % rec.absname)
     muaf.tight_layout(pad=0.3) # crop figure to contents
 
-    pl.show()
+    pl.show() # ensures figures pop up in order
 
 # collapse SNRs across recs:
 for statei in range(2):
