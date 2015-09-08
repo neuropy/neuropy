@@ -270,7 +270,6 @@ class BaseRecording(object):
         nonoverlapping bins with a Gaussian kernel with sigma = width/2, instead of simply
         counting spikes in (potentially overlapping) square bins. If layers is False, just
         plot MUA for all neurons, don't plot layer subsets"""
-        trn = self.tr.alln
         if neurons == None: # use active neurons
             neurons = self.n
         elif neurons == 'quiet': # use quiet neurons
@@ -279,9 +278,11 @@ class BaseRecording(object):
             neurons = self.alln
         elif neurons in ['fast', 'slow', 'fastasym', 'slowasym']:
             # use neurons of specific spike type
+            trn = self.tr.alln # raises AttributeError if track-wide sort doesn't exist
             neurons = { nid:self.n[nid] for nid in self.n if trn[nid].spiketype == neurons }
         elif neurons in ['simple', 'complex', 'LGN', 'unknown']:
             # use neurons of specific RF type
+            trn = self.tr.alln # raises AttributeError if track-wide sort doesn't exist
             if neurons == 'unknown': neurons = None # normally, None means active
             neurons = { nid:self.n[nid] for nid in self.n if trn[nid].rftype == neurons }
         nn = len(neurons)
