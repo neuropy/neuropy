@@ -21,7 +21,11 @@ MAXMUA = {}
 fmts = ('b-', 'r-') # desynched, then synched
 LFPCORRS = [[], []] # desynched, then synched
 MUACORRS = [[], []] # desynched, then synched
+LFPSPARS = [[], []] # desynched, then synched
+MUASPARS = [[], []] # desynched, then synched
+
 CORRBINW = 0.05
+SPARBINW = 0.025
 aw = 0.04 # arrow width
 
 # calculate LFP and MUA time series, as well as correlations, one per trial:
@@ -46,10 +50,14 @@ for rec in urecs:
             otheris[triali] = False # exclude current trial
             LFPCORRS[statei].append(corrcoef(lfptrial, lfptrials[otheris].mean(axis=0)))
             MUACORRS[statei].append(corrcoef(muatrial, muatrials[otheris].mean(axis=0)))
+            LFPSPARS[statei].append(sparseness(abs(lfptrial)))
+            MUASPARS[statei].append(sparseness(muatrial))
 
 for statei in range(2): # desynched, then synched
     LFPCORRS[statei] = np.asarray(LFPCORRS[statei]) # convert from list to array
     MUACORRS[statei] = np.asarray(MUACORRS[statei])
+    LFPSPARS[statei] = np.asarray(LFPSPARS[statei])
+    MUASPARS[statei] = np.asarray(MUASPARS[statei])
 
 # plot LFP and MUA time series, plus mean and stdevs, and SNR time series:
 for rec in urecs:
@@ -113,11 +121,15 @@ for rec in urecs:
     muaf.tight_layout(pad=0.3) # crop figure to contents
     pl.show() # ensure figures pop up in order
 
-# calculate significance
-u, lfpp = mannwhitneyu(LFPCORRS[0], LFPCORRS[1]) # 1-sided
-print('lfpp = %.2g' % lfpp)
-u, muap = mannwhitneyu(MUACORRS[0], MUACORRS[1]) # 1-sided
-print('muap = %.2g' % muap)
+# calculate p values:
+u, lfpcorrsp = mannwhitneyu(LFPCORRS[0], LFPCORRS[1]) # 1-sided
+u, muacorrsp = mannwhitneyu(MUACORRS[0], MUACORRS[1]) # 1-sided
+u, lfpsparsp = mannwhitneyu(LFPSPARS[0], LFPSPARS[1]) # 1-sided
+u, muasparsp = mannwhitneyu(MUASPARS[0], MUASPARS[1]) # 1-sided
+print('lfpcorrsp = %.2g' % lfpcorrsp)
+print('muacorrsp = %.2g' % muacorrsp)
+print('lfpsparsp = %.2g' % lfpsparsp)
+print('muasparsp = %.2g' % muasparsp)
 
 # plot LFPCORRS PDFs:
 corrbins = np.arange(0, 1+CORRBINW, CORRBINW) # left edges + rightmost edge
@@ -148,7 +160,7 @@ text(0.98, 0.98, '$\mu$ = %.2f' % smean, # synched
 text(0.98, 0.90, '$\mu$ = %.2f' % dmean, # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.98, 0.82, 'p < %.1g' % ceilsigfig(lfpp, 1),
+text(0.98, 0.82, 'p < %.1g' % ceilsigfig(lfpcorrsp, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 gcfm().window.setWindowTitle('LFP_trial_correlation_hist')
@@ -183,11 +195,80 @@ text(0.02, 0.98, '$\mu$ = %.2f' % smean, # synched
 text(0.02, 0.90, '$\mu$ = %.2f' % dmean, # desynched
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.02, 0.82, 'p < %.1g' % ceilsigfig(muap, 1),
+text(0.02, 0.82, 'p < %.1g' % ceilsigfig(muacorrsp, 1),
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 gcfm().window.setWindowTitle('MUA_trial_correlation_hist')
 tight_layout(pad=0.3)
 pl.show() # ensure figures pop up in order
 
-pl.show()
+# plot LFPSPARS PDFs:
+sparbins = np.arange(0, 1+SPARBINW, SPARBINW) # left edges + rightmost edge
+nd = np.histogram(LFPSPARS[0], bins=sparbins, density=False)[0]
+ns = np.histogram(LFPSPARS[1], bins=sparbins, density=False)[0]
+dmax, smax = nd.max(), ns.max()
+nmax = max(np.hstack([nd, ns]))
+ah = nmax / 7 # arrow height
+nd = np.hstack([nd, nd[-1]]) # repeat last point for right edge
+ns = np.hstack([ns, ns[-1]])
+figure(figsize=(3, 3))
+plot(sparbins, nd, 'b-', lw=2)
+plot(sparbins, ns, 'r-', lw=2)
+# draw arrows at means:
+dmean, smean = LFPSPARS[0].mean(), LFPSPARS[1].mean()
+arrow(dmean, dmax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
+      length_includes_head=True, color='b')
+arrow(smean, smax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
+      length_includes_head=True, color='r')
+xlabel('LFP trial sparseness')
+ylabel('trial count')
+xticks([0, 0.2, 0.4, 0.6, 0.8, 1], ['0', '0.2', '0.4', '0.6', '0.8', '1'])
+ylim(0, nmax+ah*1.1)
+# display means and p value:
+text(0.98, 0.98, '$\mu$ = %.2f' % smean, # synched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='r')
+text(0.98, 0.90, '$\mu$ = %.2f' % dmean, # desynched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
+text(0.98, 0.82, 'p < %.1g' % ceilsigfig(lfpsparsp, 1),
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+gcfm().window.setWindowTitle('LFP_trial_sparseness_hist')
+tight_layout(pad=0.3)
+pl.show() # ensure figures pop up in order
+
+# plot MUASPARS PDFs:
+nd = np.histogram(MUASPARS[0], bins=sparbins, density=False)[0]
+ns = np.histogram(MUASPARS[1], bins=sparbins, density=False)[0]
+dmax, smax = nd.max(), ns.max()
+nmax = max(np.hstack([nd, ns]))
+ah = nmax / 7 # arrow height
+nd = np.hstack([nd, nd[-1]]) # repeat last point for right edge
+ns = np.hstack([ns, ns[-1]])
+figure(figsize=(3, 3))
+plot(sparbins, nd, 'b-', lw=2)
+plot(sparbins, ns, 'r-', lw=2)
+# draw arrows at means:
+dmean, smean = MUASPARS[0].mean(), MUASPARS[1].mean()
+arrow(dmean, dmax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
+      length_includes_head=True, color='b')
+arrow(smean, smax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
+      length_includes_head=True, color='r')
+xlabel('MUA trial sparseness')
+ylabel('trial count')
+xticks([0, 0.2, 0.4, 0.6, 0.8, 1], ['0', '0.2', '0.4', '0.6', '0.8', '1'])
+ylim(0, nmax+ah*1.1)
+# display means and p value:
+text(0.02, 0.98, '$\mu$ = %.2f' % smean, # synched
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='r')
+text(0.02, 0.90, '$\mu$ = %.2f' % dmean, # desynched
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
+text(0.02, 0.82, 'p < %.1g' % ceilsigfig(muasparsp, 1),
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+gcfm().window.setWindowTitle('MUA_trial_sparseness_hist')
+tight_layout(pad=0.3)
+pl.show() # ensure figures pop up in order
