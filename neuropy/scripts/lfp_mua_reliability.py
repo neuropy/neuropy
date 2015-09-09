@@ -113,10 +113,10 @@ for rec in urecs:
         print('sparseness(abs(mean(LFP))):', sparseness(np.abs(lfpmean)))
         print('sparseness(mean(MUA)):', sparseness(nmuamean))
 
-    LFPa.set_xlabel("time (s)")
+    LFPa.set_xlabel("trial time (s)")
     lfpf.canvas.manager.set_window_title("LFP trials %s" % rec.absname)
     lfpf.tight_layout(pad=0.3) # crop figure to contents
-    MUAa.set_xlabel("time (s)")
+    MUAa.set_xlabel("trial time (s)")
     muaf.canvas.manager.set_window_title("MUA trials %s" % rec.absname)
     muaf.tight_layout(pad=0.3) # crop figure to contents
     pl.show() # ensure figures pop up in order

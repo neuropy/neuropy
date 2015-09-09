@@ -380,7 +380,7 @@ arrow(dmean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_he
       color='b')
 arrow(smean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
       color='r')
-xlim(xmin=RHOMIN, xmax=RHOMAX)
+xlim(xmin=-0.5, xmax=RHOMAX)
 ylim(ymax=nmax*1.01)
 # remove unnecessary decimal places:
 rhoticks = ([-0.5, -0.25, 0, 0.25, 0.5, 0.75, 1],
@@ -388,7 +388,7 @@ rhoticks = ([-0.5, -0.25, 0, 0.25, 0.5, 0.75, 1],
 xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel('PSTH-motion correlation')
-ylabel('cell count')
+ylabel('unit count')
 text(0.98, 0.98, 'delay = %d ms' % CORRDELAYMS,
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
@@ -524,7 +524,7 @@ rhoticks = ([-1, -0.5, 0, 0.5, 1],
 xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel('PSTH-contrast correlation')
-ylabel('cell count')
+ylabel('unit count')
 text(0.98, 0.98, 'delay = %d ms' % CORRDELAYMS,
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
@@ -635,7 +635,7 @@ rhoticks = ([-1, -0.5, 0, 0.5, 1],
 xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel('PSTH-luminance correlation')
-ylabel('cell count')
+ylabel('unit count')
 text(0.98, 0.98, 'delay = %d ms' % CORRDELAYMS,
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')

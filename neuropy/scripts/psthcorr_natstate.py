@@ -133,7 +133,7 @@ rhoticks = [-0.25, 0, 0.25, 0.5, 0.75, 1], ['-0.25', '0', '0.25', '0.5', '0.75',
 xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel(r'$\rho$')
-ylabel('cell pair count')
+ylabel('unit pair count')
 text(0.98, 0.98, r'$\mu$=%.4g' % dmean, color='b',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 text(0.98, 0.90, r'$\mu$=%.4g' % smean, color='r',
@@ -191,7 +191,7 @@ ylim(ymax=nmax*1.01)
 xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel(r'$\rho$')
-ylabel('cell pair count')
+ylabel('unit pair count')
 text(0.98, 0.98, r'p3=%.2g' % p3, color='k',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 text(0.98, 0.90, r'p4=%.2g' % p4, color='k',
@@ -330,7 +330,7 @@ ylim(ymin=RHOMIN, ymax=RHOMAX)
 septicks = np.arange(0, SEPMAX+100, 500)
 xticks(septicks)
 yticks(*rhoticks)
-xlabel(r'cell pair separation (${\mu}m$)')
+xlabel(r'unit pair separation (${\mu}m$)')
 ylabel(r'$\rho$')
 titlestr = '_'.join(['rho_sep', KIND, KERNEL, BINWMS])
 gcfm().window.setWindowTitle(titlestr)
