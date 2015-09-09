@@ -15,7 +15,12 @@ YLABELX = -0.06
 
 # sort recordings by their absname:
 urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
+#urecs = [urecs[2]] # ptc18.tr2c.r58
 #urecnames = ' '.join([rec.absname for rec in urecs])
+# include 1 s blank screen periods between trials for plotting and analysis? To include blank
+# periods for display but exclude them during analysis, run this script twice: once with
+# BLANK=True, once with BLANK=False:
+BLANK = False
 TLFP, TMUA = {}, {} # dicts storing results from rec.tlfp() and rec.tmua()
 MAXMUA = {}
 fmts = ('b-', 'r-') # desynched, then synched
@@ -36,15 +41,16 @@ for rec in urecs:
     MAXMUA[rec.absname] = 0 # init, used for setting y limits during plotting
     stranges = REC2STATETRANGES[rec.absname]
     for statei, strange in enumerate(stranges): # desynched, then synched
-        lfpt, lfptrials = rec.tlfp(trange=strange, plot=False)
-        muat, muatrials = rec.tmua(trange=strange, plot=False) # Hz/unit
+        lfpt, lfptrials = rec.tlfp(trange=strange, blank=BLANK, plot=False)
+        muat, muatrials = rec.tmua(trange=strange, blank=BLANK, plot=False) # Hz/unit
         TLFP[rec.absname].append((lfpt, lfptrials))
         TMUA[rec.absname].append((muat, muatrials))
         MAXMUA[rec.absname] = max(MAXMUA[rec.absname], muatrials.max())
         ntrials = len(lfptrials)
         assert ntrials == len(muatrials)
         for triali in range(ntrials):
-            # measure reliability as correlation of each trial with mean of all others
+            # measure reliability as correlation of each trial with mean of all others.
+            # To exclude last sec of blankscreen in each trial, set BLANK=False:
             lfptrial, muatrial = lfptrials[triali], muatrials[triali]
             otheris = np.ones(ntrials, dtype=bool)
             otheris[triali] = False # exclude current trial
