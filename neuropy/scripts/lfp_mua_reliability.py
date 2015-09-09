@@ -8,34 +8,48 @@ from matplotlib import gridspec
 
 from scipy.stats import mannwhitneyu
 
-from core import sparseness, ceilsigfig
+from core import sparseness, ceilsigfig, corrcoef
 
-FIGSIZE = (8, 4)
+FIGSIZE = (6, 3)
 YLABELX = -0.06
 
 # sort recordings by their absname:
 urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
 #urecnames = ' '.join([rec.absname for rec in urecs])
-fmts = ('b-', 'r-') # desynched and synched
-LFPSNRs = [[], []] # desynched and synched
-MUASNRs = [[], []]
-
 TLFP, TMUA = {}, {} # dicts storing results from rec.tlfp() and rec.tmua()
 MAXMUA = {}
+fmts = ('b-', 'r-') # desynched, then synched
+LFPCORRS = [[], []] # desynched, then synched
+MUACORRS = [[], []] # desynched, then synched
+CORRBINW = 0.05
+aw = 0.04 # arrow width
 
-# calculate LFP and MUA time series, one per trial:
+# calculate LFP and MUA time series, as well as correlations, one per trial:
 for rec in urecs:
     print(rec.absname)
     TLFP[rec.absname] = [] # one entry per state
     TMUA[rec.absname] = []
     MAXMUA[rec.absname] = 0 # init, used for setting y limits during plotting
     stranges = REC2STATETRANGES[rec.absname]
-    for strange in stranges: # desynched, then synched
+    for statei, strange in enumerate(stranges): # desynched, then synched
         lfpt, lfptrials = rec.tlfp(trange=strange, plot=False)
         muat, muatrials = rec.tmua(trange=strange, plot=False) # Hz/unit
         TLFP[rec.absname].append((lfpt, lfptrials))
         TMUA[rec.absname].append((muat, muatrials))
         MAXMUA[rec.absname] = max(MAXMUA[rec.absname], muatrials.max())
+        ntrials = len(lfptrials)
+        assert ntrials == len(muatrials)
+        for triali in range(ntrials):
+            # measure reliability as correlation of each trial with mean of all others
+            lfptrial, muatrial = lfptrials[triali], muatrials[triali]
+            otheris = np.ones(ntrials, dtype=bool)
+            otheris[triali] = False # exclude current trial
+            LFPCORRS[statei].append(corrcoef(lfptrial, lfptrials[otheris].mean(axis=0)))
+            MUACORRS[statei].append(corrcoef(muatrial, muatrials[otheris].mean(axis=0)))
+
+for statei in range(2): # desynched, then synched
+    LFPCORRS[statei] = np.asarray(LFPCORRS[statei]) # convert from list to array
+    MUACORRS[statei] = np.asarray(MUACORRS[statei])
 
 # plot LFP and MUA time series, plus mean and stdevs, and SNR time series:
 for rec in urecs:
@@ -44,27 +58,25 @@ for rec in urecs:
     # http://stackoverflow.com/questions/22511550/gridspec-with-shared-axes-in-python
     lfpf = plt.figure(figsize=FIGSIZE)
     muaf = plt.figure(figsize=FIGSIZE)
-    gs = gridspec.GridSpec(3, 1, height_ratios=[0.3, 0.3, 0.4])
+    gs = gridspec.GridSpec(2, 1, height_ratios=[0.5, 0.5])
     LFPa1 = lfpf.add_subplot(gs[0])
     LFPa2 = lfpf.add_subplot(gs[1], sharex=LFPa1)
     LFPas = [LFPa1, LFPa2]
-    LFPSNRa = lfpf.add_subplot(gs[2], sharex=LFPa1)
     plt.setp(LFPa1.get_xticklabels(), visible=False)
-    plt.setp(LFPa2.get_xticklabels(), visible=False)
+    plt.setp(LFPa2.get_xticklabels(), visible=True)
     MUAa1 = muaf.add_subplot(gs[0])
     MUAa2 = muaf.add_subplot(gs[1], sharex=MUAa1)
     MUAas = [MUAa1, MUAa2]
-    MUASNRa = muaf.add_subplot(gs[2], sharex=MUAa1)
     plt.setp(MUAa1.get_xticklabels(), visible=False)
-    plt.setp(MUAa2.get_xticklabels(), visible=False)
+    plt.setp(MUAa2.get_xticklabels(), visible=True)
     # desynched, then synched:
     for statei, (fmt, LFPa, MUAa) in enumerate(zip(fmts, LFPas, MUAas)):
         lfpt, lfptrials = TLFP[rec.absname][statei]
         muat, muatrials = TMUA[rec.absname][statei]
+        # normalize MUA across both states to get arbitrary units (0-1):
+        nmuatrials = muatrials / MAXMUA[rec.absname] # normalized
         lfpmean, lfpstd = lfptrials.mean(axis=0), lfptrials.std(axis=0)
-        muamean, muastd = muatrials.mean(axis=0), muatrials.std(axis=0)
-        ntrials = len(lfptrials)
-        assert ntrials == len(muatrials)
+        nmuamean, nmuastd = nmuatrials.mean(axis=0), nmuatrials.std(axis=0)
         # to make saturation represent reliability, scale transparency inversely
         # with ntrials:
         alpha = 10 / ntrials
@@ -79,141 +91,101 @@ for rec in urecs:
         LFPa.set_yticks([-0.5, 0, 0.5])
         LFPa.set_ylabel("LFP (mV)")
         LFPa.yaxis.set_label_coords(YLABELX, 0.5)
-        # Fano-factor and CV don't work very well when mean approaches zero
-        ## TODO: for reliability measure, exclude last sec of blankscreen in each trial:
-        LFPSNR = np.abs(lfpmean) / lfpstd # something like S/N ratio
-        LFPSNRs[statei].append(LFPSNR)
-        #LFPSNR = lfpmean**2 / lfpstd**2 # something like (S/N)**2 ratio
-        LFPSNRa.plot(lfpt, LFPSNR, fmt)
         # MUA:
-        MUAa.plot(muat, muatrials.T, fmt, alpha=alpha)
-        MUAa.plot(muat, muamean, 'w-', alpha=1)
-        MUAa.plot(muat, (muamean+muastd), 'k-', alpha=1)
-        MUAa.plot(muat, (muamean-muastd), 'k-', alpha=1)
+        MUAa.plot(muat, nmuatrials.T, fmt, alpha=alpha)
+        MUAa.plot(muat, nmuamean, 'w-', alpha=1)
+        MUAa.plot(muat, (nmuamean+nmuastd), 'k-', alpha=1)
+        MUAa.plot(muat, (nmuamean-nmuastd), 'k-', alpha=1)
         MUAa.set_xlim(xmax=5.5)
-        maxmua = intround(MAXMUA[rec.absname])
-        MUAa.set_ylim(0, maxmua) # Hz/unit
-        MUAa.set_yticks([0, maxmua])
-        MUAa.set_ylabel("MUA (Hz/unit)")
+        MUAa.set_ylim(0, 1) # AU
+        MUAa.set_yticks([0, 1])
+        MUAa.set_ylabel("MUA (AU)")
         MUAa.yaxis.set_label_coords(YLABELX, 0.5)
-        # Fano-factor and CV don't work very well when mean approaches zero
-        ## TODO: for reliability measure, exclude last sec of blankscreen in each trial:
-        MUASNR = np.abs(muamean) / muastd # something like S/N ratio
-        MUASNRs[statei].append(MUASNR)
-        #MUASNR = muamean**2 / muastd**2 # something like (S/N)**2 ratio
-        MUASNRa.plot(muat, MUASNR, fmt)
         print('LFP sparseness:', sparseness(np.abs(lfpmean)))
-        print('mean tLFP S/N:', LFPSNR.mean())
-        print('MUA sparseness:', sparseness(np.abs(muamean)))
-        print('mean tMUA S/N:', MUASNR.mean())
-    LFPSNRa.set_xlim(xmax=5.5)
-    LFPSNRa.set_ylim(0, 3)
-    LFPSNRa.set_yticks([0, 1, 2, 3])
-    LFPSNRa.set_xlabel("time (s)")
-    LFPSNRa.set_ylabel(r"LFP S/N ($|\mu|/\sigma)$")
-    LFPSNRa.yaxis.set_label_coords(YLABELX+0.0012, 0.5) # has a descender
-    lfpf.canvas.manager.set_window_title("LFP reliability %s" % rec.absname)
+        print('MUA sparseness:', sparseness(np.abs(nmuamean)))
+
+    LFPa.set_xlabel("time (s)")
+    lfpf.canvas.manager.set_window_title("LFP trials %s" % rec.absname)
     lfpf.tight_layout(pad=0.3) # crop figure to contents
-    MUASNRa.set_xlim(xmax=5.5)
-    MUASNRa.set_ylim(0, 5)
-    MUASNRa.set_yticks([0, 5])
-    MUASNRa.set_xlabel("time (s)")
-    MUASNRa.set_ylabel(r"MUA S/N ($|\mu|/\sigma)$")
-    MUASNRa.yaxis.set_label_coords(YLABELX+0.0012, 0.5) # has a descender
-    muaf.canvas.manager.set_window_title("MUA reliability %s" % rec.absname)
+    MUAa.set_xlabel("time (s)")
+    muaf.canvas.manager.set_window_title("MUA trials %s" % rec.absname)
     muaf.tight_layout(pad=0.3) # crop figure to contents
 
     pl.show() # ensures figures pop up in order
 
-# collapse SNRs across recs:
-for statei in range(2):
-    LFPSNRs[statei] = np.hstack(LFPSNRs[statei])
-    MUASNRs[statei] = np.hstack(MUASNRs[statei])
-
 # calculate significance
-u, lfpp = mannwhitneyu(LFPSNRs[0], LFPSNRs[1]) # 1-sided
-#if lfpp < np.finfo(np.float64).eps: # prevent 0 p-value due to underflow
-#    lfpp = np.finfo(np.float64).eps
+u, lfpp = mannwhitneyu(LFPCORRS[0], LFPCORRS[1]) # 1-sided
 print('lfpp = %.2g' % lfpp)
-u, muap = mannwhitneyu(MUASNRs[0], MUASNRs[1]) # 1-sided
-#if muap < np.finfo(np.float64).eps: # prevent 0 p-value due to underflow
-#    muap = np.finfo(np.float64).eps
+u, muap = mannwhitneyu(MUACORRS[0], MUACORRS[1]) # 1-sided
 print('muap = %.2g' % muap)
 
-# calculate LFP PDFs:
-SNRBINW = 0.1
-snrbins = np.arange(0, 3+SNRBINW, SNRBINW) # left edges + rightmost edge
-nd = np.histogram(LFPSNRs[0], bins=snrbins, density=True)[0]
-ns = np.histogram(LFPSNRs[1], bins=snrbins, density=True)[0]
-#nmax = max(np.hstack([nd, ns]))
-# normalize density to arbitrary units:
-#nd = nd / nmax
-#ns = ns / nmax
+# calculate LFPCORRS PDFs:
+corrbins = np.arange(0, 1+CORRBINW, CORRBINW) # left edges + rightmost edge
+nd = np.histogram(LFPCORRS[0], bins=corrbins, density=False)[0]
+ns = np.histogram(LFPCORRS[1], bins=corrbins, density=False)[0]
+dmax, smax = nd.max(), ns.max()
+nmax = max(np.hstack([nd, ns]))
+ah = nmax / 7 # arrow height
 nd = np.hstack([nd, nd[-1]]) # repeat last point for right edge
 ns = np.hstack([ns, ns[-1]])
 figure(figsize=(3, 3))
-plot(snrbins, nd, 'b-', lw=2)
-plot(snrbins, ns, 'r-', lw=2)
+plot(corrbins, nd, 'b-', lw=2)
+plot(corrbins, ns, 'r-', lw=2)
 # draw arrows at means:
-ah = 0.4 # arrow height
-dmean, smean = LFPSNRs[0].mean(), LFPSNRs[1].mean()
-arrow(dmean, 3.5, 0, -ah, head_width=0.1, head_length=ah/2,
+dmean, smean = LFPCORRS[0].mean(), LFPCORRS[1].mean()
+arrow(dmean, dmax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
       length_includes_head=True, color='b')
-arrow(smean, 3.5, 0, -ah, head_width=0.1, head_length=ah/2,
+arrow(smean, smax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
       length_includes_head=True, color='r')
-xlabel(r"LFP S/N ($|\mu|/\sigma)$")
-ylabel('probability density')
-xticks([0, 1, 2, 3])
-yticks([0, 1, 2, 3])
+xlabel('LFP trial correlation')
+ylabel('trial count')
+xticks([0, 0.2, 0.4, 0.6, 0.8, 1], ['0', '0.2', '0.4', '0.6', '0.8', '1'])
+ylim(0, nmax+ah*1.1)
 # display means and p value:
-text(0.98, 0.98, '$\mu$ = %.1f' % smean, # synched
+text(0.98, 0.98, '$\mu$ = %.2f' % smean, # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.98, 0.90, '$\mu$ = %.1f' % dmean, # desynched
+text(0.98, 0.90, '$\mu$ = %.2f' % dmean, # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(lfpp, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('LFP_SNR_hist')
+gcfm().window.setWindowTitle('LFP_reliability_hist')
 tight_layout(pad=0.3)
 
-# calculate MUA PDFs:
-SNRBINW = 0.1
-snrbins = np.arange(0, 5+SNRBINW, SNRBINW) # left edges + rightmost edge
-nd = np.histogram(MUASNRs[0], bins=snrbins, density=True)[0]
-ns = np.histogram(MUASNRs[1], bins=snrbins, density=True)[0]
-#nmax = max(np.hstack([nd, ns]))
-# normalize density to arbitrary units:
-#nd = nd / nmax
-#ns = ns / nmax
+# calculate MUACORRS PDFs:
+nd = np.histogram(MUACORRS[0], bins=corrbins, density=False)[0]
+ns = np.histogram(MUACORRS[1], bins=corrbins, density=False)[0]
+dmax, smax = nd.max(), ns.max()
+nmax = max(np.hstack([nd, ns]))
+ah = nmax / 7 # arrow height
 nd = np.hstack([nd, nd[-1]]) # repeat last point for right edge
 ns = np.hstack([ns, ns[-1]])
 figure(figsize=(3, 3))
-plot(snrbins, nd, 'b-', lw=2)
-plot(snrbins, ns, 'r-', lw=2)
+plot(corrbins, nd, 'b-', lw=2)
+plot(corrbins, ns, 'r-', lw=2)
 # draw arrows at means:
-ah = 0.4 # arrow height
-dmean, smean = MUASNRs[0].mean(), MUASNRs[1].mean()
-arrow(dmean, 1, 0, -ah, head_width=0.3, head_length=ah/2,
+dmean, smean = MUACORRS[0].mean(), MUACORRS[1].mean()
+arrow(dmean, dmax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
       length_includes_head=True, color='b')
-arrow(smean, 1, 0, -ah, head_width=0.3, head_length=ah/2,
+arrow(smean, smax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
       length_includes_head=True, color='r')
-xlabel(r"MUA S/N ($|\mu|/\sigma)$")
-ylabel('probability density')
-#xticks([0, 1, 2, 3])
-#yticks([0, 1, 2, 3])
+xlabel('MUA trial correlation')
+ylabel('trial count')
+xticks([0, 0.2, 0.4, 0.6, 0.8, 1], ['0', '0.2', '0.4', '0.6', '0.8', '1'])
+ylim(0, nmax+ah*1.1)
 # display means and p value:
-text(0.98, 0.98, '$\mu$ = %.1f' % smean, # synched
-                 horizontalalignment='right', verticalalignment='top',
+text(0.02, 0.98, '$\mu$ = %.2f' % smean, # synched
+                 horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.98, 0.90, '$\mu$ = %.1f' % dmean, # desynched
-                 horizontalalignment='right', verticalalignment='top',
+text(0.02, 0.90, '$\mu$ = %.2f' % dmean, # desynched
+                 horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.98, 0.82, 'p < %.1g' % ceilsigfig(muap, 1),
-                 horizontalalignment='right', verticalalignment='top',
+text(0.02, 0.82, 'p < %.1g' % ceilsigfig(muap, 1),
+                 horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('MUA_SNR_hist')
+gcfm().window.setWindowTitle('MUA_reliability_hist')
 tight_layout(pad=0.3)
 
 pl.show()
