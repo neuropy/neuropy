@@ -17,6 +17,8 @@ from scipy.signal import argrelextrema
 from scipy.stats import ttest_ind, chisquare, mannwhitneyu
 from numpy import log10
 
+import pylab as pl
+
 from core import get_ssnids, sparseness, intround, ceilsigfig, scatterbin
 
 from psth_funcs import plot_psth, get_psth_peaks_gac
