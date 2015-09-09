@@ -134,11 +134,13 @@ xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel(r'$\rho$')
 ylabel('unit pair count')
-text(0.98, 0.98, r'$\mu$=%.4g' % dmean, color='b',
+text(0.98, 0.98, r'$\mu$=%.2g' % dmean, color='b',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-text(0.98, 0.90, r'$\mu$=%.4g' % smean, color='r',
+text(0.98, 0.90, r'$\mu$=%.2g' % smean, color='r',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 text(0.98, 0.82, '%s' % pstring, color='k',
+     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+text(0.98, 0.74, r'$2\sigma=$%d ms' % intround(BINW * 1000), color='k',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 #text(0.98, 0.82, '%s' % dpstring, color='b',
 #     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
@@ -332,6 +334,8 @@ xticks(septicks)
 yticks(*rhoticks)
 xlabel(r'unit pair separation (${\mu}m$)')
 ylabel(r'$\rho$')
+text(0.98, 0.98, r'$2\sigma=$%d ms' % intround(BINW * 1000), color='k',
+     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 titlestr = '_'.join(['rho_sep', KIND, KERNEL, BINWMS])
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
