@@ -89,6 +89,7 @@ for rec in urecs:
         LFPa.set_xlim(xmax=5.5)
         LFPa.set_ylim(-0.5, 0.5) # mV
         LFPa.set_yticks([-0.5, 0, 0.5])
+        LFPa.set_yticklabels(['-0.5', '0', '0.5'])
         LFPa.set_ylabel("LFP (mV)")
         LFPa.yaxis.set_label_coords(YLABELX, 0.5)
         # MUA:
@@ -101,8 +102,8 @@ for rec in urecs:
         MUAa.set_yticks([0, 1])
         MUAa.set_ylabel("MUA (AU)")
         MUAa.yaxis.set_label_coords(YLABELX, 0.5)
-        print('LFP sparseness:', sparseness(np.abs(lfpmean)))
-        print('MUA sparseness:', sparseness(np.abs(nmuamean)))
+        print('sparseness(abs(mean(LFP))):', sparseness(np.abs(lfpmean)))
+        print('sparseness(mean(MUA)):', sparseness(nmuamean))
 
     LFPa.set_xlabel("time (s)")
     lfpf.canvas.manager.set_window_title("LFP trials %s" % rec.absname)
@@ -110,8 +111,7 @@ for rec in urecs:
     MUAa.set_xlabel("time (s)")
     muaf.canvas.manager.set_window_title("MUA trials %s" % rec.absname)
     muaf.tight_layout(pad=0.3) # crop figure to contents
-
-    pl.show() # ensures figures pop up in order
+    pl.show() # ensure figures pop up in order
 
 # calculate significance
 u, lfpp = mannwhitneyu(LFPCORRS[0], LFPCORRS[1]) # 1-sided
@@ -119,7 +119,7 @@ print('lfpp = %.2g' % lfpp)
 u, muap = mannwhitneyu(MUACORRS[0], MUACORRS[1]) # 1-sided
 print('muap = %.2g' % muap)
 
-# calculate LFPCORRS PDFs:
+# plot LFPCORRS PDFs:
 corrbins = np.arange(0, 1+CORRBINW, CORRBINW) # left edges + rightmost edge
 nd = np.histogram(LFPCORRS[0], bins=corrbins, density=False)[0]
 ns = np.histogram(LFPCORRS[1], bins=corrbins, density=False)[0]
@@ -151,10 +151,11 @@ text(0.98, 0.90, '$\mu$ = %.2f' % dmean, # desynched
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(lfpp, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('LFP_reliability_hist')
+gcfm().window.setWindowTitle('LFP_trial_correlation_hist')
 tight_layout(pad=0.3)
+pl.show() # ensure figures pop up in order
 
-# calculate MUACORRS PDFs:
+# plot MUACORRS PDFs:
 nd = np.histogram(MUACORRS[0], bins=corrbins, density=False)[0]
 ns = np.histogram(MUACORRS[1], bins=corrbins, density=False)[0]
 dmax, smax = nd.max(), ns.max()
@@ -185,7 +186,8 @@ text(0.02, 0.90, '$\mu$ = %.2f' % dmean, # desynched
 text(0.02, 0.82, 'p < %.1g' % ceilsigfig(muap, 1),
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('MUA_reliability_hist')
+gcfm().window.setWindowTitle('MUA_trial_correlation_hist')
 tight_layout(pad=0.3)
+pl.show() # ensure figures pop up in order
 
 pl.show()
