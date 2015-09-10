@@ -1,14 +1,16 @@
-"""Plot distribution of mean rates of all (responsive?) cells across all 6 natstate
-recordings. Run with 'run -i scripts/meanrates_natstate.py'"""
+"""Plot distribution of mean rates of all cells across all 6 natstate recordings. Run with
+'run -i scripts/meanrates_natstate.py'"""
 
 from __future__ import division
 from __future__ import print_function
 
 from scipy.stats import chisquare, mannwhitneyu
+from scipy.optimize import leastsq
 
 import pylab as pl
 
 from core import ceilsigfig, g
+
 
 figsize = (3, 3) # inches
 NULLRATE = 1e-4
@@ -16,10 +18,19 @@ ymax = 40 # for meanrates hist
 logmin, logmax = -4, 2
 ticks = 10**(np.arange(logmin, logmax+1.0, 2.0)) # label every even power of 10
 nbins = 20
-bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
+bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 in log space
+logbinwidth = log10(bins[1])-log10(bins[0])
+midbins = np.logspace(logmin+logbinwidth/2, logmax-logbinwidth/2, nbins) # nbins in log space
+logmidbins = log10(midbins)
 
 ## NOTE: this analysis includes all isolated single units, and is not limited only to
 ## responsive neurons
+
+def cost(p, x, y):
+    """Cost function for LM least-squares fit"""
+    mu, sigma, A = p
+    return A * g(mu, sigma, x) - y
+
 
 # sort recordings by their absname:
 urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
@@ -47,20 +58,45 @@ synchrates = meanrates[1][meanrates[1] != NULLRATE]
 
 # plot mean rate distributions in log space:
 figure(figsize=figsize)
+# plot actual distributions:
+shist = hist(synchrates, bins=bins, histtype='step', color='r', zorder=10)[0] # synched
+dhist = hist(desynchrates, bins=bins, histtype='step', color='b', zorder=10)[0] # desynched
+# do some stats:
 u, p = mannwhitneyu(log10(synchrates), log10(desynchrates)) # 1-sided
 slogmean = log10(synchrates).mean()
+dlogmean = log10(desynchrates).mean()
+slogstd = log10(synchrates).std()
+dlogstd = log10(desynchrates).std()
 smean = 10**(slogmean) # geometric
-dmean = 10**(log10(desynchrates).mean())
+dmean = 10**(dlogmean)
+'''
 # plot approximately equivalent lognormal distribution:
-## TODO: do least squares fit instead
 A, mu = 34, slogmean
 sigma = log10(synchrates).std()
 modelx = np.logspace(logmin, logmax, 200) # 200 points in log space
-modely = A*g(mu, sigma, np.log10(modelx))
+modely = A*g(mu, sigma, log10(modelx))
 plot(modelx, modely, 'e-', lw=1)
-# plot actual distributions:
-n1 = hist(synchrates, bins=bins, histtype='step', color='r', zorder=10)[0] # synched
-n0 = hist(desynchrates, bins=bins, histtype='step', color='b', zorder=10)[0] # desynched
+'''
+# Do least-squares LM fit of a lognormal distribution to the data.
+# Everything is done in log space:
+# set initial parameters:
+sA, dA = max(shist), max(dhist) # Gaussian amplitude
+sp = slogmean, slogstd, sA # parameter list
+dp = dlogmean, dlogstd, dA
+# fit the 3 parameters for both synched and desynched distribs:
+sresult = leastsq(cost, sp, args=(logmidbins, shist), full_output=True)
+dresult = leastsq(cost, dp, args=(logmidbins, dhist), full_output=True)
+sp, cov_p, infodict, mesg, ier = sresult
+dp, cov_p, infodict, mesg, ier = dresult
+smu, ssigma, sA = sp
+dmu, dsigma, dA = dp
+# generate fit distributions from fit parameters
+modelx = np.logspace(logmin, logmax, 200) # 200 points in log space
+smodel = sA*g(smu, ssigma, log10(modelx))
+dmodel = dA*g(dmu, dsigma, log10(modelx))
+# plot the fit distributions:
+plot(modelx, smodel, 'r--', lw=1, alpha=0.5)
+plot(modelx, dmodel, 'b--', lw=1, alpha=0.5)
 xscale('log')
 xlim(xmin=10**logmin, xmax=10**logmax)
 ylim(ymax=ymax)
