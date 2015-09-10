@@ -4,16 +4,22 @@ recordings. Run with 'run -i scripts/meanrates_natstate.py'"""
 from __future__ import division
 from __future__ import print_function
 
+from scipy.stats import chisquare, mannwhitneyu
+
 import pylab as pl
 
-from core import ceilsigfig
+from core import ceilsigfig, g
 
 figsize = (3, 3) # inches
-NULLRATE = None
+NULLRATE = 1e-4
+ymax = 40 # for meanrates hist
+logmin, logmax = -4, 2
+ticks = 10**(np.arange(logmin, logmax+1.0, 2.0)) # label every even power of 10
+nbins = 20
+bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
 
-## TODO: limit to responsive neurons?
-## TODO: limit to only when movie is on screen?
-## TODO: scatter plot rates for each neuron?
+## NOTE: this analysis includes all isolated single units, and is not limited only to
+## responsive neurons
 
 # sort recordings by their absname:
 urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
@@ -32,34 +38,36 @@ for rec in urecs:
             nspikes = si1 - si0
             meanrate = nspikes / dt # Hz
             if meanrate == 0:
-                if NULLRATE:
-                    meanrate = NULLRATE # replace 0s with NULLRATE for log scale plotting
-                else:
-                    continue # skip 0s
+                meanrate = NULLRATE # replace 0s with NULLRATE
             meanrates[statei].append(meanrate)
 
-for statei in range(2):
-    meanrates[statei] = np.asarray(meanrates[statei])
-
+meanrates = np.asarray(meanrates)
+desynchrates = meanrates[0][meanrates[0] != NULLRATE] # filter out any NULLRATE values
+synchrates = meanrates[1][meanrates[1] != NULLRATE]
 
 # plot mean rate distributions in log space:
-logmin, logmax = -4, 2
-nbins = 20
-bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
 figure(figsize=figsize)
-n1 = hist(meanrates[1], bins=bins, histtype='step', color='r')[0] # synched
-n0 = hist(meanrates[0], bins=bins, histtype='step', color='b')[0] # desynched
-n = np.hstack([n0, n1])
-xlim(xmin=10**logmin, xmax=10**logmax)
-ylim(ymax=n.max()+10)
-#xticks(ticks)
+u, p = mannwhitneyu(log10(synchrates), log10(desynchrates)) # 1-sided
+slogmean = log10(synchrates).mean()
+smean = 10**(slogmean) # geometric
+dmean = 10**(log10(desynchrates).mean())
+# plot approximately equivalent lognormal distribution:
+## TODO: do least squares fit instead
+A, mu = 34, slogmean
+sigma = log10(synchrates).std()
+modelx = np.logspace(logmin, logmax, 200) # 200 points in log space
+modely = A*g(mu, sigma, np.log10(modelx))
+plot(modelx, modely, 'e-', lw=1)
+# plot actual distributions:
+n1 = hist(synchrates, bins=bins, histtype='step', color='r', zorder=10)[0] # synched
+n0 = hist(desynchrates, bins=bins, histtype='step', color='b', zorder=10)[0] # desynched
 xscale('log')
+xlim(xmin=10**logmin, xmax=10**logmax)
+ylim(ymax=ymax)
+xticks(ticks)
+yticks(range(0, 40+10, 10))
 xlabel('mean firing rate (Hz)')
 ylabel('unit count')
-#t, p = ttest_ind(log10(meanrates[0]), log10(meanrates[1]), equal_var=False) # Welch's T-test
-u, p = mannwhitneyu(log10(meanrates[0]), log10(meanrates[1])) # 1-sided
-smean = 10**(log10(meanrates[1]).mean()) # geometric
-dmean = 10**(log10(meanrates[0]).mean())
 # display geometric means and p value:
 text(0.03, 0.98, '$\mu$ = %.2f Hz' % smean, # synched
                  horizontalalignment='left', verticalalignment='top',
@@ -77,7 +85,39 @@ annotate('', xy=(smean, (6/7)*40), xycoords='data', # synched
 annotate('', xy=(dmean, (6/7)*40), xycoords='data', # desynched
              xytext=(dmean, 40), textcoords='data',
              arrowprops=dict(fc='b', ec='none', width=1.3, headwidth=7, frac=0.5))
-titlestr = 'meanrates'
+titlestr = 'meanrates hist'
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+
+# scatter plot rates in desynched vs synched state
+figure(figsize=figsize)
+truecols = (meanrates != NULLRATE).all(axis=0) # columns without NULLRATE values
+falsecols = (meanrates == NULLRATE).any(axis=0) # columns with NULLRATE values
+meanratestrue = meanrates[:, truecols]
+meanratesfalse = meanrates[:, falsecols]
+# report numbers, fractions and chi2 p values for reliability scatter plot.
+nbelowyxline = (meanratestrue[1, :] > meanratestrue[0, :]).sum()
+naboveyxline = (meanratestrue[0, :] > meanratestrue[1, :]).sum()
+fractionbelowyxline = nbelowyxline / (nbelowyxline + naboveyxline)
+chi2, p = chisquare([naboveyxline, nbelowyxline])
+pstring = '$p<%g$' % ceilsigfig(p)
+print('nbelowyxline=%d, naboveyxline=%d, fractionbelowyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowyxline, naboveyxline,
+                             fractionbelowyxline, chi2, p))
+plot([10**logmin, 10**logmax], [10**logmin, 10**logmax], 'e--') # plot y=x line
+plot(meanratestrue[1], meanratestrue[0], 'o', mec='k', mfc='None')
+plot(meanratesfalse[1], meanratesfalse[0], 'o', mec='e', mfc='None')
+xlabel('synchronized rate (Hz)')
+ylabel('desynchronized rate (Hz)')
+xscale('log')
+yscale('log')
+xlim(10**(logmin-0.1), 10**logmax)
+ylim(10**(logmin-0.1), 10**logmax)
+xticks(ticks)
+yticks(ticks)
+text(0.03, 0.98, '%s' % pstring, horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+titlestr = 'meanrates scatter'
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
