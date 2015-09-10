@@ -6,11 +6,20 @@ console"""
 from __future__ import division
 from __future__ import print_function
 
+from core import g
+from scipy.optimize import leastsq
+
 
 fontsize(18)
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
 colours = 'r', 'g', 'b'
 nbins = 25
+
+def cost(p, x, y):
+    """Cost function for LM least-squares fit"""
+    mu, sigma, A = p
+    return A * g(mu, sigma, x) - y
+
 
 # Figure 1: plot firing rate rank order:
 f1 = figure(1)
@@ -47,15 +56,7 @@ y = hist(allrates, bins=edges, color='k')[0]
 logx = np.log10(edges)[:-1] # left bin edges
 logx = logx + (logx[1] - logx[0]) / 2 # middle of bins
 
-# do least-squares LM of fit lognormal distribution to data:
-
-from core import g
-from scipy.optimize import leastsq
-
-def cost(p, x, y):
-    mu, sigma, A = p
-    return A * g(mu, sigma, x) - y
-
+# do least-squares LM fit of a lognormal distribution to the data:
 modellogmean = -1
 modellogsigma = 1
 A = max(y)
