@@ -408,7 +408,7 @@ nbelowrelsyxline = (scatrels[:, 1] > scatrels[:, 0]).sum()
 naboverelsyxline = (scatrels[:, 0] > scatrels[:, 1]).sum()
 fractionbelowrelsyxline = nbelowrelsyxline / (nbelowrelsyxline + naboverelsyxline)
 chi2, p = chisquare([naboverelsyxline, nbelowrelsyxline])
-pstring = '$p<%g$' % ceilsigfig(p)
+pstring = 'p < %g' % ceilsigfig(p)
 print('nbelowrelsyxline=%d, naboverelsyxline=%d, fractionbelowrelsyxline=%.3g, '
       'chi2=%.3g, p=%.3g' % (nbelowrelsyxline, naboverelsyxline,
                              fractionbelowrelsyxline, chi2, p))
@@ -531,7 +531,7 @@ nbelowsparsyxline = (scatspars[:, 1] > scatspars[:, 0]).sum()
 nabovesparsyxline = (scatspars[:, 0] > scatspars[:, 1]).sum()
 fractionbelowsparsyxline = nbelowsparsyxline / (nbelowsparsyxline + nabovesparsyxline)
 chi2, p = chisquare([nabovesparsyxline, nbelowsparsyxline])
-pstring = '$p<%g$' % ceilsigfig(p)
+pstring = 'p < %g' % ceilsigfig(p)
 print('nbelowsparsyxline=%d, nabovesparsyxline=%d, fractionbelowsparsyxline=%.3g, '
       'chi2=%.3g, p=%.3g' % (nbelowsparsyxline, nabovesparsyxline,
                              fractionbelowsparsyxline, chi2, p))

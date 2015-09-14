@@ -136,7 +136,7 @@ nbelowyxline = (meanratestrue[1, :] > meanratestrue[0, :]).sum()
 naboveyxline = (meanratestrue[0, :] > meanratestrue[1, :]).sum()
 fractionbelowyxline = nbelowyxline / (nbelowyxline + naboveyxline)
 chi2, p = chisquare([naboveyxline, nbelowyxline])
-pstring = '$p<%g$' % ceilsigfig(p)
+pstring = 'p < %g' % ceilsigfig(p)
 print('nbelowyxline=%d, naboveyxline=%d, fractionbelowyxline=%.3g, '
       'chi2=%.3g, p=%.3g' % (nbelowyxline, naboveyxline,
                              fractionbelowyxline, chi2, p))

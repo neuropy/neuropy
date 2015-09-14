@@ -93,9 +93,9 @@ dmean = rhos['desynch'].mean()
 smean = rhos['synch'].mean()
 u, p = mannwhitneyu(rhos['desynch'], rhos['synch']) # 1-sided
 if p < ALPHA:
-    pstring = '$p<%g$' % ceilsigfig(p)
+    pstring = 'p < %g' % ceilsigfig(p)
 else:
-    pstring = '$p>%g$' % floorsigfig(p)
+    pstring = 'p > %g' % floorsigfig(p)
 '''
 # T-tests of both distribs relative to 0, not so useful:
 dt, dp = ttest_1samp(rhos['desynch'], 0) # 2-sided ttest relative to 0
@@ -103,13 +103,13 @@ st, sp = ttest_1samp(rhos['synch'], 0) # 2-sided ttest relative to 0
 print('dmean=%g, t=%g, p=%g' % (dmean, dt, dp))
 print('smean=%g, t=%g, p=%g' % (smean, st, sp))
 if dp < ALPHA:
-    dpstring = '$p<%g$' % ceilsigfig(dp)
+    dpstring = 'p < %g' % ceilsigfig(dp)
 else:
-    dpstring = '$p>%g$' % floorsigfig(dp)
+    dpstring = 'p > %g' % floorsigfig(dp)
 if sp < ALPHA:
-    spstring = '$p<%g$' % ceilsigfig(sp)
+    spstring = 'p < %g' % ceilsigfig(sp)
 else:
-    spstring = '$p>%g$' % floorsigfig(sp)
+    spstring = 'p > %g' % floorsigfig(sp)
 '''
 figure(figsize=FIGSIZE)
 rhobins = np.arange(RHOMIN, RHOMAX+0.05, 0.05) # left edges + rightmost edge
@@ -135,9 +135,9 @@ xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel(r'$\rho$')
 ylabel('unit pair count')
-text(0.98, 0.98, r'$\mu$=%.2g' % smean, color='r',
+text(0.98, 0.98, r'$\mu$ = %.2g' % smean, color='r',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-text(0.98, 0.90, r'$\mu$=%.2g' % dmean, color='b',
+text(0.98, 0.90, r'$\mu$ = %.2g' % dmean, color='b',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 text(0.98, 0.82, '%s' % pstring, color='k',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
@@ -167,9 +167,9 @@ print('d3mean=%.3g, s3mean=%.3g, s4mean=%.3g, d4mean=%.2g' %
       (d3mean, s3mean, s4mean, d4mean))
 print('p3=%.2g, p4=%.2g, p34d=%.2g, p34s=%.2g' % (p3, p4, p34d, p34s))
 #if p < ALPHA:
-#    pstring = '$p<%g$' % ceilsigfig(p)
+#    pstring = 'p < %g' % ceilsigfig(p)
 #else:
-#    pstring = '$p>%g$' % floorsigfig(p)
+#    pstring = 'p > %g' % floorsigfig(p)
 figure(figsize=FIGSIZE)
 rhobins = np.arange(RHOMIN, RHOMAX+0.0667, 0.0667) # left edges + rightmost edge
 # ptc22.tr1.r08 and ptc22.tr1.r10 are recording indices 3 and 4, respectively
@@ -195,13 +195,13 @@ xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel(r'$\rho$')
 ylabel('unit pair count')
-text(0.98, 0.98, r'p3=%.2g' % p3, color='k',
+text(0.98, 0.98, r'p3 = %.2g' % p3, color='k',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-text(0.98, 0.90, r'p4=%.2g' % p4, color='k',
+text(0.98, 0.90, r'p4 = %.2g' % p4, color='k',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-text(0.98, 0.82, r'p34d=%.2g' % p34d, color='b',
+text(0.98, 0.82, r'p34d = %.2g' % p34d, color='b',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-text(0.98, 0.74, r'p34s=%.2g' % p34s, color='r',
+text(0.98, 0.74, r'p34s = %.2g' % p34s, color='r',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 titlestr = '_'.join(['rho_hist_r08_r10', KIND, KERNEL, BINWMS])
 gcfm().window.setWindowTitle(titlestr)
@@ -231,7 +231,7 @@ naboveyxline = (alldesynchrhos > allsynchrhos).sum()
 chi2, p = chisquare([naboveyxline, nbelowyxline])
 text(0.03, 0.98, '%d < %d' % (naboveyxline, nbelowyxline), color='k',
      transform=gca().transAxes, horizontalalignment='left', verticalalignment='top')
-text(0.03, 0.90, 'p=%.2g' % p, color='k',
+text(0.03, 0.90, 'p = %.2g' % p, color='k',
      transform=gca().transAxes, horizontalalignment='left', verticalalignment='top')
 xlim(xmin=RHOMIN, xmax=RHOMAX)
 ylim(ymin=RHOMIN, ymax=RHOMAX)
@@ -265,7 +265,7 @@ naboveyxline = (r10rhos > r08rhos).sum()
 chi2, p = chisquare([naboveyxline, nbelowyxline])
 text(0.03, 0.98, '%d < %d' % (naboveyxline, nbelowyxline), color='k',
      transform=gca().transAxes, horizontalalignment='left', verticalalignment='top')
-text(0.03, 0.90, 'p=%.2g' % p, color='k',
+text(0.03, 0.90, 'p = %.2g' % p, color='k',
      transform=gca().transAxes, horizontalalignment='left', verticalalignment='top')
 xlim(xmin=RHOMIN, xmax=RHOMAX)
 ylim(ymin=RHOMIN, ymax=RHOMAX)
@@ -303,7 +303,7 @@ naboveyxline = (alldesynchrhos > allsynchrhos).sum()
 chi2, p = chisquare([naboveyxline, nbelowyxline])
 text(0.03, 0.98, '%d < %d' % (naboveyxline, nbelowyxline), color='k',
      transform=gca().transAxes, horizontalalignment='left', verticalalignment='top')
-text(0.03, 0.90, 'p=%.2g' % p, color='k',
+text(0.03, 0.90, 'p = %.2g' % p, color='k',
      transform=gca().transAxes, horizontalalignment='left', verticalalignment='top')
 xlim(xmin=RHOMIN, xmax=RHOMAX)
 ylim(ymin=RHOMIN, ymax=RHOMAX)
@@ -349,9 +349,9 @@ xticks(septicks)
 yticks(*rhoticks)
 xlabel(r'unit pair separation (${\mu}m$)')
 ylabel(r'$\rho$')
-text(0.98, 0.98, 'r=%.2f, p=%.1g' % (rs[1], ps[1]),
+text(0.98, 0.98, 'r = %.2f, p = %.1g' % (rs[1], ps[1]),
      color='r', transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-text(0.98, 0.90, 'r=%.2f, p=%.1g' % (rs[0], ps[0]),
+text(0.98, 0.90, 'r = %.2f, p = %.1g' % (rs[0], ps[0]),
      color='b', transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 #text(0.98, 0.82, r'$2\sigma=$%d ms' % intround(BINW * 1000), color='k',
      #transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')

@@ -164,7 +164,7 @@ k = kurtosis(allmotion)
 # kurtosistest() seems to use the method of Anscombe & Glynn (1983),
 # http://biomet.oxfordjournals.org/content/70/1/227
 z, p = kurtosistest(allmotion)
-pstring = '$p<%g$' % ceilsigfig(p)
+pstring = 'p < %g' % ceilsigfig(p)
 # normally distributed signal with same std as data, to check that its kurtosis is 0:
 #nsamples = 10000000
 #normal = scipy.random.normal(0, allmotion.std(), nsamples)
@@ -174,7 +174,7 @@ normalcount = core.g(0, allmotion.std(), midbins) # generate normal distrib dire
 normalcount = normalcount / normalcount.sum() * motioncount.sum()
 plot(midbins, normalcount, marker=None, ls='-', c='0.7', lw=2)
 plot(midbins, motioncount, marker=None, ls='-', c='k', lw=2)
-text(0.98, 0.98, 'k=%.1f' % k, # kurtosis
+text(0.98, 0.98, 'k = %.1f' % k, # kurtosis
      horizontalalignment='right', verticalalignment='top',
      transform=gca().transAxes, color='k')
 text(0.98, 0.90, '%s' % pstring, # p-value of null (normal) hypothesis of kurtosis test
@@ -339,7 +339,7 @@ nbelowmotyxline = (motscatrhostrue[:, 1] > motscatrhostrue[:, 0]).sum()
 nabovemotyxline = (motscatrhostrue[:, 0] > motscatrhostrue[:, 1]).sum()
 fractionbelowmotyxline = nbelowmotyxline / (nbelowmotyxline + nabovemotyxline)
 chi2, p = chisquare([nabovemotyxline, nbelowmotyxline])
-pstring = '$p<%g$' % ceilsigfig(p)
+pstring = 'p < %g' % ceilsigfig(p)
 print('nbelowmotyxline=%d, nabovemotyxline=%d, fractionbelowmotyxline=%.3g, '
       'chi2=%.3g, p=%.3g' % (nbelowmotyxline, nabovemotyxline, fractionbelowmotyxline,
                              chi2, p))
@@ -369,7 +369,7 @@ figure(figsize=(3, 3))
 dmean = motrhos['desynch'].mean()
 smean = motrhos['synch'].mean()
 u, p = mannwhitneyu(motrhos['desynch'], motrhos['synch']) # 1-sided
-pstring = '$p<%g$' % ceilsigfig(p)
+pstring = 'p < %g' % ceilsigfig(p)
 nd = hist(motrhos['desynch'], bins=RHOBINS, histtype='step', color='b')[0]
 ns = hist(motrhos['synch'], bins=RHOBINS, histtype='step', color='r')[0]
 nmax = max(np.hstack([nd, ns]))
@@ -392,12 +392,12 @@ ylabel('unit count')
 text(0.98, 0.98, 'delay = %d ms' % CORRDELAYMS,
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-text(0.98, 0.90, '$\mu$ = %.3f' % dmean, # desynched
-                 horizontalalignment='right', verticalalignment='top',
-                 transform=gca().transAxes, color='b')
-text(0.98, 0.82, '$\mu$ = %.3f' % smean, # synched
+text(0.98, 0.90, '$\mu$ = %.3f' % smean, # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
+text(0.98, 0.82, '$\mu$ = %.3f' % dmean, # desynched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
 text(0.98, 0.74, '%s' % pstring, color='k',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 gcfm().window.setWindowTitle('movie_global_motion_correlation_%dms' % CORRDELAYMS)
@@ -479,7 +479,7 @@ nbelowconyxline = (conscatrhostrue[:, 1] > conscatrhostrue[:, 0]).sum()
 naboveconyxline = (conscatrhostrue[:, 0] > conscatrhostrue[:, 1]).sum()
 fractionbelowconyxline = nbelowconyxline / (nbelowconyxline + naboveconyxline)
 chi2, p = chisquare([naboveconyxline, nbelowconyxline])
-pstring = '$p<%g$' % ceilsigfig(p)
+pstring = 'p < %g' % ceilsigfig(p)
 print('nbelowconyxline=%d, naboveconyxline=%d, fractionbelowconyxline=%.3g, '
       'chi2=%.3g, p=%.3g' % (nbelowconyxline, naboveconyxline, fractionbelowconyxline,
                              chi2, p))
@@ -504,7 +504,7 @@ figure(figsize=(3, 3))
 dmean = conrhos['desynch'].mean()
 smean = conrhos['synch'].mean()
 u, p = mannwhitneyu(conrhos['desynch'], conrhos['synch']) # 1-sided
-pstring = '$p<%g$' % ceilsigfig(p)
+pstring = 'p < %g' % ceilsigfig(p)
 nd = hist(conrhos['desynch'], bins=RHOBINS, histtype='step', color='b')[0]
 ns = hist(conrhos['synch'], bins=RHOBINS, histtype='step', color='r')[0]
 nmax = max(np.hstack([nd, ns]))
@@ -590,7 +590,7 @@ nbelowlumyxline = (lumscatrhostrue[:, 1] > lumscatrhostrue[:, 0]).sum()
 nabovelumyxline = (lumscatrhostrue[:, 0] > lumscatrhostrue[:, 1]).sum()
 fractionbelowlumyxline = nbelowlumyxline / (nbelowlumyxline + nabovelumyxline)
 chi2, p = chisquare([nabovelumyxline, nbelowlumyxline])
-pstring = '$p<%g$' % ceilsigfig(p)
+pstring = 'p < %g' % ceilsigfig(p)
 print('nbelowlumyxline=%d, nabovelumyxline=%d, fractionbelowlumyxline=%.3g, '
       'chi2=%.3g, p=%.3g' % (nbelowlumyxline, nabovelumyxline, fractionbelowlumyxline,
                              chi2, p))
@@ -615,7 +615,7 @@ figure(figsize=(3, 3))
 dmean = lumrhos['desynch'].mean()
 smean = lumrhos['synch'].mean()
 u, p = mannwhitneyu(lumrhos['desynch'], lumrhos['synch']) # 1-sided
-pstring = '$p<%g$' % ceilsigfig(p)
+pstring = 'p < %g' % ceilsigfig(p)
 nd = hist(lumrhos['desynch'], bins=RHOBINS, histtype='step', color='b')[0]
 ns = hist(lumrhos['synch'], bins=RHOBINS, histtype='step', color='r')[0]
 nmax = max(np.hstack([nd, ns]))
