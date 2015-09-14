@@ -7,7 +7,8 @@ from __future__ import division, print_function
 
 import pylab as pl
 import numpy as np
-from scipy.stats import mannwhitneyu, chisquare, ttest_1samp #, ttest_ind, ks_2samp
+from scipy.stats import mannwhitneyu, chisquare, linregress # ttest_1samp, ttest_ind, ks_2samp
+
 
 import core
 from core import ceilsigfig, floorsigfig, scatterbin, intround
@@ -134,14 +135,14 @@ xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel(r'$\rho$')
 ylabel('unit pair count')
-text(0.98, 0.98, r'$\mu$=%.2g' % dmean, color='b',
+text(0.98, 0.98, r'$\mu$=%.2g' % smean, color='r',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-text(0.98, 0.90, r'$\mu$=%.2g' % smean, color='r',
+text(0.98, 0.90, r'$\mu$=%.2g' % dmean, color='b',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 text(0.98, 0.82, '%s' % pstring, color='k',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-text(0.98, 0.74, r'$2\sigma=$%d ms' % intround(BINW * 1000), color='k',
-     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+#text(0.98, 0.74, r'$2\sigma=$%d ms' % intround(BINW * 1000), color='k',
+#     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 #text(0.98, 0.82, '%s' % dpstring, color='b',
 #     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 #text(0.98, 0.74, '%s' % spstring, color='r',
@@ -317,9 +318,22 @@ tight_layout(pad=0.3)
 # plot rho vs separation:
 figure(figsize=FIGSIZE)
 #pl.plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
+sepsrange = np.array([0, SEPMAX])
+ms, bs, rs, ps, stderrs = [], [], [], [], []
 for slabel, c in zip(slabels, colours):
     # scatter plot:
     pl.plot(seps[slabel], rhos[slabel], c+'.', alpha=0.5, ms=2)
+    # calculate linear regression:
+    m, b, r, p, stderr = linregress(seps[slabel], rhos[slabel])
+    # plot linear regression:
+    plot(sepsrange, m*sepsrange+b, c=c, ls='-', lw=2, alpha=1, zorder=10)
+    ms.append(m)
+    bs.append(b)
+    rs.append(r)
+    ps.append(p)
+    stderrs.append(stderr)
+    Ns.append(len(seps[slabel]))
+    '''
     # bin seps and plot mean rho in each bin:
     sepbins = np.arange(0, SEPMAX+SEPBINW, SEPBINW) # bin edges
     sepbins[-1] = 2000 # make last right edge include all remaining data
@@ -327,6 +341,7 @@ for slabel, c in zip(slabels, colours):
                                             xaverage=None)
     midseps[-1] = midseps[-2] + SEPBINW # fix last midsep value
     errorbar(midseps, rhomeans, yerr=rhostds, fmt=c+'.-', ms=10, lw=2, zorder=9999)
+    '''
 xlim(xmin=0, xmax=SEPMAX)
 ylim(ymin=RHOMIN, ymax=RHOMAX)
 septicks = np.arange(0, SEPMAX+100, 500)
@@ -334,8 +349,12 @@ xticks(septicks)
 yticks(*rhoticks)
 xlabel(r'unit pair separation (${\mu}m$)')
 ylabel(r'$\rho$')
-text(0.98, 0.98, r'$2\sigma=$%d ms' % intround(BINW * 1000), color='k',
-     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+text(0.98, 0.98, 'r=%.2f, p=%.1g' % (rs[1], ps[1]),
+     color='r', transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+text(0.98, 0.90, 'r=%.2f, p=%.1g' % (rs[0], ps[0]),
+     color='b', transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+#text(0.98, 0.82, r'$2\sigma=$%d ms' % intround(BINW * 1000), color='k',
+     #transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 titlestr = '_'.join(['rho_sep', KIND, KERNEL, BINWMS])
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
