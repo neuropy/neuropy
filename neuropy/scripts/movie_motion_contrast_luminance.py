@@ -35,6 +35,12 @@ EXAMPLERECNAME = 'ptc17.tr2b.r58'
 EXAMPLENID = 48
 EXAMPLEPSTH = [None, None]
 
+# manbar center relative to screen center, extracted from NVS header of older recordings
+# that didn't have the s.origDeg static param in their textheader:
+ORIGDEGS = {'ptc17.tr2b.r58': (-3.2824440002441406, -3.054497003555298),
+            'ptc18.tr1.r38': (-1.5044540166854858, -3.7839291095733643),
+            'ptc18.tr2c.r58': (1.09414803981781, -0.5926640033721924)}
+
 # calculate optic flow vector field between neighbouring pairs of frames, average their
 # magnitudes to get global motion:
 mot = {}
@@ -49,7 +55,9 @@ for rec in urecs:
     print(name)
     e0 = rec.e0
     movie = e0.e
-    movie.load() # load movie data for this recording, flips frames vertically by default
+    # load movie data for this recording, flips frames vertically by default
+    # for bottom left origin:
+    movie.load()
     degpermoviepix = e0.s.widthDeg / movie.ncellswide
     dt = e0.d.sweepSec # frame duration in seconds
     # converting all the frames from a list of arrays to a 3D numpy array is slow and
@@ -61,16 +69,41 @@ for rec in urecs:
         frames.append(allframes[framei]) # dereference
     frames = np.asarray(frames)
     nframeintervals = len(frameis) - 1
-    frame0 = frames[0] # init
+    # calculate spatial limits of movie frames that were actually displayed:
+    screenwidth = e0.I['SCREENWIDTHCM'] * e0.I['DEGPERCM'] # deg
+    screenheight = e0.I['SCREENHEIGHTCM'] * e0.I['DEGPERCM']
+    halfscreenwidth, halfscreenheight = screenwidth/2, screenheight/2
+    moviewidth, movieheight = e0.s.widthDeg, e0.s.heightDeg # deg
+    halfmoviewidth, halfmovieheight = moviewidth/2, movieheight/2
+    # manbar center relative to screen center:
+    try:
+        xorigDeg, yorigDeg = e0.s.xorigDeg, e0.s.yorigDeg
+    except AttributeError:
+        xorigDeg, yorigDeg = ORIGDEGS[name]
+    # movie center position, wrt screen center, deg:
+    xpos, ypos = e0.d.xposDeg+xorigDeg, e0.d.yposDeg+yorigDeg
+    # x and y indices into frames, spanning range of movie pixels that were on-screen,
+    # assumes (x,y) origin of each movie frame is at bottom left:
+    mvicenter_wrt_leftscredge = halfscreenwidth + xpos
+    leftscredge_wrt_leftmviedge = halfmoviewidth - mvicenter_wrt_leftscredge
+    x0i = intround(leftscredge_wrt_leftmviedge / degpermoviepix)
+    x1i = intround((leftscredge_wrt_leftmviedge + screenwidth) / degpermoviepix)
+    mvicenter_wrt_bottomscredge = halfscreenheight + ypos
+    bottomscredge_wrt_bottommviedge = halfmovieheight - mvicenter_wrt_bottomscredge
+    y0i = intround(bottomscredge_wrt_bottommviedge / degpermoviepix)
+    y1i = intround((bottomscredge_wrt_bottommviedge + screenheight) / degpermoviepix)
+    frames = frames[:, y0i:y1i, x0i:x1i]
+    print('xis: %d:%d, yis: %d:%d' % (y0i, y1i, x0i, x1i))
+    print('movie shape:', frames.shape)
+
     # optic flow magnitudes, in deg/sec, one per frame interval:
     mot[name] = np.zeros(nframeintervals)
     con[name] = np.zeros(nframeintervals)
     dcon[name] = np.zeros(nframeintervals)
     lum[name] = np.zeros(nframeintervals)
     dlum[name] = np.zeros(nframeintervals)
+    frame0 = frames[0] # init
     for i, frame1 in enumerate(frames[1:]):
-        ## TODO: if interested in flow direction, double-check vertical order of movie frames
-        ## vs. what's expected by cv2.calcOpticalFlowFarneback. Should frames be flipped?
         flow = cv2.calcOpticalFlowFarneback(frame0, frame1, pyr_scale, levels, winsize,
                                             iterations, poly_n, poly_sigma, flags)
         mag, ang = cv2.cartToPolar(flow[:, :, 0], flow[:, :, 1]) # mag is in pix/frame
@@ -157,8 +190,8 @@ mvi2mot = {}
 for recname in sorted(mot):
     rec = eval(recname)
     mviname = os.path.basename(rec.e0.s.fname)
-    framei0 = rec.e0.d.framei[0]
-    print(recname, (mviname, framei0))
+    framei0, framei1 = rec.e0.d.framei[0], rec.e0.d.framei[-1]
+    print('%s: %s, frameis %d:%d' % (recname, mviname, framei0, framei1))
     mvi2mot[(mviname, framei0)] = mot[recname]
 allmotion = np.hstack(list(mvi2mot.values()))
 allmotion = np.hstack([allmotion, -allmotion]) # make it symmetric around 0
