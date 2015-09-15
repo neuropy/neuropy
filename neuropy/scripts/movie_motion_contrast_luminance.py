@@ -52,9 +52,14 @@ for rec in urecs:
     movie.load() # load movie data for this recording, flips frames vertically by default
     degpermoviepix = e0.s.widthDeg / movie.ncellswide
     dt = e0.d.sweepSec # frame duration in seconds
-    frames = np.asarray(e0.e.frames)
+    # converting all the frames from a list of arrays to a 3D numpy array is slow and
+    # unnecessary. Take just the required frames before converting to an array:
+    allframes = movie.frames
     frameis = np.asarray(e0.d.framei) # movie frame indices used by this recording
-    frames = frames[frameis] # dereference
+    frames = []
+    for framei in frameis:
+        frames.append(allframes[framei]) # dereference
+    frames = np.asarray(frames)
     nframeintervals = len(frameis) - 1
     frame0 = frames[0] # init
     # optic flow magnitudes, in deg/sec, one per frame interval:
