@@ -249,8 +249,12 @@ GAUSS = True # calculate PSTH and single trial rates by convolving with Gaussian
 BLANK = False # consider blank periods between trials?
 MINTHRESH = 3 # peak detection thresh, Hz
 MEDIANX = 2 # PSTH median multiplier, Hz
-CORRDELAY = 0.030 # correlation delay to use between stimulus and response, sec
-CORRDELAYMS = intround(CORRDELAY*1000)
+# correlation delay to use between stimulus and response for most plots:
+CORRDELAY = 30 # ms
+CORRDELAYS = range(-105, 165+15, 15) # for calculating correlation delay dependence
+CORRDELAYS.remove(CORRDELAY) # remove from somewhere in the middle
+# add to end of list so all subsequent variables are calculated from it
+CORRDELAYS.append(CORRDELAY)
 RHOMIN, RHOMAX = -1, 1
 RHOBINS = np.arange(RHOMIN, RHOMAX+0.1, 0.1) # left edges + rightmost edge
 
@@ -269,37 +273,18 @@ states = ['desynch', 'synch'] * (nrecsec // 2) # alternating states
 # get active or all neuron ids for each section of each recording:
 recsecnids = core.get_ssnids(recs, stranges, kind=NIDSKIND)[1]
 
-# correlate each PSTH in each recording section with movie signals. Also, collect
-# movie motion-PSTH sparseness pairs:
-motrhos = {'desynch': [], 'synch': []}
-conrhos = {'desynch': [], 'synch': []}
-lumrhos = {'desynch': [], 'synch': []}
-motscatspars = {'desynch': [], 'synch': []}
-NULLRHO = -1
-recsecscatmotrhos = {} # index into with [rec.absname][nid][statei], first 2 are dict keys
-recsecscatconrhos = {}
-recsecscatlumrhos = {}
+# calculate responsive PSTHs:
+rts = {} # index into by [rec.absname][statei]
+rpsths = {} # index into by [rec.absname][statei][nid]
 for rec, nids, strange, state in zip(recs, recsecnids, stranges, states):
     print(rec.absname, state)
-    if rec.absname not in recsecscatmotrhos:
-        recsecscatmotrhos[rec.absname] = {} # init
-        recsecscatconrhos[rec.absname] = {}
-        recsecscatlumrhos[rec.absname] = {}
     statei = {'desynch': 0, 'synch': 1}[state]
+    if rec.absname not in rts:
+        rts[rec.absname] = [None, None] # init, index into using statei
+        rpsths[rec.absname] = [{}, {}] # init, index into using statei
     t, psths, spikets = rec.psth(nids=nids, natexps=False, blank=BLANK, strange=strange,
                                  plot=False, binw=BINW, tres=TRES, gauss=GAUSS, norm='ntrials')
-    m, c, l = mot[rec.absname], con[rec.absname], lum[rec.absname]
-    tm = tmovie[rec.absname]
-    ms = motspars[rec.absname]
-    psthis0d = t.searchsorted(tm) # PSTH indices closest to movie frame times, no delay
-    dt = rec.e0.d.sweepSec # frame duration in seconds
-    ntdelay = intround(CORRDELAY / dt) # num timepoints to delay movie-PSTH correlation by
-    if ntdelay >= 0:
-        psthis = psthis0d[ntdelay:]
-        movieis = np.arange(0, len(tm)-ntdelay)
-    else: # ntdelay is -ve
-        psthis = psthis0d[:ntdelay]
-        movieis = np.arange(abs(ntdelay), len(tm))
+    rts[rec.absname][statei] = t
     for nid, psth, ts in zip(nids, psths, spikets):
         # run PSTH peak detection:
         baseline = MEDIANX * np.median(psth)
@@ -307,25 +292,83 @@ for rec, nids, strange, state in zip(recs, recsecnids, stranges, states):
         peakis, lis, ris = get_psth_peaks_gac(ts, t, psth, thresh)
         if len(peakis) == 0: # not a responsive PSTH
             continue
-        motrho = core.corrcoef(m[movieis], psth[psthis])
-        conrho = core.corrcoef(c[movieis], psth[psthis])
-        lumrho = core.corrcoef(l[movieis], psth[psthis])
-        motrhos[state].append(motrho)
-        conrhos[state].append(conrho)
-        lumrhos[state].append(lumrho)
-        motscatspars[state].append([ms, core.sparseness(psth)])
-        if nid not in recsecscatmotrhos[rec.absname]:
-            recsecscatmotrhos[rec.absname][nid] = [NULLRHO, NULLRHO] # init list for this nid
-            recsecscatconrhos[rec.absname][nid] = [NULLRHO, NULLRHO]
-            recsecscatlumrhos[rec.absname][nid] = [NULLRHO, NULLRHO]
-        recsecscatmotrhos[rec.absname][nid][statei] = motrho
-        recsecscatconrhos[rec.absname][nid][statei] = conrho
-        recsecscatlumrhos[rec.absname][nid][statei] = lumrho
-
-        if rec.absname == EXAMPLERECNAME and nid == EXAMPLENID:
-            EXAMPLEPSTH[statei] = psth[psthis0d]
-
+        rpsths[rec.absname][statei][nid] = psth
     print('\n') # two newlines
+
+# correlate each PSTH in each recording section with movie signals. Also, collect
+# movie motion-PSTH sparseness pairs:
+motrhostats, conrhostats, lumrhostats = [], [], []
+for corrdelay in CORRDELAYS:
+    motrhos = {'desynch': [], 'synch': []}
+    conrhos = {'desynch': [], 'synch': []}
+    lumrhos = {'desynch': [], 'synch': []}
+    motscatspars = {'desynch': [], 'synch': []}
+    NULLRHO = -1
+    recsecscatmotrhos = {} # index into with [rec.absname][nid][statei], first 2 are dict keys
+    recsecscatconrhos = {}
+    recsecscatlumrhos = {}
+    for rec, state in zip(recs, states):
+        #print(rec.absname, state)
+        statei = {'desynch': 0, 'synch': 1}[state]
+        if rec.absname not in recsecscatmotrhos:
+            recsecscatmotrhos[rec.absname] = {} # init
+            recsecscatconrhos[rec.absname] = {}
+            recsecscatlumrhos[rec.absname] = {}
+        t = rts[rec.absname][statei]
+        m, c, l = mot[rec.absname], con[rec.absname], lum[rec.absname]
+        tm = tmovie[rec.absname]
+        ms = motspars[rec.absname]
+        psthis0d = t.searchsorted(tm) # PSTH indices closest to movie frame times, no delay
+        dt = rec.e0.d.sweepSec # frame duration in seconds
+        corrdelaysec = corrdelay / 1000 # convert from ms to s
+        ntdelay = intround(corrdelaysec / dt) # ntimepoints to delay movie-PSTH correlation by
+        if ntdelay >= 0:
+            psthis = psthis0d[ntdelay:]
+            movieis = np.arange(0, len(tm)-ntdelay)
+        else: # ntdelay is -ve
+            psthis = psthis0d[:ntdelay]
+            movieis = np.arange(abs(ntdelay), len(tm))
+        for nid in sorted(rpsths[rec.absname][statei]):
+            psth = rpsths[rec.absname][statei][nid]
+            motrho = core.corrcoef(m[movieis], psth[psthis])
+            conrho = core.corrcoef(c[movieis], psth[psthis])
+            lumrho = core.corrcoef(l[movieis], psth[psthis])
+            motrhos[state].append(motrho)
+            conrhos[state].append(conrho)
+            lumrhos[state].append(lumrho)
+            motscatspars[state].append([ms, core.sparseness(psth)])
+            if nid not in recsecscatmotrhos[rec.absname]:
+                recsecscatmotrhos[rec.absname][nid] = [NULLRHO, NULLRHO] # init list for this nid
+                recsecscatconrhos[rec.absname][nid] = [NULLRHO, NULLRHO]
+                recsecscatlumrhos[rec.absname][nid] = [NULLRHO, NULLRHO]
+            recsecscatmotrhos[rec.absname][nid][statei] = motrho
+            recsecscatconrhos[rec.absname][nid][statei] = conrho
+            recsecscatlumrhos[rec.absname][nid][statei] = lumrho
+
+            if rec.absname == EXAMPLERECNAME and nid == EXAMPLENID:
+                EXAMPLEPSTH[statei] = psth[psthis0d]
+
+    # convert to arrays:
+    for state in states:
+        motrhos[state] = np.asarray(motrhos[state])
+        conrhos[state] = np.asarray(conrhos[state])
+        lumrhos[state] = np.asarray(lumrhos[state])
+        motscatspars[state] = np.asarray(motscatspars[state])
+    # save mean and std of all rhos, as a function of delay:
+    motrhostats.append([corrdelay, motrhos['desynch'].mean(), motrhos['desynch'].std(),
+                                   motrhos['synch'].mean(), motrhos['synch'].std()])
+    conrhostats.append([corrdelay, conrhos['desynch'].mean(), conrhos['desynch'].std(),
+                                   conrhos['synch'].mean(), conrhos['synch'].std()])
+    lumrhostats.append([corrdelay, lumrhos['desynch'].mean(), lumrhos['desynch'].std(),
+                                   lumrhos['synch'].mean(), lumrhos['synch'].std()])
+
+motrhostats = np.asarray(motrhostats)
+conrhostats = np.asarray(conrhostats)
+lumrhostats = np.asarray(lumrhostats)
+sortis = motrhostats[:, 0].argsort() # sort by corrdelay for plotting
+motrhostats = motrhostats[sortis]
+conrhostats = conrhostats[sortis]
+lumrhostats = lumrhostats[sortis]
 
 # plot motion and PSTHs of example, on the same plot:
 figure(figsize=FIGSIZE)
@@ -358,12 +401,6 @@ motscatrhos = np.vstack(motscatrhos)
 conscatrhos = np.vstack(conscatrhos)
 lumscatrhos = np.vstack(lumscatrhos)
 
-for state in ['desynch', 'synch']:
-    motrhos[state] = np.asarray(motrhos[state])
-    conrhos[state] = np.asarray(conrhos[state])
-    lumrhos[state] = np.asarray(lumrhos[state])
-    motscatspars[state] = np.asarray(motscatspars[state])
-
 # scatter plot motion-PSTH correlation in desynched vs synched state:
 figure(figsize=(3, 3))
 truerows = (motscatrhos != -1).all(axis=1) # exclude rows with -1 by collapsing across columns
@@ -386,10 +423,10 @@ plot(motscatrhostrue[:, 1], motscatrhostrue[:, 0], 'o', mec='k', mfc='None')
 plot(motscatrhosfalse[:, 1], motscatrhosfalse[:, 0], 'o', mec='e', mfc='None')
 examplerhos = recsecscatmotrhos[EXAMPLERECNAME][EXAMPLENID]
 #plot(examplerhos[1], examplerhos[0], 'o', mec='r', mfc='None')
-# instead of colouring it, draw an arrow to highlight example point:
+# instead of colouring it, draw an arrow to highlight example point for CORRDELAY=0.030:
 arrow(0.6, -0.35, -0.15, 0.15, head_width=0.08, head_length=0.12, length_includes_head=True,
       color='k')
-text(0.02, 0.98, 'delay = %d ms' % CORRDELAYMS,
+text(0.02, 0.98, 'delay = %d ms' % CORRDELAY,
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 text(0.02, 0.90, '%s' % pstring,
@@ -399,7 +436,7 @@ xlabel('synchronized', color='r')
 ylabel('desynchronized', color='b')
 xlim(-1.035, 1)
 ylim(-1.035, 1)
-gcfm().window.setWindowTitle('movie_global_motion_correlation_scatter_%dms' % CORRDELAYMS)
+gcfm().window.setWindowTitle('movie_global_motion_correlation_scatter_%dms' % CORRDELAY)
 tight_layout(pad=0.3)
 
 # plot motion rho histograms:
@@ -427,7 +464,7 @@ xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel('PSTH-motion correlation')
 ylabel('unit count')
-text(0.98, 0.98, 'delay = %d ms' % CORRDELAYMS,
+text(0.98, 0.98, 'delay = %d ms' % CORRDELAY,
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 text(0.98, 0.90, '$\mu$ = %.3f' % smean, # synched
@@ -438,35 +475,16 @@ text(0.98, 0.82, '$\mu$ = %.3f' % dmean, # desynched
                  transform=gca().transAxes, color='b')
 text(0.98, 0.74, '%s' % pstring, color='k',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-gcfm().window.setWindowTitle('movie_global_motion_correlation_%dms' % CORRDELAYMS)
+gcfm().window.setWindowTitle('movie_global_motion_correlation_%dms' % CORRDELAY)
 tight_layout(pad=0.3)
 
-# plot rho vs motion stimulus-response delay
-#            delay  desynch  synch
-rhovsdelay = [[-90, -0.019, -0.041],
-              [-75, -0.009, -0.025],
-              [-60,  0.000, -0.011],
-              [-45,  0.010,  0.006],
-              [-30,  0.020,  0.028],
-              [-15,  0.031,  0.053],
-              [  0,  0.039,  0.075],
-              [ 15,  0.043,  0.090],
-              [ 30,  0.044,  0.094],
-              [ 45,  0.045,  0.085],
-              [ 60,  0.048,  0.065],
-              [ 75,  0.047,  0.036],
-              [ 90,  0.041,  0.005],
-              [105,  0.030, -0.022],
-              [120,  0.019, -0.042],
-              #[150,  0.001, -0.056] # no need to go this far
-              ]
-rhovsdelay = np.asarray(rhovsdelay)
+# plot rho vs motion stimulus-response delay:
 figure(figsize=(3, 3))
-plot(rhovsdelay[:, 0], rhovsdelay[:, 1], 'b.-')
-plot(rhovsdelay[:, 0], rhovsdelay[:, 2], 'r.-')
+plot(motrhostats[:, 0], motrhostats[:, 1], 'b.-') # desynch
+plot(motrhostats[:, 0], motrhostats[:, 3], 'r.-') # synch
 axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
 axhline(y=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw horizontal grey line at y=0
-ymax = 0.12
+ymax = 0.117
 ah = 0.021
 arrow(30, ymax, 0, -ah, head_width=10, head_length=ah/2, length_includes_head=True,
       color='k')
@@ -524,7 +542,7 @@ print('nbelowconyxline=%d, naboveconyxline=%d, fractionbelowconyxline=%.3g, '
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
 plot(conscatrhostrue[:, 1], conscatrhostrue[:, 0], 'o', mec='k', mfc='None')
 plot(conscatrhosfalse[:, 1], conscatrhosfalse[:, 0], 'o', mec='e', mfc='None')
-text(0.02, 0.98, 'delay = %d ms' % CORRDELAYMS,
+text(0.02, 0.98, 'delay = %d ms' % CORRDELAY,
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 text(0.02, 0.90, '%s' % pstring,
@@ -534,7 +552,7 @@ xlabel('synchronized', color='r')
 ylabel('desynchronized', color='b')
 xlim(-1.035, 1)
 ylim(-1.035, 1)
-gcfm().window.setWindowTitle('movie_global_contrast_correlation_scatter_%dms' % CORRDELAYMS)
+gcfm().window.setWindowTitle('movie_global_contrast_correlation_scatter_%dms' % CORRDELAY)
 tight_layout(pad=0.3)
 
 # plot contrast rho histograms:
@@ -563,7 +581,7 @@ xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel('PSTH-contrast correlation')
 ylabel('unit count')
-text(0.98, 0.98, 'delay = %d ms' % CORRDELAYMS,
+text(0.98, 0.98, 'delay = %d ms' % CORRDELAY,
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 text(0.98, 0.90, '$\mu$ = %.3f' % dmean, # desynched
@@ -574,36 +592,16 @@ text(0.98, 0.82, '$\mu$ = %.3f' % smean, # synched
                  transform=gca().transAxes, color='r')
 text(0.98, 0.74, '%s' % pstring, color='k',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-gcfm().window.setWindowTitle('movie_global_contrast_correlation_%dms' % CORRDELAYMS)
+gcfm().window.setWindowTitle('movie_global_contrast_correlation_%dms' % CORRDELAY)
 tight_layout(pad=0.3)
 
-# plot rho vs contrast stimulus-response delay
-#            delay  desynch  synch
-rhovsdelay = [#[-90,  0.001,  0.012],
-              #[-75, ],
-              [-60, -0.009, -0.003],
-              [-45, -0.016, -0.013],
-              [-30, -0.024, -0.028],
-              [-15, -0.035, -0.048],
-              [  0, -0.048, -0.070],
-              [ 15, -0.061, -0.091],
-              [ 30, -0.070, -0.105],
-              [ 45, -0.075, -0.108],
-              [ 60, -0.079, -0.100],
-              [ 75, -0.080, -0.080],
-              [ 90, -0.077, -0.054],
-              [105, -0.068, -0.026],
-              [120, -0.056, -0.001],
-              [135, -0.042,  0.016],
-              [150, -0.029,  0.025]
-              ]
-rhovsdelay = np.asarray(rhovsdelay)
+# plot rho vs contrast stimulus-response delay:
 figure(figsize=(3, 3))
-plot(rhovsdelay[:, 0], rhovsdelay[:, 1], 'b.-')
-plot(rhovsdelay[:, 0], rhovsdelay[:, 2], 'r.-')
+plot(conrhostats[:, 0], conrhostats[:, 1], 'b.-') # desynch
+plot(conrhostats[:, 0], conrhostats[:, 3], 'r.-') # synch
 axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
 axhline(y=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw horizontal grey line at y=0
-ymin, ymax = -0.132, 0.04
+ymin, ymax = -0.115, 0.04
 ah = 0.02
 arrow(45, ymin, 0, ah, head_width=10, head_length=ah/2, length_includes_head=True,
       color='k')
@@ -635,7 +633,7 @@ print('nbelowlumyxline=%d, nabovelumyxline=%d, fractionbelowlumyxline=%.3g, '
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
 plot(lumscatrhostrue[:, 1], lumscatrhostrue[:, 0], 'o', mec='k', mfc='None')
 plot(lumscatrhosfalse[:, 1], lumscatrhosfalse[:, 0], 'o', mec='e', mfc='None')
-text(0.02, 0.98, 'delay = %d ms' % CORRDELAYMS,
+text(0.02, 0.98, 'delay = %d ms' % CORRDELAY,
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 text(0.02, 0.90, '%s' % pstring,
@@ -645,7 +643,7 @@ xlabel('synchronized', color='r')
 ylabel('desynchronized', color='b')
 xlim(-1.035, 1)
 ylim(-1.035, 1)
-gcfm().window.setWindowTitle('movie_global_luminance_correlation_scatter_%dms' % CORRDELAYMS)
+gcfm().window.setWindowTitle('movie_global_luminance_correlation_scatter_%dms' % CORRDELAY)
 tight_layout(pad=0.3)
 
 # plot luminance rho histograms:
@@ -674,7 +672,7 @@ xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel('PSTH-luminance correlation')
 ylabel('unit count')
-text(0.98, 0.98, 'delay = %d ms' % CORRDELAYMS,
+text(0.98, 0.98, 'delay = %d ms' % CORRDELAY,
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 text(0.98, 0.90, '$\mu$ = %.3f' % dmean, # desynched
@@ -685,41 +683,21 @@ text(0.98, 0.82, '$\mu$ = %.3f' % smean, # synched
                  transform=gca().transAxes, color='r')
 text(0.98, 0.74, '%s' % pstring, color='k',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-gcfm().window.setWindowTitle('movie_global_luminance_correlation_%dms' % CORRDELAYMS)
+gcfm().window.setWindowTitle('movie_global_luminance_correlation_%dms' % CORRDELAY)
 tight_layout(pad=0.3)
 
-# plot rho vs luminance stimulus-response delay
-#            delay  desynch  synch
-rhovsdelay = [#[-90, -0.064, -0.061],
-              #[-75, ],
-              [-60, -0.060, -0.061],
-              [-45, -0.055, -0.058],
-              [-30, -0.049, -0.051],
-              [-15, -0.041, -0.040],
-              [  0, -0.030, -0.026],
-              [ 15, -0.020, -0.012],
-              [ 30, -0.012, -0.001],
-              [ 45, -0.005,  0.006],
-              [ 60,  0.001,  0.008],
-              [ 75,  0.006,  0.004],
-              [ 90,  0.007, -0.003],
-              [105,  0.007, -0.011],
-              [120,  0.005, -0.017],
-              [135,  0.003, -0.020],
-              [150,  0.000, -0.020]
-              ]
-rhovsdelay = np.asarray(rhovsdelay)
+# plot rho vs luminance stimulus-response delay:
 figure(figsize=(3, 3))
-plot(rhovsdelay[:, 0], rhovsdelay[:, 1], 'b.-')
-plot(rhovsdelay[:, 0], rhovsdelay[:, 2], 'r.-')
+plot(lumrhostats[:, 0], lumrhostats[:, 1], 'b.-') # desynch
+plot(lumrhostats[:, 0], lumrhostats[:, 3], 'r.-') # synch
 axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
 axhline(y=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw horizontal grey line at y=0
 ymax = 0.02
 ah = 0.01
-arrow(60, ymax, 0, -ah, head_width=10, head_length=ah/2, length_includes_head=True,
+arrow(45, ymax, 0, -ah, head_width=10, head_length=ah/2, length_includes_head=True,
       color='k')
 xlim(-70, 160)
-ylim(-0.07, ymax)
+ylim(-0.06, ymax)
 yticks(np.arange(-0.06, ymax+0.02, 0.02))
 xlabel('delay (ms)')
 ylabel('PSTH-luminance correlation')
