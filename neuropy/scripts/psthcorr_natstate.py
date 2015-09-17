@@ -327,12 +327,7 @@ for slabel, c in zip(slabels, colours):
     m, b, r, p, stderr = linregress(seps[slabel], rhos[slabel])
     # plot linear regression:
     plot(sepsrange, m*sepsrange+b, c=c, ls='-', lw=2, alpha=1, zorder=10)
-    ms.append(m)
-    bs.append(b)
-    rs.append(r)
-    ps.append(p)
-    stderrs.append(stderr)
-    Ns.append(len(seps[slabel]))
+    ms.append(m); bs.append(b); rs.append(r); ps.append(p); stderrs.append(stderr)
     '''
     # bin seps and plot mean rho in each bin:
     sepbins = np.arange(0, SEPMAX+SEPBINW, SEPBINW) # bin edges
@@ -349,9 +344,9 @@ xticks(septicks)
 yticks(*rhoticks)
 xlabel(r'unit pair separation (${\mu}m$)')
 ylabel(r'$\rho$')
-text(0.98, 0.98, 'r = %.2f, p = %.1g' % (rs[1], ps[1]),
+text(0.98, 0.98, 'r = %.2f, p < %.1g' % (rs[1], ceilsigfig(ps[1], 1)),
      color='r', transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
-text(0.98, 0.90, 'r = %.2f, p = %.1g' % (rs[0], ps[0]),
+text(0.98, 0.90, 'r = %.2f, p < %.1g' % (rs[0], ceilsigfig(ps[0], 1)),
      color='b', transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 #text(0.98, 0.82, r'$2\sigma=$%d ms' % intround(BINW * 1000), color='k',
      #transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
