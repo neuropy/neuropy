@@ -14,7 +14,7 @@ Run from within neuropy using `run -i scripts/psth_precision.py`"""
 from __future__ import division, print_function
 
 from scipy.signal import argrelextrema
-from scipy.stats import ttest_ind, chisquare, mannwhitneyu
+from scipy.stats import ttest_ind, chisquare, mannwhitneyu, linregress
 from numpy import log10
 
 import pylab as pl
@@ -56,7 +56,7 @@ LOGNULLREL = -3
 NULLREL = 10**LOGNULLREL
 NULLSPARS = 0
 figsize = (3, 3) # inches
-
+DEPTHSRANGE = np.array([0, 1400]) # um
 
 # build corresponding lists of recs and stranges, even entries are desynched, odd are synched:
 recs, stranges = [], [] # recs has repetitions, not unique
@@ -353,8 +353,16 @@ tight_layout(pad=0.3)
 
 # scatter plot peak width vs unit depth, in both cortical states:
 figure(figsize=figsize)
-plot(depths[0], widths[0], 'b.', ms=2) # desynched
-plot(depths[1], widths[1], 'r.', ms=2) # synched
+ms, bs, rs, ps, stderrs = [], [], [], [], []
+for statei, c in zip([0, 1], ['b', 'r']): # desynched, then synched
+    # scatter plot:
+    pl.plot(depths[statei], widths[statei], c+'.', alpha=0.5, ms=2)
+    # calculate linear regression on log width:
+    m, b, r, p, stderr = linregress(depths[statei], log10(widths[statei]))
+    # plot linear regression:
+    plot(DEPTHSRANGE, 10**(m*DEPTHSRANGE+b), c=c, ls='-', lw=2, alpha=1, zorder=10)
+    ms.append(m); bs.append(b); rs.append(r); ps.append(p); stderrs.append(stderr)
+'''
 # plot trends, note that the y axis (widths) will be plotted logarithmically:
 edges = np.arange(0, 1400+200, 200)
 middd, logmeandw, logstddw = scatterbin(depths[0], log10(widths[0]), edges, xaverage=None)
@@ -364,13 +372,18 @@ desyncherr = [10**logmeandw-10**(logmeandw-logstddw), 10**(logmeandw+logstddw)-1
 syncherr = [10**logmeansw-10**(logmeansw-logstdsw), 10**(logmeansw+logstdsw)-10**logmeansw]
 errorbar(middd, 10**logmeandw, yerr=desyncherr, fmt='b.-', ms=10, lw=2, zorder=999)
 errorbar(midsd, 10**logmeansw, yerr=syncherr, fmt='r.-', ms=10, lw=2, zorder=999)
+'''
 xlim(0, 1400)
-ylim(5, 200)
+ylim(10, WIDTHMAX)
 xticks(np.arange(0, 1200+300, 300))
 yscale('log')
 xlabel('unit depth ($\mu$m)')
 ylabel('event width (ms)')
-titlestr = 'peak depth log %s' % urecnames
+text(0.02, 0.98, 'r = %.2f, p < %.1g' % (rs[1], ceilsigfig(ps[1], 1)),
+     color='r', transform=gca().transAxes, horizontalalignment='left', verticalalignment='top')
+text(0.02, 0.90, 'r = %.2f, p < %.1g' % (rs[0], ceilsigfig(ps[0], 1)),
+     color='b', transform=gca().transAxes, horizontalalignment='left', verticalalignment='top')
+titlestr = 'width depth log %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
@@ -483,8 +496,16 @@ tight_layout(pad=0.3)
 
 # scatter plot reliability vs unit depth, in both cortical states:
 figure(figsize=figsize)
-plot(ndepths[0], rels[0], 'b.', ms=2) # desynched
-plot(ndepths[1], rels[1], 'r.', ms=2) # synched
+ms, bs, rs, ps, stderrs = [], [], [], [], []
+for statei, c in zip([0, 1], ['b', 'r']): # desynched, then synched
+    # scatter plot:
+    pl.plot(ndepths[statei], rels[statei], c+'.', alpha=0.5, ms=2)
+    # calculate linear regression on log reliability:
+    m, b, r, p, stderr = linregress(ndepths[statei], log10(rels[statei]))
+    # plot linear regression, both are insignificant:
+    plot(DEPTHSRANGE, 10**(m*DEPTHSRANGE+b), c=c, ls='-', lw=2, alpha=0.5, zorder=10)
+    ms.append(m); bs.append(b); rs.append(r); ps.append(p); stderrs.append(stderr)
+'''
 # plot trends, note that the y axis (widths) will be plotted logarithmically:
 edges = np.arange(0, 1400+200, 200)
 middd, logmeandr, logstddr = scatterbin(ndepths[0], log10(rels[0]), edges, xaverage=None)
@@ -494,12 +515,19 @@ desyncherr = [10**logmeandr-10**(logmeandr-logstddr), 10**(logmeandr+logstddr)-1
 syncherr = [10**logmeansr-10**(logmeansr-logstdsr), 10**(logmeansr+logstdsr)-10**logmeansr]
 errorbar(middd, 10**logmeandr, yerr=desyncherr, fmt='b.-', ms=10, lw=2, zorder=999)
 errorbar(midsd, 10**logmeansr, yerr=syncherr, fmt='r.-', ms=10, lw=2, zorder=999)
+'''
 xlim(0, 1400)
 ylim(1e-3, 1)
 xticks(np.arange(0, 1200+300, 300))
 yscale('log')
 xlabel('unit depth ($\mu$m)')
 ylabel('reliability')
+text(0.02, 0.10, 'r = %.2f, p < %.1g' % (rs[1], ceilsigfig(ps[1], 1)),
+     color='r', alpha=0.5, transform=gca().transAxes, horizontalalignment='left',
+     verticalalignment='bottom')
+text(0.02, 0.02, 'r = %.2f, p < %.1g' % (rs[0], ceilsigfig(ps[0], 1)),
+     color='b', alpha=0.5, transform=gca().transAxes, horizontalalignment='left',
+     verticalalignment='bottom')
 titlestr = 'reliability depth log %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
@@ -590,6 +618,19 @@ tight_layout(pad=0.3)
 
 # scatter plot sparseness vs unit depth, in both cortical states:
 figure(figsize=figsize)
+ms, bs, rs, ps, stderrs = [], [], [], [], []
+for statei, c in zip([0, 1], ['b', 'r']): # desynched, then synched
+    # scatter plot:
+    pl.plot(ndepths[statei], spars[statei], c+'.', alpha=0.5, ms=2)
+    # calculate linear regression on log reliability:
+    m, b, r, p, stderr = linregress(ndepths[statei], spars[statei])
+    # plot linear regression:
+    if statei == 0: alpha = 0.5 # fade out insignificant desynched only
+    else: alpha = 1
+    plot(DEPTHSRANGE, m*DEPTHSRANGE+b, c=c, ls='-', lw=2, alpha=alpha, zorder=10)
+    ms.append(m); bs.append(b); rs.append(r); ps.append(p); stderrs.append(stderr)
+'''
+# plot trends:
 plot(ndepths[0], spars[0], 'b.', ms=2) # desynched
 plot(ndepths[1], spars[1], 'r.', ms=2) # synched
 edges = np.arange(0, 1400+200, 200)
@@ -597,11 +638,18 @@ middd, meands, stdds = scatterbin(ndepths[0], spars[0], edges, xaverage=None)
 midsd, meanss, stdss = scatterbin(ndepths[1], spars[1], edges, xaverage=None)
 errorbar(middd, meands, yerr=stdds, fmt='b.-', ms=10, lw=2, zorder=999)
 errorbar(midsd, meanss, yerr=stdss, fmt='r.-', ms=10, lw=2, zorder=999)
+'''
 xlim(0, 1400)
 ylim(0, 1)
 xticks(np.arange(0, 1200+300, 300))
 xlabel('unit depth ($\mu$m)')
 ylabel('sparseness')
+text(0.02, 0.10, 'r = %.2f, p < %.1g' % (rs[1], ceilsigfig(ps[1], 1)),
+     color='r', transform=gca().transAxes, horizontalalignment='left',
+     verticalalignment='bottom')
+text(0.02, 0.02, 'r = %.2f, p < %.1g' % (rs[0], ceilsigfig(ps[0], 1)),
+     color='b', alpha=0.5, transform=gca().transAxes, horizontalalignment='left',
+     verticalalignment='bottom')
 titlestr = 'sparseness depth %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
