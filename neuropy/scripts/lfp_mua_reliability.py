@@ -155,7 +155,7 @@ arrow(dmean, dmax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
       length_includes_head=True, color='b')
 arrow(smean, smax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
       length_includes_head=True, color='r')
-xlabel('LFP trial correlation')
+xlabel('LFP reliability')
 ylabel('trial count')
 xticks([0, 0.2, 0.4, 0.6, 0.8, 1], ['0', '0.2', '0.4', '0.6', '0.8', '1'])
 ylim(0, nmax+ah*1.1)
@@ -169,7 +169,7 @@ text(0.98, 0.90, '$\mu$ = %.2f' % dmean, # desynched
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(lfpcorrsp, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('LFP_trial_correlation_hist')
+gcfm().window.setWindowTitle('LFP_reliability_hist')
 tight_layout(pad=0.3)
 pl.show() # ensure figures pop up in order
 
@@ -190,7 +190,7 @@ arrow(dmean, dmax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
       length_includes_head=True, color='b')
 arrow(smean, smax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
       length_includes_head=True, color='r')
-xlabel('MUA trial correlation')
+xlabel('MUA reliability')
 ylabel('trial count')
 xticks([0, 0.2, 0.4, 0.6, 0.8, 1], ['0', '0.2', '0.4', '0.6', '0.8', '1'])
 ylim(0, nmax+ah*1.1)
@@ -204,7 +204,7 @@ text(0.02, 0.90, '$\mu$ = %.2f' % dmean, # desynched
 text(0.02, 0.82, 'p < %.1g' % ceilsigfig(muacorrsp, 1),
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('MUA_trial_correlation_hist')
+gcfm().window.setWindowTitle('MUA_reliability_hist')
 tight_layout(pad=0.3)
 pl.show() # ensure figures pop up in order
 
@@ -226,7 +226,7 @@ arrow(dmean, dmax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
       length_includes_head=True, color='b')
 arrow(smean, smax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
       length_includes_head=True, color='r')
-xlabel('LFP trial sparseness')
+xlabel('LFP sparseness')
 ylabel('trial count')
 xticks([0, 0.2, 0.4, 0.6, 0.8, 1], ['0', '0.2', '0.4', '0.6', '0.8', '1'])
 ylim(0, nmax+ah*1.1)
@@ -240,7 +240,7 @@ text(0.98, 0.90, '$\mu$ = %.2f' % dmean, # desynched
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(lfpsparsp, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('LFP_trial_sparseness_hist')
+gcfm().window.setWindowTitle('LFP_sparseness_hist')
 tight_layout(pad=0.3)
 pl.show() # ensure figures pop up in order
 
@@ -261,7 +261,7 @@ arrow(dmean, dmax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
       length_includes_head=True, color='b')
 arrow(smean, smax+ah*1.1, 0, -ah, head_width=aw, head_length=ah/2,
       length_includes_head=True, color='r')
-xlabel('MUA trial sparseness')
+xlabel('MUA sparseness')
 ylabel('trial count')
 xticks([0, 0.2, 0.4, 0.6, 0.8, 1], ['0', '0.2', '0.4', '0.6', '0.8', '1'])
 ylim(0, nmax+ah*1.1)
@@ -275,6 +275,6 @@ text(0.02, 0.90, '$\mu$ = %.2f' % dmean, # desynched
 text(0.02, 0.82, 'p < %.1g' % ceilsigfig(muasparsp, 1),
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-gcfm().window.setWindowTitle('MUA_trial_sparseness_hist')
+gcfm().window.setWindowTitle('MUA_sparseness_hist')
 tight_layout(pad=0.3)
 pl.show() # ensure figures pop up in order
