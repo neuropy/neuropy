@@ -262,7 +262,7 @@ class BaseRecording(object):
         eids = sorted(self.e)
         return [ self.e[eid] for eid in eids ]
 
-    def mua(self, neurons=None, width=None, tres=None, gauss=False, layers=False, plot=True,
+    def mua(self, neurons='all', width=None, tres=None, gauss=False, layers=False, plot=True,
             title=True, figsize=(20, 6.5)):
         """Calculate and optionally plot multiunit activity as a function of time. neurons can
         be None, 'quiet', 'all', or a dict. `width' and `tres' of time bins are in seconds. If
@@ -1637,7 +1637,7 @@ class RecordingRaster(BaseRecording):
             tres = uns['TMUATRES']
         ttranges, ttrangesweepis, exptrialis = self.trialtranges(
             sweepis=sweepis, eids=eids, natexps=natexps, t0=t0, dt=dt, blank=blank)
-        rates, t, n = self.mua(width=width, tres=tres, gauss=gauss, plot=False)
+        rates, t, n = self.mua(neurons='all', width=width, tres=tres, gauss=gauss, plot=False)
         t = intround(t * 1e6) # convert to us for compatibility with ttranges
         mua, nn = rates[0], n[0] # allrates
         ntrials = len(ttranges)
