@@ -127,7 +127,7 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
         depth = rec.alln[nid].pos[1] # y position on polytrode, microns from top
         psthsdepths.append(np.tile([depth], npeaks))
         # calculate reliability of responsive PSTHs:
-        cs = n2count[nid] # 2D array of spike counts over time, one row per trial
+        cs = n2count[nid] # 2D array of spike counts over trial time, one row per trial
         rhos, weights = core.pairwisecorr(cs, weight=WEIGHT, invalid='ignore')
         # set rho to 0 for trial pairs with undefined rho (one or both trials with 0 spikes):
         nanis = np.isnan(rhos)

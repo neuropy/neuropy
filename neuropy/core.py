@@ -2701,8 +2701,8 @@ def sah(t, y, ts, keep=False):
 
 def corrcoef(x, y):
     """Returns the correlation coefficient of signals x and y. This just uses np.corrcoef(),
-    but converts to floats first, cuz np.corrcoef() seems to have issues with integer signals,
-    especially those with zeros in them."""
+    but converts to floats first, since np.corrcoef() seems to have issues with integer
+    signals, especially those with zeros in them."""
     #assert len(x) == len(y), 'arrays need to be of equal length'
     x = np.float64(x)
     y = np.float64(y)
