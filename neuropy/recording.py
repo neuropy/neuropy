@@ -1639,8 +1639,9 @@ class RecordingRaster(BaseRecording):
             f.tight_layout(pad=0.3) # crop figure to contents
         return t, lfps
 
-    def tmua(self, width=None, tres=None, gauss=True, sweepis=None, eids=None, natexps=False,
-             t0=None, dt=None, blank=True, trange=None, plot=True, figsize=(20, 6.5)):
+    def tmuas(self, neurons='all', width=None, tres=None, gauss=True,
+              sweepis=None, eids=None, natexps=False,
+              t0=None, dt=None, blank=True, trange=None, plot=True, figsize=(20, 6.5)):
         """Calculate trial-aligned MUA traces, constrained to trange. See self.mua() for
         kwarg details."""
         uns = get_ipython().user_ns
