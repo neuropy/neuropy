@@ -298,35 +298,41 @@ class BaseRecording(object):
         assert tres <= width
 
         nids = np.sort(neurons.keys())
-        ys = np.array([ neurons[nid].pos[1] for nid in nids ]) # y positions of each neuron
-        supis, midis, deepis = core.laminarity(ys, self.tr.absname)
-        supnids = nids[supis]
-        midnids = nids[midis]
-        deepnids = nids[deepis]
-        nsup = len(supnids)
-        nmid = len(midnids)
-        ndeep = len(deepnids)
+        if layers:
+            ys = np.array([ neurons[nid].pos[1] for nid in nids ]) # y positions of each neuron
+            supis, midis, deepis = core.laminarity(ys, self.tr.absname)
+            supnids = nids[supis]
+            midnids = nids[midis]
+            deepnids = nids[deepis]
+            nsup = len(supnids)
+            nmid = len(midnids)
+            ndeep = len(deepnids)
 
         if nn == 0: allspikes = np.array([])
         else: allspikes = np.concatenate([ neurons[nid].spikes for nid in nids ])
-        if nsup == 0: supspikes = np.array([])
-        else: supspikes = np.concatenate([ neurons[nid].spikes for nid in supnids ])
-        if nmid == 0: midspikes = np.array([])
-        else: midspikes = np.concatenate([ neurons[nid].spikes for nid in midnids ])
-        if ndeep == 0: deepspikes = np.array([])
-        else: deepspikes = np.concatenate([ neurons[nid].spikes for nid in deepnids ])
         allspikes.sort() # sorted spikes from all neurons
-        supspikes.sort() # sorted spikes from superficial neurons
-        midspikes.sort() # sorted spikes from middle neurons
-        deepspikes.sort() # sorted spikes from deep neurons
+        if layers:
+            if nsup == 0: supspikes = np.array([])
+            else: supspikes = np.concatenate([ neurons[nid].spikes for nid in supnids ])
+            if nmid == 0: midspikes = np.array([])
+            else: midspikes = np.concatenate([ neurons[nid].spikes for nid in midnids ])
+            if ndeep == 0: deepspikes = np.array([])
+            else: deepspikes = np.concatenate([ neurons[nid].spikes for nid in deepnids ])
+            supspikes.sort() # sorted spikes from superficial neurons
+            midspikes.sort() # sorted spikes from middle neurons
+            deepspikes.sort() # sorted spikes from deep neurons
 
         # in spikes/s (Hz) per neuron:
         allrates, t = self.calc_mua(allspikes, nn, width, tres, gauss=gauss)
-        suprates, t = self.calc_mua(supspikes, nsup, width, tres, gauss=gauss)
-        midrates, t = self.calc_mua(midspikes, nmid, width, tres, gauss=gauss)
-        deeprates, t = self.calc_mua(deepspikes, ndeep, width, tres, gauss=gauss)
-        rates = np.vstack([allrates, suprates, midrates, deeprates])
-        n = np.asarray([nn, nsup, nmid, ndeep])
+        if layers:
+            suprates, t = self.calc_mua(supspikes, nsup, width, tres, gauss=gauss)
+            midrates, t = self.calc_mua(midspikes, nmid, width, tres, gauss=gauss)
+            deeprates, t = self.calc_mua(deepspikes, ndeep, width, tres, gauss=gauss)
+            rates = np.vstack([allrates, suprates, midrates, deeprates])
+            n = np.asarray([nn, nsup, nmid, ndeep])
+        else:
+            rates = allrates
+            n = nn
         if plot:
             self.plot_mua(rates, t, n, layers=layers, title=title, figsize=figsize)
         return rates, t, n # rates in spikes/s per neuron, t in s
