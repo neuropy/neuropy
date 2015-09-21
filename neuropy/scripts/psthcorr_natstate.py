@@ -9,7 +9,6 @@ import pylab as pl
 import numpy as np
 from scipy.stats import mannwhitneyu, chisquare, linregress # ttest_1samp, ttest_ind, ks_2samp
 
-
 import core
 from core import ceilsigfig, floorsigfig, scatterbin, intround
 

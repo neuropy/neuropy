@@ -24,10 +24,10 @@ MEDIANX = 2 # PSTH median multiplier, Hz
 MINTHRESH = 3 # peak detection thresh, Hz
 
 # plotting params
-#LOGNULLREL = -3
-#NULLREL = 10**LOGNULLREL
+LOGNULLREL = -3
+NULLREL = 10**LOGNULLREL
 FIGSIZE = 3, 3
-COUPMIN, COUPMAX = -0.25, 1
+COUPMIN, COUPMAX, COUPBINW = -0.4, 1, 0.1
 
 # sort recordings by their absname:
 urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
@@ -43,20 +43,18 @@ for rec in urecs:
     stranges = REC2STATETRANGES[rec.absname]
     for statei, strange in zip(stateis, stranges):
         print(rec.absname, slabels[statei], strange)
+        # get nids and PSTHs of units of type KIND:
         nids, psths = get_nids_psths(rec, strange, kind=KIND, blank=BLANK,
                                      binw=BINW, tres=TRES, gauss=GAUSS,
                                      medianx=MEDIANX, minthresh=MINTHRESH)
         # n2count is needed for calculating reliability:
         n2count = rec.bintraster(nids=nids, blank=BLANK, strange=strange,
                                  binw=BINW, tres=TRES, gauss=GAUSS)[0]
-        ## tmua calc should really be inside the
-        ## loop below, and exclude the nid it's being correlated against
-        ## That will be slow, need to make a new tmua mean f'n that collapses
-        ## spikes *before* binning and convolving with gauss
-        tmuas = rec.tmuas(width=BINW, tres=TRES, gauss=GAUSS, blank=BLANK,
-                          trange=strange, plot=False)[1] # Hz/unit
-        tmua = tmuas.mean(axis=0) # average across trials
         for nid, psth in zip(nids, psths):
+            muanids = nids.copy()
+            muanids = muanids[muanids != nid] # exclude current nid
+            tmua = rec.tmua(neurons=muanids, width=BINW, tres=TRES, gauss=GAUSS, blank=BLANK,
+                            trange=strange, plot=False)[1] # Hz/unit
             assert len(psth) == len(tmua)
             # calculate reliability of this PSTH:
             cs = n2count[nid] # 2D array of spike counts over trial time, one row per trial
@@ -92,25 +90,25 @@ if p < ALPHA:
 else:
     pstring = 'p > %g' % floorsigfig(p)
 figure(figsize=FIGSIZE)
-coupbins = np.arange(COUPMIN, COUPMAX+0.1, 0.1) # left edges + rightmost edge
+coupbins = np.arange(COUPMIN, COUPMAX+COUPBINW, COUPBINW) # left edges + rightmost edge
 nd = hist(coups[0], bins=coupbins, histtype='step', color='b')[0]
 ns = hist(coups[1], bins=coupbins, histtype='step', color='r')[0]
 nmax = max(np.hstack([nd, ns]))
+xlim(xmin=COUPMIN, xmax=COUPMAX)
+ymin, ymax = ylim(0, 34)
 axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
 # draw arrows at means:
-ah = nmax / 8 # arrow height
-arrow(dmean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+ah = ymax / 8 # arrow height
+arrow(dmean, ymax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
       color='b')
-arrow(smean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+arrow(smean, ymax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
       color='r')
-xlim(xmin=COUPMIN, xmax=COUPMAX)
-ylim(ymax=nmax*1.01)
 # remove unnecessary decimal places:
-#coupticks = [-0.25, 0, 0.25, 0.5, 0.75, 1], ['-0.25', '0', '0.25', '0.5', '0.75', '1']
-#xticks(*coupticks)
+coupticks = [-0.25, 0, 0.25, 0.5, 0.75, 1], ['-0.25', '0', '0.25', '0.5', '0.75', '1']
+xticks(*coupticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel('MUA coupling')
-ylabel('unit pair count')
+ylabel('unit count')
 text(0.98, 0.98, r'$\mu$ = %.2g' % smean, color='r',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 text(0.98, 0.90, r'$\mu$ = %.2g' % dmean, color='b',
@@ -120,3 +118,5 @@ text(0.98, 0.82, '%s' % pstring, color='k',
 titlestr = 'MUA_coupling_hist'
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
+
+show()
