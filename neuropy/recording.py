@@ -1676,10 +1676,13 @@ class RecordingRaster(BaseRecording):
             muas.append(muatrial)
         # slice each muatrial down to length of the shortest:
         for triali in range(ntrials):
-        t = t[:minnt] / 1e6 # trial time, in s
-        t -= t[0] # start trial time at 0
             muas[triali] = muas[triali][:minnt]
         muas = np.vstack(muas)
+        dt = t[1] - t[0] # should be the same for all intervals
+        t = t[:minnt] # one trial's worth of timepoints
+        t -= t[0] # relative to start of each trial
+        t += dt/2 # restore mid bins by adding half a bin width
+        t = t / 1e6 # trial time, mid bins, in s
         if plot:
             muamean, muastd = muas.mean(axis=0), muas.std(axis=0)
             f = pl.figure(figsize=figsize)
@@ -1687,7 +1690,8 @@ class RecordingRaster(BaseRecording):
             a.plot(t, muamean, 'k-')
             a.plot(t, muamean+muastd, 'r-') # upper std
             a.plot(t, muamean-muastd, 'r-') # lower std
-            a.autoscale(enable=True, tight=True)
+            a.set_xlim(xmin=0, xmax=t[-1])
+            a.set_ylim(ymin=0)
             a.set_xlabel("time (s)")
             a.set_ylabel("MUA (Hz/unit)")
             titlestr = lastcmd()
