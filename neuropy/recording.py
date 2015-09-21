@@ -337,16 +337,19 @@ class BaseRecording(object):
             self.plot_mua(rates, t, n, layers=layers, title=title, figsize=figsize)
         return rates, t, n # rates in spikes/s per neuron, t in s
 
-    def calc_mua(self, spikes, nn, width, tres, gauss=None):
+    def calc_mua(self, spikes, nn, width, tres, trange=None, gauss=None):
         """Take sorted multiunit spike train from nn neurons, desired bin width and tres, and
         return multiunit firing rate signal, in spikes/s (Hz) per neuron. If gauss, convolve
         multiunit spike train with Gaussian kernel with sigma = width/2"""
-        width = intround(width * 1000000) # convert from s to us, same scale as self.trange
+        # convert from s to us, same scale as spikes and trange:
+        width = intround(width * 1000000)
         tres = intround(tres * 1000000)
+        if trange == None:
+            trange = self.trange
         if gauss:
-            tranges = core.split_tranges([self.trange], tres, tres) # nonoverlapping, in s
+            tranges = core.split_tranges([trange], tres, tres) # nonoverlapping, in us
         else:
-            tranges = core.split_tranges([self.trange], width, tres) # overlapping, in s
+            tranges = core.split_tranges([trange], width, tres) # overlapping, in us
         spikeis = spikes.searchsorted(tranges)
         counts = spikeis[:, 1] - spikeis[:, 0]
         if gauss:
