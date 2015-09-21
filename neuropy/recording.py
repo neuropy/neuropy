@@ -367,7 +367,7 @@ class BaseRecording(object):
         t = tranges.mean(axis=1) / 1000000
         return mua, t
 
-    def plot_mua(self, rates, t, n, layers=False, ylabel="mean MUA (Hz/neuron)", ylim=None,
+    def plot_mua(self, rates, t, n, layers=False, ylabel="MUA (Hz/neuron)", ylim=None,
                  hlines=[0], title=True, figsize=(20, 6.5)):
         """Plot multiunit activity (all, sup, mid and deep firing rates) as a function of
         time in seconds"""
@@ -376,11 +376,13 @@ class BaseRecording(object):
         # underplot horizontal lines:
         for hline in hlines:
             a.axhline(y=hline, c='e', ls='--', marker=None)
-        a.plot(t, rates[0], 'k-', label='all (%d)' % n[0])
         if layers:
+            a.plot(t, rates[0], 'k-', label='all (%d)' % n[0])
             a.plot(t, rates[1], 'r-', label='superficial (%d)' % n[1])
             a.plot(t, rates[2], 'g-', label='middle (%d)' % n[2])
             a.plot(t, rates[3], 'b-', label='deep (%d)' % n[3])
+        else:
+            a.plot(t, rates, 'k-', label='all (%d)' % n)
         a.set_xlabel("time (s)")
         a.set_ylabel(ylabel)
         # limit plot to duration of acquistion, in sec:
