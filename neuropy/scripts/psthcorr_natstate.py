@@ -321,7 +321,7 @@ sepsrange = np.array([0, SEPMAX])
 ms, bs, rs, ps, stderrs = [], [], [], [], []
 for slabel, c in zip(slabels, colours):
     # scatter plot:
-    pl.plot(seps[slabel], rhos[slabel], c+'.', alpha=0.5, ms=2)
+    plot(seps[slabel], rhos[slabel], c+'.', alpha=0.5, ms=2)
     # calculate linear regression:
     m, b, r, p, stderr = linregress(seps[slabel], rhos[slabel])
     # plot linear regression:

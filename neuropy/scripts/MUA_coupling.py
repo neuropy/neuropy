@@ -3,7 +3,7 @@ from within neuropy using `run -i scripts/MUA_coupling.py`"""
 
 from __future__ import division, print_function
 
-from scipy.stats import mannwhitneyu
+from scipy.stats import mannwhitneyu, linregress
 
 import core
 from core import sparseness, intround, ceilsigfig, floorsigfig
@@ -23,11 +23,13 @@ KIND = 'responsive' # which type of neurons to use? 'responsive' or 'active'
 MEDIANX = 2 # PSTH median multiplier, Hz
 MINTHRESH = 3 # peak detection thresh, Hz
 
-# plotting params
+# plotting params:
 LOGNULLREL = -3
 NULLREL = 10**LOGNULLREL
 FIGSIZE = 3, 3
 COUPMIN, COUPMAX, COUPBINW = -0.4, 1, 0.1
+coupbins = np.arange(COUPMIN, COUPMAX+COUPBINW, COUPBINW) # left edges + rightmost edge
+couprange = np.asarray([coupbins[0], coupbins[-1]])
 
 # sort recordings by their absname:
 urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
@@ -74,7 +76,7 @@ for rec in urecs:
             # calculate coupling of this PSTH with tMUA:
             coup = core.corrcoef(psth, tmua)
             coups[statei].append(coup)
-        print('\n') # two newlines
+        print()
 
 for statei in stateis:
     rels[statei] = np.asarray(rels[statei])
@@ -90,7 +92,6 @@ if p < ALPHA:
 else:
     pstring = 'p > %g' % floorsigfig(p)
 figure(figsize=FIGSIZE)
-coupbins = np.arange(COUPMIN, COUPMAX+COUPBINW, COUPBINW) # left edges + rightmost edge
 nd = hist(coups[0], bins=coupbins, histtype='step', color='b')[0]
 ns = hist(coups[1], bins=coupbins, histtype='step', color='r')[0]
 nmax = max(np.hstack([nd, ns]))
@@ -116,6 +117,62 @@ text(0.98, 0.90, r'$\mu$ = %.2g' % dmean, color='b',
 text(0.98, 0.82, '%s' % pstring, color='k',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 titlestr = 'MUA_coupling_hist'
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+
+# plot response reliability vs MUA coupling:
+figure(figsize=FIGSIZE)
+ms, bs, rs, ps, stderrs = [], [], [], [], []
+for statei in stateis:
+    c = colours[statei]
+    # scatter plot:
+    plot(coups[statei], rels[statei], c+'.', alpha=0.5, ms=2)
+    # calculate linear regression on log reliability:
+    m, b, r, p, stderr = linregress(coups[statei], log10(rels[statei]))
+    # plot linear regression:
+    plot(couprange, 10**(m*couprange+b), c=c, ls='-', lw=2, alpha=1, zorder=10)
+    ms.append(m); bs.append(b); rs.append(r); ps.append(p); stderrs.append(stderr)
+yscale('log')
+xlim(xmin=COUPMIN, xmax=COUPMAX)
+ylim(1e-3, 1)
+xticks(*coupticks)
+xlabel('MUA coupling')
+ylabel('response reliability')
+text(0.98, 0.10, 'r = %.2f, p < %.1g' % (rs[1], ceilsigfig(ps[1], 1)),
+     color='r', transform=gca().transAxes, horizontalalignment='right',
+     verticalalignment='bottom')
+text(0.98, 0.02, 'r = %.2f, p < %.1g' % (rs[0], ceilsigfig(ps[0], 1)),
+     color='b', transform=gca().transAxes, horizontalalignment='right',
+     verticalalignment='bottom')
+titlestr = 'reliability_vs_MUA_coupling'
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+
+# plot response sparseness vs MUA coupling:
+figure(figsize=FIGSIZE)
+ms, bs, rs, ps, stderrs = [], [], [], [], []
+for statei in stateis:
+    c = colours[statei]
+    # scatter plot:
+    plot(coups[statei], spars[statei], c+'.', alpha=0.5, ms=2)
+    # calculate linear regression:
+    m, b, r, p, stderr = linregress(coups[statei], spars[statei])
+    # plot linear regression, both are insignificant:
+    plot(couprange, m*couprange+b, c=c, ls='-', lw=2, alpha=0.5, zorder=10)
+    ms.append(m); bs.append(b); rs.append(r); ps.append(p); stderrs.append(stderr)
+xlim(xmin=COUPMIN, xmax=COUPMAX)
+ylim(1e-3, 1)
+xticks(*coupticks)
+yticks([0, 0.2, 0.4, 0.6, 0.8, 1], ['0', '0.2', '0.4', '0.6', '0.8', '1'])
+xlabel('MUA coupling')
+ylabel('response sparseness')
+text(0.98, 0.10, 'r = %.2f, p < %.1g' % (rs[1], ceilsigfig(ps[1], 1)),
+     color='r', alpha=0.5, transform=gca().transAxes, horizontalalignment='right',
+     verticalalignment='bottom')
+text(0.98, 0.02, 'r = %.2f, p < %.1g' % (rs[0], ceilsigfig(ps[0], 1)),
+     color='b', alpha=0.5, transform=gca().transAxes, horizontalalignment='right',
+     verticalalignment='bottom')
+titlestr = 'sparseness_vs_MUA_coupling'
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
