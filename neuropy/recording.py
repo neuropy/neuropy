@@ -1587,11 +1587,9 @@ class RecordingRaster(BaseRecording):
             n2totcount[nid] = totcount
         return n2count, n2totcount, bins
 
-    def tlfp(self, chani=-1, sweepis=None, eids=None, natexps=False, t0=None, dt=None,
-             blank=True, trange=None, plot=True, figsize=(20, 6.5)):
-        """Calculate LFP averaged over trials, constrained to trange.
-        TODO: could use some manual verification of LFP traces, to make sure slicing
-        in time is correct."""
+    def tlfps(self, chani=-1, sweepis=None, eids=None, natexps=False, t0=None, dt=None,
+              blank=True, trange=None, plot=True, figsize=(20, 6.5)):
+        """Calculate trial-aligned LFP traces, constrained to trange"""
         ttranges, ttrangesweepis, exptrialis = self.trialtranges(
             sweepis=sweepis, eids=eids, natexps=natexps, t0=t0, dt=dt, blank=blank)
         lfp = self.lfp.get_data()[chani]
@@ -1643,7 +1641,8 @@ class RecordingRaster(BaseRecording):
 
     def tmua(self, width=None, tres=None, gauss=True, sweepis=None, eids=None, natexps=False,
              t0=None, dt=None, blank=True, trange=None, plot=True, figsize=(20, 6.5)):
-        """Calculate MUA averaged over trials, constrained to trange"""
+        """Calculate trial-aligned MUA traces, constrained to trange. See self.mua() for
+        kwarg details."""
         uns = get_ipython().user_ns
         if width == None:
             width = uns['TMUAWIDTH']
