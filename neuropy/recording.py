@@ -1604,7 +1604,7 @@ class RecordingRaster(BaseRecording):
             assert ntrials > 0 # if not, trange is too constrictive
             print('ntrials: %d --> %d after applying trange: %s'
                   % (oldntrials, ntrials, np.asarray(trange)))
-        lfptrials = []
+        lfps = [] # one row per trial
         minnt = len(t) # can't be any greater than this
         for ttrange in ttranges:
             ti0, ti1 = t.searchsorted(ttrange)
@@ -1614,15 +1614,15 @@ class RecordingRaster(BaseRecording):
             #print('%d ' % nt, end='')
             # slice out LFP signal that falls within ttranges of this trial:
             lfptrial = lfp[ti0:ti1] # not all will be exactly the same length
-            lfptrials.append(lfptrial)
+            lfps.append(lfptrial)
         # slice each lfptrial down to length of the shortest:
         for triali in range(ntrials):
-            lfptrials[triali] = lfptrials[triali][:minnt]
-        lfptrials = np.vstack(lfptrials)
+            lfps[triali] = lfps[triali][:minnt]
+        lfps = np.vstack(lfps)
         t = t[:minnt] / 1e6 # trial time, in s
         t -= t[0] # start trial time at 0
         if plot:
-            lfpmean, lfpstd = lfptrials.mean(axis=0), lfptrials.std(axis=0)
+            lfpmean, lfpstd = lfps.mean(axis=0), lfps.std(axis=0)
             f = pl.figure(figsize=figsize)
             a = f.add_subplot(111)
             a.plot(t, lfpmean, 'k-')
@@ -1637,7 +1637,7 @@ class RecordingRaster(BaseRecording):
             a.text(0.998, 0.99, '%s' % self.name, transform=a.transAxes,
                    horizontalalignment='right', verticalalignment='top')
             f.tight_layout(pad=0.3) # crop figure to contents
-        return t, lfptrials
+        return t, lfps
 
     def tmua(self, width=None, tres=None, gauss=True, sweepis=None, eids=None, natexps=False,
              t0=None, dt=None, blank=True, trange=None, plot=True, figsize=(20, 6.5)):
@@ -1650,19 +1650,19 @@ class RecordingRaster(BaseRecording):
             tres = uns['TMUATRES']
         ttranges, ttrangesweepis, exptrialis = self.trialtranges(
             sweepis=sweepis, eids=eids, natexps=natexps, t0=t0, dt=dt, blank=blank)
-        t = intround(t * 1e6) # convert to us for compatibility with ttranges
         mua, t, n = self.mua(neurons=neurons, width=width, tres=tres, gauss=gauss,
                              layers=False, plot=False)
+        t = intround(t * 1e6) # mid bins, convert to us for compatibility with ttranges
         ntrials = len(ttranges)
         if trange != None:
             # keep just those trials that fall entirely with trange:
             oldntrials = ntrials
             ttranges = trimtranges(ttranges, trange)
             ntrials = len(ttranges)
-            assert ntrials > 0 # if not, trange wis too constrictive
+            assert ntrials > 0 # if not, trange is too constrictive
             print('ntrials: %d --> %d after applying trange: %s'
                   % (oldntrials, ntrials, np.asarray(trange)))
-        muatrials = []
+        muas = [] # one row per trial
         minnt = len(t) # can't be any greater than this
         for ttrange in ttranges:
             ti0, ti1 = t.searchsorted(ttrange)
@@ -1672,15 +1672,15 @@ class RecordingRaster(BaseRecording):
             #print('%d ' % nt, end='')
             # slice out MUA signal that falls within ttranges of this trial:
             muatrial = mua[ti0:ti1] # not all will be exactly the same length
-            muatrials.append(muatrial)
+            muas.append(muatrial)
         # slice each muatrial down to length of the shortest:
         for triali in range(ntrials):
-            muatrials[triali] = muatrials[triali][:minnt]
-        muatrials = np.vstack(muatrials)
         t = t[:minnt] / 1e6 # trial time, in s
         t -= t[0] # start trial time at 0
+            muas[triali] = muas[triali][:minnt]
+        muas = np.vstack(muas)
         if plot:
-            muamean, muastd = muatrials.mean(axis=0), muatrials.std(axis=0)
+            muamean, muastd = muas.mean(axis=0), muas.std(axis=0)
             f = pl.figure(figsize=figsize)
             a = f.add_subplot(111)
             a.plot(t, muamean, 'k-')
@@ -1697,7 +1697,7 @@ class RecordingRaster(BaseRecording):
             a.text(0.998, 0.95, 'width, tres = %g, %g' % (width, tres), transform=a.transAxes,
                    horizontalalignment='right', verticalalignment='top')
             f.tight_layout(pad=0.3) # crop figure to contents
-        return t, muatrials
+        return t, muas
 
     def tune(self, nids='all', alpha=0.01, eid=0, var='ori', fixed=None,
              tdelay=None, strange=None, plot=True):
