@@ -628,7 +628,7 @@ class BaseRecording(object):
                   layers=True, plot=False, figsize=(7.5, 6.5)):
         """Scatter plot multiunit activity vs LFP synchrony index"""
         mua, muat, n = self.mua(neurons=neurons, width=muawidth, tres=muatres, gauss=gauss,
-                                plot=False)
+                                layers=layers, plot=False)
         ylabel = 'mean MUA (Hz/neuron)'
         si, sit = self.lfp.si(chani=chani, width=lfpsiwidth, tres=lfpsitres,
                               lfpwidth=lfpwidth, lfptres=lfptres, kind=kind,
@@ -1651,9 +1651,9 @@ class RecordingRaster(BaseRecording):
             tres = uns['TMUATRES']
         ttranges, ttrangesweepis, exptrialis = self.trialtranges(
             sweepis=sweepis, eids=eids, natexps=natexps, t0=t0, dt=dt, blank=blank)
-        rates, t, n = self.mua(neurons='all', width=width, tres=tres, gauss=gauss, plot=False)
         t = intround(t * 1e6) # convert to us for compatibility with ttranges
-        mua, nn = rates[0], n[0] # allrates
+        mua, t, n = self.mua(neurons=neurons, width=width, tres=tres, gauss=gauss,
+                             layers=False, plot=False)
         ntrials = len(ttranges)
         if trange != None:
             # keep just those trials that fall entirely with trange:
