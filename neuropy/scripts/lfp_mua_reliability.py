@@ -21,7 +21,7 @@ urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no r
 # periods for display but exclude them during analysis, run this script twice: once with
 # BLANK=True, once with BLANK=False:
 BLANK = False
-TLFP, TMUA = {}, {} # dicts storing results from rec.tlfp() and rec.tmua()
+TLFPs, TMUAs = {}, {} # dicts storing results from rec.tlfps() and rec.tmuas()
 MAXMUA = {}
 fmts = ('b-', 'r-') # desynched, then synched
 LFPCORRS = [[], []] # desynched, then synched
@@ -36,26 +36,26 @@ aw = 0.04 # arrow width
 # calculate LFP and MUA time series, as well as correlations, one per trial:
 for rec in urecs:
     print(rec.absname)
-    TLFP[rec.absname] = [] # one entry per state
-    TMUA[rec.absname] = []
+    TLFPs[rec.absname] = [] # one entry per state
+    TMUAs[rec.absname] = []
     MAXMUA[rec.absname] = 0 # init, used for setting y limits during plotting
     stranges = REC2STATETRANGES[rec.absname]
     for statei, strange in enumerate(stranges): # desynched, then synched
-        lfpt, lfptrials = rec.tlfp(trange=strange, blank=BLANK, plot=False)
-        muat, muatrials = rec.tmua(trange=strange, blank=BLANK, plot=False) # Hz/unit
-        TLFP[rec.absname].append((lfpt, lfptrials))
-        TMUA[rec.absname].append((muat, muatrials))
-        MAXMUA[rec.absname] = max(MAXMUA[rec.absname], muatrials.max())
-        ntrials = len(lfptrials)
-        assert ntrials == len(muatrials)
+        lfpt, lfps = rec.tlfps(trange=strange, blank=BLANK, plot=False)
+        muat, muas = rec.tmuas(trange=strange, blank=BLANK, plot=False) # Hz/unit
+        TLFPs[rec.absname].append((lfpt, lfps))
+        TMUAs[rec.absname].append((muat, muas))
+        MAXMUA[rec.absname] = max(MAXMUA[rec.absname], muas.max())
+        ntrials = len(lfps)
+        assert ntrials == len(muas)
         for triali in range(ntrials):
             # measure reliability as correlation of each trial with mean of all others.
             # To exclude last sec of blankscreen in each trial, set BLANK=False:
-            lfptrial, muatrial = lfptrials[triali], muatrials[triali]
+            lfptrial, muatrial = lfps[triali], muas[triali]
             otheris = np.ones(ntrials, dtype=bool)
             otheris[triali] = False # exclude current trial
-            LFPCORRS[statei].append(corrcoef(lfptrial, lfptrials[otheris].mean(axis=0)))
-            MUACORRS[statei].append(corrcoef(muatrial, muatrials[otheris].mean(axis=0)))
+            LFPCORRS[statei].append(corrcoef(lfptrial, lfps[otheris].mean(axis=0)))
+            MUACORRS[statei].append(corrcoef(muatrial, muas[otheris].mean(axis=0)))
             LFPSPARS[statei].append(sparseness(abs(lfptrial)))
             MUASPARS[statei].append(sparseness(muatrial))
 
@@ -85,18 +85,18 @@ for rec in urecs:
     plt.setp(MUAa2.get_xticklabels(), visible=True)
     # desynched, then synched:
     for statei, (fmt, LFPa, MUAa) in enumerate(zip(fmts, LFPas, MUAas)):
-        lfpt, lfptrials = TLFP[rec.absname][statei]
-        muat, muatrials = TMUA[rec.absname][statei]
+        lfpt, lfps = TLFPs[rec.absname][statei]
+        muat, muas = TMUAs[rec.absname][statei]
         # normalize MUA across both states to get arbitrary units (0-1):
-        nmuatrials = muatrials / MAXMUA[rec.absname] # normalized
-        lfpmean, lfpstd = lfptrials.mean(axis=0), lfptrials.std(axis=0)
-        nmuamean, nmuastd = nmuatrials.mean(axis=0), nmuatrials.std(axis=0)
+        nmuas = muas / MAXMUA[rec.absname] # normalized
+        lfpmean, lfpstd = lfps.mean(axis=0), lfps.std(axis=0)
+        nmuamean, nmuastd = nmuas.mean(axis=0), nmuas.std(axis=0)
         # to make saturation represent reliability, scale transparency inversely
         # with ntrials:
         alpha = 10 / ntrials
         # plot all trials for this rec, in mV
         # LFP:
-        LFPa.plot(lfpt, lfptrials.T/1e3, fmt, alpha=alpha)
+        LFPa.plot(lfpt, lfps.T/1e3, fmt, alpha=alpha)
         LFPa.plot(lfpt, lfpmean/1e3, 'w-', alpha=1)
         LFPa.plot(lfpt, (lfpmean+lfpstd)/1e3, 'k-', alpha=1)
         LFPa.plot(lfpt, (lfpmean-lfpstd)/1e3, 'k-', alpha=1)
@@ -107,7 +107,7 @@ for rec in urecs:
         LFPa.set_ylabel("LFP (mV)")
         LFPa.yaxis.set_label_coords(YLABELX, 0.5)
         # MUA:
-        MUAa.plot(muat, nmuatrials.T, fmt, alpha=alpha)
+        MUAa.plot(muat, nmuas.T, fmt, alpha=alpha)
         MUAa.plot(muat, nmuamean, 'w-', alpha=1)
         MUAa.plot(muat, (nmuamean+nmuastd), 'k-', alpha=1)
         MUAa.plot(muat, (nmuamean-nmuastd), 'k-', alpha=1)
