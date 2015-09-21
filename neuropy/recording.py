@@ -1704,6 +1704,89 @@ class RecordingRaster(BaseRecording):
             f.tight_layout(pad=0.3) # crop figure to contents
         return t, muas
 
+    def tmua(self, neurons='all', width=None, tres=None, gauss=True,
+              sweepis=None, eids=None, natexps=False,
+              t0=None, dt=None, blank=True, trange=None, plot=True, figsize=(20, 6.5)):
+        """Same as self.tmuas(), but calculate only the mean by first collapsing across
+        spikes, then binning and convolving with a Gaussian. This doesn't return the
+        individual trials, but is much faster."""
+        if neurons == None: # use active neurons
+            neurons = self.n
+        elif neurons == 'quiet': # use quiet neurons
+            neurons = self.qn
+        elif neurons == 'all': # use all neurons
+            neurons = self.alln
+        elif neurons in ['fast', 'slow', 'fastasym', 'slowasym']:
+            # use neurons of specific spike type
+            trn = self.tr.alln # raises AttributeError if track-wide sort doesn't exist
+            neurons = { nid:self.n[nid] for nid in self.n if trn[nid].spiketype == neurons }
+        elif neurons in ['simple', 'complex', 'LGN', 'unknown']:
+            # use neurons of specific RF type
+            trn = self.tr.alln # raises AttributeError if track-wide sort doesn't exist
+            if neurons == 'unknown': neurons = None # normally, None means active
+            neurons = { nid:self.n[nid] for nid in self.n if trn[nid].rftype == neurons }
+        else: # assume neurons is a list of nids
+            neurons = { nid:self.alln[nid] for nid in neurons }
+        nn = len(neurons)
+        nids = np.sort(neurons.keys())
+
+        uns = get_ipython().user_ns
+        if width == None:
+            width = uns['TMUAWIDTH']
+        if tres == None:
+            tres = uns['TMUATRES']
+        assert tres <= width
+
+        if nn == 0:
+            muspikes = np.array([])
+        else:
+            muspikes = np.concatenate([ neurons[nid].spikes for nid in nids ])
+        muspikes.sort() # spikes from neurons, in temporal order, in us
+
+        ttranges, ttrangesweepis, exptrialis = self.trialtranges(
+            sweepis=sweepis, eids=eids, natexps=natexps, t0=t0, dt=dt, blank=blank)
+
+        ntrials = len(ttranges)
+        if trange != None:
+            # keep just those trials that fall entirely with trange:
+            oldntrials = ntrials
+            ttranges = trimtranges(ttranges, trange)
+            ntrials = len(ttranges)
+            assert ntrials > 0 # if not, trange wis too constrictive
+            print('ntrials: %d --> %d after applying trange: %s'
+                  % (oldntrials, ntrials, np.asarray(trange)))
+
+        tspikes = [] # trial spikes, one row per trial
+        for ttrange in ttranges:
+            si0, si1 = muspikes.searchsorted(ttrange)
+            # slice out MU spikes that fall within ttranges of this trial, references to
+            # start of trial:
+            tspikes.append(muspikes[si0:si1] - ttrange[0])
+        mindt = (ttranges[:, 1] - ttranges[:, 0]).min() # duration of the shortest trial
+        tspikes = np.hstack(tspikes)
+        tspikes.sort()
+        muasum, t = self.calc_mua(tspikes, nn, width, tres, trange=[0, mindt], gauss=gauss)
+        muamean = muasum / ntrials # spikes/sec per neuron
+
+        if plot:
+            f = pl.figure(figsize=figsize)
+            a = f.add_subplot(111)
+            a.plot(t, muamean, 'k-')
+            a.set_xlim(xmin=0, xmax=t[-1])
+            a.set_ylim(ymin=0)
+            a.set_xlabel("time (s)")
+            a.set_ylabel("MUA (Hz/unit)")
+            titlestr = lastcmd()
+            gcfm().window.setWindowTitle(titlestr)
+            a.set_title(titlestr)
+            a.text(0.998, 0.99, '%s' % self.name, transform=a.transAxes,
+                   horizontalalignment='right', verticalalignment='top')
+            a.text(0.998, 0.95, 'width, tres = %g, %g' % (width, tres), transform=a.transAxes,
+                   horizontalalignment='right', verticalalignment='top')
+            f.tight_layout(pad=0.3) # crop figure to contents
+
+        return t, muamean
+
     def tune(self, nids='all', alpha=0.01, eid=0, var='ori', fixed=None,
              tdelay=None, strange=None, plot=True):
         """Plot tuning curves for given neurons, based on stimulus info in experiment eid.
