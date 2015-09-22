@@ -69,6 +69,10 @@ slogstd = log10(synchrates).std()
 dlogstd = log10(desynchrates).std()
 smean = 10**(slogmean) # geometric
 dmean = 10**(dlogmean)
+sstd = 10**(slogstd)
+dstd = 10**(dlogstd)
+print('smean, dmean:', smean, dmean)
+print('slogstd, dlogstd:', slogstd, dlogstd)
 '''
 # plot approximately equivalent lognormal distribution:
 A, mu = 34, slogmean
