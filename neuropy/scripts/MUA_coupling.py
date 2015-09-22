@@ -42,6 +42,7 @@ colours = ['b', 'r'] # corresponding state colours
 rels, spars, coups = [[], []], [[], []], [[], []]
 nreplacedbynullrel = 0
 for rec in urecs:
+    allnids = np.asarray(sorted(rec.alln))
     stranges = REC2STATETRANGES[rec.absname]
     for statei, strange in zip(stateis, stranges):
         print(rec.absname, slabels[statei], strange)
@@ -53,7 +54,7 @@ for rec in urecs:
         n2count = rec.bintraster(nids=nids, blank=BLANK, strange=strange,
                                  binw=BINW, tres=TRES, gauss=GAUSS)[0]
         for nid, psth in zip(nids, psths):
-            muanids = nids.copy()
+            muanids = allnids.copy() # use all isolated units in rec to calculate MUA
             muanids = muanids[muanids != nid] # exclude current nid
             tmua = rec.tmua(neurons=muanids, width=BINW, tres=TRES, gauss=GAUSS, blank=BLANK,
                             trange=strange, plot=False)[1] # Hz/unit
