@@ -136,6 +136,10 @@ print('lfpcorrsp = %.2g' % lfpcorrsp)
 print('muacorrsp = %.2g' % muacorrsp)
 print('lfpsparsp = %.2g' % lfpsparsp)
 print('muasparsp = %.2g' % muasparsp)
+assert len(LFPCORRS[0]) == len(MUACORRS[0])
+assert len(LFPCORRS[1]) == len(MUACORRS[1])
+print('desynchronized trials: %d' % len(LFPCORRS[0]))
+print('synchronized trials: %d' % len(LFPCORRS[1]))
 
 # plot LFPCORRS PDFs:
 corrbins = np.arange(0, 1+CORRBINW, CORRBINW) # left edges + rightmost edge
