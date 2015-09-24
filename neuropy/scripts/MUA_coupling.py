@@ -138,7 +138,7 @@ xlim(xmin=COUPMIN, xmax=COUPMAX)
 ylim(1e-3, 1)
 xticks(*coupticks)
 xlabel('MUA coupling')
-ylabel('response reliability')
+ylabel('unit reliability')
 text(0.98, 0.10, 'r = %.2f, p < %.1g' % (rs[1], ceilsigfig(ps[1], 1)),
      color='r', transform=gca().transAxes, horizontalalignment='right',
      verticalalignment='bottom')
@@ -166,7 +166,7 @@ ylim(1e-3, 1)
 xticks(*coupticks)
 yticks([0, 0.2, 0.4, 0.6, 0.8, 1], ['0', '0.2', '0.4', '0.6', '0.8', '1'])
 xlabel('MUA coupling')
-ylabel('response sparseness')
+ylabel('unit sparseness')
 text(0.98, 0.10, 'r = %.2f, p < %.1g' % (rs[1], ceilsigfig(ps[1], 1)),
      color='r', alpha=0.5, transform=gca().transAxes, horizontalalignment='right',
      verticalalignment='bottom')
