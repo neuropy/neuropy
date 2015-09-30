@@ -62,7 +62,7 @@ DEPTHSRANGE = np.array([0, 1400]) # um
 recs, stranges = [], [] # recs has repetitions, not unique
 for rec in urecs: # iterate over sorted unique recs
     tranges = REC2STATETRANGES[rec.absname]
-    for trange in tranges:
+    for trange in tranges: # desynched, then synched
         recs.append(rec)
         stranges.append(trange)
 nrecsec = len(recs)
@@ -150,9 +150,15 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     neurondepthsrecsec.append(n2depth)
     print('\n') # two newlines
 
+
 # 0: desynched, 1: synched
-widths = [np.hstack(widthsrecsec[0::2]), # even are desynched
-          np.hstack(widthsrecsec[1::2])] # odd are synched
+# each recording has a different number of PSTHs, potentially of differing length,
+# flatten them all:
+psths = [np.hstack([ psth.ravel() for psth in psthss[0::2] ]), # even are desynched
+         np.hstack([ psth.ravel() for psth in psthss[1::2] ])] # odd are synched
+
+widths = [np.hstack(widthsrecsec[0::2]),
+          np.hstack(widthsrecsec[1::2])]
 
 ts = [np.hstack(tsrecsec[0::2]),
       np.hstack(tsrecsec[1::2])]
@@ -183,6 +189,55 @@ for i in range(nrecsec):
     ndepths[i%2].append( [ n2d[nid] for nid in sorted(n2d) ] ) # nid order
 ndepths[0] = np.hstack(ndepths[0])
 ndepths[1] = np.hstack(ndepths[1])
+
+
+# plot distribution of PSTH values on log-log scale:
+#bins = np.arange(0, 50, 1)
+nbins = 300
+logmin, logmax = -6, 3
+bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
+figure(figsize=figsize)
+n1 = hist(psths[1], bins=bins, histtype='step', color='r')[0] # synched
+n0 = hist(psths[0], bins=bins, histtype='step', color='b')[0] # desynched
+n = np.hstack([n0, n1])
+xlim(xmin=10**logmin, xmax=10**logmax)
+#ylim(ymax=n.max()) # effectively normalizes the histogram
+#xticks(ticks)
+xscale('log')
+yscale('log')
+xlabel('rates (Hz)')
+ylabel('bin count')
+u, p = mannwhitneyu(psths[0], psths[1]) # 1-sided
+dfiltpsths = psths[1][psths[1] != 0] # filter out 0 values
+sfiltpsths = psths[0][psths[0] != 0]
+smean = 10**(log10(dfiltpsths).mean()) # geometric mean, excluding 0 values
+dmean = 10**(log10(sfiltpsths).mean())
+logu, logp = mannwhitneyu(log10(dfiltpsths), log10(sfiltpsths)) # 1-sided, filtered log values
+print('u, p:', u, p)
+print('logu, logp:', logu, logp)
+# display means and p value:
+text(0.02, 0.18, '$\mu$ = %.1f Hz' % smean, # synched
+                 horizontalalignment='left', verticalalignment='bottom',
+                 transform=gca().transAxes, color='r')
+text(0.02, 0.10, '$\mu$ = %.1f Hz' % dmean, # desynched
+                 horizontalalignment='left', verticalalignment='bottom',
+                 transform=gca().transAxes, color='b')
+text(0.02, 0.02, 'p < %.1g' % ceilsigfig(p, 1),
+                 horizontalalignment='left', verticalalignment='bottom',
+                 transform=gca().transAxes, color='k')
+# arrow doesn't display correctly on log axis, use annotate instead:
+ymin, ymax = ylim()
+logymin, logymax = log10(ymin), log10(ymax)
+logyrange = logymax - logymin
+annotate('', xy=(smean, 10**(logymin+(6/7)*logyrange)), xycoords='data', # synched
+             xytext=(smean, ymax), textcoords='data',
+             arrowprops=dict(fc='r', ec='none', width=1.3, headwidth=7, frac=0.5))
+annotate('', xy=(dmean, 10**(logymin+(6/7)*logyrange)), xycoords='data', # desynched
+             xytext=(dmean, ymax), textcoords='data',
+             arrowprops=dict(fc='b', ec='none', width=1.3, headwidth=7, frac=0.5))
+titlestr = 'PSTH distribution %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
 
 
 '''
