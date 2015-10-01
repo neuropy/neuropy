@@ -68,6 +68,7 @@ for rec in urecs: # iterate over sorted unique recs
 nrecsec = len(recs)
 assert nrecsec == len(stranges)
 assert nrecsec % 2 == 0 # should always be an even number of recording sections
+stateis = [0, 1] * (nrecsec // 2) # allternating desynched and synched state indices
 fmts = ['b-', 'r-'] * (nrecsec // 2) # alternating plotting formats for desynched and synched
 
 # get active or all neuron ids for each section of each recording:
@@ -76,6 +77,7 @@ recsecnids = get_ssnids(recs, stranges, kind=NIDSKIND)[1]
 # calculate PSTHs for all sections of all recordings, collect data from each PSTH with at
 # least 1 detected peak:
 psthss, spiketss = [], []
+rpsths = [[], []] # responsive PSTHs, indexed by state
 psthparamsrecsec = [] # params returned for each PSTH, for each recording section
 widthsrecsec = [] # peak widths, for each recording section
 tsrecsec = [] # peak times, for each recording section
@@ -85,7 +87,7 @@ relsrecsec = [] # reliability values of cells with at least 1 peak, for each rec
 sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
 neurondepthsrecsec = [] # physical depths of units with at least 1 peak, for each rec section
 nreplacedbynullrel = 0
-for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
+for rec, nids, strange, fmt, statei in zip(recs, recsecnids, stranges, fmts, stateis):
     print(rec.absname)
     psthparams = {} # various parameters for each PSTH
     psthswidths = [] # peak width of all nids in this recording section
@@ -118,6 +120,7 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
         npeaks = len(peakis)
         if npeaks == 0:
             continue # this PSTH has no peaks, skip all subsequent measures
+        rpsths[statei].append(psth) # save responsive PSTH, indexed by state
         # calculate peak precision:
         widths = (ris - lis) * TRES * 1000 # ms
         psthswidths.append(widths)
@@ -151,14 +154,13 @@ for rec, nids, strange, fmt in zip(recs, recsecnids, stranges, fmts):
     print('\n') # two newlines
 
 
-# 0: desynched, 1: synched
-# each recording has a different number of PSTHs, potentially of differing length,
-# flatten them all:
-psths = [np.hstack([ psth.ravel() for psth in psthss[0::2] ]), # even are desynched
-         np.hstack([ psth.ravel() for psth in psthss[1::2] ])] # odd are synched
+# 0: desynched, 1: synched for all of these:
 
-widths = [np.hstack(widthsrecsec[0::2]),
-          np.hstack(widthsrecsec[1::2])]
+rpsths = [np.hstack(rpsths[0]),
+          np.hstack(rpsths[1])]
+
+widths = [np.hstack(widthsrecsec[0::2]), # even are desynched
+          np.hstack(widthsrecsec[1::2])] # odd are synched
 
 ts = [np.hstack(tsrecsec[0::2]),
       np.hstack(tsrecsec[1::2])]
@@ -191,14 +193,14 @@ ndepths[0] = np.hstack(ndepths[0])
 ndepths[1] = np.hstack(ndepths[1])
 
 
-# plot distribution of PSTH values on log-log scale:
+# plot distribution of values of responsive PSTHs on log-log scale:
 #bins = np.arange(0, 50, 1)
 nbins = 300
-logmin, logmax = -6, 3
+logmin, logmax = -3, 3
 bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
 figure(figsize=figsize)
-n1 = hist(psths[1], bins=bins, histtype='step', color='r')[0] # synched
-n0 = hist(psths[0], bins=bins, histtype='step', color='b')[0] # desynched
+n1 = hist(rpsths[1], bins=bins, histtype='step', color='r')[0] # synched
+n0 = hist(rpsths[0], bins=bins, histtype='step', color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=10**logmin, xmax=10**logmax)
 #ylim(ymax=n.max()) # effectively normalizes the histogram
@@ -207,12 +209,12 @@ xscale('log')
 yscale('log')
 xlabel('rates (Hz)')
 ylabel('bin count')
-u, p = mannwhitneyu(psths[0], psths[1]) # 1-sided
-dfiltpsths = psths[1][psths[1] != 0] # filter out 0 values
-sfiltpsths = psths[0][psths[0] != 0]
-smean = 10**(log10(dfiltpsths).mean()) # geometric mean, excluding 0 values
-dmean = 10**(log10(sfiltpsths).mean())
-logu, logp = mannwhitneyu(log10(dfiltpsths), log10(sfiltpsths)) # 1-sided, filtered log values
+u, p = mannwhitneyu(rpsths[0], rpsths[1]) # 1-sided
+dfiltrpsths = rpsths[1][rpsths[1] != 0] # filter out 0 values
+sfiltrpsths = rpsths[0][rpsths[0] != 0]
+smean = 10**(log10(dfiltrpsths).mean()) # geometric mean, excluding 0 values
+dmean = 10**(log10(sfiltrpsths).mean())
+logu, logp = mannwhitneyu(log10(dfiltrpsths), log10(sfiltrpsths)) # 1-sided, filtered log values
 print('u, p:', u, p)
 print('logu, logp:', logu, logp)
 # display means and p value:
