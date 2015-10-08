@@ -32,8 +32,6 @@ from psth_funcs import plot_psth, get_psth_peaks_gac
 urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
 urecnames = ' '.join([rec.absname for rec in urecs])
 
-NIDSKIND = 'all' # 'active' or 'all'
-
 BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
 GAUSS = True # calculate PSTH and single trial rates by convolving with Gaussian kernel?
 TRASTERBINW, TRASTERTRES = 0.02, 0.001 # trial raster bins, sec
@@ -72,7 +70,12 @@ stateis = [0, 1] * (nrecsec // 2) # allternating desynched and synched state ind
 fmts = ['b-', 'r-'] * (nrecsec // 2) # alternating plotting formats for desynched and synched
 
 # get active or all neuron ids for each section of each recording:
-recsecnids = get_ssnids(recs, stranges, kind=NIDSKIND)[1]
+recsecnids = get_ssnids(recs, stranges, kind='all')[1]
+
+## TODO: this loop is a mess. It should have 3 nested loops (recording, state, neuron)
+## instead of the current 2 (recording*state, neuron). That's why it has the messy
+## "% 2 == 0" stuff. There's no need to use the get_ssnids() function if kind='all',
+## which it always is.
 
 # calculate PSTHs for all sections of all recordings, collect data from each PSTH with at
 # least 1 detected peak:
@@ -87,9 +90,15 @@ relsrecsec = [] # reliability values of cells with at least 1 peak, for each rec
 sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
 neurondepthsrecsec = [] # physical depths of units with at least 1 peak, for each rec section
 nreplacedbynullrel = 0
-for rec, nids, strange, fmt, statei in zip(recs, recsecnids, stranges, fmts, stateis):
+RNRcount, NRRcount, RRcount, NNcount, Rcount = 0, 0, 0, 0, 0
+for recseci, (rec, strange, fmt, statei) in enumerate(zip(recs, stranges, fmts, stateis)):
     print(rec.absname)
     psthparams = {} # various parameters for each PSTH
+    if statei % 2 == 0: # start of a recording
+        # get set of all neurons in both states in this recording:
+        nids = np.union1d(recsecnids[recseci], recsecnids[recseci+1])
+        rnids = [[], []] # responsive neuron IDs for this pair of recording sections
+        nrnids = [[], []] # nonresponsive neuron IDs for this pair of recording sections
     psthswidths = [] # peak width of all nids in this recording section
     psthsts = [] # times of all peaks of all nids in this recording section
     psthsheights = [] # peak heights of all nids in this recording section
@@ -119,7 +128,9 @@ for rec, nids, strange, fmt, statei in zip(recs, recsecnids, stranges, fmts, sta
             plot_psth(psthparams, nid, fmt)
         npeaks = len(peakis)
         if npeaks == 0:
+            nrnids[statei].append(nid) # save nonresponsive nids, indexed by state
             continue # this PSTH has no peaks, skip all subsequent measures
+        rnids[statei].append(nid) # save responsive nids, indexed by state
         rpsths[statei].append(psth) # save responsive PSTH, indexed by state
         # calculate peak precision:
         widths = (ris - lis) * TRES * 1000 # ms
@@ -151,6 +162,20 @@ for rec, nids, strange, fmt, statei in zip(recs, recsecnids, stranges, fmts, sta
     relsrecsec.append(n2rel)
     sparsrecsec.append(n2sparseness)
     neurondepthsrecsec.append(n2depth)
+    if statei % 2 == 1: # end of a recording
+        # nids responsive in state 0 (desynch) & nonresponsive in state 1 (synch):
+        RNR = np.intersect1d(rnids[0], nrnids[1])
+        # nids nonresponsive in state 0 (desynch) & responsive in state 1 (synch):
+        NRR = np.intersect1d(nrnids[0], rnids[1])
+        RR = np.intersect1d(rnids[0], rnids[1]) # nids responsive in both states
+        NN = np.intersect1d(nrnids[0], nrnids[1]) # nids nonresponsive in both states
+        RNRcount += len(RNR)
+        NRRcount += len(NRR)
+        RRcount += len(RR)
+        NNcount += len(NN)
+        # total number of responsive neurons in either state, treating each recording as
+        # having separate sets of neurons, even though two recordings are from the same track:
+        Rcount += len(np.union1d(rnids[0], rnids[1]))
     print('\n') # two newlines
 
 
@@ -718,7 +743,7 @@ print('recordings: %s' % urecnames)
 # report numbers of all and active PSTHs
 for kind in ['all', 'active']:
     temprecsecnids = get_ssnids(recs, stranges, kind=kind)[1]
-    npsths = sum(nids.shape[0] for nids in temprecsecnids) # number that met NIDSKIND criterion
+    npsths = sum(nids.shape[0] for nids in temprecsecnids) # number that met 'kind' criterion
     print('%s: npsths=%d' % (kind, npsths))
 
 # report numbers of responsive PSTHs:
@@ -732,9 +757,16 @@ print('responsive PSTHs in synched periods: %d' % nresppsthssynched)
 chi2, p = chisquare([nresppsthsdesynched, nresppsthssynched])
 print('chi2=%.3g, p=%.3g' % (chi2, p))
 
+# report responsive/nonresponsive neuron set counts:
+print()
+print('RNRcount=%d, NRRcount=%d, RRcount=%d, NNcount=%d' %
+      (RNRcount, NRRcount, RRcount, NNcount))
+print('Rcount=%d' % Rcount)
+
 # report chi-square results of numbers of peaks in both states:
 ndesynchedpeaks, nsynchedpeaks = len(widths[0]), len(widths[1]) # peak counts
 chi2, p = chisquare([ndesynchedpeaks, nsynchedpeaks])
+print()
 print('peak counts:')
 print('ndesynched=%d, nsynched=%d, chi2=%.3g, p=%.3g'
       % (ndesynchedpeaks, nsynchedpeaks, chi2, p))
