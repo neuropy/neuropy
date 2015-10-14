@@ -71,6 +71,7 @@ smean = 10**(slogmean) # geometric
 dmean = 10**(dlogmean)
 sstd = 10**(slogstd)
 dstd = 10**(dlogstd)
+print('%d desynched units, %d synched units' % (len(desynchrates), len(synchrates)))
 print('smean, dmean:', smean, dmean)
 print('slogstd, dlogstd:', slogstd, dlogstd)
 '''
@@ -109,15 +110,21 @@ yticks(range(0, 40+10, 10))
 xlabel('mean firing rate (Hz)')
 ylabel('unit count')
 # display geometric means and p value:
-text(0.03, 0.98, '$\mu$ = %.2f Hz' % smean, # synched
+text(0.02, 0.98, '$\mu$ = %.2f Hz' % smean, # synched
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.03, 0.90, '$\mu$ = %.2f Hz' % dmean, # desynched
+text(0.02, 0.90, '$\mu$ = %.2f Hz' % dmean, # desynched
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
+text(0.02, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
+text(0.98, 0.98, '$\sigma$ = %.2f' % slogstd, # synched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='r')
+text(0.98, 0.90, '$\sigma$ = %.2f' % dlogstd, # desynched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
 # arrow doesn't display correctly on log axis, use annotate instead:
 annotate('', xy=(smean, (6/7)*40), xycoords='data', # synched
              xytext=(smean, 40), textcoords='data',
@@ -155,7 +162,7 @@ xlim(10**(logmin-0.1), 10**logmax)
 ylim(10**(logmin-0.1), 10**logmax)
 xticks(ticks)
 yticks(ticks)
-text(0.03, 0.98, '%s' % pstring, horizontalalignment='left', verticalalignment='top',
+text(0.02, 0.98, '%s' % pstring, horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 titlestr = 'meanrates scatter'
 gcfm().window.setWindowTitle(titlestr)
