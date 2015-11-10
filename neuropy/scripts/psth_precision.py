@@ -85,6 +85,7 @@ psthparamsrecsec = [] # params returned for each PSTH, for each recording sectio
 widthsrecsec = [] # peak widths, for each recording section
 tsrecsec = [] # peak times, for each recording section
 heightsrecsec = [] # peak heights, for each recording section
+peaknspikesrecsec = [] # spike counts of each peak, normalized by ntrials, for each rec section
 depthsrecsec = [] # physical depths of units for each peak, for each recording section
 relsrecsec = [] # reliability values of cells with at least 1 peak, for each recording section
 sparsrecsec = [] # sparseness values of cells with at least 1 peak, for each recording section
@@ -102,6 +103,7 @@ for recseci, (rec, strange, fmt, statei) in enumerate(zip(recs, stranges, fmts, 
     psthswidths = [] # peak width of all nids in this recording section
     psthsts = [] # times of all peaks of all nids in this recording section
     psthsheights = [] # peak heights of all nids in this recording section
+    peaknspikes = [] # spike counts of each peak, normalized by ntrials
     psthsdepths = [] # physical unit depths of each peak
     n2rel = {} # nid:reliability mapping for this recording section
     n2sparseness = {} # nid:sparseness mapping for this recording section
@@ -115,6 +117,8 @@ for recseci, (rec, strange, fmt, statei) in enumerate(zip(recs, stranges, fmts, 
     # n2count is needed for calculating reliability:
     n2count = rec.bintraster(nids=nids, blank=BLANK, strange=strange,
                              binw=TRASTERBINW, tres=TRASTERTRES, gauss=GAUSS)[0]
+    ntrials = n2count[nids[0]].shape[0] # should be the same for all nids
+    print('ntrials: %d' % ntrials)
     for nid, psth, ts in zip(nids, psths, spikets):
         # run PSTH peak detection:
         baseline = MEDIANX * np.median(psth)
@@ -138,6 +142,10 @@ for recseci, (rec, strange, fmt, statei) in enumerate(zip(recs, stranges, fmts, 
         psthsts.append(peakis * TRES) # sec
         psthsheights.append(psth[peakis] - baseline) # peak height above baseline
         #psthsheights.append(psth[peakis]) # peak height above 0
+        lspikeis, rspikeis = ts.searchsorted(lis*TRES), ts.searchsorted(ris*TRES)
+        nspikes = rspikeis - lspikeis # nspikes of each detected peak
+        assert (nspikes > 0).all()
+        peaknspikes.append(nspikes / ntrials) # nspikes of each detected peak per trial
         depth = rec.alln[nid].pos[1] # y position on polytrode, microns from top
         psthsdepths.append(np.tile([depth], npeaks))
         # calculate reliability of responsive PSTHs:
@@ -158,6 +166,7 @@ for recseci, (rec, strange, fmt, statei) in enumerate(zip(recs, stranges, fmts, 
     widthsrecsec.append(np.hstack(psthswidths))
     tsrecsec.append(np.hstack(psthsts))
     heightsrecsec.append(np.hstack(psthsheights))
+    peaknspikesrecsec.append(np.hstack(peaknspikes))
     depthsrecsec.append(np.hstack(psthsdepths))
     relsrecsec.append(n2rel)
     sparsrecsec.append(n2sparseness)
@@ -192,6 +201,9 @@ ts = [np.hstack(tsrecsec[0::2]),
 
 heights = [np.hstack(heightsrecsec[0::2]),
            np.hstack(heightsrecsec[1::2])]
+
+peaknspikes = [np.hstack(peaknspikesrecsec[0::2]),
+               np.hstack(peaknspikesrecsec[1::2])]
 
 depths = [np.hstack(depthsrecsec[0::2]),
           np.hstack(depthsrecsec[1::2])]
@@ -429,6 +441,59 @@ annotate('', xy=(dmean, (6/7)*126), xycoords='data', # desynched
              xytext=(dmean, 126), textcoords='data',
              arrowprops=dict(fc='b', ec='none', width=1.3, headwidth=7, frac=0.5))
 titlestr = 'peak amplitude log %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+
+
+# plot distribution of response event nspikes per trial in log space, shows that most response
+# events are not composed of spike bursts:
+logmin, logmax = log10(0.01), log10(100)
+nbins = 25
+bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
+figure(figsize=figsize)
+n1 = hist(peaknspikes[1], bins=bins, histtype='step', color='r')[0] # synched
+n0 = hist(peaknspikes[0], bins=bins, histtype='step', color='b')[0] # desynched
+n = np.hstack([n0, n1])
+xlim(xmin=10**logmin, xmax=10**logmax)
+ylim(ymax=n.max()+5) # effectively normalizes the histogram
+axvline(x=1, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=1
+#xticks(ticks)
+xscale('log')
+xlabel('spikes/trial')
+ylabel('event count')
+u, p = mannwhitneyu(log10(peaknspikes[0]), log10(peaknspikes[1])) # 1-sided
+smean = 10**(log10(peaknspikes[1]).mean()) # geometric
+dmean = 10**(log10(peaknspikes[0]).mean())
+# display geometric means and percentages of response events with <= 1 spike/trial:
+text(0.98, 0.98, '$\mu$ = %.1f' % smean, # synched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='r')
+text(0.98, 0.90, '$\mu$ = %.1f' % dmean, # desynched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
+'''
+text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+'''
+# get percentage of response events with <= 1 spike/trial, separately for each state
+spercentlte1 = intround((peaknspikes[1] <= 1).sum() / len(peaknspikes[1]) * 100)
+dpercentlte1 = intround((peaknspikes[0] <= 1).sum() / len(peaknspikes[0]) * 100)
+text(0.98, 0.82, '%d%% $\leq$ 1' % spercentlte1,
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='r')
+text(0.98, 0.74, '%d%% $\leq$ 1' % dpercentlte1,
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
+'''
+annotate('', xy=(smean, (6/7)*126), xycoords='data', # synched
+             xytext=(smean, 126), textcoords='data',
+             arrowprops=dict(fc='r', ec='none', width=1.3, headwidth=7, frac=0.5))
+annotate('', xy=(dmean, (6/7)*126), xycoords='data', # desynched
+             xytext=(dmean, 126), textcoords='data',
+             arrowprops=dict(fc='b', ec='none', width=1.3, headwidth=7, frac=0.5))
+'''
+titlestr = 'peak nspikes log %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
