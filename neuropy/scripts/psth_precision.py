@@ -15,11 +15,13 @@ from __future__ import division, print_function
 
 from scipy.signal import argrelextrema
 from scipy.stats import ttest_ind, chisquare, mannwhitneyu, linregress
+from scipy.optimize import leastsq
+
 from numpy import log10
 
 import pylab as pl
 
-from core import get_ssnids, sparseness, intround, ceilsigfig, scatterbin
+from core import get_ssnids, sparseness, intround, ceilsigfig, scatterbin, g
 
 from psth_funcs import plot_psth, get_psth_peaks_gac
 
@@ -450,27 +452,61 @@ tight_layout(pad=0.3)
 logmin, logmax = log10(0.01), log10(100)
 nbins = 25
 bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
+logbinwidth = log10(bins[1])-log10(bins[0])
+midbins = np.logspace(logmin+logbinwidth/2, logmax-logbinwidth/2, nbins) # nbins in log space
+logmidbins = log10(midbins)
 figure(figsize=figsize)
-n1 = hist(peaknspikes[1], bins=bins, histtype='step', color='r')[0] # synched
-n0 = hist(peaknspikes[0], bins=bins, histtype='step', color='b')[0] # desynched
-n = np.hstack([n0, n1])
+shist = hist(peaknspikes[1], bins=bins, histtype='step', color='r')[0] # synched
+dhist = hist(peaknspikes[0], bins=bins, histtype='step', color='b')[0] # desynched
 xlim(xmin=10**logmin, xmax=10**logmax)
-ylim(ymax=n.max()+5) # effectively normalizes the histogram
+ymax = 200
+ylim(ymax=ymax)
 axvline(x=1, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=1
 #xticks(ticks)
 xscale('log')
-xlabel('spikes/trial')
+xlabel('spikes/event/trial')
 ylabel('event count')
+# do some stats:
 u, p = mannwhitneyu(log10(peaknspikes[0]), log10(peaknspikes[1])) # 1-sided
-smean = 10**(log10(peaknspikes[1]).mean()) # geometric
-dmean = 10**(log10(peaknspikes[0]).mean())
+slogmean = log10(peaknspikes[1]).mean()
+dlogmean = log10(peaknspikes[0]).mean()
+slogstd = log10(peaknspikes[1]).std()
+dlogstd = log10(peaknspikes[0]).std()
+smean = 10**(slogmean) # geometric
+dmean = 10**(dlogmean)
+sstd = 10**(slogstd)
+dstd = 10**(dlogstd)
+# Do least-squares LM fit of a lognormal distribution to the data.
+# Everything is done in log space:
+# set initial parameters:
+sA, dA = max(shist), max(dhist) # Gaussian amplitude
+sp = slogmean, slogstd, sA # parameter list
+dp = dlogmean, dlogstd, dA
+def cost(p, x, y):
+    """Cost function for LM least-squares fit"""
+    mu, sigma, A = p
+    return A * g(mu, sigma, x) - y
+# fit the 3 parameters for both synched and desynched distribs:
+sresult = leastsq(cost, sp, args=(logmidbins, shist), full_output=True)
+dresult = leastsq(cost, dp, args=(logmidbins, dhist), full_output=True)
+sp, cov_p, infodict, mesg, ier = sresult
+dp, cov_p, infodict, mesg, ier = dresult
+smu, ssigma, sA = sp
+dmu, dsigma, dA = dp
+# generate fit distributions from fit parameters
+modelx = np.logspace(logmin, logmax, 200) # 200 points in log space
+smodel = sA*g(smu, ssigma, log10(modelx))
+dmodel = dA*g(dmu, dsigma, log10(modelx))
+# plot the fit distributions:
+plot(modelx, smodel, 'r--', lw=1, alpha=0.5)
+plot(modelx, dmodel, 'b--', lw=1, alpha=0.5)
 # display geometric means and percentages of response events with <= 1 spike/trial:
-text(0.98, 0.98, '$\mu$ = %.1f' % smean, # synched
-                 horizontalalignment='right', verticalalignment='top',
-                 transform=gca().transAxes, color='r')
-text(0.98, 0.90, '$\mu$ = %.1f' % dmean, # desynched
-                 horizontalalignment='right', verticalalignment='top',
-                 transform=gca().transAxes, color='b')
+text(0.02, 0.984, '$\mu$ = %.1f' % smean, # synched
+                  horizontalalignment='left', verticalalignment='top',
+                  transform=gca().transAxes, color='r')
+text(0.02, 0.904, '$\mu$ = %.1f' % dmean, # desynched
+                  horizontalalignment='left', verticalalignment='top',
+                  transform=gca().transAxes, color='b')
 '''
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
@@ -479,20 +515,18 @@ text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
 # get percentage of response events with <= 1 spike/trial, separately for each state
 spercentlte1 = intround((peaknspikes[1] <= 1).sum() / len(peaknspikes[1]) * 100)
 dpercentlte1 = intround((peaknspikes[0] <= 1).sum() / len(peaknspikes[0]) * 100)
-text(0.98, 0.82, '%d%% $\leq$ 1' % spercentlte1,
+text(0.98, 0.98, '%d%% $\leq$ 1' % spercentlte1,
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.98, 0.74, '%d%% $\leq$ 1' % dpercentlte1,
+text(0.98, 0.90, '%d%% $\leq$ 1' % dpercentlte1,
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
-'''
-annotate('', xy=(smean, (6/7)*126), xycoords='data', # synched
-             xytext=(smean, 126), textcoords='data',
+annotate('', xy=(smean, (6/7)*ymax), xycoords='data', # synched
+             xytext=(smean, ymax), textcoords='data',
              arrowprops=dict(fc='r', ec='none', width=1.3, headwidth=7, frac=0.5))
-annotate('', xy=(dmean, (6/7)*126), xycoords='data', # desynched
-             xytext=(dmean, 126), textcoords='data',
+annotate('', xy=(dmean, (6/7)*ymax), xycoords='data', # desynched
+             xytext=(dmean, ymax), textcoords='data',
              arrowprops=dict(fc='b', ec='none', width=1.3, headwidth=7, frac=0.5))
-'''
 titlestr = 'peak nspikes log %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
