@@ -91,7 +91,8 @@ class LFP(object):
         1 doesn't seem to reveal detail when a line obscures itself, such as when plotting a
         very long time series. relative2t0 controls whether to plot relative to t0, or
         relative to start of ADC clock. lim2stim limits the time range only to when a stimulus
-        was on screen, i.e. to the outermost times of non-NULL din"""
+        was on screen, i.e. to the outermost times of non-NULL din. If only one chan is
+        requested, it's plotted on a mV scale instead of a spatial scale."""
         self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
         if t0 == None:
@@ -106,9 +107,14 @@ class LFP(object):
         ts = ts[t0i:t1i] # constrained set of timestamps, in sec
         chanis = tolist(chanis)
         nchans = len(chanis)
-        # grab desired channels and time range, convert uV to um:
-        totalgain = self.UV2UM * gain
-        data = self.data[chanis][:, t0i:t1i] * totalgain
+        # grab desired channels and time range:
+        data = self.data[chanis][:, t0i:t1i]
+        if nchans > 1: # convert uV to um:
+            totalgain = self.UV2UM * gain
+            data = data * totalgain
+        else: # convert uV to mV:
+            data = data / 1000
+            yunits = 'mV'
         nt = len(ts)
         assert nt == data.shape[1]
         if relative2t0:
@@ -118,30 +124,37 @@ class LFP(object):
         x.shape = nchans, nt
         segments = np.zeros((nchans, nt, 2)) # x vals in col 0, yvals in col 1
         segments[:, :, 0] = x
-        segments[:, :, 1] = -data # set to -ve here because of invert_yaxis() below
-        # add y offsets:
-        maxypos = 0
-        for chanii, chani in enumerate(chanis):
-            chan = self.chans[chani]
-            ypos = self.chanpos[chan][1] # in um
-            segments[chanii, :, 1] += ypos # vertical distance below top of probe
-            maxypos = max(maxypos, ypos)
-        if yunits == 'mm': # convert from um to mm
-            segments[:, :, 1] /= 1000
-            maxypos = maxypos / 1000 # convert from int to float
-            totalgain = totalgain / 1000
+        if nchans > 1:
+            segments[:, :, 1] = -data # set to -ve here because of invert_yaxis() below
+        else:
+            segments[:, :, 1] = data
+        if nchans > 1: # add y offsets:
+            maxypos = 0
+            for chanii, chani in enumerate(chanis):
+                chan = self.chans[chani]
+                ypos = self.chanpos[chan][1] # in um
+                segments[chanii, :, 1] += ypos # vertical distance below top of probe
+                maxypos = max(maxypos, ypos)
+            if yunits == 'mm': # convert from um to mm
+                segments[:, :, 1] /= 1000
+                maxypos = maxypos / 1000 # convert from int to float
+                totalgain = totalgain / 1000
         lc = LineCollection(segments, linewidth=1, linestyle='-', colors=c, alpha=alpha,
                             antialiased=True, visible=True)
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         a.add_collection(lc) # add to axes' pool of LCs
         if scalebar: # add vertical scale bar at end of last channel to represent 1 mV:
-            ymin, ymax = maxypos-500*totalgain, maxypos+500*totalgain # +/- 0.5 mV
+            if nchans > 1:
+                ymin, ymax = maxypos-500*totalgain, maxypos+500*totalgain # +/- 0.5 mV
+            else:
+                ymin, ymax = -0.5, 0.5 # mV
             a.vlines(ts.max()*0.99, ymin, ymax, lw=lw, colors='e')
         a.autoscale(enable=True, tight=True)
         # depending on relative2t0 above, x=0 represents either t0 or time ADC clock started:
         a.set_xlim(xmin=0)
-        a.invert_yaxis()
+        if nchans > 1:
+            a.invert_yaxis() # for spatial scale
         if yticks != None:
             a.set_yticks(yticks)
         # turn off annoying "+2.41e3" type offset on x axis:
@@ -153,6 +166,8 @@ class LFP(object):
             a.set_ylabel("depth ($\mu$m)")
         elif yunits == 'mm':
             a.set_ylabel("depth (mm)")
+        elif yunits == 'mV':
+            a.set_ylabel("LFP (mV)")
         titlestr = lastcmd()
         gcfm().window.setWindowTitle(titlestr)
         if title:
