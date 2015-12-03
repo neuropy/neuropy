@@ -34,6 +34,18 @@ from psth_funcs import plot_psth, get_psth_peaks_gac
 urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
 urecnames = ' '.join([rec.absname for rec in urecs])
 
+# saccade times manually read off of global motion plots, all exceeded 60 deg/sec and dropped
+# back down below 60 within ~0.1 sec:
+saccades = {
+'ptc17.tr2b.r58': [0.45, 1.125, 1.725, 2.1, 2.43, 2.94, 3.405],
+'ptc18.tr1.r38': [0.18, 0.435, 1.02, 1.605, 3.195, 3.615],
+'ptc18.tr2c.r58': [0.45, 1.125, 1.725, 2.1, 2.43, 2.94, 3.405],
+'ptc22.tr1.r08': [0.465, 0.75, 1.095, 1.635, 1.92, 2.205, 2.64, 2.91, 3.21, 3.51, 3.72, 3.9,
+                  4.23, 4.395],
+'ptc22.tr1.r10': [0.36, 0.705, 1.02, 1.59, 2.16, 2.4, 2.79, 3.885, 4.38],
+'ptc22.tr4b.r49': [0.9, 1.305, 1.65, 1.95, 3.33, 3.855, 4.185]
+}
+
 BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
 GAUSS = True # calculate PSTH and single trial rates by convolving with Gaussian kernel?
 TRASTERBINW, TRASTERTRES = 0.02, 0.001 # trial raster bins, sec
@@ -360,7 +372,7 @@ n = np.hstack([n0, n1])
 xlim(xmin=0, xmax=TSMAX)
 ylim(ymax=n.max()+10) # effectively normalizes the histogram
 #xticks(ticks)
-xlabel('event times (sec)')
+xlabel('event times (s)')
 ylabel('event count')
 #t, p = ttest_ind(widths[0], widths[1], equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(ts[0], ts[1]) # 1-sided
@@ -369,6 +381,46 @@ text(0.98, 0.98, '$\mu$ = %.1f ms' % ts[1].mean(), # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
 text(0.98, 0.90, '$\mu$ = %.1f ms' % ts[0].mean(), # desynched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
+text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+titlestr = 'peak times %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+
+
+# plot PSTH peak time distributions relative to nearest preceding movie saccade:
+tssac = [[], []] # 0 is desynch, 1 is synch
+recnames = [ rec.absname for rec in urecs ]
+for reci, recname in enumerate(recnames):
+    st = np.asarray(saccades[recname]) # saccade times for this rec
+    for statei in [0, 1]:
+        peaktimes = tsrecsec[reci+statei]
+        sis = st.searchsorted(peaktimes) - 1 # indices into nearest preceding saccade
+        # exclude PSTH peaks that happen before first saccade:
+        siis = sis >= 0
+        peaktimes, sis = peaktimes[siis], sis[siis]
+        tssac[statei].append(peaktimes - st[sis])
+tssac[0] = np.hstack(tssac[0])
+tssac[1] = np.hstack(tssac[1])
+xmax = 2 # sec
+bins = np.arange(0, xmax+0.05, 0.05)
+figure(figsize=figsize)
+n1 = hist(tssac[1], bins=bins, histtype='step', color='r')[0] # synched
+n0 = hist(tssac[0], bins=bins, histtype='step', color='b')[0] # desynched
+n = np.hstack([n0, n1])
+xlim(xmin=0, xmax=xmax)
+ylim(ymax=n.max()+10) # effectively normalizes the histogram
+xlabel('event time after saccade (s)')
+ylabel('event count')
+u, p = mannwhitneyu(tssac[0], tssac[1]) # 1-sided
+# display means and p value:
+text(0.98, 0.98, '$\mu$ = %.1f ms' % tssac[1].mean(), # synched
+                 horizontalalignment='right', verticalalignment='top',
+                 transform=gca().transAxes, color='r')
+text(0.98, 0.90, '$\mu$ = %.1f ms' % tssac[0].mean(), # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
