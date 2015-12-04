@@ -397,7 +397,7 @@ recnames = [ rec.absname for rec in urecs ]
 for reci, recname in enumerate(recnames):
     st = np.asarray(saccades[recname]) # saccade times for this rec
     for statei in [0, 1]:
-        peaktimes = tsrecsec[reci+statei]
+        peaktimes = tsrecsec[2*reci+statei] # 2 states for each recording
         sis = st.searchsorted(peaktimes) - 1 # indices into nearest preceding saccade
         # exclude PSTH peaks that happen before first saccade:
         siis = sis >= 0
