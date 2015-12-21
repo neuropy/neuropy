@@ -392,20 +392,23 @@ tight_layout(pad=0.3)
 
 
 # plot PSTH peak time distributions relative to nearest preceding movie saccade:
-tssac = [[], []] # 0 is desynch, 1 is synch
+tssac = [[], []] # peak times wrt saccade, 0 is desynch, 1 is synch
+widthsac = [[], []] # widths of above corresponding peaks, 0 is desynch, 1 is synch
 recnames = [ rec.absname for rec in urecs ]
 for reci, recname in enumerate(recnames):
     st = np.asarray(saccades[recname]) # saccade times for this rec
     for statei in [0, 1]:
         peaktimes = tsrecsec[2*reci+statei] # 2 states for each recording
+        peakwidths = widthsrecsec[2*reci+statei]
         sis = st.searchsorted(peaktimes) - 1 # indices into nearest preceding saccade
         # exclude PSTH peaks that happen before first saccade:
         siis = sis >= 0
-        peaktimes, sis = peaktimes[siis], sis[siis]
+        peaktimes, peakwidths, sis = peaktimes[siis], peakwidths[siis], sis[siis]
         tssac[statei].append(peaktimes - st[sis])
-tssac[0] = np.hstack(tssac[0])
-tssac[1] = np.hstack(tssac[1])
-xmax = 2 # sec
+        widthsac[statei].append(peakwidths)
+tssac[0], tssac[1] = np.hstack(tssac[0]), np.hstack(tssac[1])
+widthsac[0], widthsac[1] = np.hstack(widthsac[0]), np.hstack(widthsac[1])
+xmax = 1 # sec
 bins = np.arange(0, xmax+0.05, 0.05)
 figure(figsize=figsize)
 n1 = hist(tssac[1], bins=bins, histtype='step', color='r')[0] # synched
@@ -426,7 +429,34 @@ text(0.98, 0.90, '$\mu$ = %.1f ms' % tssac[0].mean(), # desynched
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
-titlestr = 'peak times %s' % urecnames
+titlestr = 'peak times after saccade %s' % urecnames
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+
+
+# plot peak width vs time after nearest preceding saccade, in both cortical states:
+figure(figsize=figsize)
+ms, bs, rs, ps, stderrs = [], [], [], [], []
+tssacrange = np.array([0, xmax])
+for statei, c in zip([0, 1], ['b', 'r']): # desynched, then synched
+    # scatter plot:
+    pl.plot(tssac[statei], widthsac[statei], c+'.', alpha=0.5, ms=2)
+    # calculate linear regression on log width:
+    m, b, r, p, stderr = linregress(tssac[statei], log10(widthsac[statei]))
+    # plot linear regression:
+    plot(tssacrange, 10**(m*tssacrange+b), c=c, ls='-', lw=2, alpha=0.5, zorder=10)
+    ms.append(m); bs.append(b); rs.append(r); ps.append(p); stderrs.append(stderr)
+xlim(xmin=0, xmax=xmax)
+yscale('log')
+xlabel('event time after saccade (s)')
+ylabel('event width (ms)')
+text(0.02, 0.10, 'r = %.2f, p < %.1g' % (rs[1], ceilsigfig(ps[1], 1)),
+     color='r', alpha=0.5, transform=gca().transAxes, horizontalalignment='left',
+     verticalalignment='bottom')
+text(0.02, 0.02, 'r = %.2f, p < %.1g' % (rs[0], ceilsigfig(ps[0], 1)),
+     color='b', alpha=0.5, transform=gca().transAxes, horizontalalignment='left',
+     verticalalignment='bottom')
+titlestr = 'precision vs peak times after saccade %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
