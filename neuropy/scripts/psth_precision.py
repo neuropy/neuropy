@@ -438,23 +438,28 @@ tight_layout(pad=0.3)
 figure(figsize=figsize)
 ms, bs, rs, ps, stderrs = [], [], [], [], []
 tssacrange = np.array([0, xmax])
+alphas = []
 for statei, c in zip([0, 1], ['b', 'r']): # desynched, then synched
     # scatter plot:
     pl.plot(tssac[statei], widthsac[statei], c+'.', alpha=0.5, ms=2)
     # calculate linear regression on log width:
     m, b, r, p, stderr = linregress(tssac[statei], log10(widthsac[statei]))
     # plot linear regression:
-    plot(tssacrange, 10**(m*tssacrange+b), c=c, ls='-', lw=2, alpha=0.5, zorder=10)
+    if p < 0.05: # significant?
+        alphas.append(1.0)
+    else:
+        alphas.append(0.5)
+    plot(tssacrange, 10**(m*tssacrange+b), c=c, ls='-', lw=2, alpha=alphas[-1], zorder=10)
     ms.append(m); bs.append(b); rs.append(r); ps.append(p); stderrs.append(stderr)
 xlim(xmin=0, xmax=xmax)
 yscale('log')
 xlabel('event time after saccade (s)')
 ylabel('event width (ms)')
 text(0.02, 0.10, 'r = %.2f, p < %.1g' % (rs[1], ceilsigfig(ps[1], 1)),
-     color='r', alpha=0.5, transform=gca().transAxes, horizontalalignment='left',
+     color='r', alpha=alphas[1], transform=gca().transAxes, horizontalalignment='left',
      verticalalignment='bottom')
 text(0.02, 0.02, 'r = %.2f, p < %.1g' % (rs[0], ceilsigfig(ps[0], 1)),
-     color='b', alpha=0.5, transform=gca().transAxes, horizontalalignment='left',
+     color='b', alpha=alphas[0], transform=gca().transAxes, horizontalalignment='left',
      verticalalignment='bottom')
 titlestr = 'precision vs peak times after saccade %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
