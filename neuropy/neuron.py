@@ -667,10 +667,13 @@ class STA(RevCorr):
             to 65534 for mseq32). We're now using the correct movies, but the din for ptc15
             mseq experiments still have those erroneous frame indices (65535 and 16383 for
             mseq32 and mseq16 respectively), so we'll just ignore them for revcorr purposes.
+
+            Also, note that 65535 is used to indicate blank screen for all movies, so it should
+            also be ignored for all movies for revcorr purposes.
             """
-            if 'mseq32' in self.movie.static.fname.lower():
-                frameis = frameis[frameis != 65535] # remove all occurences of 65535
-            elif 'mseq16' in self.movie.static.fname.lower():
+            fname = self.movie.static.fname.lower()
+            frameis = frameis[frameis != 65535] # remove all occurences of 65535
+            if 'mseq16' in fname:
                 frameis = frameis[frameis != 16383] # remove all occurences of 16383
             # take the mean of all the frames at this timepoint:
             # slowest way:
