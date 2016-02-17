@@ -419,16 +419,24 @@ ylim(ymax=n.max()+10) # effectively normalizes the histogram
 xlabel('event time after saccade (s)')
 ylabel('event count')
 u, p = mannwhitneyu(tssac[0], tssac[1]) # 1-sided
+smean = tssac[1].mean()
+dmean = tssac[0].mean()
 # display means and p value:
-text(0.98, 0.98, '$\mu$ = %.1f ms' % tssac[1].mean(), # synched
+text(0.98, 0.98, '$\mu$ = %.1f s' % smean, # synched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='r')
-text(0.98, 0.90, '$\mu$ = %.1f ms' % tssac[0].mean(), # desynched
+text(0.98, 0.90, '$\mu$ = %.1f s' % dmean, # desynched
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='b')
 text(0.98, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='right', verticalalignment='top',
                  transform=gca().transAxes, color='k')
+annotate('', xy=(smean, (6/7)*200), xycoords='data', # synched
+             xytext=(smean, 200), textcoords='data',
+             arrowprops=dict(fc='r', ec='none', width=1.3, headwidth=7, frac=0.5))
+annotate('', xy=(dmean, (5/7)*200), xycoords='data', # desynched
+             xytext=(dmean, 6/7*200), textcoords='data',
+             arrowprops=dict(fc='b', ec='none', width=1.3, headwidth=7, frac=0.5))
 titlestr = 'peak times after saccade %s' % urecnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
