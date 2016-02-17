@@ -239,7 +239,7 @@ tight_layout(pad=0.3)
 """Calculate PSTHs as in psth_precision.py, then correlate each one with its respective movie
 motion, contrast and luminance signal."""
 
-from scipy.stats import chisquare, mannwhitneyu, linregress
+from scipy.stats import chisquare, mannwhitneyu, linregress, spearmanr
 
 from psth_funcs import get_psth_peaks_gac
 
@@ -503,20 +503,28 @@ plot(motscatspars['synch'][:, 0], motscatspars['synch'][:, 1], 'r.', ms=2)
 plot(motscatspars['desynch'][:, 0], motscatspars['desynch'][:, 1], 'b.', ms=2)
 xlim(0, 1)
 ylim(0, 1)
-xr = np.asarray(xlim()) # x range
-m, b, r, p, stderr = linregress(motscatspars['synch'])
-plot(xr, m*xr+b, 'r', ls='--', lw=2, alpha=0.7)
-text(0.02, 0.02, 'r=%.2f, p=%.1g' % (r, p), color='r',
+r, p = spearmanr(motscatspars['synch'])
+pstring = 'p < %g' % ceilsigfig(p)
+text(0.02, 0.01, '$r_s$=%.2f, %s' % (r, pstring), color='r', alpha=0.7,
      transform=gca().transAxes, horizontalalignment='left', verticalalignment='bottom')
-m, b, r, p, stderr = linregress(motscatspars['desynch'])
-plot(xr, m*xr+b, 'b', ls='--', lw=2, alpha=0.7)
-text(0.02, 0.1, 'r=%.2f, p=%.1g' % (r, p), color='b',
+r, p = spearmanr(motscatspars['desynch'])
+pstring = 'p < %g' % ceilsigfig(p)
+text(0.02, 0.09, '$r_s$=%.2f, %s' % (r, pstring), color='b', alpha=0.7,
      transform=gca().transAxes, horizontalalignment='left', verticalalignment='bottom')
-allmotscatspars = np.vstack(motscatspars.values())
-m, b, r, p, stderr = linregress(allmotscatspars)
-plot(xr, m*xr+b, 'k', ls='--', lw=2, alpha=0.7)
-text(0.02, 0.18, 'r=%.2f, p=%.1g' % (r, p), color='k',
-     transform=gca().transAxes, horizontalalignment='left', verticalalignment='bottom')
+#xr = np.asarray(xlim()) # x range
+#m, b, r, p, stderr = linregress(motscatspars['synch'])
+#plot(xr, m*xr+b, 'r', ls='--', lw=2, alpha=0.7)
+#text(0.02, 0.02, 'r=%.2f, p=%.1g' % (r, p), color='r',
+     #transform=gca().transAxes, horizontalalignment='left', verticalalignment='bottom')
+#m, b, r, p, stderr = linregress(motscatspars['desynch'])
+#plot(xr, m*xr+b, 'b', ls='--', lw=2, alpha=0.7)
+#text(0.02, 0.1, 'r=%.2f, p=%.1g' % (r, p), color='b',
+     #transform=gca().transAxes, horizontalalignment='left', verticalalignment='bottom')
+#allmotscatspars = np.vstack(motscatspars.values())
+#m, b, r, p, stderr = linregress(allmotscatspars)
+#plot(xr, m*xr+b, 'k', ls='--', lw=2, alpha=0.7)
+#text(0.02, 0.18, 'r=%.2f, p=%.1g' % (r, p), color='k',
+     #transform=gca().transAxes, horizontalalignment='left', verticalalignment='bottom')
 xlabel('movie motion sparseness')
 ylabel('PSTH sparseness')
 gcfm().window.setWindowTitle('movie_PSTH_sparseness')
