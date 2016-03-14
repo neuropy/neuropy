@@ -1,11 +1,16 @@
 """Export movie data to .avi file.
-Run from within neuropy using `run -i scripts/psth_precision.py`"""
+Run from within neuropy using `run -i scripts/write_movie_avconv.py`"""
 
 import numpy as np
 import Image
 import subprocess as sp
 import os
 import shutil
+
+CONTRASTINVERT = True
+invstr = ''
+if CONTRASTINVERT:
+     invstr = '_INV'
 
 path = os.path.expanduser('~/data/mov/2007-11-24')
 '''
@@ -18,10 +23,14 @@ framei0, framei1 = 0, 300
 e = ptc22.tr1.r08.e0.e
 
 basename = mvifname + '_' + str(framei0) + '-' + str(framei1) # e.g. MVI_1403_0-300
-fnameavi = os.path.join(path, basename) + '.avi'
+fnameavi = os.path.join(path, basename) + invstr + '.avi'
 e.load()
 assert e.f.name == os.path.join(path, mvifname)
 mvi = np.asarray(e.frames[framei0:framei1]) # a 3D numpy array
+if CONTRASTINVERT:
+    assert mvi.dtype == np.uint8
+    mvi = 255 - mvi # invert contrast of all pixels, assumes 8 bit pixels
+
 '''
 # Export movie data from neuropy:
 
@@ -62,7 +71,6 @@ command = [ FFMPEG_BIN,
             #'-vcodec', 'mpeg4',
             #'-s', '320x240', # size of one frame
             #'-pix_fmt', 'gray',
-            '-r', '60', # frames per second
             fnameavi ]
 sp.call(command)
 print('saved .avi movie to %s' % fnameavi)
