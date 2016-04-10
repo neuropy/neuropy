@@ -15,7 +15,7 @@ from core import ceilsigfig, floorsigfig, scatterbin, intround
 from psth_funcs import get_nids_psths, get_psth_peaks_gac, get_seps
 
 BLANK = False # consider blank periods between trials?
-BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
+BINW, TRES = 0.02, 0.001 # PSTH time bins, sec
 BINWMS = '%dms' % intround(BINW * 1000)
 GAUSS = True # calculate PSTH and single trial rates by convolving with Gaussian kernel?
 if GAUSS:
@@ -45,6 +45,7 @@ nrecs = len(urecs)
 slabels = ['desynch', 'synch'] # state labels
 colours = ['b', 'r'] # corresponding state colours
 rhoslist = {None: [], 'desynch': [], 'synch': []} # None means state is ignored
+nrhoslist = {None: [], 'desynch': [], 'synch': []}
 sepslist = {None: [], 'desynch': [], 'synch': []}
 nidslist = {None: [], 'desynch': [], 'synch': []}
 for rec in urecs:
@@ -57,12 +58,30 @@ for rec in urecs:
                                      medianx=MEDIANX, minthresh=MINTHRESH)
         nn = len(nids)
         nidslist[slabel].append(nids)
-        rho = np.corrcoef(psths) # rho matrix, defaults to bias=1
-        rho[np.diag_indices(nn)] = np.nan # nan the diagonal, which imshow plots as white
 
-        # collect rho values:
+        # calculate signal correlations:
+        rho = np.corrcoef(psths) # rho matrix, defaults to bias=1
+        diagis = np.diag_indices(nn)
+        rho[diagis] = np.nan # nan the diagonal, which imshow plots as white
+
+        # calculate noise correlations:
+        errs = []
+        n2count = rec.bintraster(nids=nids, blank=BLANK, strange=strange,
+                                 binw=BINW, tres=TRES, gauss=GAUSS)[0]
+        for nid, psth in zip(nids, psths):
+            cs = n2count[nid] # 2D array of trial spike counts, one row per trial
+            rates = cs / BINW # normalize counts by binw to get rates
+            err = rates - psth # 2D error array between trial responses and PSTH
+            errs.append(err.ravel()) # flatten across trials for use in corrcoef()
+        errs = np.asarray(errs)
+        # calculate corrs between flattened 2D err arrays for all cell pairs:
+        nrho = np.corrcoef(errs)
+        nrho[diagis] = np.nan # nan the diagonal, which imshow plots as white
+
+        # collect rho and nrho values:
         lti = np.tril_indices(nn, -1) # lower triangle indices of rho matrix
         rhoslist[slabel].append(rho[lti])
+        nrhoslist[slabel].append(nrho[lti])
 
         # collect corresponding pairwise neuron separation distances:
         sepslist[slabel].append(get_seps(nids, rec.alln))
@@ -81,13 +100,27 @@ for rec in urecs:
             gcfm().window.setWindowTitle(titlestr)
             tight_layout(pad=0.3)
 
+            # plot nrho matrix:
+            figure(figsize=FIGSIZE)
+            imshow(nrho, vmin=VMIN, vmax=VMAX, cmap='jet') # cmap='gray' is too bland
+            nidticks = np.arange(0, nn, 10)
+            xticks(nidticks)
+            yticks(nidticks)
+            if SHOWCOLORBAR:
+                colorbar(ticks=[-1, 0, 1])
+            titlestr = '_'.join([rec.absname, 'nrho_mat', str(slabel),
+                                 KIND, KERNEL, BINWMS])
+            gcfm().window.setWindowTitle(titlestr)
+            tight_layout(pad=0.3)
+
 # concatenate rho and sep lists into arrays:
-rhos, seps = {}, {}
+rhos, nrhos, seps = {}, {}, {}
 for slabel in ([None]+slabels):
     rhos[slabel] = np.hstack(rhoslist[slabel])
+    nrhos[slabel] = np.hstack(nrhoslist[slabel])
     seps[slabel] = np.hstack(sepslist[slabel])
 
-# plot rho histogram:
+# plot (signal) rho histogram:
 dmean = rhos['desynch'].mean()
 smean = rhos['synch'].mean()
 u, p = mannwhitneyu(rhos['desynch'], rhos['synch']) # 1-sided
@@ -132,7 +165,7 @@ rhoticks = [-0.25, 0, 0.25, 0.5, 0.75, 1], ['-0.25', '0', '0.25', '0.5', '0.75',
 #rhoticks = np.arange(-0.4, 1+0.2, 0.2)
 xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
-xlabel(r'$\rho$')
+xlabel('signal correlations')
 ylabel('unit pair count')
 text(0.98, 0.98, r'$\mu$ = %.2g' % smean, color='r',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
@@ -153,6 +186,55 @@ tight_layout(pad=0.3)
 # plot rho histograms for ptc22.tr1.r08 and ptc22.tr1.r10: same track, different movies.
 # Thought the stats would show distribs are significantly different between states
 # but not between movies within state. That didn't happen for this pair of recordings:
+
+# plot nrho histogram:
+dmean = nrhos['desynch'].mean()
+smean = nrhos['synch'].mean()
+u, p = mannwhitneyu(nrhos['desynch'], nrhos['synch']) # 1-sided
+if p < ALPHA:
+    pstring = 'p < %g' % ceilsigfig(p)
+else:
+    pstring = 'p > %g' % floorsigfig(p)
+figure(figsize=FIGSIZE)
+rhobins = np.arange(RHOMIN, RHOMAX+0.05, 0.05) # left edges + rightmost edge
+nd = hist(nrhos['desynch'], bins=rhobins, histtype='step', color='b')[0]
+ns = hist(nrhos['synch'], bins=rhobins, histtype='step', color='r')[0]
+nmax = max(np.hstack([nd, ns]))
+axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
+# draw arrows at means:
+ah = nmax / 8 # arrow height
+arrow(dmean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+      color='b')
+arrow(smean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+      color='r')
+# draw vertical lines at means
+#axvline(x=dmean, c='b', ls='--')
+#axvline(x=smean, c='r', ls='--')
+xlim(xmin=RHOMIN, xmax=RHOMAX)
+ylim(ymax=nmax*1.01)
+# remove unnecessary decimal places:
+rhoticks = [-0.25, 0, 0.25, 0.5, 0.75, 1], ['-0.25', '0', '0.25', '0.5', '0.75', '1']
+#rhoticks = np.arange(-0.4, 1+0.2, 0.2)
+xticks(*rhoticks)
+yticks([0, nmax]) # turn off y ticks to save space
+xlabel('noise correlations')
+ylabel('unit pair count')
+text(0.98, 0.98, r'$\mu$ = %.2g' % smean, color='r',
+     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+text(0.98, 0.90, r'$\mu$ = %.2g' % dmean, color='b',
+     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+text(0.98, 0.82, '%s' % pstring, color='k',
+     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+#text(0.98, 0.74, r'$2\sigma=$%d ms' % intround(BINW * 1000), color='k',
+#     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+#text(0.98, 0.82, '%s' % dpstring, color='b',
+#     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+#text(0.98, 0.74, '%s' % spstring, color='r',
+#     transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+titlestr = '_'.join(['nrho_hist', KIND, KERNEL, BINWMS])
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+
 d3mean = rhoslist['desynch'][3].mean()
 s3mean = rhoslist['synch'][3].mean()
 d4mean = rhoslist['desynch'][4].mean()
@@ -314,7 +396,7 @@ titlestr = '_'.join(['rho_scatter_state_r08_r10', KIND, KERNEL, BINWMS])
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
-# plot rho vs separation:
+# plot (signal) rho vs separation:
 figure(figsize=FIGSIZE)
 #pl.plot(sepmeans, rhomeans, 'r.-', ms=10, lw=2)
 sepsrange = np.array([0, SEPMAX])
@@ -342,7 +424,7 @@ septicks = np.arange(0, SEPMAX+100, 500)
 xticks(septicks)
 yticks(*rhoticks)
 xlabel(r'unit pair separation (${\mu}m$)')
-ylabel(r'$\rho$')
+ylabel('signal correlations')
 text(0.98, 0.98, 'r = %.2f, p < %.1g' % (rs[1], ceilsigfig(ps[1], 1)),
      color='r', transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 text(0.98, 0.90, 'r = %.2f, p < %.1g' % (rs[0], ceilsigfig(ps[0], 1)),
@@ -352,5 +434,36 @@ text(0.98, 0.90, 'r = %.2f, p < %.1g' % (rs[0], ceilsigfig(ps[0], 1)),
 titlestr = '_'.join(['rho_sep', KIND, KERNEL, BINWMS])
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
+
+
+# plot nrho vs separation:
+figure(figsize=FIGSIZE)
+sepsrange = np.array([0, SEPMAX])
+ms, bs, rs, ps, stderrs = [], [], [], [], []
+for slabel, c in zip(slabels, colours):
+    # scatter plot:
+    plot(seps[slabel], nrhos[slabel], c+'.', alpha=0.5, ms=2)
+    # calculate linear regression:
+    m, b, r, p, stderr = linregress(seps[slabel], nrhos[slabel])
+    # plot linear regression:
+    plot(sepsrange, m*sepsrange+b, c=c, ls='-', lw=2, alpha=1, zorder=10)
+    ms.append(m); bs.append(b); rs.append(r); ps.append(p); stderrs.append(stderr)
+xlim(xmin=0, xmax=SEPMAX)
+ylim(ymin=RHOMIN, ymax=RHOMAX)
+septicks = np.arange(0, SEPMAX+100, 500)
+xticks(septicks)
+yticks(*rhoticks)
+xlabel(r'unit pair separation (${\mu}m$)')
+ylabel('noise correlations')
+text(0.98, 0.98, 'r = %.2f, p < %.1g' % (rs[1], ceilsigfig(ps[1], 1)),
+     color='r', transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+text(0.98, 0.90, 'r = %.2f, p < %.1g' % (rs[0], ceilsigfig(ps[0], 1)),
+     color='b', transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+#text(0.98, 0.82, r'$2\sigma=$%d ms' % intround(BINW * 1000), color='k',
+     #transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
+titlestr = '_'.join(['nrho_sep', KIND, KERNEL, BINWMS])
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+
 
 show()
