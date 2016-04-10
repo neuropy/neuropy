@@ -183,9 +183,6 @@ titlestr = '_'.join(['rho_hist', KIND, KERNEL, BINWMS])
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
-# plot rho histograms for ptc22.tr1.r08 and ptc22.tr1.r10: same track, different movies.
-# Thought the stats would show distribs are significantly different between states
-# but not between movies within state. That didn't happen for this pair of recordings:
 
 # plot nrho histogram:
 dmean = nrhos['desynch'].mean()
@@ -235,6 +232,10 @@ titlestr = '_'.join(['nrho_hist', KIND, KERNEL, BINWMS])
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
+'''
+# plot (signal) rho histograms for ptc22.tr1.r08 and ptc22.tr1.r10: same track,
+# different movies. Thought the stats would show distribs are significantly different between
+# states but not between movies within state. That didn't happen for this pair of recordings:
 d3mean = rhoslist['desynch'][3].mean()
 s3mean = rhoslist['synch'][3].mean()
 d4mean = rhoslist['desynch'][4].mean()
@@ -287,7 +288,7 @@ text(0.98, 0.74, r'p34s = %.2g' % p34s, color='r',
 titlestr = '_'.join(['rho_hist_r08_r10', KIND, KERNEL, BINWMS])
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
-
+'''
 # Scatter plot synched and desynched rho for the cells that are responsive/active in both
 # states within each recording
 figure(figsize=FIGSIZE)
@@ -324,6 +325,7 @@ titlestr = '_'.join(['rho_scatter', KIND, KERNEL, BINWMS])
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
+'''
 # For r08 and r10, check if chi2 is significant in synched vs desynched plot,
 # but not for movie 1 vs 2 plot. It seems it isn't:
 
@@ -395,6 +397,7 @@ yticks(*rhoticks)
 titlestr = '_'.join(['rho_scatter_state_r08_r10', KIND, KERNEL, BINWMS])
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
+'''
 
 # plot (signal) rho vs separation:
 figure(figsize=FIGSIZE)
