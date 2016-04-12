@@ -170,7 +170,7 @@ xlim(xmin=RHOMIN, xmax=RHOMAX)
 ylim(ymax=nmax*1.01)
 xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
-xlabel('signal correlations')
+xlabel('signal correlation')
 ylabel('unit pair count')
 text(0.98, 0.98, r'$\mu$ = %.2g' % smean, color='r',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
@@ -216,7 +216,7 @@ xlim(xmin=NRHOMIN, xmax=NRHOMAX)
 ylim(ymax=nmax*1.01)
 xticks(*nrhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
-xlabel('noise correlations')
+xlabel('noise correlation')
 ylabel('unit pair count')
 text(0.98, 0.98, r'$\mu$ = %.2g' % smean, color='r',
      transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
@@ -429,7 +429,7 @@ septicks = np.arange(0, SEPMAX+100, 500)
 xticks(septicks)
 yticks(*rhoticks)
 xlabel(r'unit pair separation (${\mu}m$)')
-ylabel('signal correlations')
+ylabel('signal correlation')
 text(0.98, 0.98, 'r = %.2f, p < %.1g' % (rs[1], ceilsigfig(ps[1], 1)),
      color='r', transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 text(0.98, 0.90, 'r = %.2f, p < %.1g' % (rs[0], ceilsigfig(ps[0], 1)),
@@ -459,7 +459,7 @@ septicks = np.arange(0, SEPMAX+100, 500)
 xticks(septicks)
 yticks(*nrhoticks)
 xlabel(r'unit pair separation (${\mu}m$)')
-ylabel('noise correlations')
+ylabel('noise correlation')
 text(0.98, 0.98, 'r = %.2f, p < %.1g' % (rs[1], ceilsigfig(ps[1], 1)),
      color='r', transform=gca().transAxes, horizontalalignment='right', verticalalignment='top')
 text(0.98, 0.90, 'r = %.2f, p < %.1g' % (rs[0], ceilsigfig(ps[0], 1)),
