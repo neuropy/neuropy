@@ -31,8 +31,11 @@ FIGSIZE = (3, 3)
 PLOTRHOMATRICES = False
 SHOWCOLORBAR = False # show colorbar for rho matrices?
 SEPBINW = 200 # separation bin width, um
-RHOMIN, RHOMAX = -0.4, 1
 SEPMAX = 1200 # max pairwise separation, um
+RHOMIN, RHOMAX, RHOSTEP = -0.4, 1, 0.05
+rhobins = np.arange(RHOMIN, RHOMAX+RHOSTEP, RHOSTEP) # left edges + rightmost edge
+# remove unnecessary decimal places:
+rhoticks = [-0.25, 0, 0.25, 0.5, 0.75, 1], ['-0.25', '0', '0.25', '0.5', '0.75', '1']
 
 ALPHA = 0.05 # for comparing the means of psthcorr distribs to 0
 VMIN, VMAX = -1, 1 # rho limits for correlation matrices
@@ -144,7 +147,6 @@ else:
     spstring = 'p > %g' % floorsigfig(sp)
 '''
 figure(figsize=FIGSIZE)
-rhobins = np.arange(RHOMIN, RHOMAX+0.05, 0.05) # left edges + rightmost edge
 nd = hist(rhos['desynch'], bins=rhobins, histtype='step', color='b')[0]
 ns = hist(rhos['synch'], bins=rhobins, histtype='step', color='r')[0]
 nmax = max(np.hstack([nd, ns]))
@@ -160,9 +162,6 @@ arrow(smean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_he
 #axvline(x=smean, c='r', ls='--')
 xlim(xmin=RHOMIN, xmax=RHOMAX)
 ylim(ymax=nmax*1.01)
-# remove unnecessary decimal places:
-rhoticks = [-0.25, 0, 0.25, 0.5, 0.75, 1], ['-0.25', '0', '0.25', '0.5', '0.75', '1']
-#rhoticks = np.arange(-0.4, 1+0.2, 0.2)
 xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel('signal correlations')
@@ -193,7 +192,6 @@ if p < ALPHA:
 else:
     pstring = 'p > %g' % floorsigfig(p)
 figure(figsize=FIGSIZE)
-rhobins = np.arange(RHOMIN, RHOMAX+0.05, 0.05) # left edges + rightmost edge
 nd = hist(nrhos['desynch'], bins=rhobins, histtype='step', color='b')[0]
 ns = hist(nrhos['synch'], bins=rhobins, histtype='step', color='r')[0]
 nmax = max(np.hstack([nd, ns]))
@@ -209,9 +207,6 @@ arrow(smean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_he
 #axvline(x=smean, c='r', ls='--')
 xlim(xmin=RHOMIN, xmax=RHOMAX)
 ylim(ymax=nmax*1.01)
-# remove unnecessary decimal places:
-rhoticks = [-0.25, 0, 0.25, 0.5, 0.75, 1], ['-0.25', '0', '0.25', '0.5', '0.75', '1']
-#rhoticks = np.arange(-0.4, 1+0.2, 0.2)
 xticks(*rhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel('noise correlations')
