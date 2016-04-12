@@ -33,9 +33,14 @@ SHOWCOLORBAR = False # show colorbar for rho matrices?
 SEPBINW = 200 # separation bin width, um
 SEPMAX = 1200 # max pairwise separation, um
 RHOMIN, RHOMAX, RHOSTEP = -0.4, 1, 0.05
+NRHOMIN, NRHOMAX, NRHOSTEP = -0.075, 0.2, 0.01
 rhobins = np.arange(RHOMIN, RHOMAX+RHOSTEP, RHOSTEP) # left edges + rightmost edge
+nrhobins = np.arange(NRHOMIN, NRHOMAX+NRHOSTEP, NRHOSTEP)
 # remove unnecessary decimal places:
 rhoticks = [-0.25, 0, 0.25, 0.5, 0.75, 1], ['-0.25', '0', '0.25', '0.5', '0.75', '1']
+nrhoticks = ([-0.05, 0, 0.05, 0.1, 0.15],
+             ['-0.05', '0', '0.05', '0.1', '0.15'])
+arrowheadx = 1/30 # fraction of plot width to make arrowheads
 
 ALPHA = 0.05 # for comparing the means of psthcorr distribs to 0
 VMIN, VMAX = -1, 1 # rho limits for correlation matrices
@@ -153,9 +158,10 @@ nmax = max(np.hstack([nd, ns]))
 axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
 # draw arrows at means:
 ah = nmax / 8 # arrow height
-arrow(dmean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+aw = (rhobins[-1] - rhobins[0]) * arrowheadx
+arrow(dmean, nmax, 0, -ah, head_width=aw, head_length=ah/2, length_includes_head=True,
       color='b')
-arrow(smean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+arrow(smean, nmax, 0, -ah, head_width=aw, head_length=ah/2, length_includes_head=True,
       color='r')
 # draw vertical lines at means
 #axvline(x=dmean, c='b', ls='--')
@@ -192,22 +198,23 @@ if p < ALPHA:
 else:
     pstring = 'p > %g' % floorsigfig(p)
 figure(figsize=FIGSIZE)
-nd = hist(nrhos['desynch'], bins=rhobins, histtype='step', color='b')[0]
-ns = hist(nrhos['synch'], bins=rhobins, histtype='step', color='r')[0]
+nd = hist(nrhos['desynch'], bins=nrhobins, histtype='step', color='b')[0]
+ns = hist(nrhos['synch'], bins=nrhobins, histtype='step', color='r')[0]
 nmax = max(np.hstack([nd, ns]))
 axvline(x=0, c='e', ls='-', alpha=0.5, zorder=-1) # draw vertical grey line at x=0
 # draw arrows at means:
 ah = nmax / 8 # arrow height
-arrow(dmean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+aw = (nrhobins[-1] - nrhobins[0]) * arrowheadx
+arrow(dmean, nmax, 0, -ah, head_width=aw, head_length=ah/2, length_includes_head=True,
       color='b')
-arrow(smean, nmax, 0, -ah, head_width=0.05, head_length=ah/2, length_includes_head=True,
+arrow(smean, nmax, 0, -ah, head_width=aw, head_length=ah/2, length_includes_head=True,
       color='r')
 # draw vertical lines at means
 #axvline(x=dmean, c='b', ls='--')
 #axvline(x=smean, c='r', ls='--')
-xlim(xmin=RHOMIN, xmax=RHOMAX)
+xlim(xmin=NRHOMIN, xmax=NRHOMAX)
 ylim(ymax=nmax*1.01)
-xticks(*rhoticks)
+xticks(*nrhoticks)
 yticks([0, nmax]) # turn off y ticks to save space
 xlabel('noise correlations')
 ylabel('unit pair count')
@@ -447,10 +454,10 @@ for slabel, c in zip(slabels, colours):
     plot(sepsrange, m*sepsrange+b, c=c, ls='-', lw=2, alpha=1, zorder=10)
     ms.append(m); bs.append(b); rs.append(r); ps.append(p); stderrs.append(stderr)
 xlim(xmin=0, xmax=SEPMAX)
-ylim(ymin=RHOMIN, ymax=RHOMAX)
+ylim(ymin=NRHOMIN, ymax=NRHOMAX)
 septicks = np.arange(0, SEPMAX+100, 500)
 xticks(septicks)
-yticks(*rhoticks)
+yticks(*nrhoticks)
 xlabel(r'unit pair separation (${\mu}m$)')
 ylabel('noise correlations')
 text(0.98, 0.98, 'r = %.2f, p < %.1g' % (rs[1], ceilsigfig(ps[1], 1)),
