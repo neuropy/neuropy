@@ -11,19 +11,33 @@ CONTRASTINVERT = False
 REVERSE = True
 invstr, revstr = '', ''
 if CONTRASTINVERT:
-
-path = os.path.expanduser('~/data/mov/2007-11-24')
     invstr = '_INV'
 if REVERSE:
     revstr = '_REV'
 '''
 mvifname = 'MVI_1400'
-framei0, framei1  = 200, 500
+path = os.path.expanduser('~/data/NVSlab/mov/2007-11-24')
+framei0, framei1  = 200, 500 # aka, MAS_1400
 e = ptc17.tr2b.r58.e0.e
 '''
+
+mvifname = 'MVI_1400'
+path = os.path.expanduser('~/data/NVSlab/mov/2007-11-24')
+framei0, framei1  = 3300, 3600 # aka, MAS_1400_B
+e = ptc17.tr2b.r58.e0.e
+
+'''
 mvifname = 'MVI_1403'
-framei0, framei1 = 0, 300
+path = os.path.expanduser('~/data/NVSlab/mov/2007-11-24')
+framei0, framei1 = 0, 300 # aka, MAS_1403
 e = ptc22.tr1.r08.e0.e
+'''
+'''
+mvifname = 'MVI_1419'
+path = os.path.expanduser('~/data/NVSlab/mov/2007-11-25')
+framei0, framei1  = 3000, 3300
+e = ptc21.tr5c.r64.e0.e
+'''
 
 basename = mvifname + '_' + str(framei0) + '-' + str(framei1) # e.g. MVI_1403_0-300
 fnameavi = os.path.join(path, basename) + invstr + revstr + '.avi'
