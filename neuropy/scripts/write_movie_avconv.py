@@ -1,5 +1,23 @@
 """Export movie data to .avi file.
-Run from within neuropy using `run -i scripts/write_movie_avconv.py`"""
+Run from within neuropy using `run -i scripts/write_movie_avconv.py`
+
+------------------
+NOTE: To do this completely outside of Python with avconv at the command line, using original
+.avi files:
+
+export an .avi to a sequence of (1-based numbered) .jpgs:
+
+avconv -i MVI_1400.AVI -f image2 -vcodec copy 201-500/%00d.jpg
+
+Then, go delete the frame ranges you don't want (say, those outside 201-500). To then build a
+new .avi using just the remaining subset of (1-based numbered) frames:
+
+avconv -f image2 -r 60 -start_number 201 -i 201-500/%00d.jpg -vcodec copy MAS_1400_CLR.avi
+
+Note that the above command keeps the original colour. You can probably do some basic image
+manipulation with avconv, like conversion to grayscale, rotation, or contrast inversion.
+------------------
+"""
 
 import numpy as np
 import Image
