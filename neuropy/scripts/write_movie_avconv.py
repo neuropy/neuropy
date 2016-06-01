@@ -94,8 +94,8 @@ command = [ FFMPEG_BIN,
 sp.call(command)
 print('saved .avi movie to %s' % fnameavi)
 
-shutil.rmtree(framespath) # recursive delete
-print('removed %s' % framespath)
+#shutil.rmtree(framespath) # recursive delete
+#print('removed %s' % framespath)
 
 
 
