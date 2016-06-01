@@ -7,12 +7,15 @@ import subprocess as sp
 import os
 import shutil
 
-CONTRASTINVERT = True
-invstr = ''
+CONTRASTINVERT = False
+REVERSE = True
+invstr, revstr = '', ''
 if CONTRASTINVERT:
-     invstr = '_INV'
 
 path = os.path.expanduser('~/data/mov/2007-11-24')
+    invstr = '_INV'
+if REVERSE:
+    revstr = '_REV'
 '''
 mvifname = 'MVI_1400'
 framei0, framei1  = 200, 500
@@ -23,13 +26,15 @@ framei0, framei1 = 0, 300
 e = ptc22.tr1.r08.e0.e
 
 basename = mvifname + '_' + str(framei0) + '-' + str(framei1) # e.g. MVI_1403_0-300
-fnameavi = os.path.join(path, basename) + invstr + '.avi'
+fnameavi = os.path.join(path, basename) + invstr + revstr + '.avi'
 e.load()
 assert e.f.name == os.path.join(path, mvifname)
 mvi = np.asarray(e.frames[framei0:framei1]) # a 3D numpy array
 if CONTRASTINVERT:
     assert mvi.dtype == np.uint8
     mvi = 255 - mvi # invert contrast of all pixels, assumes 8 bit pixels
+if REVERSE:
+    mvi = mvi[::-1] # reverse frame order
 
 '''
 # Export movie data from neuropy:
