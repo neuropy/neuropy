@@ -90,8 +90,6 @@ print('removed %s' % fnamenpy)
 '''
 mvi = mvi[:, ::-1, :] # invert vertically for PIL
 nframes = len(mvi)
-# not actually necessary
-#assert nframes <= 1000 # otherwise the file numbering scheme below needs more leading 0s
 
 framespath = os.path.join(path, 'frames')
 try:
@@ -102,15 +100,16 @@ except OSError:
 print('writing frames to %s' % framespath)
 for i, frame in enumerate(mvi):
     im = Image.fromarray(frame)
-    im.save(os.path.join(path, "frames/%03d.jpg" % i)) # save a sequence of .jpg files to disk
+    # save a sequence of .jpg files to disk
+    im.save(os.path.join(path, "frames/%d.jpg" % i), format='JPEG', subsampling=0, quality=100)
 
 # convert .jpg files to .avi using external program:
 FFMPEG_BIN = 'avconv'
 command = [ FFMPEG_BIN,
             '-y', # (optional) overwrite output file if it exists
             '-f', 'image2',
-            '-i', os.path.join(path, r'frames/%03d.jpg'), # input
             '-r', '%d' % FPS, # frames per second
+            '-i', os.path.join(path, r'frames/%00d.jpg'), # input
             '-vcodec', 'copy',
             #'-vcodec', 'rawvideo',
             #'-vcodec', 'mjpeg',
