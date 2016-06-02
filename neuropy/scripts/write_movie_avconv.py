@@ -1,5 +1,6 @@
 """Export movie data from NVS movie format to .avi file.
 Run from within neuropy using `run -i scripts/write_movie_avconv.py`
+This doesn't need to be run in neuropy at all though. Plain Python works fine.
 
 ------------------
 NOTE: To export from .avi to .jpg and then back to .avi (e.g., for creating shorter clips),
@@ -27,74 +28,90 @@ import Image
 import subprocess as sp
 import os
 import shutil
+import struct
 
 CONTRASTINVERT = False
-REVERSE = True
+REVERSE = False # in time
 invstr, revstr = '', ''
 if CONTRASTINVERT:
     invstr = '_INV'
 if REVERSE:
     revstr = '_REV'
-FPS = 60 # set the frame rate
-SCALESPACE = 16 #1 # resize the movie by this factor in both x and y
-SCALETIME = 6 #1 # repeat each frame this many times
+FPS = 60 # set the frame rate in the output .avi
+SCALESPACE = 1 #16 # resize the movie by this factor in both x and y
+SCALETIME = 1 #6 # repeat each frame this many times
+JPGQUALITY = 100 # extracted jpg file quality, from 1 to 100, or None for PIL's default
+
+# choose your movie and frame range:
 '''
 mvifname = 'MVI_1400'
 path = os.path.expanduser('~/data/NVSlab/mov/2007-11-24')
 framei0, framei1  = 200, 500 # aka, MAS_1400
-e = ptc17.tr2b.r58.e0.e
 '''
-
+'''
 mvifname = 'MVI_1400'
 path = os.path.expanduser('~/data/NVSlab/mov/2007-11-24')
 framei0, framei1  = 3300, 3600 # aka, MAS_1400_B
-e = ptc17.tr2b.r58.e0.e
-
+'''
 '''
 mvifname = 'MVI_1403'
 path = os.path.expanduser('~/data/NVSlab/mov/2007-11-24')
 framei0, framei1 = 0, 300 # aka, MAS_1403
-e = ptc22.tr1.r08.e0.e
 '''
 '''
 mvifname = 'MVI_1419'
 path = os.path.expanduser('~/data/NVSlab/mov/2007-11-25')
-framei0, framei1  = 3000, 3300
-e = ptc21.tr5c.r64.e0.e
+framei0, framei1 = 3000, 3300
+'''
+'''
+mvifname = 'MSEQ16'
+path = os.path.expanduser('~/data/NVSlab/mov/mseq')
+framei0, framei1 = 0, 16383
 '''
 
-basename = mvifname + '_' + str(framei0) + '-' + str(framei1) # e.g. MVI_1403_0-300
-e.load()
-assert e.f.name == os.path.join(path, mvifname)
-mvi = np.asarray(e.frames[framei0:framei1]) # a 3D numpy array
-fnameavi = ('%s%s%s_%sfps_%sspace_%stime.avi' % (os.path.join(path, basename),
-            invstr, revstr, FPS, SCALESPACE, SCALETIME))
+
+class Movie(object):
+    def __init__(self, fname):
+        """Load NVS movie data"""
+        f = file(fname, 'rb') # open the movie file for reading in binary format
+        self.f = f
+        headerstring = f.read(5)
+        assert headerstring == 'movie'
+        self.ncellswide, = struct.unpack('H', f.read(2)) # 'H'== unsigned short int
+        self.ncellshigh, = struct.unpack('H', f.read(2))
+        self.nframes, = struct.unpack('H', f.read(2))
+        print('width, height, nframes:', self.ncellswide, self.ncellshigh, self.nframes)
+        self.framesize = self.ncellshigh*self.ncellswide
+        self.frames = np.fromfile(f, dtype=np.uint8, count=self.nframes*self.framesize)
+        self.frames.shape = self.nframes, self.ncellshigh, self.ncellswide
+        leftover = f.read() # check if there are any leftover bytes in the file
+        if leftover != '':
+            #pprint(leftover)
+            raise RuntimeError('There are unread bytes in movie file %r. Width, height, or'
+                               'nframes are incorrect in the movie file header.' % fname)
+
+
+fname = os.path.join(path, mvifname)
+m = Movie(fname)
+mvi = m.frames[framei0:framei1] # 3D numpy array
 if CONTRASTINVERT:
     assert mvi.dtype == np.uint8
     mvi = 255 - mvi # invert contrast of all pixels, assumes 8 bit pixels
 if REVERSE:
     mvi = mvi[::-1] # reverse frame order
-if SCALESPACE > 1: # scale it up in both dimensions
+if SCALESPACE > 1: # scale it up in both spatial dimensions
     mvi = np.repeat(np.repeat(mvi, SCALESPACE, axis=1), SCALESPACE, axis=2)
 if SCALETIME > 1: # scale it up in time (number of frames)
     mvi = np.repeat(mvi, SCALETIME, axis=0)
-
-'''
-# Export movie data from neuropy:
-
-fnamenpy = os.path.join(path, basename) + '.npy'
-np.save(fnamenpy, mvi)
-print('saved .npy movie to %s' % fnamenpy)
-
-# load movie data exported from neuropy:
-mvi = np.load(fnamenpy)
-os.remove(fnamenpy)
-print('removed %s' % fnamenpy)
-'''
 mvi = mvi[:, ::-1, :] # invert vertically for PIL
-nframes = len(mvi)
 
-framespath = os.path.join(path, 'frames')
+basename = mvifname + '_' + str(framei0) + '-' + str(framei1) # e.g. MVI_1403_0-300
+fullname = ('%s%s%s_%sfps_%sxy_%st' % (os.path.join(path, basename),
+            invstr, revstr, FPS, SCALESPACE, SCALETIME))
+if JPGQUALITY != None:
+    fullname += '_Q%d' % JPGQUALITY
+fnameavi = fullname + '.avi'
+framespath = fullname + '_frames'
 try:
     os.mkdir(framespath)
 except OSError:
@@ -104,15 +121,19 @@ print('writing frames to %s' % framespath)
 for i, frame in enumerate(mvi):
     im = Image.fromarray(frame)
     # save a sequence of .jpg files to disk
-    im.save(os.path.join(path, "frames/%d.jpg" % i), format='JPEG', subsampling=0, quality=100)
+    if JPGQUALITY == None: # use PIL's default
+        im.save(os.path.join(framespath, "%d.jpg" % i))
+    else:
+        im.save(os.path.join(framespath, "%d.jpg" % i), format='JPEG', subsampling=0,
+                quality=JPGQUALITY)
 
 # convert .jpg files to .avi using external program:
 FFMPEG_BIN = 'avconv'
 command = [ FFMPEG_BIN,
-            '-y', # (optional) overwrite output file if it exists
+            #'-y', # (optional) overwrite output file if it exists
             '-f', 'image2',
             '-r', '%d' % FPS, # frames per second
-            '-i', os.path.join(path, r'frames/%00d.jpg'), # input
+            '-i', os.path.join(framespath, r'%00d.jpg'), # input
             '-vcodec', 'copy',
             #'-qscale',  '1',
             #'-vcodec', 'rawvideo',
@@ -127,6 +148,19 @@ print('saved .avi movie to %s' % fnameavi)
 #shutil.rmtree(framespath) # recursive delete
 #print('removed %s' % framespath)
 
+
+'''
+# Export movie data from neuropy:
+
+fnamenpy = os.path.join(path, basename) + '.npy'
+np.save(fnamenpy, mvi)
+print('saved .npy movie to %s' % fnamenpy)
+
+# load movie data exported from neuropy:
+mvi = np.load(fnamenpy)
+os.remove(fnamenpy)
+print('removed %s' % fnamenpy)
+'''
 
 
 """
