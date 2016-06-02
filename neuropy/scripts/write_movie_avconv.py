@@ -1,21 +1,24 @@
-"""Export movie data to .avi file.
+"""Export movie data from NVS movie format to .avi file.
 Run from within neuropy using `run -i scripts/write_movie_avconv.py`
 
 ------------------
-NOTE: To do this completely outside of Python with avconv at the command line, using original
-.avi files:
+NOTE: To export from .avi to .jpg and then back to .avi (e.g., for creating shorter clips),
+you can do this completely outside of Python with avconv at the command line.
 
 export an .avi to a sequence of (1-based numbered) .jpgs:
 
 avconv -i MVI_1400.AVI -f image2 -vcodec copy 201-500/%00d.jpg
 
-Then, go delete the frame ranges you don't want (say, those outside 201-500). To then build a
+Then, move the frames you want keep (say, 201-500) to another folder. To then build a
 new .avi using just the remaining subset of (1-based numbered) frames:
 
 avconv -f image2 -r 60 -start_number 201 -i 201-500/%00d.jpg -vcodec copy MAS_1400_CLR.avi
 
-Note that the above command keeps the original colour. You can probably do some basic image
-manipulation with avconv, like conversion to grayscale, rotation, or contrast inversion.
+Or, you can rename them starting from 0 or 1 using Thunar, then you don't need to use the
+'start_number' arg.
+
+Note that the above command keeps the original colour. Maybe it's possible to do some basic
+image manipulation with avconv, like conversion to grayscale, rotation, or contrast inversion.
 ------------------
 """
 
@@ -111,6 +114,7 @@ command = [ FFMPEG_BIN,
             '-r', '%d' % FPS, # frames per second
             '-i', os.path.join(path, r'frames/%00d.jpg'), # input
             '-vcodec', 'copy',
+            #'-qscale',  '1',
             #'-vcodec', 'rawvideo',
             #'-vcodec', 'mjpeg',
             #'-vcodec', 'mpeg4',
