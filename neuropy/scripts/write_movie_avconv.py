@@ -32,6 +32,9 @@ if CONTRASTINVERT:
     invstr = '_INV'
 if REVERSE:
     revstr = '_REV'
+FPS = 60 # set the frame rate
+SCALESPACE = 16 #1 # resize the movie by this factor in both x and y
+SCALETIME = 6 #1 # repeat each frame this many times
 '''
 mvifname = 'MVI_1400'
 path = os.path.expanduser('~/data/NVSlab/mov/2007-11-24')
@@ -58,15 +61,20 @@ e = ptc21.tr5c.r64.e0.e
 '''
 
 basename = mvifname + '_' + str(framei0) + '-' + str(framei1) # e.g. MVI_1403_0-300
-fnameavi = os.path.join(path, basename) + invstr + revstr + '.avi'
 e.load()
 assert e.f.name == os.path.join(path, mvifname)
 mvi = np.asarray(e.frames[framei0:framei1]) # a 3D numpy array
+fnameavi = ('%s%s%s_%sfps_%sspace_%stime.avi' % (os.path.join(path, basename),
+            invstr, revstr, FPS, SCALESPACE, SCALETIME))
 if CONTRASTINVERT:
     assert mvi.dtype == np.uint8
     mvi = 255 - mvi # invert contrast of all pixels, assumes 8 bit pixels
 if REVERSE:
     mvi = mvi[::-1] # reverse frame order
+if SCALESPACE > 1: # scale it up in both dimensions
+    mvi = np.repeat(np.repeat(mvi, SCALESPACE, axis=1), SCALESPACE, axis=2)
+if SCALETIME > 1: # scale it up in time (number of frames)
+    mvi = np.repeat(mvi, SCALETIME, axis=0)
 
 '''
 # Export movie data from neuropy:
@@ -82,7 +90,8 @@ print('removed %s' % fnamenpy)
 '''
 mvi = mvi[:, ::-1, :] # invert vertically for PIL
 nframes = len(mvi)
-assert nframes <= 1000 # otherwise the file numbering scheme below needs more leading 0s
+# not actually necessary
+#assert nframes <= 1000 # otherwise the file numbering scheme below needs more leading 0s
 
 framespath = os.path.join(path, 'frames')
 try:
@@ -100,8 +109,8 @@ FFMPEG_BIN = 'avconv'
 command = [ FFMPEG_BIN,
             '-y', # (optional) overwrite output file if it exists
             '-f', 'image2',
-            '-r', '60', # frames per second
             '-i', os.path.join(path, r'frames/%03d.jpg'), # input
+            '-r', '%d' % FPS, # frames per second
             '-vcodec', 'copy',
             #'-vcodec', 'rawvideo',
             #'-vcodec', 'mjpeg',
