@@ -103,7 +103,6 @@ if SCALESPACE > 1: # scale it up in both spatial dimensions
     mvi = np.repeat(np.repeat(mvi, SCALESPACE, axis=1), SCALESPACE, axis=2)
 if SCALETIME > 1: # scale it up in time (number of frames)
     mvi = np.repeat(mvi, SCALETIME, axis=0)
-mvi = mvi[:, ::-1, :] # invert vertically for PIL
 
 basename = mvifname + '_' + str(framei0) + '-' + str(framei1) # e.g. MVI_1403_0-300
 fullname = ('%s%s%s_%sfps_%sxy_%st' % (os.path.join(path, basename),
