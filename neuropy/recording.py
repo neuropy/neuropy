@@ -1705,8 +1705,8 @@ class RecordingRaster(BaseRecording):
         return t, muas
 
     def tmua(self, neurons='all', width=None, tres=None, gauss=True,
-              sweepis=None, eids=None, natexps=False,
-              t0=None, dt=None, blank=True, trange=None, plot=True, figsize=(20, 6.5)):
+             sweepis=None, eids=None, natexps=False,
+             t0=None, dt=None, blank=True, trange=None, plot=True, figsize=(20, 6.5)):
         """Same as self.tmuas(), but calculate only the mean by first collapsing across
         spikes, then binning and convolving with a Gaussian. This doesn't return the
         individual trials, but is much faster."""

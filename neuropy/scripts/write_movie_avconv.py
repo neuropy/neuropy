@@ -40,34 +40,36 @@ if REVERSE:
 FPS = 60 # set the frame rate in the output .avi
 SCALESPACE = 1 #16 # resize the movie by this factor in both x and y
 SCALETIME = 1 #6 # repeat each frame this many times
-JPGQUALITY = 100 # extracted jpg file quality, from 1 to 100, or None for PIL's default
+# extracted jpg file quality, from 1 to 100, or None for PIL's default, only really necessary
+# for mseq:
+JPGQUALITY = None
 
 # choose your movie and frame range:
 '''
 mvifname = 'MVI_1400'
-path = os.path.expanduser('~/data/NVSlab/mov/2007-11-24')
+path = os.path.expanduser('~/data/slab/mov/2007-11-24')
 framei0, framei1  = 200, 500 # aka, MAS_1400
 '''
 '''
 mvifname = 'MVI_1400'
-path = os.path.expanduser('~/data/NVSlab/mov/2007-11-24')
+path = os.path.expanduser('~/data/slab/mov/2007-11-24')
 framei0, framei1  = 3300, 3600 # aka, MAS_1400_B
 '''
 '''
 mvifname = 'MVI_1403'
-path = os.path.expanduser('~/data/NVSlab/mov/2007-11-24')
+path = os.path.expanduser('~/data/slab/mov/2007-11-24')
 framei0, framei1 = 0, 300 # aka, MAS_1403
 '''
 '''
 mvifname = 'MVI_1419'
-path = os.path.expanduser('~/data/NVSlab/mov/2007-11-25')
+path = os.path.expanduser('~/data/slab/mov/2007-11-25')
 framei0, framei1 = 3000, 3300
 '''
-'''
+
 mvifname = 'MSEQ16'
-path = os.path.expanduser('~/data/NVSlab/mov/mseq')
+path = os.path.expanduser('~/data/slab/mov/mseq')
 framei0, framei1 = 0, 16383
-'''
+
 
 
 class Movie(object):
@@ -129,7 +131,7 @@ for i, frame in enumerate(mvi):
 # convert .jpg files to .avi using external program:
 FFMPEG_BIN = 'avconv'
 command = [ FFMPEG_BIN,
-            #'-y', # (optional) overwrite output file if it exists
+            #'-y', # overwrite output file if it exists, otherwise prompt
             '-f', 'image2',
             '-r', '%d' % FPS, # frames per second
             '-i', os.path.join(framespath, r'%00d.jpg'), # input

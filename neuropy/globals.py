@@ -11,7 +11,7 @@ import os
 from core import mergeuniquedictvals, dictattr
 
 DATAROOTPATH = os.path.expanduser('~/data')
-LABPATHNAME = 'NVSlab'
+LABPATHNAME = 'slab'
 #LABPATHNAME = 'blab'
 DATAPATH = os.path.join(DATAROOTPATH, LABPATHNAME)
 MOVIEPATH = os.path.join(DATAPATH, 'mov')
