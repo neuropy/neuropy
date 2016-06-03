@@ -27,7 +27,9 @@ poly_sigma = 1.2
 flags = 0
 
 FIGSIZE = (6, 3)
-PLOTMOVIESIGNALS = False
+PLOTMOVIESIGNALS = True
+
+MOVIEFRAMERATE = 60 # Hz, used for determining tmoviefilm
 
 # plot example synched and desynched PSTH on movie motion plot, and point it out in
 # PSTH-motion correlation plot:
@@ -46,6 +48,7 @@ ORIGDEGS = {'ptc17.tr2b.r58': (-3.2824440002441406, -3.054497003555298),
 mot = {}
 motspars = {} # sparseness of each motion signal
 tmovie = {} # movie timepoints, times of all frames excluding the first
+tmoviefilm = {} # movie timepoints, as filmed, times of all frames excluding the first
 con = {} # contrast of each frame, excluding the first one
 dcon = {} # change in contrast between successive frames
 lum = {} # luminance of each frame, excluding the first one
@@ -120,6 +123,7 @@ for rec in urecs:
     # actual display time to differ, on average, over all trials and recordings, vs how long
     # dimstim was told to display them for:
     tmovie[name] = np.arange(1, len(frames)) * dt
+    tmoviefilm[name] = np.arange(1, len(frames)) / MOVIEFRAMERATE
 
     if not PLOTMOVIESIGNALS:
         continue
@@ -713,3 +717,15 @@ gcfm().window.setWindowTitle('movie_global_luminance_rhovsdelay')
 tight_layout(pad=0.3)
 
 pl.show()
+
+
+# save motion traces to .mat files for use in MATLAB in blab:
+from scipy.io import savemat
+MVI_1400_200_500 = np.asarray([tmoviefilm['ptc17.tr2b.r58'], mot['ptc17.tr2b.r58']])
+MVI_1400_3300_3600 = np.asarray([tmoviefilm['ptc22.tr1.r10'], mot['ptc22.tr1.r10']])
+MVI_1403_0_300 = np.asarray([tmoviefilm['ptc22.tr1.r08'], mot['ptc22.tr1.r08']])
+# use blab names as keys:
+motdict = {'MAS_1400_200_500': MVI_1400_200_500,
+           'MAS_1400_B': MVI_1400_3300_3600,
+           'MAS_1403_0_300': MVI_1403_0_300}
+savemat('scripts/MAS_movie_motion.mat', motdict)
