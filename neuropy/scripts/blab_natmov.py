@@ -1,11 +1,11 @@
-"""Load blab natmov spike times and LFP from .mat files, plot rasters and specgrams"""
+"""Load blab natmov spike times, LFP and runspeed from .mat files, plot rasters and specgrams"""
 
 import numpy as np
 import pylab as pl
 from scipy.io import loadmat
 
 from lfp import LFP
-
+import core
 
 # raster plot options:
 rasfname = '/home/mspacek/dev/blab/natmov/results/PVCre_0113/s01/PVCre_0113_s01_e11_rasters.mat'
@@ -56,11 +56,12 @@ for uidi, spikets in enumerate(spiketss): # iterate over units
 
 # LFP plot options:
 lfpfname = '/home/mspacek/dev/blab/natmov/results/PVCre_0113/s01/PVCre_0113_s01_e11_LFP.mat'
-lfpchanis = [0, 15, 31] #range(32) # 0-based
+lfpchanis = [31] #range(32) # 0-based
 f1 = 59 # Hz
 relative2t0 = True
 lfpfigsize = 5, 2 # inches
 title = False
+width, tres = 2, 0.5 # s
 
 # plot LFP spectrograms:
 lfp = LFP(None, None)
@@ -72,7 +73,39 @@ lfp.t0, lfp.t1 = tlfp[0], tlfp[-1]
 lfp.tres = intround((np.diff(tlfp)).mean()) # us
 lfp.sampfreq = intround(1e6 / lfp.tres) # Hz
 for chani in lfpchanis:
-    lfp.specgram(f1=f1, chanis=chani, relative2t0=relative2t0,
+    lfp.specgram(f1=f1, chanis=chani, width=width, tres=tres, relative2t0=relative2t0,
                  title=title, reclabel=False, figsize=lfpfigsize)
     titlestr = ename + '_c%d' % (chani+1) # 1-based chan ID
     gcfm().window.setWindowTitle(titlestr)
+
+
+# plot runspeed as a color map:
+width, tres = 10, 0.5 # s
+minspeed = 1 # cm/s, otherwise considered at rest
+runfname = '/home/mspacek/dev/blab/natmov/results/PVCre_0113/s01/PVCre_0113_s01_e11_runspeed.mat'
+runmat = loadmat(runfname)
+ename = os.path.splitext(os.path.basename(runfname))[0]
+tspeed = runmat['tspeed'][0] # s
+speed = runmat['speed'][0] # cm/s
+t0 = lfp.t0 / 1e6 # sec, tspeed seems to start from 0, lfp starts a few ms later
+t1 = lfp.t1 / 1e6
+tranges = core.split_tranges([(t0, t1)], width, tres)
+tiranges = tspeed.searchsorted(tranges)
+nbins = len(tiranges)
+tbinspeed = tranges[:, 0]
+binspeed = np.zeros(nbins)
+for bini, (t0i, t1i) in enumerate(tiranges):
+    binspeed[bini] = speed[t0i:t1i].mean()
+
+#figure()
+#plot(tbinspeed, binspeed, '-')
+binspeed.shape = -1, 1 # column vector
+# turn it into a binary rest/run signal:
+binspeed[binspeed < minspeed] = 0 # at rest
+binspeed[binspeed >= minspeed] = 1 # running
+#binspeed /= binspeed.max() # normalize to range [0, 1]
+figure(figsize=(1, 10))
+axis('off')
+pl.imshow(binspeed, aspect=0.025, cmap='gray_r') # white=rest, black=run
+titlestr = ename
+gcfm().window.setWindowTitle(titlestr)
