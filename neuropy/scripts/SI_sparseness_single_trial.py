@@ -9,6 +9,9 @@ from core import sparseness
 
 from psth_funcs import get_psth_peaks_gac
 
+
+LFPWIDTH, LFPTRES = 30, 1
+
 TRASTERBINW, TRASTERTRES = 0.02, 0.001 # trial raster bins, sec
 BLANK = False
 GAUSS = True
@@ -46,8 +49,8 @@ urecnames = ' '.join([rec.absname for rec in urecs])
 spars = []
 sis = []
 for rec in urecs:
-    si, t = rec.lfp.si(kind='L/(L+H)', lfpwidth=30, lfptres=5, states=False, relative2t0=False,
-                       lim2stim=False, plot=False)
+    si, t = rec.lfp.si(kind='L/(L+H)', lfpwidth=LFPWIDTH, lfptres=LFPTRES, states=False,
+                       relative2t0=False, lim2stim=False, plot=False)
     #nids = sorted(rec.alln.keys())
     nids = get_responsive_nids(rec)
     nn = len(nids)
@@ -63,6 +66,7 @@ for rec in urecs:
     for triali, ttrange in enumerate(ttranges):
         si0, si1 = t.searchsorted(ttrange)
         if si0 == si1:
+            print(si0, si1)
             continue # SI undefined for this trial, skip to next trial
         trialis.append(triali)
         trialsis.append(si[si0:si1].mean())
@@ -75,7 +79,7 @@ for rec in urecs:
         totcount = n2totcount[nid]
         for triali in trialis: # only iterate over those trials that have an SI value
             if totcount[triali] < MINSPIKES:
-                # can't calculate sparseness reliable for single trials with too few spikes:
+                # can't calculate sparseness reliably for single trials with too few spikes:
                 spars.append(0)
             else:
                 spars.append(sparseness(count[triali]))
