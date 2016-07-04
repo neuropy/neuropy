@@ -452,8 +452,12 @@ class LFP(object):
            swapaxes=False, figsize=(20, 3.5)):
         """Calculate an LFP synchrony index, using potentially overlapping windows of width
         and tres, in sec, from the LFP spectrogram, itself composed of bins of lfpwidth and
-        lfptres. Note that for power ratio methods (kind: L/(L+H) or L/H), width and tres are
-        not used, only lfpwidth and lfptres. Options for kind are:
+        lfptres. relative2t0 controls whether to plot relative to t0, or relative to start of
+        ADC clock. lim2stim limits the time range only to when a stimulus was presented, i.e.
+        to the outermost times of non-NULL din.
+
+        Note that for power ratio methods (kind: L/(L+H) or L/H),
+        width and tres are not used, only lfpwidth and lfptres. Options for kind are:
 
         'L/(L+H)': fraction of power in low band vs total power (Saleem2010)
 
@@ -469,9 +473,6 @@ class LFP(object):
 
         'n3stdmean': normalized 3stdmean: (3*std - mean) / (3*std + mean)
 
-        relative2t0 controls whether to plot relative to t0, or relative to start of ADC
-        clock. lim2stim limits the time range only to when a stimulus was presented, i.e. to
-        the outermost times of non-NULL din.
         """
         uns = get_ipython().user_ns
         if kind == None:
