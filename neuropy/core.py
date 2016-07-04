@@ -3646,6 +3646,8 @@ def argfwhm(a, exti, fraction=0.5, method='inner'):
 def sparseness(x):
     """Sparseness measure, from Vinje and Gallant, 2000. This is basically 1 minus the ratio
     of the square of the sums over the sum of the squares of the values in signal x"""
+    if x.sum() == 0:
+        return 0
     n = len(x)
     return (1 - (x.sum()/n)**2 / np.sum((x**2)/n)) / (1 - 1/n)
 
