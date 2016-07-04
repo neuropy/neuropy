@@ -1424,7 +1424,7 @@ class RecordingRaster(BaseRecording):
             trialiss[nid] = np.hstack(trialis)
 
         if not plot:
-            return n2ts, n2cs, xmax
+            return n2ts, n2cs, xmax, ttranges
 
         # plot raster figures:
         for nidi, nid in enumerate(nids):
@@ -1482,9 +1482,9 @@ class RecordingRaster(BaseRecording):
         len(nids)."""
         assert c != 'bwg' # nonsensical for PSTH
         xmin = 0
-        n2ts, n2cs, xmax = self.traster(nids=nids, sweepis=sweepis, eids=eids,
-                                        natexps=natexps, t0=t0, dt=dt, blank=blank,
-                                        strange=strange, plot=False, overlap=overlap, c=c)
+        n2ts, n2cs, xmax, ttranges = self.traster(nids=nids, sweepis=sweepis, eids=eids,
+            natexps=natexps, t0=t0, dt=dt, blank=blank, strange=strange,
+            plot=False, overlap=overlap, c=c)
         assert len(n2ts) == len(n2cs)
         nids = sorted(n2ts)
         ntrials = len(n2ts[nids[0]]) # should be the same for all neurons
@@ -1553,9 +1553,8 @@ class RecordingRaster(BaseRecording):
         rec.traster plot. Also return nid:totcount mapping where totcount is a 1D (ntrials)
         array, and time bins."""
         xmin = 0
-        n2ts, n2cs, xmax = self.traster(nids=nids, sweepis=sweepis, eids=eids,
-                                        natexps=natexps, t0=t0, dt=dt, blank=blank,
-                                        strange=strange, plot=False)
+        n2ts, n2cs, xmax, ttranges = self.traster(nids=nids, sweepis=sweepis, eids=eids,
+            natexps=natexps, t0=t0, dt=dt, blank=blank, strange=strange, plot=False)
         nids = sorted(n2ts)
         ntrials = len(n2ts[nids[0]]) # should be the same for all neurons
         n2totcount = { nid:len(n2ts[nid]) for nid in nids } # total spike count
@@ -1585,7 +1584,7 @@ class RecordingRaster(BaseRecording):
                 totcount[triali] = nspikes
             n2count[nid] = count
             n2totcount[nid] = totcount
-        return n2count, n2totcount, bins
+        return n2count, n2totcount, bins, ttranges
 
     def tlfps(self, chani=-1, sweepis=None, eids=None, natexps=False, t0=None, dt=None,
               blank=True, trange=None, plot=True, figsize=(20, 6.5)):
