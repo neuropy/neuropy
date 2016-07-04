@@ -695,7 +695,7 @@ class LFP(object):
                          alpha=alpha, relative2t0=relative2t0, swapaxes=swapaxes,
                          figsize=figsize)
         #np.seterr(**old_settings) # restore old settings
-        return si, t # t are midpoints of bins, from start of ADC clock
+        return si, t # t are midpoints of bins, offset depends on relative2t0
     '''
     def si_hilbert(self, chani=-1, lowband=None, highband=None, ratio='L/(L+H)',
                    plot=True):
