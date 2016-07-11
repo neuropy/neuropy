@@ -94,7 +94,8 @@ figure(figsize=figsize)
 plot(sis, spars, 'k.', ms=0.5)
 xlabel('trial range SI')
 ylabel('trial range sparseness')
-titlestr = 'SI_sparseness_single_trial'
+titlestr = ('SI_sparseness_trials_trialwinwidth=%d_trialwintres=%d'
+            % (TRIALWINWIDTH, TRIALWINTRES))
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 
