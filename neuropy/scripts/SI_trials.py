@@ -13,6 +13,7 @@ from psth_funcs import get_psth_peaks_gac
 LFPWIDTH, LFPTRES = 30, 5
 
 TRASTERBINW, TRASTERTRES = 0.02, 0.001 # trial raster bins, sec
+WEIGHT = False # weight trials by spike count for reliability measure?
 BLANK = False
 GAUSS = True
 #BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
@@ -53,8 +54,7 @@ def get_responsive_nids(rec):
 urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
 urecnames = ' '.join([rec.absname for rec in urecs])
 
-spars = []
-sis = []
+sis, rels, spars = [], [], []
 for rec in urecs:
     print(rec.absname)
     si, sit = rec.lfp.si(kind='L/(L+H)', lfpwidth=LFPWIDTH, lfptres=LFPTRES, states=False,
@@ -65,7 +65,7 @@ for rec in urecs:
     print('nids:', nids)
     nn = len(nids)
 
-    # calculate sparseness of PSTH calculated from sliding window of TRIALWINWIDTH
+    # get reliability and sparseness of PSTHs calculated from sliding window of TRIALWINWIDTH
     # trials at a time, at tres of TRIALWINTRES trials. Represent SI for each range of trials
     # by the mean over those trials:
     ttranges = rec.trialtranges()[0]
@@ -76,20 +76,46 @@ for rec in urecs:
         # get spike time range to consider for this window, from start of first trial to end
         # of last trial in this trial range:
         strange = ttranges[trial0i, 0], ttranges[trial1i, 1]
+        # slice out SI based on strange, save mean SI for this trial range:
+        sit0i, sit1i = sit.searchsorted(strange)
+        sitrials = si[sit0i:sit1i]
+        sis.append(np.tile(sitrials.mean(), nn)) # SI is the same for all units
+        # calculate a new set of spike counts for all nids for this strange:
+        n2count = rec.bintraster(nids=nids, blank=BLANK, strange=strange,
+                                 binw=TRASTERBINW, tres=TRASTERTRES, gauss=GAUSS)[0]
         # get PSTH for all nids over this strange:
         pstht, psths, spikets = rec.psth(nids=nids, natexps=False, blank=BLANK,
                                          strange=strange, plot=False, binw=BINW, tres=TRES,
                                          gauss=GAUSS, norm='ntrials')
-        # slice out SI based on strange
-        sit0i, sit1i = sit.searchsorted(strange)
-        sitrials = si[sit0i:sit1i]
-        sis.append(np.tile(sitrials.mean(), nn)) # SI is the same for each unit
-        for psth in psths: # iterate over units
+        # iterate over units:
+        for nid, psth in zip(nids, psths):
+            # calculate reliability:
+            cs = n2count[nid] # 2D array of spike counts over trial time, one row per trial
+            rhos, weights = core.pairwisecorr(cs, weight=WEIGHT, invalid='ignore')
+            # set rho to 0 for trial pairs with undefined rho (one or both trials with 0
+            # spikes):
+            nanis = np.isnan(rhos)
+            rhos[nanis] = 0.0
+            rels.append(np.mean(rhos))
+            # calculate sparseness:
             spars.append(sparseness(psth))
+            
 
 sis = np.concatenate(sis)
+rels = np.asarray(rels)
 spars = np.asarray(spars)
 
+# plot reliability vs SI:
+figure(figsize=figsize)
+plot(sis, rels, 'k.', ms=0.5)
+xlabel('trial range SI')
+ylabel('trial range reliability')
+titlestr = ('SI_reliability_trials_trialwinwidth=%d_trialwintres=%d'
+            % (TRIALWINWIDTH, TRIALWINTRES))
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+
+# plot sparseness vs SI:
 figure(figsize=figsize)
 plot(sis, spars, 'k.', ms=0.5)
 xlabel('trial range SI')
