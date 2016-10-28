@@ -42,13 +42,13 @@ config.TerminalInteractiveShell.pdb = True
 ipshell = InteractiveShellEmbed(display_banner=False, config=config)
 
 # IPython GUI imports, have to come before Qt imports:
-from IPython.qt.console.rich_ipython_widget import RichIPythonWidget
+from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from IPython.lib import guisupport
-from IPython.utils.path import get_ipython_dir
-from IPython.config.loader import PyFileConfigLoader
+from IPython.paths import get_ipython_dir
+from traitlets.config.loader import PyFileConfigLoader
 
-from PyQt4 import QtCore, QtGui, uic
-from PyQt4.QtGui import QFont
+from IPython.external.qt import QtCore, QtGui
+from PyQt4 import uic
 NeuropyUi, NeuropyUiBase = uic.loadUiType('neuropy.ui')
 
 from __init__ import __version__
@@ -57,21 +57,20 @@ from track import Track
 from recording import Recording
 
 from globals import DATAPATH
-# use inprocess kernel? otherwise, use 2 process zmq kernel. This option doesn't seem to work
-# with IPython 2.x:
+# use inprocess kernel? otherwise, use 2 process kernel. This option doesn't work for now:
 INPROCESS = False
 
 
 class NeuropyWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
         """Note that a lot of default options can be changed by editing
-        IPython.qt.console.console_widget.py and ipython_widget.py"""
+        IPython.qtconsole.console_widget.py and ipython_widget.py"""
         QtGui.QMainWindow.__init__(self)
         self.ui = NeuropyUi()
         self.ui.setupUi(self) # lay it out
 
         # gui_completion: 'plain, 'droplist' or 'ncurses'
-        ipw = RichIPythonWidget(parent=self, gui_completion='plain')
+        ipw = RichJupyterWidget(parent=self, gui_completion='plain')
         self.ipw = ipw
         self.setCentralWidget(ipw)
 
@@ -233,24 +232,23 @@ def config_ipw(ipw):
     ipw.config = config
 
     ipw.set_default_style(colors='Linux')
-    ipw.font = QFont('Lucida Console', 11) # 3rd arg can be e.g. QFont.Bold
+    ipw.font = QtGui.QFont('Lucida Console', 11) # 3rd arg can be e.g. QFont.Bold
     ipw.font.setFixedPitch(True)
 
 def main():
     """Start kernel manager and client, create window, run app event loop,
     auto execute some code in user namespace. A minimalist example is shown in
-    qt_ip_test.py. This is gleaned from ipython.examples.inprocess.embedded_qtconsole
-    and ipython.IPython.qt.console.qtconsoleapp.new_frontend_master().
+    qt_ip_test.py.
 
     NOTE: Make sure that the Qt v2 API is being used by IPython by running `export
-    QT_API=pyqt` at the command line before running neuropy, or by adding it `.bashrc`"""
+    QT_API=pyqt` at the command line before running neuropy, or by adding it to `.bashrc`"""
     app = guisupport.get_app_qt4()
 
     if INPROCESS:
-        from IPython.qt.inprocess import QtInProcessKernelManager
+        from qtconsole.inprocess import QtInProcessKernelManager
         km = QtInProcessKernelManager()
     else:
-        from IPython.qt.manager import QtKernelManager
+        from qtconsole.manager import QtKernelManager
         km = QtKernelManager()
     km.start_kernel()
     km.kernel.gui = 'qt4'
@@ -270,8 +268,8 @@ def main():
 
     # execute some code through the frontend (once the event loop is running).
     # The output appears in the IPythonWidget (ipw).
-    do_later(ipw.execute_file, 'startup.py', hidden=True)
-    do_later(ipw.execute_file, 'globals.py', hidden=True)
+    do_later(ipw.execute, 'execfile(%r)' % 'startup.py', hidden=True)
+    do_later(ipw.execute, 'execfile(%r)' % 'globals.py', hidden=True)
 
     guisupport.start_event_loop_qt4(app)
 

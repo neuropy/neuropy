@@ -1,9 +1,7 @@
 """A comparison of how to create a minimalist qt IPython app using either the inprocess
-kernel or the 2 process zmq kernel, for IPython 1.0.dev as of 2013-07-17.
-This was gleaned from examples.inprocess.embedded_qtconsole and
-IPython.qt.console.qtconsoleapp.new_frontend_master() respectively"""
+kernel or the 2 process kernel. See qtconsole.examples.inprocess_qtconsole.py"""
 
-from IPython.qt.console.rich_ipython_widget import RichIPythonWidget
+from qtconsole.rich_ipython_widget import RichJupyterWidget
 from IPython.lib import guisupport
 
 INPROCESS = False
@@ -14,17 +12,17 @@ def main():
     app = guisupport.get_app_qt4()
 
     if INPROCESS:
-        from IPython.qt.inprocess import QtInProcessKernelManager
+        from qtconsole.inprocess import QtInProcessKernelManager
         km = QtInProcessKernelManager()
     else:
-        from IPython.qt.manager import QtKernelManager
+        from qtconsole.manager import QtKernelManager
         km = QtKernelManager()
     km.start_kernel()
     km.kernel.gui = 'qt4'
     kc = km.client()
     kc.start_channels()
 
-    widget = RichIPythonWidget()
+    widget = RichJupyterWidget()
     widget.kernel_manager = km
     widget.kernel_client = kc
     if CLEANSHUTDOWN: # slow exit on CTRL+D

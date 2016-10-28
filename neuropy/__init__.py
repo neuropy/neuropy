@@ -1,4 +1,4 @@
-r"""Neuronal data analysis in Python"""
+"""Neuronal data analysis in Python"""
 
 __authors__ = ["Martin Spacek"]
-__version__ = '0.4dev'
+__version__ = '0.5'

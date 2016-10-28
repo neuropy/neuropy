@@ -42,12 +42,15 @@ So, something like `get_ipython()` only works from within those neuropy modules
 that have been imported during the IPython session, but not in any of
 `NeuropyWindow`'s methods.
 
+Some more details are available in Appendix C.3 of my
+[thesis](http://mspacek.github.io/mspacek_thesis.pdf).
+
 Dependencies:
 
 neuropy requires recent versions of the following to be installed:
 
 * [Python](http://python.org) (2.7.x, 3.x hasn't been tested)
-* [IPython](http://ipython.org) 2.4.1
+* [IPython](http://ipython.org) 5.1.0
 * [numpy](http://numpy.org)
 * [scipy](http://scipy.org)
 * [matplotlib](http://matplotlib.org)
