@@ -3,8 +3,6 @@ natural scene 5s movie clip recordings with cortical state changes in them. Also
 correlation distributions, and correlations as a function of cell pair separation. Run from
 within neuropy using `run -i scripts/psthcorr_natstate.py`"""
 
-from __future__ import division, print_function
-
 import pylab as pl
 import numpy as np
 from scipy.stats import mannwhitneyu, chisquare, linregress # ttest_1samp, ttest_ind, ks_2samp

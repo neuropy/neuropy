@@ -1,9 +1,6 @@
 """Plot distribution of mean rates of all cells across all 6 natstate recordings. Run with
 'run -i scripts/meanrates_natstate.py'"""
 
-from __future__ import division
-from __future__ import print_function
-
 from scipy.stats import chisquare, mannwhitneyu
 from scipy.optimize import leastsq
 

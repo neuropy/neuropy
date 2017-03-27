@@ -2,9 +2,6 @@
 are Vpp, sx, x0, y0. Run with 'run -i scripts/sparams.py' or copy and paste into neuropy
 console"""
 
-from __future__ import division
-from __future__ import print_function
-
 from colour import CCBLACKDICT0, CCWHITEDICT0 # for plotting on black or white
 
 # style: 'points' or 'lines'. Binned lines have less detail but better visibility:

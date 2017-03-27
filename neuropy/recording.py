@@ -1,11 +1,8 @@
 """Defines the Recording class"""
 
-from __future__ import division
-from __future__ import print_function
-
 import os
 import time
-import StringIO
+from io import StringIO
 from pprint import pprint
 import random
 import multiprocessing as mp
@@ -55,7 +52,7 @@ class BaseRecording(object):
     can have multiple experiments, and multiple spike extractions, called sorts"""
     def __init__(self, path, track=None):
         self.level = 3 # level in the hierarchy
-        self.treebuf = StringIO.StringIO() # string buffer to print tree hierarchy to
+        self.treebuf = StringIO() # string buffer to print tree hierarchy to
         self.path = path
         self.tr = track
         if track != None:
@@ -208,7 +205,7 @@ class BaseRecording(object):
         # numerical order, isn't necessarily the same as spatial order:
         if n == None:
             n = self.n
-        nids = np.sort(n.keys())
+        nids = np.sort(list(n))
         ypos = [ n[nid].pos[1] for nid in nids ]
         sortis = np.argsort(ypos) # superficial to deep
         return nids[sortis]
@@ -220,9 +217,9 @@ class BaseRecording(object):
         assert kind in ['active', 'all']
         if tranges == None:
             if kind == 'active':
-                return np.sort(self.n.keys()) # return sorted nids of all active neurons
+                return np.sort(list(self.n)) # return sorted nids of all active neurons
             elif kind == 'all':
-                return np.sort(self.alln.keys()) # return sorted nids of all neurons
+                return np.sort(list(self.alln)) # return sorted nids of all neurons
         # start with all neurons, even those with average rates below MINRATE over the
         # span of self. Remove them one by one if their average rates fall below MINRATE
         # in any trange in tranges
@@ -297,7 +294,7 @@ class BaseRecording(object):
             tres = uns['MUATRES'] # s
         assert tres <= width
 
-        nids = np.sort(neurons.keys())
+        nids = np.sort(list(neurons))
         if layers:
             ys = np.array([ neurons[nid].pos[1] for nid in nids ]) # y positions of each neuron
             supis, midis, deepis = core.laminarity(ys, self.tr.absname)
@@ -1009,11 +1006,11 @@ class BaseRecording(object):
         """Plot PDF of cell positions ('x' or 'y') along the polytrode
         to get an idea of how cells are distributed in space"""
         if neurons == 'all':
-            neurons = self.alln.values()
+            neurons = list(self.alln.values())
         elif neurons == 'quiet':
-            neurons = self.qn.values()
+            neurons = list(self.qn.values())
         else:
-            neurons = self.n.values()
+            neurons = list(self.n.values())
         dimi = {'x':0, 'y':1}[dim]
         p = [ n.pos[dimi] for n in neurons ] # all position values
         nbins = max(nbins, 2*intround(np.sqrt(self.nneurons)))
@@ -1300,11 +1297,11 @@ class RecordingRaster(BaseRecording):
         TRASTERCOLOURDICT = ColourDict(colours=TRASTERCOLOURS, indexbase=0)
 
         if nids == None:
-            nids = sorted(self.n.keys()) # use active neurons
+            nids = sorted(self.n) # use active neurons
         elif nids == 'quiet':
-            nids = sorted(self.qn.keys()) # use quiet neurons
+            nids = sorted(self.qn) # use quiet neurons
         elif nids == 'all':
-            nids = sorted(self.alln.keys()) # use all neurons
+            nids = sorted(self.alln) # use all neurons
         else:
             nids = tolist(nids) # use specified neurons
         nn = len(nids)
@@ -1727,7 +1724,7 @@ class RecordingRaster(BaseRecording):
         else: # assume neurons is a list of nids
             neurons = { nid:self.alln[nid] for nid in neurons }
         nn = len(neurons)
-        nids = np.sort(neurons.keys())
+        nids = np.sort(list(neurons))
 
         uns = get_ipython().user_ns
         if width == None:
@@ -1791,11 +1788,11 @@ class RecordingRaster(BaseRecording):
         """Plot tuning curves for given neurons, based on stimulus info in experiment eid.
         alpha significance threshold only applied when var='ori'"""
         if nids == None:
-            nids = sorted(self.n.keys()) # use active neurons
+            nids = sorted(self.n) # use active neurons
         elif nids == 'quiet':
-            nids = sorted(self.qn.keys()) # use quiet neurons
+            nids = sorted(self.qn) # use quiet neurons
         elif nids == 'all':
-            nids = sorted(self.alln.keys()) # use all neurons
+            nids = sorted(self.alln) # use all neurons
         else:
             nids = tolist(nids) # use specified neurons
         tunes = []
@@ -1880,8 +1877,7 @@ class BaseNetstate(object):
         self.nneurons = len(self.neurons)
         if nids == None:
             self.nidswasNone = True
-            nids = self.neurons.keys() # get all neuron indices in this Recording
-            nids.sort() # make sure they're sorted
+            nids = sorted(self.neurons) # get all neuron indices in this Recording, sorted
         else:
             self.nidswasNone = False
         self.cs = self.codes(nids=nids) # generate and save the Codes object for all the nids
@@ -2388,7 +2384,7 @@ class NetstateI2vsIN(BaseNetstate):
         self.N = N
         self.ngroups = ngroups
 
-        self.nidss = nCrsamples(objects=self.neurons.keys(),
+        self.nidss = nCrsamples(objects=list(self.neurons),
                                 r=self.N, # pick N neurons at random
                                 nsamples=self.ngroups) # do it ngroups times
         I2s = []
@@ -2626,7 +2622,7 @@ class NetstateS1INvsN(BaseNetstate):
         tres = get_ipython().user_ns['CODETRES']
         for ni, n in enumerate(self.N): # for all network sizes
             # get a list of lists of neuron indices
-            nidss = nCrsamples(objects=self.neurons.keys(),
+            nidss = nCrsamples(objects=list(self.neurons),
                                r=n, # pick n neurons
                                nsamples=self.nsamples[ni] ) # do it at most maxnsamples times
             S1s = []

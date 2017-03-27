@@ -2,8 +2,8 @@
 See http://stackoverflow.com/a/7843281/2020363"""
 
 import pickle
-import StringIO
-output = StringIO.StringIO()
+from io import StringIO
+output = StringIO()
 
 class MyPickler (pickle.Pickler):
     """Not entirely sure how this works, but I think it recursively tries to pickle every
@@ -18,8 +18,8 @@ class MyPickler (pickle.Pickler):
             raise e
 
 # diagnostic pickling:
-import StringIO
-output = StringIO.StringIO()
+from io import StringIO
+output = StringIO()
 MyPickler(output).dump(obj)
 
 # normal full speed pickling:

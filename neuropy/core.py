@@ -1,8 +1,5 @@
 """Miscellaneous functions and classes"""
 
-from __future__ import division
-from __future__ import print_function
-
 import os
 import sys
 import time
@@ -55,7 +52,7 @@ class dictattr(dict):
     """Dictionary with attribute access. Copied from dimstim.Core"""
     def __init__(self, *args, **kwargs):
         super(dictattr, self).__init__(*args, **kwargs)
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items():
             # call our own __setitem__ so we get keys as attribs even on kwarg init:
             self.__setitem__(k, v)
     
@@ -63,7 +60,7 @@ class dictattr(dict):
         try:
             return self[key]
         except KeyError:
-            raise AttributeError, '%r object has no attribute %r' % ('dictattr', key)
+            raise AttributeError('%r object has no attribute %r' % ('dictattr', key))
     
     def __setattr__(self, key, val):
         self[key] = val
@@ -73,7 +70,7 @@ class dictattr(dict):
         works instead"""        
         try:
             return super(dictattr, self).__getitem__(key)
-        except KeyError, e: # try converting key to str of up to 2 digits in length
+        except KeyError as e: # try converting key to str of up to 2 digits in length
             for ndigits in [1, 2]:
                 try:
                     #print('key: %r' % key)
@@ -119,7 +116,7 @@ class PTCSHeader(object):
         
     def read_ver_1(self, f):
         """Read in header of .ptcs file version 1. For text fields, rstrip both null
-        and space bytes, since NVS generated .ptcs files mix the two for padding.
+        and space bytes, since NVS generated .ptcs files mixing the two for padding.
 
         ndescrbytes: uint64 (nbytes, keep as multiple of 8 for nice alignment)
         descr: ndescrbytes of ASCII text
@@ -150,7 +147,7 @@ class PTCSHeader(object):
              padded with null bytes if needed for 8 byte alignment)
         """
         self.ndescrbytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # ndescrbytes
-        self.descr = f.read(self.ndescrbytes).rstrip('\0 ') # descr
+        self.descr = f.read(self.ndescrbytes).rstrip(b'\0 ') # descr
         try:
             self.descr = eval(self.descr) # should come out as a dict
         except: pass
@@ -161,16 +158,16 @@ class PTCSHeader(object):
         self.samplerate = int(np.fromfile(f, dtype=np.uint64, count=1)) # samplerate
 
         self.npttypebytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # npttypebytes
-        self.pttype = f.read(self.npttypebytes).rstrip('\0 ') # pttype
+        self.pttype = f.read(self.npttypebytes).rstrip(b'\0 ') # pttype
         self.nptchans = int(np.fromfile(f, dtype=np.uint64, count=1)) # nptchans
         self.chanpos = np.fromfile(f, dtype=np.float64, count=self.nptchans*2) # chanpos
         self.chanpos.shape = self.nptchans, 2 # reshape into rows of (x, y) coords
         self.nsrcfnamebytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # nsrcfnamebytes
-        self.srcfname = f.read(self.nsrcfnamebytes).rstrip('\0 ') # srcfname
+        self.srcfname = f.read(self.nsrcfnamebytes).rstrip(b'\0 ') # srcfname
         # maybe convert this to a proper Python datetime object in the Neuron:
         self.datetime = float(np.fromfile(f, dtype=np.float64, count=1)) # datetime (days)
         self.ndatetimestrbytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # ndatetimestrbytes
-        self.datetimestr = f.read(self.ndatetimestrbytes).rstrip('\0 ') # datetimestr
+        self.datetimestr = f.read(self.ndatetimestrbytes).rstrip(b'\0 ') # datetimestr
 
     def read_ver_2(self, f):
         """Same header as version 1. NVS created some version 1 files incorrectly, and
@@ -229,7 +226,7 @@ class PTCSNeuronRecord(object):
         """
         self.nid = int(np.fromfile(f, dtype=np.int64, count=1)) # nid
         self.ndescrbytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # ndescrbytes
-        self.descr = f.read(self.ndescrbytes).rstrip('\0 ') # descr
+        self.descr = f.read(self.ndescrbytes).rstrip(b'\0 ') # descr
         if self.descr:
             try:
                 self.descr = eval(self.descr) # might be a dict
@@ -296,7 +293,7 @@ class PTCSNeuronRecord(object):
         """
         self.nid = int(np.fromfile(f, dtype=np.int64, count=1)) # nid
         self.ndescrbytes = int(np.fromfile(f, dtype=np.uint64, count=1)) # ndescrbytes
-        self.descr = f.read(self.ndescrbytes).rstrip('\0 ') # descr
+        self.descr = f.read(self.ndescrbytes).rstrip(b'\0 ') # descr
         if self.descr:
             try:
                 self.descr = eval(self.descr) # might be a dict
@@ -389,7 +386,7 @@ class DensePopulationRaster(object):
         if norder != None:
             nids = norder
         else: # sort neurons by their depth rank:
-            nids = np.sort(neurons.keys())
+            nids = np.sort(list(neurons))
             # depth from top of electrode:
             unsorted_ypos = np.array([ neurons[nid].pos[1] for nid in nids ])
             nids = nids[unsorted_ypos.argsort()]
@@ -470,7 +467,7 @@ class SpatialPopulationRaster(object):
         assert len(trange) == 2
         trange = np.asarray(trange)
         if norder == None:
-            nids = sorted(neurons.keys())
+            nids = sorted(neurons)
         else:
             nids = norder
             self.norder = norder
@@ -2319,7 +2316,7 @@ class NeuropyAutoLocator(mpl.ticker.MaxNLocator):
 def getargstr(obj):
     """Returns object's argument list as a string. Stolen from wx.py package?"""
     import inspect
-    argstr = apply(inspect.formatargspec, inspect.getargspec(obj))
+    argstr = inspect.formatargspec(*inspect.getargspec(obj))
     if inspect.isfunction(obj):
         pass
     elif inspect.ismethod(obj):
@@ -2570,7 +2567,7 @@ def unique(seq):
     result = {}
     for item in seq:
         result[item] = None
-    return result.keys()
+    return list(result)
 
 def unique(objlist):
     """Returns the input list minus any repeated objects it may have had.

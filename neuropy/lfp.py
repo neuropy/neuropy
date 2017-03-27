@@ -1,8 +1,5 @@
 """Defines the LFP class"""
 
-from __future__ import division
-from __future__ import print_function
-
 import numpy as np
 
 import matplotlib as mpl
@@ -35,10 +32,9 @@ class LFP(object):
     def load(self):
         with open(self.fname, 'rb') as f:
             d = np.load(f)
-            assert sorted(d.keys()) == ['chanpos', 'chans', 'data', 't0', 't1', 'tres',
-                                        'uVperAD']
+            assert sorted(d) == ['chanpos', 'chans', 'data', 't0', 't1', 'tres', 'uVperAD']
             # bind arrays in .lfp.zip file to self:
-            for key, val in d.iteritems():
+            for key, val in d.items():
                 # pull some singleton vals out of their arrays:
                 if key in ['t0', 't1', 'tres']: # should all be us
                     val = int(val)

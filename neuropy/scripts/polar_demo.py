@@ -4,9 +4,6 @@ to a full 360 deg.
 Based on http://matplotlib.org/mpl_toolkits/axes_grid/examples/demo_floating_axes.py
 """
 
-from __future__ import division
-from __future__ import print_function
-
 import numpy as np
 import matplotlib.pyplot as plt
 

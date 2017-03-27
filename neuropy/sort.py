@@ -1,10 +1,7 @@
 """Defines the Sort class"""
 
-from __future__ import division
-from __future__ import print_function
-
 import os
-import StringIO
+from io import StringIO
 import datetime
 
 import numpy as np
@@ -20,7 +17,7 @@ class Sort(object):
     sorting session"""
     def __init__(self, path, id=None, recording=None):
         self.level = 4 # level in the hierarchy
-        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.treebuf = StringIO() # create a string buffer to print tree hierarchy to
         self.path = path
         self.id = id
         self.r = recording
@@ -153,7 +150,7 @@ class TrackSort(object):
     def load(self):
         """Load TrackNeurons by concatenating spikes from neurons from all recordings"""
         tr = self.tr
-        rids = sorted(tr.r.keys()) # all recording ids in tr
+        rids = sorted(tr.r) # all recording ids in tr
         recs = [ tr.r[rid] for rid in rids ]
         # copy some attribs from first sort, should be the same for all of them:
         sort = recs[0].sort

@@ -1,8 +1,6 @@
 """Scatter plot synchrony index SI as a function of LFP peak-to-peak voltage and stdev. Run
 from within neuropy using `run -i scripts/si_lfp_amplitude.py`"""
 
-from __future__ import division, print_function
-
 import numpy as np
 import matplotlib as mpl
 import pylab as pl

@@ -1,8 +1,6 @@
 """Plot 2D matrix of rftype classification vs spiketype. Run from within neuropy using `run -i
 scripts/cell_type_matrix.py`"""
 
-from __future__ import division
-
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2] # need to be loaded ahead of time
 tracknames = [track.absname for track in tracks ] + ['all']
 

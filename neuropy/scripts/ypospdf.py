@@ -20,7 +20,7 @@ edges = np.arange(ledge, redge+2*binw, binw)
 ypos = []
 chanypos = []
 for track in tracks:
-    neurons = track.alln.values()
+    neurons = list(track.alln.values())
     ypos.append([ n.pos[1] for n in neurons ]) # all y position values
     chanypos.append(track.sort.chanpos[:, 1])
 ypos = np.hstack(ypos)

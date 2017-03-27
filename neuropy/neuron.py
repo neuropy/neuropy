@@ -1,10 +1,7 @@
 """Defines the Neuron class and all of its support classes"""
 
-from __future__ import division
-from __future__ import print_function
-
 import os
-import StringIO
+from io import StringIO
 import time
 import hashlib
 
@@ -31,7 +28,7 @@ class BaseNeuron(object):
     are the same"""
     def __init__(self, path, sort=None):
         self.level = 5 # level in the hierarchy
-        #self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+        #self.treebuf = StringIO() # create a string buffer to print tree hierarchy to
         self.path = path
         self.sort = sort
 

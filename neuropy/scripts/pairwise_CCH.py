@@ -5,7 +5,7 @@ import pyximport
 pyximport.install(build_in_temp=False, inplace=True)
 import util # .pyx file
 
-nids = np.sort(rec.n.keys())
+nids = np.sort(list(rec.n))
 """
 Shuffle the nids, which are sorted by depth - this allows examination of whether assymmetry in
 the resulting mean CCH is a result of some kind of causal regularity as a function of cell

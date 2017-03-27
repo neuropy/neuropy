@@ -1,8 +1,6 @@
 """Plot PSTHs of specific neurons in specific natscene recordings, separately for synched and
 desynched states. Run from within neuropy using `run -i scripts/psth_natstate_plots.py `"""
 
-from __future__ import division, print_function
-
 from psth_funcs import get_psth_peaks_gac
 
 BINW, TRES = 0.020, 0.0001 # s

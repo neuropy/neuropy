@@ -2,9 +2,6 @@
 an entire track, repeated for each track, so 3 full width panels. Run from within neuropy
 using `run -i scripts/rateseries.py`"""
 
-from __future__ import division
-from __future__ import print_function
-
 from core import split_tranges
 from colour import CCBLACKDICT0, CCWHITEDICT0 # for plotting on black or white
 from scipy.stats import nanmean
@@ -45,7 +42,7 @@ for track in tracks:
             else:
                 rectranges.append(trange)
     rectranges = np.array(rectranges)
-    nids = np.sort(track.alln.keys())
+    nids = np.sort(list(track.alln))
     nn = len(nids)
     figure(figsize=figsize)
     axes(axisbg=bg) # set background color

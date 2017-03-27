@@ -1,8 +1,6 @@
 """Detect response events within PSTHs of specific inactive neurons, and plot them. Run from
 within neuropy using `run -i scripts/psth_precision_inactive.py`"""
 
-from __future__ import division, print_function
-
 from core import intround
 
 from psth_funcs import get_psth_peaks_simple, plot_psth

@@ -1,7 +1,7 @@
 def delmod(mod, importall=False):
     import copy
     d = mod.__dict__.copy()
-    dk = copy.copy(d.keys())
+    dk = copy.copy(list(d))
     for key in dk:
         if '__name__' not in key:# and type(nd[key]) is not types.ModuleType:
             del d[key]
@@ -42,7 +42,7 @@ __importall__ = [core] # list of mods imported above as "from mod import *"
 __all__ = ['Neuron', 'Experiment', 'test']
 import types
 for mod in __importall__:
-    for key, value in mod.__dict__.iteritems():
+    for key, value in mod.__dict__.items():
         # don't add modules or special names designated with a leading underscore
         if type(value) is not types.ModuleType and not key.startswith('_'):
             #print key

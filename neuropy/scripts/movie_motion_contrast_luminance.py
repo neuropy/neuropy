@@ -3,8 +3,6 @@ global motion within each movie for each specified recording. Adapted from
 opencv/samples/python2/opt_flow.py. Run from within neuropy using `run -i
 scripts/movie_motion_contrast_luminance.py`"""
 
-from __future__ import division, print_function
-
 import os
 
 import cv2
@@ -397,9 +395,9 @@ tight_layout(pad=0.3)
 
 motscatrhos, conscatrhos, lumscatrhos = [], [], []
 for rec in urecs:
-    motscatrhos.append(recsecscatmotrhos[rec.absname].values())
-    conscatrhos.append(recsecscatconrhos[rec.absname].values())
-    lumscatrhos.append(recsecscatlumrhos[rec.absname].values())
+    motscatrhos.append(list(recsecscatmotrhos[rec.absname].values()))
+    conscatrhos.append(list(recsecscatconrhos[rec.absname].values()))
+    lumscatrhos.append(list(recsecscatlumrhos[rec.absname].values()))
 
 motscatrhos = np.vstack(motscatrhos)
 conscatrhos = np.vstack(conscatrhos)
@@ -524,7 +522,7 @@ text(0.02, 0.09, '$r_s$=%.2f, %s' % (r, pstring), color='b', alpha=0.7,
 #plot(xr, m*xr+b, 'b', ls='--', lw=2, alpha=0.7)
 #text(0.02, 0.1, 'r=%.2f, p=%.1g' % (r, p), color='b',
      #transform=gca().transAxes, horizontalalignment='left', verticalalignment='bottom')
-#allmotscatspars = np.vstack(motscatspars.values())
+#allmotscatspars = np.vstack(list(motscatspars.values()))
 #m, b, r, p, stderr = linregress(allmotscatspars)
 #plot(xr, m*xr+b, 'k', ls='--', lw=2, alpha=0.7)
 #text(0.02, 0.18, 'r=%.2f, p=%.1g' % (r, p), color='k',

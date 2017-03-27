@@ -2,8 +2,6 @@
 plot distributions and waveforms, as separated by shape thresholds. Run from within neuropy
 using `run -i scripts/cell_type_temporal_spatial.py`"""
 
-from __future__ import division
-
 import scipy
 from pylab import get_current_fig_manager as gcfm
 from core import intround, argfwhm

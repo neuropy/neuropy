@@ -1,10 +1,7 @@
 """Defines the Track class"""
 
-from __future__ import division
-from __future__ import print_function
-
 import os
-import StringIO
+from io import StringIO
 
 import numpy as np
 
@@ -26,7 +23,7 @@ class Track(object):
     """A track can have multiple recordings"""
     def __init__(self, path, animal=None):
         self.level = 2 # level in the hierarchy
-        self.treebuf = StringIO.StringIO() # string buffer to print tree hierarchy to
+        self.treebuf = StringIO() # string buffer to print tree hierarchy to
         self.path = path
         self.animal = animal
         if animal != None:
@@ -138,7 +135,7 @@ class Track(object):
 
         # calculate tranges, representing start and stop times (us) of child recordings
         # relative to start of track:
-        rids = sorted(self.r.keys()) # all recording ids in self
+        rids = sorted(self.r) # all recording ids in self
         r0 = self.r[rids[0]]
         assert r0.datetime == self.datetime
         tranges = []
@@ -221,10 +218,10 @@ class Track(object):
         Otherwise, return all active nids in all recordings. Active neurons in a recording
         are those with at least MINRATE mean spike rate during the recording"""
         if rids == None: # return all nids in all recordings
-            rids = list(self.r.keys())
-            return np.unique(np.hstack([ self.r[rid].n.keys() for rid in rids ]))
+            rids = list(self.r)
+            return np.unique(np.hstack([ list(self.r[rid].n) for rid in rids ]))
         else: # return intersection of nids of specified recordings
-            nids = [ self.r[rid].n.keys() for rid in rids ]
+            nids = [ list(self.r[rid].n) for rid in rids ]
             return core.intersect1d(nids, assume_unique=True)
 
     def get_allnids(self, rids=None):
@@ -232,11 +229,11 @@ class Track(object):
         specified in rids, ie return the intersection. If rids==None, return the union
         of all nids in the track instead"""
         if rids == None:
-            rids = sorted(self.r.keys())
-            allnids = np.hstack([ self.r[rid].alln.keys() for rid in rids ])
+            rids = sorted(self.r)
+            allnids = np.hstack([ list(self.r[rid].alln) for rid in rids ])
             return np.unique(allnids)
         else:
-            allnids = [ self.r[rid].alln.keys() for rid in rids ]
+            allnids = [ list(self.r[rid].alln) for rid in rids ]
             return core.intersect1d(allnids, assume_unique=True)
 
     def pospdfrec(self, neurons=None, rids=None, dim='y', nbins=10, a=None, figsize=(7.5, 6.5)):
@@ -251,8 +248,7 @@ class Track(object):
             f = pl.gcf()
 
         if rids == None:
-            rids = self.r.keys()
-            rids.sort()
+            rids = sorted(self.r)
         for rid in rids:
             r = self.r[rid]
             r.pospdf(neurons=neurons, dim=dim, nbins=nbins, stats=False, a=a, figsize=figsize)
@@ -264,11 +260,11 @@ class Track(object):
         """Plot PDF of cell positions ('x' or 'y') along the polytrode
         to get an idea of how cells are distributed in space"""
         if neurons == 'all':
-            neurons = self.alln.values()
+            neurons = list(self.alln.values())
         elif neurons == 'quiet':
-            neurons = self.qn.values()
+            neurons = list(self.qn.values())
         elif neurons == 'active':
-            neurons = self.n.values()
+            neurons = list(self.n.values())
         dimi = {'x':0, 'y':1}[dim]
         p = [ n.pos[dimi] for n in neurons ] # all position values
         if edges != None:

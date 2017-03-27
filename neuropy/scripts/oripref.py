@@ -2,9 +2,6 @@
 a number of orientated stimulus recordings. Run with 'run -i scripts/oripref.py' or copy and
 paste into neuropy console."""
 
-from __future__ import division
-from __future__ import print_function
-
 import scipy
 
 from polar_demo import fractional_polar_axes
@@ -63,7 +60,7 @@ for track in tracks:
             bestrec[nid] = rec.name
         print('%s: %d/%d neurons tuned' % (rec.absname, len(snids), len(nids)))
     nids = np.unique(np.hstack(tracknids)) # nids that were relevant in at least one rec
-    snids = sorted(thetas.keys()) # significantly tuned nids across all recs
+    snids = sorted(thetas) # significantly tuned nids across all recs
     thetas = np.asarray([ thetas[nid] for nid in snids ])
     rs = np.asarray([ rs[nid] for nid in snids ])
     depths = np.asarray([ depths[nid] for nid in snids ])

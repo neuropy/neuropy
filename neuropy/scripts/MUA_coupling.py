@@ -1,8 +1,6 @@
 """Calculate MUA coupling and its effect on natscene response reliability and precision. Run
 from within neuropy using `run -i scripts/MUA_coupling.py`"""
 
-from __future__ import division, print_function
-
 from scipy.stats import mannwhitneyu, linregress
 
 import core

@@ -1,7 +1,5 @@
 """Some PSTH-related functions used by multiple scripts"""
 
-from __future__ import division, print_function
-
 import sys
 
 import pylab as pl

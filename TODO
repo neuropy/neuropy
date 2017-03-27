@@ -193,8 +193,6 @@ OLD:
 - tuning curves for various parameters (ori, sfreq, tfreq, phase,...), for driftbars and gratings, for both Cat 15 and dimstim 0.16
     - this should probably be some kinda TuningCurve object, analogous to all the other analysis objects I've got
 
-- from __future__ import division
-
 - get rid of all use of python's built-in random module, use numpy.random instead
 
 - if an analysis method needs to return more than one object, have them return in a dictattr of results

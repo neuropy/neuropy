@@ -1,10 +1,7 @@
 """Defines the Animal class"""
 
-from __future__ import division
-from __future__ import print_function
-
 import os
-import StringIO
+from io import StringIO
 
 from core import dictattr, tolist, TAB
 from track import Track
@@ -15,7 +12,7 @@ class Animal(object):
     Animals are identified by their globally unique name (e.g. ptc15)"""
     def __init__(self, path):
         self.level = 1 # level in the hierarchy
-        self.treebuf = StringIO.StringIO() # string buffer to print tree hierarchy to
+        self.treebuf = StringIO() # string buffer to print tree hierarchy to
         self.path = path
         self.tr = dictattr() # store tracks in a dictionary with attrib access
 

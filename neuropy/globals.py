@@ -3,10 +3,6 @@ Access programatically using:
 
 get_ipython().user_ns['VARNAME']
 """
-# __future__ imports don't seem to work when executing this file in IPython, see main.py:
-#from __future__ import division
-#from __future__ import print_function
-
 import os
 from core import mergeuniquedictvals, dictattr
 

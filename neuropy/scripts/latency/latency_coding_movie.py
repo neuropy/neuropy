@@ -1,8 +1,6 @@
 """Creates a latency coding movie from an image, to try and change perception
 of the image by manipulating its latency-contrast profile"""
 
-from __future__ import division
-
 import Image
 import numpy as np
 import sys

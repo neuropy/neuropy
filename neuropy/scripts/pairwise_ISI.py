@@ -2,7 +2,7 @@
 all that useful. The peaks in these plots are probably dominated by bursty high firing rate
 cells"""
 
-nids = np.sort(rec.n.keys())
+nids = np.sort(list(rec.n))
 nn = len(nids)
 binw = 1000 # us
 bins = np.arange(0, 100000+binw, binw)

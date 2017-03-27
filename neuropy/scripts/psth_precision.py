@@ -11,8 +11,6 @@ Also, measure sparseness of responsive PSTHs.
 
 Run from within neuropy using `run -i scripts/psth_precision.py`"""
 
-from __future__ import division, print_function
-
 from scipy.signal import argrelextrema
 from scipy.stats import ttest_ind, chisquare, mannwhitneyu, linregress
 from scipy.optimize import leastsq

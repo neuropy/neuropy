@@ -1,10 +1,7 @@
 """Defines the Experiment class"""
 
-from __future__ import division
-from __future__ import print_function
-
 import os
-import StringIO
+from io import StringIO
 
 import numpy as np
 import matplotlib as mpl
@@ -29,7 +26,7 @@ class BaseExperiment(object):
     A neuropy.Experiment is basically a container for a dimstim.Experiment"""
     def __init__(self, path, id=None, recording=None):
         self.level = 4 # level in the hierarchy
-        self.treebuf = StringIO.StringIO() # create a string buffer to print tree hierarchy to
+        self.treebuf = StringIO() # create a string buffer to print tree hierarchy to
         self.path = path
         self.id = id
         self.r = recording
@@ -77,7 +74,7 @@ class BaseExperiment(object):
                 if line.startswith('import'):
                     exec(line)
             thns = {} # textheader namespace
-            # compiling to code and then executing that is supposed to be faster than directly
+            # compiling to code and then executing it is supposed to be faster than directly
             # executing a string, according to
             # http://lucumr.pocoo.org/2011/2/1/exec-in-python/, but doesn't seem to make
             # a difference here:
@@ -86,10 +83,10 @@ class BaseExperiment(object):
             exec(code, None, thns)
             try:
                 # dimstim up to ptc15 didn't have a version, neither did NVS display
-                self.__version__ = thns['__version__']
+                self.__version__ = thns['__version__'] # a string
             except KeyError:
-                self.__version__ = 0.0
-            if self.__version__ >= 0.16: # after major refactoring of dimstim
+                self.__version__ = '0.0'
+            if float(self.__version__) >= 0.16: # after major refactoring of dimstim
                 for name, val in thns.items():
                     # bind each variable in the textheader as an attrib of self
                     self.__setattr__(name, val)
@@ -281,7 +278,7 @@ class BaseExperiment(object):
         # Generate the sweeptable, which is a dict of lists,
         # e.g. sweeptable={'ori':[0,45,90], 'sfreq':[1,1,1]}.
         # Index into it with: self.sweeptable['var'][sweepi]
-        if self.__version__ >= 0.16: # after major refactoring of dimstim
+        if float(self.__version__) >= 0.16: # after major refactoring of dimstim
             self._sweeptable = SweepTable(experiment=self.e)
         else:
             try:
@@ -566,7 +563,7 @@ class BaseExperiment(object):
 
         # Print sweeptable as formatted text to string
         if makeSweepTableText:
-            f = cStringIO.StringIO() # create a string file-like object, implemented in C, fast
+            f = StringIO() # create a string file-like object
             f.write('sweepi\t') # 'sweepi' column header
             for dim in xrange(ndims): # print out column headers in dim order
                 f.write( str(dimvars[dim]) + '\t' )
@@ -707,11 +704,11 @@ class RevCorrs(object):
         """Convert list of nids to list of neurons"""
         r = self.experiment.r
         if nids == None:
-            nids = sorted(r.n.keys()) # use active neurons
+            nids = sorted(r.n) # use active neurons
         elif nids == 'quiet':
-            nids = sorted(r.qn.keys()) # use quiet neurons
+            nids = sorted(r.qn) # use quiet neurons
         elif nids == 'all':
-            nids = sorted(r.alln.keys()) # use all neurons
+            nids = sorted(r.alln) # use all neurons
         else:
             nids = tolist(nids) # use specified nids
         neurons = [ r.alln[nid] if nid in r.alln else None for nid in nids ]

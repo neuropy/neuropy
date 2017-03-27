@@ -3,8 +3,6 @@ recordings. Should show single-trial positive correlation between the two, but t
 with this is that any measure, whether precision, reliability or sparseness, is very noisy at
 the single trial level"""
 
-from __future__ import division, print_function
-
 from core import sparseness, intround
 
 from psth_funcs import get_psth_peaks_gac
@@ -30,7 +28,7 @@ def get_responsive_nids(rec):
     """Get responsive nids (those with at least 1 detected response event in their PSTH) by
     finding the responsive nids in each state separately, then taking their superset"""
     rnids = []
-    allnids = sorted(rec.alln.keys())
+    allnids = sorted(rec.alln)
     for statei in [0, 1]: # 0 is desynched, 1 is synched
         tranges = REC2STATETRANGES[rec.absname]
         trange = tranges[statei]
@@ -60,7 +58,7 @@ for rec in urecs:
     si, sit = rec.lfp.si(kind='L/(L+H)', lfpwidth=LFPWIDTH, lfptres=LFPTRES, states=False,
                          relative2t0=False, lim2stim=False, plot=False)
     sit = intround(sit * 1e6) # convert from s to us for later comparison with strange
-    #nids = sorted(rec.alln.keys())
+    #nids = sorted(rec.alln)
     nids = get_responsive_nids(rec)
     print('nids:', nids)
     nn = len(nids)

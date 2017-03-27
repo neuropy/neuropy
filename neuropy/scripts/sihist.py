@@ -1,8 +1,6 @@
 """Plot distributions of synchrony index (SI) for various tracks. Run from within neuropy
 using `run -i scripts/sihist.py`"""
 
-from __future__ import division
-
 figsize = (2, 2)
 lfpwidth = 30 # sec
 lfptres = 5 # sec

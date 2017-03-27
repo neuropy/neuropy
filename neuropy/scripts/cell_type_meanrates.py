@@ -2,10 +2,6 @@
 on a log scale. Run with 'run -i scripts/cell_type_meanrates.py' or copy and paste into neuropy
 console"""
 
-from __future__ import division
-from __future__ import print_function
-
-
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2]
 nbins = 15
 

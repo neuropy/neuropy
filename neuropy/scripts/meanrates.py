@@ -3,9 +3,6 @@ Show firing rate threshold as well. Also, plot distribution of mean rates across
 again on a log scale. Run with 'run -i scripts/meanrates.py' or copy and paste into neuropy
 console"""
 
-from __future__ import division
-from __future__ import print_function
-
 from core import g
 from scipy.optimize import leastsq
 

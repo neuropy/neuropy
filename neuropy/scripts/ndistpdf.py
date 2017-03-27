@@ -1,7 +1,6 @@
 """Generate a histogram of distance of each neuron to its nearest polytrode site, from all
 specified tracks. Run from within neuropy using `run -i scripts/ndistpdf.py`"""
 
-from __future__ import division
 from core import dist
 
 MODEL = False
@@ -32,7 +31,7 @@ for track in tracks:
 N = 0
 ds, sigmas = [], []
 for track in tracks:
-    neurons = track.alln.values()
+    neurons = list(track.alln.values())
     for neuron in neurons:
         d = [ dist(neuron.pos, cp) for cp in neuron.sort.chanpos ]
         ds.append(min(d))

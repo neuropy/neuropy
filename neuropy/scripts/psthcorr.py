@@ -2,7 +2,6 @@
 PSTHs, for each track, only include recordings with at least 5 trials per movie clip. Run from
 within neuropy using `run -i scripts/psthcorr.py`"""
 
-from __future__ import division
 import pylab as pl
 import numpy as np
 from scipy.stats import ttest_1samp, ttest_ind, ks_2samp

@@ -1,8 +1,6 @@
 """Calculate and plot power spectral density from the LFP of desired tracks/recordings. Run
 from within neuropy using `run -i scripts/psd.py`"""
 
-from __future__ import division, print_function
-
 import numpy as np
 import matplotlib as mpl
 import pylab as pl

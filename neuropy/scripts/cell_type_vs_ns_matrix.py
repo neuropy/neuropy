@@ -1,8 +1,6 @@
 """Plot 2D matrix of cell types vs NS response. Run from within neuropy using `run -i
 scripts/cell_type_vs_ns_matrix.py`"""
 
-from __future__ import division
-
 from scipy.stats import chisquare
 
 alpha = 0.01 # for chi squared test

@@ -1,9 +1,6 @@
 """Plot distribution of spatial sigmas of designated tracks. Run from within neuropy
 using `run -i scripts/sigma_distrib.py`"""
 
-from __future__ import division
-from __future__ import print_function
-
 tracks = [ptc15.tr7c, ptc22.tr1, ptc22.tr2] # need to be loaded ahead of time
 bw = 5
 xmax = 110

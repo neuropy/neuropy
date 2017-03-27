@@ -1,8 +1,5 @@
 """Define colour-related things"""
 
-from __future__ import division
-from __future__ import print_function
-
 from copy import copy
 
 import numpy as np

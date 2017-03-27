@@ -1,8 +1,6 @@
 """Scatter plot MUA vs LFP SI for all specified recordings.
 Run from within neuropy using `run -i scripts/muasi.py`"""
 
-from __future__ import division
-
 import scipy
 
 rectypes = ['bs', 'ns', 'art', 'all'] #['bs']
