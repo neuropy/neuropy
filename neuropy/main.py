@@ -31,6 +31,7 @@ import platform
 
 # instantiate an IPython embedded shell which shows up in the terminal on demand
 # and on every exception in the GUI code:
+import IPython
 from IPython.terminal.ipapp import load_default_config
 from IPython.terminal.embed import InteractiveShellEmbed
 config = load_default_config()
@@ -198,8 +199,9 @@ class NeuropyWindow(QtGui.QMainWindow):
         lf = open('../LICENSE', 'r')
         LICENSE = lf.read()
         lf.close()
-        system = """<p>Python %s, Qt %s, PyQt %s<br>
-                    %s</p>""" % (platform.python_version(),
+        ipverstr = ('%d.%d.%d.%s' % IPython.version_info).rstrip('.')
+        system = """<p>Python %s, IPython %s, Qt %s, PyQt %s<br>
+                    %s</p>""" % (platform.python_version(), ipverstr,
                                  QtCore.QT_VERSION_STR, QtCore.PYQT_VERSION_STR,
                                  platform.platform())
         text = """
