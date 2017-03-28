@@ -49,8 +49,8 @@ Dependencies:
 
 neuropy requires recent versions of the following to be installed:
 
-* [IPython](http://ipython.org) 5.1.0
 * [Python](http://python.org) (3.x, 2.x no longer supported)
+* [IPython](http://ipython.org) 5.3.0
 * [numpy](http://numpy.org)
 * [scipy](http://scipy.org)
 * [matplotlib](http://matplotlib.org)

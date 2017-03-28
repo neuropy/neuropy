@@ -44,7 +44,7 @@ from IPython.lib import guisupport
 from IPython.paths import get_ipython_dir
 from traitlets.config.loader import PyFileConfigLoader
 
-from IPython.external.qt import QtCore, QtGui
+from qtconsole.qt import QtCore, QtGui
 from PyQt4 import uic
 NeuropyUi, NeuropyUiBase = uic.loadUiType('neuropy.ui')
 
@@ -224,7 +224,7 @@ def config_ipw(ipw):
     """Apply and then modify default settings of IPython Qt widget"""
     ipython_dir = get_ipython_dir()
     profile_dir = os.path.join(ipython_dir, 'profile_default')
-    cl = PyFileConfigLoader('ipython_qtconsole_config.py', profile_dir)
+    cl = PyFileConfigLoader('ipython_config.py', profile_dir)
     config = cl.load_config()
     ipw.config = config
 
@@ -260,22 +260,19 @@ def main():
     ipw.exit_requested.connect(nw.stop)
     nw.show()
 
-    # execute some code directly, note the output appears at the system command line:
-    #kernel.shell.run_cell('print "x=%r, y=%r, z=%r" % (x,y,z)')
-
     # execute some code through the frontend (once the event loop is running).
     # The output appears in the IPythonWidget (ipw).
-
-    guisupport.start_event_loop_qt4(app)
     do_later(ipw.execute, 'run -i %s' % 'startup.py', hidden=True)
     do_later(ipw.execute, 'run -i %s' % 'globals.py', hidden=True)
+    #guisupport.start_event_loop_qt4(app) # doesn't seem to work in IPy 5.3.0
+    app.exec_()
 
 def do_later(func, *args, **kwargs):
-    from IPython.external.qt import QtCore
     QtCore.QTimer.singleShot(0, lambda: func(*args, **kwargs))
 
 
 if __name__ == "__main__":
-    # prevents "The event loop is already running" messages when calling ipshell():
-    QtCore.pyqtRemoveInputHook()
+    # prevents "The event loop is already running" messages when calling ipshell(),
+    # doesn't seem to be necessary any more in IPy 5.3.0:
+    #QtCore.pyqtRemoveInputHook()
     main()
