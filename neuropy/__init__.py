@@ -1,4 +1,4 @@
 """Neuronal data analysis in Python"""
 
 __authors__ = ["Martin Spacek"]
-__version__ = '0.5'
+__version__ = '0.6'
