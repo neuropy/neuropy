@@ -265,10 +265,10 @@ def main():
 
     # execute some code through the frontend (once the event loop is running).
     # The output appears in the IPythonWidget (ipw).
-    do_later(ipw.execute, 'execfile(%r)' % 'startup.py', hidden=True)
-    do_later(ipw.execute, 'execfile(%r)' % 'globals.py', hidden=True)
 
     guisupport.start_event_loop_qt4(app)
+    do_later(ipw.execute, 'run -i %s' % 'startup.py', hidden=True)
+    do_later(ipw.execute, 'run -i %s' % 'globals.py', hidden=True)
 
 def do_later(func, *args, **kwargs):
     from IPython.external.qt import QtCore
