@@ -42,7 +42,8 @@ class LFP(object):
                     val = float(val)
                 self.__setattr__(key, val)
         # make sure chans are in vertical spatial order:
-        assert issorted(self.chanpos[self.chans][1])
+        chan0 = min(self.chans) # base of channel numbering
+        assert issorted(self.chanpos[self.chans - chan0][1])
         self.sampfreq = intround(1e6 / self.tres) # in Hz
         assert self.sampfreq == 1000 # should be 1000 Hz
         self.data = self.data * self.uVperAD # convert to float uV
