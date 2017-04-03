@@ -288,7 +288,7 @@ class LFP(object):
     def specgram(self, t0=None, t1=None, f0=0.1, f1=100, p0=-60, p1=None, chanis=-1,
                  width=None, tres=None, cm=None, colorbar=False, states=False, lw=4, alpha=1,
                  relative2t0=False, lim2stim=False, title=True, reclabel=True,
-                 figsize=(20, 6.5)):
+                 figsize=None):
         """Plot a spectrogram from t0 to t1 in sec, from f0 to f1 in Hz, and clip power values
         from p0 to p1 in dB, based on channel index chani of LFP data. chanis=0 uses most
         superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, take mean of
@@ -307,6 +307,7 @@ class LFP(object):
             t1 = t0 + 10 # 10 sec window
         if lim2stim:
             t0, t1 = self.apply_lim2stim(t0, t1)
+        dt = t1 - t0
         if width == None:
             width = uns['LFPWIDTH'] # sec
         if tres == None:
@@ -317,6 +318,12 @@ class LFP(object):
         t0i, t1i = ts.searchsorted((t0, t1))
         #ts = ts[t0i:t1i] # constrained set of timestamps, in sec
         data = self.data[:, t0i:t1i] # slice data
+        if figsize == None:
+            # convert from recording duration time to width in inches, 0.87 accommodates
+            # padding around the specgram:
+            figwidth = (dt / 1000) * 5 + 0.87
+            figheight = 2.5 # inches
+            figsize = figwidth, figheight
         f = pl.figure(figsize=figsize)
         a = f.add_subplot(111)
         if iterable(chanis):
