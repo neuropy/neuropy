@@ -2623,6 +2623,12 @@ def to2d(arr):
         arr = arr.reshape(1, -1)
     return arr
 
+def recarray2dict(ra):
+    """Convert numpy record array to a simpler dict, removing some unnecessary nesting
+    in record arrays that have been loaded from .mat files"""
+    d = { key:val for key, val in zip(ra.dtype.names, ra.tolist()) }
+    return d
+
 def joinpath(pathlist):
     """Unlike os.path.join(), take a list of path segments, return them joined in a string
     with local separators"""

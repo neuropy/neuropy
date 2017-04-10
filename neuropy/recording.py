@@ -1379,7 +1379,8 @@ class RecordingRaster(BaseRecording):
                 nspikes = len(t) # if nspikes == 0, append empty arrays to ts and trialis
                 ts.append(t) # x values for this trial
                 ## TODO: add offset to these for trials sliced out via strange:
-                trialis.append(np.tile(triali, nspikes)) # 0-based y values for this trial
+                # generate 0-based y values for spikes in this trial:
+                trialis.append(np.tile(triali, nspikes))
             if len(ts) == 0: # no spikes for this neuron for this experiment
                 raise ValueError("n%d has no spikes, maybe due to use of eids or natexps or "
                                  "strange?" % nid)
