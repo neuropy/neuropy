@@ -34,13 +34,20 @@ c = (0, 0, 0, alpha) # give the ticks some transparency
 rasfigsize = 3, 5 # inches
 axisbg = 'w'
 xlim = 0, 5.5 # s
+xticks = [0, 1, 2, 3, 4, 5]
+# True: use xlim to designate duration to plot for each trial;
+# False: use stimOFFTime to designate duration to plot for each trial:
+forcedt = True
 ylabel = False
 title = False
 
 # load stimulus info:
 stimd = loadmat(stimfullfname, squeeze_me=True) # dict
-t0s, t1s = stimd['stimONTimes'], stimd['stimOFFTimes'] # sec
-ntrials = len(t0s)
+t0s = stimd['stimONTimes'] # sec
+if forcedt:
+    t1s = t0s + xlim[1]
+else:
+    t1s = stimd['stimOFFTimes'] # sec
 p = recarray2dict(stimd['p']) # stim parameters struct `p` converted to dict
 # each row is trial indices for its matching movie:
 trialiss = p['seqnums'] - 1 # convert seqnums from 1-based to 0-based
@@ -75,6 +82,7 @@ for trialis, moviename in zip(trialiss, movienames):
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
+        a.set_xticks(xticks)
         a.set_xlabel("trial time (s)")
         if ylabel:
             a.set_ylabel("trial index") # trial index order, not necessarily temporal order
