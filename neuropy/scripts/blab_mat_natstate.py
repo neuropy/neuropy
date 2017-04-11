@@ -9,6 +9,7 @@ import core
 from core import toiter
 
 
+## NOTE: this one has 2 interleaved movies: normal and contrast-inverted!
 basepath = '/home/mspacek/blab/natstate/results/PVCre_0113/s01'
 
 # raster plot options:
@@ -77,10 +78,10 @@ width, tres = 2, 0.5 # s
 
 # plot LFP spectrograms:
 lfp = LFP(None, None)
-lfpmat = loadmat(lfpfullfname, squeeze_me=True) # dict
+lfpd = loadmat(lfpfullfname, squeeze_me=True) # dict
 ename = os.path.splitext(lfpfname)[0].rstrip('_LFP')
-lfp.data = lfpmat['lfp'] * 1000 # convert from mV to uV
-tlfp = intround(lfpmat['tlfp'] * 1e6) # convert from s to nearest us
+lfp.data = lfpd['lfp'] * 1000 # convert from mV to uV
+tlfp = intround(lfpd['tlfp'] * 1e6) # convert from s to nearest us
 lfp.t0, lfp.t1 = tlfp[0], tlfp[-1]
 lfp.tres = intround((np.diff(tlfp)).mean()) # us
 lfp.sampfreq = intround(1e6 / lfp.tres) # Hz
@@ -89,7 +90,6 @@ for chani in lfpchanis:
                  title=title, reclabel=False, figsize=lfpfigsize)
     titlestr = ename + '_specgram_c%d' % (chani+1) # 1-based chan ID
     gcfm().window.setWindowTitle(titlestr)
-
 
 # plot runspeed as a color map:
 width, tres = 10, 0.5 # s
