@@ -9,8 +9,8 @@ from core import recarray2dict
 
 
 # specify blab mouse recording to analyze:
-mname = 'Ntsr1-Cre_0174'
-sid, eid = 2, 5
+#mname, sid, eid = 'Ntsr1-Cre_0174', 2, 5
+mname, sid, eid = 'PVCre_0113', 1, 11
 basepath = '/home/mspacek/data/blab/natstate'
 mpath = os.path.join(basepath, mname)
 ename = '%s_s%02d_e%02d' % (mname, sid, eid)
@@ -31,7 +31,9 @@ marker = '|'
 s = 4 # marker size
 alpha = 1
 c = (0, 0, 0, alpha) # give the ticks some transparency
-rasfigsize = 3, 5 # inches
+rasfigwidth = 3
+rasfigheightoffset = 0.125 # inches
+rasfigheightperntrials = (5 - 0.125) / 200 # inches per trial
 axisbg = 'w'
 xlim = 0, 5.5 # s
 xticks = [0, 1, 2, 3, 4, 5]
@@ -56,6 +58,8 @@ movienames = p['movie']
 # plot rasters: iterate over movies, units, trials
 for trialis, moviename in zip(trialiss, movienames):
     ntrials = len(trialis)
+    rasfigheight = rasfigheightoffset + ntrials*rasfigheightperntrials
+    rasfigsize = rasfigwidth, rasfigheight
     for neuron in neurons:
         spikes = neuron.spikes / 1e6 # spike times, in seconds
         ts, subtrialis = [], [] # x and y values for all spikes in this trial raster plot
@@ -74,7 +78,6 @@ for trialis, moviename in zip(trialiss, movienames):
 
         f = plt.figure(figsize=rasfigsize)
         a = f.add_subplot(111, axisbg=axisbg)
-
         # plot 1-based trialis:
         a.scatter(ts, subtrialis+1, marker=marker, c=c, s=s, cmap=None)
         a.set_xlim(xlim)
