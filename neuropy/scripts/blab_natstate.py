@@ -55,10 +55,11 @@ movienames = p['movie']
 
 # plot rasters: iterate over movies, units, trials
 for trialis, moviename in zip(trialiss, movienames):
+    ntrials = len(trialis)
     for neuron in neurons:
         spikes = neuron.spikes / 1e6 # spike times, in seconds
         ts, subtrialis = [], [] # x and y values for all spikes in this trial raster plot
-        for triali in trialis:
+        for subtriali, triali in enumerate(trialis):
             t0, t1 = t0s[triali], t1s[triali]
             s0i, s1i = spikes.searchsorted([t0, t1])
             # this unit's spike times relative to start of this trial, in seconds:
@@ -66,7 +67,7 @@ for trialis, moviename in zip(trialiss, movienames):
             nspikes = len(t) # if nspikes == 0, append empty arrays to ts and subtrialis
             ts.append(t) # x values for this trial
             # generate 0-based y values for spikes in this trial:
-            subtrialis.append(np.tile(triali, nspikes))
+            subtrialis.append(np.tile(subtriali, nspikes))
 
         # convert spike times and trial indices to flat arrays:
         ts, subtrialis = np.hstack(ts), np.hstack(subtrialis)
@@ -113,6 +114,7 @@ tbinspeed = tranges[:, 0]
 binspeed = np.zeros(nbins)
 for bini, (t0i, t1i) in enumerate(tiranges):
     binspeed[bini] = np.nanmean(speed[t0i:t1i]) # handle nans with nanmean
+show()
 
 # plot runspeed as a color map:
 #figure()
