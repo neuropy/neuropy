@@ -207,10 +207,14 @@ class NeuropyWindow(QtGui.QMainWindow):
         text = """
         <h2><a href=http://neuropy.github.io>neuropy</a> %s</h2>
         <p>A tool for neuronal spike, stimulus, and LFP data analysis</p>
+
+        <p>Copyright &copy; 2006-2017 <a href=http://mspacek.github.io>Martin Spacek</a><br>
         
-        <p>Copyright &copy; 2006-2015 <a href=http://mspacek.github.io>Martin Spacek</a><br>
            <a href=http://swindale.ecc.ubc.ca>Swindale</a> Lab,
-           University of British Columbia</p>
+           University of British Columbia, Vancouver, Canada<br>
+
+           <a href=http://www.neuro.bio.lmu.de/members/system_neuro_busse/busse_l/index.html>
+           Busse</a> Lab, Ludwig-Maximilians-University, Munich, Germany</p>
 
         <p>%s</p>
 
