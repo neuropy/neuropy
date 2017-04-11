@@ -10,17 +10,19 @@ from core import recarray2dict
 
 # specify blab mouse recording to analyze:
 mname = 'Ntsr1-Cre_0174'
-trid, rid = 2, 5
+sid, eid = 2, 5
 basepath = '/home/mspacek/data/blab/natstate'
 mpath = os.path.join(basepath, mname)
-rname = '%s_tr%d_r%d' % (mname, trid, rid)
-rpath = os.path.join(mpath, 'tr%d' % trid, '%02d' % rid)
-stimfname = "getStimulusTimes(%r, %d, %d).mat" % (mname, trid, rid)
-stimfullfname = os.path.join(rpath, stimfname)
+ename = '%s_s%02d_e%02d' % (mname, sid, eid)
+epath = os.path.join(mpath, 'tr%d' % sid, '%02d' % eid)
+stimfname = ename + '_stim.mat'
+rsfname = ename + '_runspeed.mat'
+stimfullfname = os.path.join(epath, stimfname)
+rsfullfname = os.path.join(epath, rsfname)
 
 m = Animal(mpath)
 m.load()
-r = m.tr[trid].r[rid]
+r = m.tr[sid].r[eid]
 snids = sorted(r.n) # sorted neuron IDs
 neurons = [ r.n[nid] for nid in snids ] # sorted list of neurons
 
@@ -36,10 +38,10 @@ ylabel = False
 title = False
 
 # load stimulus info:
-d = loadmat(stimfullfname, squeeze_me=True) # dict
-t0s, t1s = d['stimONTimes'], d['stimOFFTimes'] # in seconds
+stimd = loadmat(stimfullfname, squeeze_me=True) # dict
+t0s, t1s = stimd['stimONTimes'], stimd['stimOFFTimes'] # sec
 ntrials = len(t0s)
-p = recarray2dict(d['p']) # stim parametere struct `p` converted to dict
+p = recarray2dict(stimd['p']) # stim parameters struct `p` converted to dict
 # each row is trial indices for its matching movie:
 trialiss = p['seqnums'] - 1 # convert seqnums from 1-based to 0-based
 movienames = p['movie']
@@ -78,7 +80,7 @@ for trialis, moviename in zip(trialiss, movienames):
             a.set_ylabel("trial index") # trial index order, not necessarily temporal order
         else:
             a.set_yticks([]) # turn off y ticks
-        titlestr = moviename + '_' + rname + '_n%d' % neuron.id
+        titlestr = moviename + '_' + ename + '_n%d' % neuron.id
         gcfm().window.setWindowTitle(titlestr)
         if title:
             a.set_title(titlestr)
