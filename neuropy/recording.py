@@ -125,7 +125,7 @@ class BaseRecording(object):
         for fdname in allfdnames:
             fullname = os.path.join(self.path, fdname)
             if os.path.isfile(fullname):
-                if fdname.endswith('.ptcs'):
+                if fdname.endswith('.ptcs') or fdname.endswith('spikes.mat'):
                     sortfdnames.append(fdname)
                 elif fdname.endswith('.din'):
                     dinfnames.append(fdname)

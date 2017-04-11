@@ -7,7 +7,8 @@ import datetime
 import numpy as np
 
 import core
-from core import dictattr, rstrip, eof, TAB, PTCSHeader, SPKHeader, EPOCH, td2usec, intround
+from core import (PTCSHeader, MATHeader, SPKHeader, TAB, EPOCH, dictattr, rstrip, eof,
+                  td2usec, intround)
 from neuron import Neuron, TrackNeuron
 
 
@@ -74,10 +75,12 @@ class Sort(object):
         print(treestr)
         
         if os.path.isfile(self.path):
-            ext = os.path.splitext(self.path)[1]
-            assert ext == '.ptcs'
-            # it's a single .ptcs file
-            self.loadptcs()
+            if self.path.endswith('.ptcs'): # it's a single .ptcs file
+                self.loadptcs()
+            elif self.path.endswith('spikes.mat'): # it's a single .mat file
+                self.loadmat()
+            else:
+                raise ValueError('unknown sort type %r' % self.path)
         elif os.path.isdir(self.path):
             # it's a directory of .spk files
             self.loadspk()
@@ -94,6 +97,15 @@ class Sort(object):
                 neuron.loadptcs(f, self.header)
                 self.alln[neuron.id] = neuron # save it
             assert eof(f), 'File %s has unexpected length' % self.path
+
+    def loadmat(self):
+        """Load neurons from a single .mat file"""
+        self.header = MATHeader()
+        nrecs = self.header.read(self.path)
+        for nrec in nrecs:
+            neuron = Neuron(self.path, sort=self)
+            neuron.loadmat(nrec)
+            self.alln[neuron.id] = neuron # save it
 
     def loadspk(self):
         """Load neurons from multiple .spk files"""

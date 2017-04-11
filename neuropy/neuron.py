@@ -80,6 +80,11 @@ class BaseNeuron(object):
         self.record = nrec
         self.post_load()
 
+    def loadmat(self, nrec):
+        """Bind an externally generated neuron record from a spikes.mat"""
+        self.record = nrec
+        self.post_load()
+
     def loadspk(self):
         """Read in a .spk file containing purely spike times"""
         nrec = SPKNeuronRecord(self.path)

@@ -28,6 +28,7 @@ from scipy.special import cbrt # real cube root
 import scipy.stats
 from scipy.spatial.distance import pdist#, squareform
 from scipy.stats import linregress
+from scipy.io import loadmat
 
 import matplotlib as mpl
 import matplotlib.cm
@@ -342,7 +343,52 @@ class SPKHeader(object):
             from neuron2pos import neuron2pos
             neuron.record.xpos, neuron.record.ypos = neuron2pos[neuron.id]
             os.chdir(oldpath)
-            
+
+
+class MATHeader(object):
+    """Represents a _spikes.mat file containing spikes for all units. Similar to a
+    PTCSHeader, but much more impoverished"""
+    def __init__(self):
+        self.nspikes = 0
+        # for compatibility with PTCSHeader:
+        self.datetime = 0
+        self.pttype = None
+        self.chanpos = None
+        self.samplerate = None # but probably 30000
+
+    def read(self, fname):
+        spikesd = loadmat(fname, squeeze_me=True)
+        allspikes = spikesd['spikes']
+        nrecs = []
+        for nid, spikes in enumerate(allspikes): # 0-based nids, spike times (s)
+            spikes = intround(spikes * 1e6) # spike times (us)
+            nrec = MATNeuronRecord(spikes, nid)
+            if nrec.nspikes == 0:
+                continue # skip units in the spikes.mat that have no spikes
+            self.nspikes += nrec.nspikes
+            nrecs.append(nrec)
+        return nrecs
+
+
+class MATNeuronRecord(object):
+    """Represents the spike times in a _spikes.mat file as a record. Similar to a
+    PTCSNeuronRecord, but much more impoverished. Directly takes spikes and 0-based nid
+    from caller MATHeader"""
+    def __init__(self, spikes, nid):
+        self.spikes = spikes # spike times (us)
+        self.nspikes = len(spikes)
+        self.nid = nid + 1 # save 1-based nid
+        # for compatibility with PTCSHeader:
+        self.descr = None
+        self.xpos, self.ypos = None, None
+        self.sigma = None
+        self.nchans = None
+        self.chans = None
+        self.maxchan = None
+        self.nt = None
+        self.wavedata = None
+        self.wavestd = None
+
 
 class SPKNeuronRecord(object):
     """Represents the spike times in a simple .spk file as a record. Similar to a
