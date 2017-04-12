@@ -56,6 +56,7 @@ trialiss = p['seqnums'] - 1 # convert seqnums from 1-based to 0-based
 movienames = p['movie']
 
 # plot rasters: iterate over movies, units, trials
+nrasterplots = 0
 for trialis, moviename in zip(trialiss, movienames):
     ntrials = len(trialis)
     rasfigheight = rasfigheightoffset + ntrials*rasfigheightperntrials
@@ -99,6 +100,8 @@ for trialis, moviename in zip(trialiss, movienames):
         f.tight_layout(pad=0.3) # crop figure to contents
 
         show() # call within the neuron loop, to ensure that rasters are displayed in nid order
+        nrasterplots += 1
+print('created %d raster plots' % nrasterplots)
 
 # load runspeed info:
 rsd = loadmat(rsfullfname, squeeze_me=True) # dict
@@ -131,7 +134,15 @@ f = figure(figsize=(1, 10))
 axis('off')
 plt.imshow(binspeed, aspect=0.025, cmap='gray_r') # white=rest, black=run
 #plt.imshow(binspeed, aspect=0.025, cmap='jet') # blue=rest, red=run
-titlestr = ename
+titlestr = ename + '_runspeed'
 gcfm().window.setWindowTitle(titlestr)
 f.tight_layout(pad=0.3) # crop figure to contents
+show()
+
+# plot LFP specgram:
+chani = 31 # 0-based chan ID
+r.lfp.specgram(f1=59, chanis=chani, width=2, tres=0.5, cm='jet', relative2t0=True, title=False,
+               reclabel=False, figsize=None)
+titlestr = ename + '_specgram_c%d' % (chani+1) # 1-based chan ID
+gcfm().window.setWindowTitle(titlestr)
 show()
