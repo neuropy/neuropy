@@ -34,7 +34,7 @@ c = (0, 0, 0, alpha) # give the ticks some transparency
 rasfigwidth = 3
 rasfigheightoffset = 0.125 # inches
 rasfigheightperntrials = (5 - 0.125) / 200 # inches per trial
-axisbg = 'w'
+fc = 'w' # axes face colour
 xlim = 0, 5.5 # s
 xticks = [0, 1, 2, 3, 4, 5]
 # True: use xlim to designate duration to plot for each trial;
@@ -78,7 +78,7 @@ for trialis, moviename in zip(trialiss, movienames):
         ts, subtrialis = np.hstack(ts), np.hstack(subtrialis)
 
         f = plt.figure(figsize=rasfigsize)
-        a = f.add_subplot(111, axisbg=axisbg)
+        a = f.add_subplot(111, fc=fc)
         # plot 1-based trialis:
         a.scatter(ts, subtrialis+1, marker=marker, c=c, s=s, cmap=None)
         a.set_xlim(xlim)
