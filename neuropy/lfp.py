@@ -42,7 +42,6 @@ class LFP(object):
                     val = float(val)
                 self.__setattr__(key, val)
         # make sure chans are in vertical spatial order:
-        assert issorted(self.chanpos[self.chans - chan0][1])
         nchans, nprobechans = len(self.chans), len(self.chanpos)
         if nchans < nprobechans:
             # it's probably from a .srf recording with only a subset of chans selected for
@@ -56,6 +55,14 @@ class LFP(object):
             raise ValueError("don't know how to handle nchans=%d > nprobechans=%d" %
                              (nchans, nprobechans))
         assert chan0 in [0, 1] # either 0- or 1-based
+        ypos = self.chanpos[self.chans - chan0][:, 1]
+        if not issorted(ypos):
+            print("LFP chans in %s aren't sorted by depth, sorting them now" % self.fname)
+            sortis = ypos.argsort()
+            self.chans = self.chans[sortis]
+            self.data = self.data[sortis]
+            newypos = self.chanpos[self.chans - chan0][:, 1]
+            assert issorted(newypos)
         self.sampfreq = intround(1e6 / self.tres) # in Hz
         assert self.sampfreq == 1000 # should be 1000 Hz
         self.data = self.data * self.uVperAD # convert to float uV
