@@ -305,7 +305,7 @@ class LFP(object):
         return P, freqs
         
     def specgram(self, t0=None, t1=None, f0=0.1, f1=100, p0=-60, p1=None, chanis=-1,
-                 width=None, tres=None, cm=None, colorbar=False, states=False, lw=4, alpha=1,
+                 width=None, tres=None, cm='jet', colorbar=False, states=False, lw=4, alpha=1,
                  relative2t0=False, lim2stim=False, title=True, reclabel=True,
                  figsize=None):
         """Plot a spectrogram from t0 to t1 in sec, from f0 to f1 in Hz, and clip power values
