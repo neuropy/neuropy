@@ -10,7 +10,9 @@ from core import recarray2dict
 
 # specify blab mouse recording to analyze:
 #mname, sid, eid = 'Ntsr1-Cre_0174', 2, 5
-mname, sid, eid = 'PVCre_0113', 1, 11
+#mname, sid, eid = 'PVCre_0113', 1, 11
+mname, sid, eid = 'PVCre_0107', 1, 9
+POOLOVEROPTO = True
 basepath = '/home/mspacek/data/blab/natstate'
 mpath = os.path.join(basepath, mname)
 ename = '%s_s%02d_e%02d' % (mname, sid, eid)
@@ -54,10 +56,29 @@ p = recarray2dict(stimd['p']) # stim parameters struct `p` converted to dict
 # each row is trial indices for its matching movie:
 trialiss = p['seqnums'] - 1 # convert seqnums from 1-based to 0-based
 movienames = p['movie']
+umovienames = np.unique(movienames)
+# handle opto trials:
+if len(movienames) != len(umovienames):
+    # some movies were displayed multiple times, probably in combination with opto stim:
+    optopari, = np.where(p['parnames'] == 'opto')
+    optovals = p['pars'][optopari]
+    uoptovals = np.unique(optovals)
+    if len(uoptovals) > 1:
+        print('found multiple unique opto values: %r' % optovals)
+    if POOLOVEROPTO:
+        # pool trials over opto values, thereby mixing opto and non-opto trials
+        # in the same raster plot:
+        print('pooling over opto values')
+        oldtrialiss = trialiss.copy()
+        trialiss = []
+        for umoviename in umovienames:
+            movieis, = np.where(movienames == umoviename)
+            pooledtrialis = np.sort(np.hstack(oldtrialiss[movieis]))
+            trialiss.append(pooledtrialis)
 
 # plot rasters: iterate over movies, units, trials
 nrasterplots = 0
-for trialis, moviename in zip(trialiss, movienames):
+for trialis, umoviename in zip(trialiss, umovienames):
     ntrials = len(trialis)
     rasfigheight = rasfigheightoffset + ntrials*rasfigheightperntrials
     rasfigsize = rasfigwidth, rasfigheight
@@ -93,7 +114,7 @@ for trialis, moviename in zip(trialiss, movienames):
             a.set_ylabel("trial index") # trial index order, not necessarily temporal order
         else:
             a.set_yticks([]) # turn off y ticks
-        titlestr = moviename + '_' + ename + '_n%d' % neuron.id
+        titlestr = umoviename + '_' + ename + '_n%d' % neuron.id
         gcfm().window.setWindowTitle(titlestr)
         if title:
             a.set_title(titlestr)
