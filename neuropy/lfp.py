@@ -42,8 +42,20 @@ class LFP(object):
                     val = float(val)
                 self.__setattr__(key, val)
         # make sure chans are in vertical spatial order:
-        chan0 = min(self.chans) # base of channel numbering
         assert issorted(self.chanpos[self.chans - chan0][1])
+        nchans, nprobechans = len(self.chans), len(self.chanpos)
+        if nchans < nprobechans:
+            # it's probably from a .srf recording with only a subset of chans selected for
+            # separate analog LFP recording
+            chan0 = 0 # base of channel numbering, always 0-based for .srf recordings
+            print("Found %d LFP channels, assuming 0-based channel numbering from .srf "
+                  "recording" % nchans)
+        elif nchans == nprobechans: # all probe channels have LFP
+            chan0 = min(self.chans) # base of channel numbering
+        else: # nchans > nprobechans
+            raise ValueError("don't know how to handle nchans=%d > nprobechans=%d" %
+                             (nchans, nprobechans))
+        assert chan0 in [0, 1] # either 0- or 1-based
         self.sampfreq = intround(1e6 / self.tres) # in Hz
         assert self.sampfreq == 1000 # should be 1000 Hz
         self.data = self.data * self.uVperAD # convert to float uV
