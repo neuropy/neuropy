@@ -6,11 +6,11 @@ get_ipython().user_ns['VARNAME']
 import os
 from core import mergeuniquedictvals, dictattr
 
-DATAROOTPATH = os.path.expanduser('~/data')
-LABPATHNAME = 'slab'
-#LABPATHNAME = 'blab'
-DATAPATH = os.path.join(DATAROOTPATH, LABPATHNAME)
-MOVIEPATH = os.path.join(DATAPATH, 'mov')
+DATAPATH = os.path.expanduser('~/data')
+#BLABPATH = os.path.join(DATAPATH, 'blab') # Busse Lab
+BLABPATH = os.path.join(DATAPATH, 'natstate/blab') # Busse Lab
+SLABPATH = os.path.join(DATAPATH, 'slab') # Swindale Lab
+MOVIEPATH = os.path.join(SLABPATH, 'mov')
 MOVIES = dictattr()
 
 # for each recording, load all Sorts, or just the most recent one?

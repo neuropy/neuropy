@@ -16,9 +16,22 @@ class Animal(object):
         self.path = path
         self.tr = dictattr() # store tracks in a dictionary with attrib access
 
-    def get_name(self):
+    def get_longname(self):
         return os.path.split(self.path)[-1]
     
+    longname = property(get_longname)
+
+    def get_name(self):
+        """Return shorter names for blab mice"""
+        fields = self.longname.split('_') # split name into fields separated by underscores
+        if fields[-1].isnumeric():
+            fields[-1] = str(int(fields[-1])) # drop any leading 0s
+        n = ''.join(fields).lower()
+        n = n.replace('bl6', 'bl')
+        n = n.replace('pvcre', 'pvc')
+        n = n.replace('ntsr1-cre', 'nts')
+        return n
+
     name = property(get_name)
 
     def get_id(self):

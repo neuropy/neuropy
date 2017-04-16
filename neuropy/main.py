@@ -54,7 +54,7 @@ from animal import Animal
 from track import Track
 from recording import Recording
 
-from globals import DATAPATH
+from globals import DATAPATH, BLABPATH, SLABPATH
 # use inprocess kernel? otherwise, use 2 process kernel. This option doesn't work for now:
 INPROCESS = False
 
@@ -87,67 +87,67 @@ class NeuropyWindow(QtGui.QMainWindow):
         self.path = os.path.normpath(os.path.join(path, os.pardir)) # update with path's parent
 
         head, tail = os.path.split(path)
-        if tail.startswith('pt'): # assume it's an animal
-            self.open_animal(path)
+        if tail[0].isnumeric(): # asume it's a recording
+            self.open_recording(path)
         elif tail.startswith('tr'): # assume it's a track
             self.open_track(path)
-        else: # asume it's a recording
-            self.open_recording(path)
+        else:
+            self.open_animal(path) # assume it's an animal
 
     @QtCore.pyqtSlot()
     def on_action_ptc15_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc15')
+        path = os.path.join(SLABPATH, 'ptc15')
         self.open_animal(path)
 
     @QtCore.pyqtSlot()
     def on_action_ptc17_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc17')
+        path = os.path.join(SLABPATH, 'ptc17')
         self.open_animal(path)
 
     @QtCore.pyqtSlot()
     def on_action_ptc18_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc18')
+        path = os.path.join(SLABPATH, 'ptc18')
         self.open_animal(path)
 
     @QtCore.pyqtSlot()
     def on_action_ptc20_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc20')
+        path = os.path.join(SLABPATH, 'ptc20')
         self.open_animal(path)
 
     @QtCore.pyqtSlot()
     def on_action_ptc21_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc21')
+        path = os.path.join(SLABPATH, 'ptc21')
         self.open_animal(path)
 
     @QtCore.pyqtSlot()
     def on_action_ptc22_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc22')
+        path = os.path.join(SLABPATH, 'ptc22')
         self.open_animal(path)
 
     @QtCore.pyqtSlot()
     def on_action_ptc15_tr7c_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc15')
+        path = os.path.join(SLABPATH, 'ptc15')
         self.open_animal(path, 'tr7c')
 
     @QtCore.pyqtSlot()
     def on_action_ptc18_tr1_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc18')
+        path = os.path.join(SLABPATH, 'ptc18')
         self.open_animal(path, 'tr1')
 
     @QtCore.pyqtSlot()
     def on_action_ptc18_tr2c_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc18')
+        path = os.path.join(SLABPATH, 'ptc18')
         self.open_animal(path, 'tr2c')
 
 
     @QtCore.pyqtSlot()
     def on_action_ptc22_tr1_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc22')
+        path = os.path.join(SLABPATH, 'ptc22')
         self.open_animal(path, 'tr1')
 
     @QtCore.pyqtSlot()
     def on_action_ptc22_tr2_triggered(self):
-        path = os.path.join(DATAPATH, 'ptc22')
+        path = os.path.join(SLABPATH, 'ptc22')
         self.open_animal(path, 'tr2')
 
     def open_animal(self, path, tracknames=None):
