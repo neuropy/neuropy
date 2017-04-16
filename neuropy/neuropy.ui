@@ -33,7 +33,7 @@
      <x>0</x>
      <y>0</y>
      <width>651</width>
-     <height>23</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -48,10 +48,9 @@
     <addaction name="action_ptc21"/>
     <addaction name="action_ptc20"/>
     <addaction name="separator"/>
-    <addaction name="action_ptc15_tr7c"/>
-    <addaction name="action_ptc18_tr1"/>
-    <addaction name="action_ptc22_tr1"/>
-    <addaction name="action_ptc22_tr2"/>
+    <addaction name="action_pvc107"/>
+    <addaction name="action_pvc113"/>
+    <addaction name="action_nts174"/>
     <addaction name="separator"/>
     <addaction name="actionShell"/>
     <addaction name="separator"/>
@@ -98,11 +97,9 @@
    <addaction name="action_ptc21"/>
    <addaction name="action_ptc22"/>
    <addaction name="separator"/>
-   <addaction name="action_ptc15_tr7c"/>
-   <addaction name="action_ptc18_tr1"/>
-   <addaction name="action_ptc18_tr2c"/>
-   <addaction name="action_ptc22_tr1"/>
-   <addaction name="action_ptc22_tr2"/>
+   <addaction name="action_pvc107"/>
+   <addaction name="action_pvc113"/>
+   <addaction name="action_nts174"/>
    <addaction name="separator"/>
    <addaction name="actionShell"/>
   </widget>
@@ -189,36 +186,28 @@
     <bool>true</bool>
    </property>
   </action>
-  <action name="action_ptc15_tr7c">
+  <action name="action_pvc107">
    <property name="text">
-    <string>ptc15.tr7c</string>
+    <string>pvc107</string>
    </property>
    <property name="toolTip">
-    <string>ptc15.tr7c</string>
+    <string>pvc107</string>
    </property>
   </action>
-  <action name="action_ptc18_tr1">
+  <action name="action_pvc113">
    <property name="text">
-    <string>ptc18.tr1</string>
+    <string>pvc113</string>
    </property>
    <property name="toolTip">
-    <string>ptc18.tr1</string>
+    <string>pvc113</string>
    </property>
   </action>
-  <action name="action_ptc22_tr2">
+  <action name="action_nts174">
    <property name="text">
-    <string>ptc22.tr2</string>
+    <string>nts174</string>
    </property>
    <property name="toolTip">
-    <string>ptc22.tr2</string>
-   </property>
-  </action>
-  <action name="action_ptc22_tr1">
-   <property name="text">
-    <string>ptc22.tr1</string>
-   </property>
-   <property name="toolTip">
-    <string>ptc22.tr1</string>
+    <string>nts174</string>
    </property>
   </action>
   <action name="action_ptc22">
@@ -267,14 +256,6 @@
    </property>
    <property name="toolTip">
     <string>ptc20</string>
-   </property>
-  </action>
-  <action name="action_ptc18_tr2c">
-   <property name="text">
-    <string>ptc18.tr2c</string>
-   </property>
-   <property name="toolTip">
-    <string>ptc18.tr2c</string>
    </property>
   </action>
  </widget>

@@ -125,30 +125,19 @@ class NeuropyWindow(QtGui.QMainWindow):
         self.open_animal(path)
 
     @QtCore.pyqtSlot()
-    def on_action_ptc15_tr7c_triggered(self):
-        path = os.path.join(SLABPATH, 'ptc15')
-        self.open_animal(path, 'tr7c')
+    def on_action_pvc107_triggered(self):
+        path = os.path.join(BLABPATH, 'PVCre_0107')
+        self.open_animal(path)
 
     @QtCore.pyqtSlot()
-    def on_action_ptc18_tr1_triggered(self):
-        path = os.path.join(SLABPATH, 'ptc18')
-        self.open_animal(path, 'tr1')
+    def on_action_pvc113_triggered(self):
+        path = os.path.join(BLABPATH, 'PVCre_0113')
+        self.open_animal(path)
 
     @QtCore.pyqtSlot()
-    def on_action_ptc18_tr2c_triggered(self):
-        path = os.path.join(SLABPATH, 'ptc18')
-        self.open_animal(path, 'tr2c')
-
-
-    @QtCore.pyqtSlot()
-    def on_action_ptc22_tr1_triggered(self):
-        path = os.path.join(SLABPATH, 'ptc22')
-        self.open_animal(path, 'tr1')
-
-    @QtCore.pyqtSlot()
-    def on_action_ptc22_tr2_triggered(self):
-        path = os.path.join(SLABPATH, 'ptc22')
-        self.open_animal(path, 'tr2')
+    def on_action_nts174_triggered(self):
+        path = os.path.join(BLABPATH, 'Ntsr1-Cre_0174')
+        self.open_animal(path)
 
     def open_animal(self, path, tracknames=None):
         a = Animal(path) # init it just to parse its name

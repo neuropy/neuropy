@@ -8,7 +8,7 @@ from core import mergeuniquedictvals, dictattr
 
 DATAPATH = os.path.expanduser('~/data')
 #BLABPATH = os.path.join(DATAPATH, 'blab') # Busse Lab
-BLABPATH = os.path.join(DATAPATH, 'natstate/blab') # Busse Lab
+BLABPATH = os.path.join(DATAPATH, 'blab', 'natstate') # Busse Lab
 SLABPATH = os.path.join(DATAPATH, 'slab') # Swindale Lab
 MOVIEPATH = os.path.join(SLABPATH, 'mov')
 MOVIES = dictattr()
