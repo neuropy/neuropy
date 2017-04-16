@@ -117,25 +117,26 @@ class BaseRecording(object):
         self.writetree(treestr + '\n')
         print(treestr)
 
-        # Sorts from .ptcs files and .sort folders, and Experiments from .din files:
+        # get sorts (.ptcs, spikes.mat files and .sort folders), and Experiments (.din and
+        # stim.mat files):
         allfdnames = os.listdir(self.path) # all file and dir names in self.path
         sortfdnames = []
-        dinfnames = []
+        stimfnames = []
         lfpfnames = []
         for fdname in allfdnames:
             fullname = os.path.join(self.path, fdname)
             if os.path.isfile(fullname):
                 if fdname.endswith('.ptcs') or fdname.endswith('spikes.mat'):
                     sortfdnames.append(fdname)
-                elif fdname.endswith('.din'):
-                    dinfnames.append(fdname)
+                elif fdname.endswith('.din') or fdname.endswith('stim.mat'):
+                    stimfnames.append(fdname)
                 elif fdname.endswith('.lfp.zip'):
                     lfpfnames.append(fdname)
             elif os.path.isdir(fullname) and fdname.endswith('.sort'):
                 sortfdnames.append(fdname)
         # sort filenames alphabetically, which should also be chronologically:
         sortfdnames.sort()
-        dinfnames.sort()
+        stimfnames.sort()
         lfpfnames.sort()
 
         # load the specified sort, or just the most recent one, or all of them:
@@ -154,16 +155,15 @@ class BaseRecording(object):
         if len(sortfdnames) > 0: # make last sort the default one
             self.sort = self.sorts[sortfdnames[-1]]
         
-        # load all .din as Experiments:
-        for expid, fname in enumerate(dinfnames): # expids follow order in dinfnames
+        # load all experiments:
+        for expid, fname in enumerate(stimfnames): # expids follow order in stimfnames
             path = os.path.join(self.path, fname)
             experiment = Experiment(path, id=expid, recording=self)
-            #experiment.load_din()
             experiment.load()
             self.e[experiment.id] = experiment
             self.__setattr__('e' + str(experiment.id), experiment) # add shortcut attrib
         
-        # load any LFP data from a .lfp.zip file:
+        # load any LFP data:
         nlfpfiles = len(lfpfnames)
         if nlfpfiles == 0:
             pass

@@ -5,9 +5,10 @@ from io import StringIO
 
 import numpy as np
 import matplotlib as mpl
+from scipy.io import loadmat
 
 import core
-from core import getargstr, TAB, rstrip, dictattr, intround, toiter, tolist
+from core import getargstr, TAB, rstrip, dictattr, intround, toiter, tolist, recarray2dict
 from core import joinpath, lastcmd
 from core import Codes, RevCorrWindow
 import neuron
@@ -33,8 +34,7 @@ class BaseExperiment(object):
 
     def get_name(self):
         fname = os.path.split(self.path)[-1]
-        #return rstrip(fname, '.din')
-        return fname # keep the .din extension in experiment name
+        return fname # keep the file extension in experiment name
 
     name = property(get_name)
 
@@ -48,9 +48,27 @@ class BaseExperiment(object):
         self.r.writetree(string)
 
     def load(self):
-        f = open(self.path, 'rb')
-        self.din = np.fromfile(f, dtype=np.int64).reshape(-1, 2) # reshape to 2 cols
-        f.close()
+        if self.path.endswith('.din'):
+            self.load_din()
+        elif self.path.endswith('stim.mat'):
+            self.load_stim_mat()
+        else:
+            raise ValueError('unknown experiment type %r' % self.path)
+
+        # these are static, no need for properties:
+        self.dt = self.trange[1] - self.trange[0] # duration (us)
+        self.dtsec = self.dt / 1e6
+        self.dtmin = self.dtsec / 60
+        self.dthour = self.dtmin / 60
+
+        treestr = self.level*TAB + self.name + '/'
+        # print string to tree hierarchy and screen
+        self.writetree(treestr + '\n')
+        print(treestr)
+
+    def load_din(self):
+        self.din = np.fromfile(self.path, dtype=np.int64).reshape(-1, 2) # reshape to 2 cols
+        # look for a .textheader:
         try:
             txthdrpath = rstrip(self.path, '.din') + '.textheader'
             f = open(txthdrpath, 'rU') # use universal newline support
@@ -59,11 +77,6 @@ class BaseExperiment(object):
         except IOError:
             print("WARNING: couldn't load text header associated with '%s'" % self.name)
             self.textheader = '' # set to empty
-
-        treestr = self.level*TAB + self.name + '/'
-        # print string to tree hierarchy and screen
-        self.writetree(treestr + '\n')
-        print(treestr)
 
         if self.textheader != '':
             # comment out all lines starting with "from dimstim"
@@ -119,11 +132,12 @@ class BaseExperiment(object):
         # add an extra refresh time after last din, that's when screen actually turns off
         self.trange = (self.din[0, 0], self.din[-1, 0] + self.REFRESHTIME)
 
-        # these are static, no need for properties:
-        self.dt = self.trange[1] - self.trange[0] # duration (us)
-        self.dtsec = self.dt / 1e6
-        self.dtmin = self.dtsec / 60
-        self.dthour = self.dtmin / 60
+    def load_stim_mat(self):
+        stimd = loadmat(self.path, squeeze_me=True) # dict
+        self.p = recarray2dict(stimd['p']) # stim parameters struct `p`, as a dict
+        self.t0s = intround(stimd['stimONTimes'] * 1e6) # usec
+        self.t1s = intround(stimd['stimOFFTimes'] * 1e6) # usec
+        self.trange = self.t0s[0], self.t1s[-1]
 
     def get_nonnulltrange(self):
         """Find outermost non-NULL din times, such as at the end and beginning of pre and post
