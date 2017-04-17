@@ -28,24 +28,10 @@ from psth_funcs import plot_psth, get_psth_peaks_gac
 ## TODO: plot difference in mean response reliability between synched and desynched, as a
 ## function of gaussian sigma
 
-# sort recordings by their absname:
 recs = [ eval(recname) for recname in sorted(REC2STATE2TRANGES) ] # unique, no reps, sorted
 recnames = ' '.join([rec.absname for rec in recs])
 states = ['d', 's'] # desynched, synched
 
-'''
-# saccade times manually read off of global motion plots, all exceeded 60 deg/sec and dropped
-# back down below 60 within ~0.1 sec:
-saccades = {
-'ptc17.tr2b.r58': [0.45, 1.125, 1.725, 2.1, 2.43, 2.94, 3.405],
-'ptc18.tr1.r38': [0.18, 0.435, 1.02, 1.605, 3.195, 3.615],
-'ptc18.tr2c.r58': [0.45, 1.125, 1.725, 2.1, 2.43, 2.94, 3.405],
-'ptc22.tr1.r08': [0.465, 0.75, 1.095, 1.635, 1.92, 2.205, 2.64, 2.91, 3.21, 3.51, 3.72, 3.9,
-                  4.23, 4.395],
-'ptc22.tr1.r10': [0.36, 0.705, 1.02, 1.59, 2.16, 2.4, 2.79, 3.885, 4.38],
-'ptc22.tr4b.r49': [0.9, 1.305, 1.65, 1.95, 3.33, 3.855, 4.185]
-}
-'''
 BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
 GAUSS = True # calculate PSTH and single trial rates by convolving with Gaussian kernel?
 TRASTERBINW, TRASTERTRES = 0.02, 0.001 # trial raster bins, sec
@@ -70,6 +56,7 @@ NULLREL = 10**LOGNULLREL
 NULLSPARS = 0
 figsize = (3, 3) # inches
 DEPTHSRANGE = np.array([0, 1400]) # um
+FMTS = {'d':'b-', 's':'r-'} # PSTH plotting formats for desynched and synched
 
 POOLOVEROPTO = True
 
@@ -170,7 +157,7 @@ for rec in recs:
                 #psthparams[nid] = get_psth_peaks(t, psth, nid)
                 #t, psth, thresh, baseline, peakis, lis, ris = psthparams[nid] # unpack
                 if PLOTPSTH:
-                    plot_psth(psthparams, nid, fmt)
+                    plot_psth(psthparams, nid, FMTS[state])
                     show()
                 npeaks = len(peakis)
                 if npeaks == 0:
