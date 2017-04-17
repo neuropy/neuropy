@@ -9,7 +9,7 @@ Dan, 2009.
 
 Also, measure sparseness of responsive PSTHs.
 
-Run from within neuropy using `run -i scripts/psth_precision.py`"""
+Run from within neuropy using `run -i scripts/blab_psth_precision.py`"""
 
 from scipy.signal import argrelextrema
 from scipy.stats import ttest_ind, chisquare, mannwhitneyu, linregress
@@ -31,7 +31,7 @@ from psth_funcs import plot_psth, get_psth_peaks_gac
 # sort recordings by their absname:
 recs = [ eval(recname) for recname in sorted(REC2STATE2TRANGES) ] # unique, no reps, sorted
 recnames = ' '.join([rec.absname for rec in recs])
-states = ['d', 's'] # desynch, synch
+states = ['d', 's'] # desynched, synched
 
 '''
 # saccade times manually read off of global motion plots, all exceeded 60 deg/sec and dropped
@@ -85,9 +85,9 @@ allpeakwidths = {'d': [], 's': []}
 allpeakheights = {'d': [], 's': []}
 allpeaknspikes = {'d': [], 's': []}
 allpsthsdepths = {'d': [], 's': []}
-alln2rel = {'d': [], 's': []}
-alln2spars = {'d': [], 's': []}
-alln2depth = {'d': [], 's': []}
+alln2rel = []
+alln2spars = []
+alln2depth = []
 
 nreplacedbynullrel = 0
 ntotpeaks = 0 # num total peaks detected
@@ -216,9 +216,9 @@ for rec in recs:
             allpeakheights[state].append(np.hstack(peakheights[state]))
             allpeaknspikes[state].append(np.hstack(peaknspikes[state]))
             allpsthsdepths[state].append(np.hstack(psthsdepths[state]))
-            alln2rel[state].append(n2rel[state])
-            alln2spars[state].append(n2spars[state])
-            alln2depth[state].append(n2depth[state])
+        alln2rel.append(n2rel)
+        alln2spars.append(n2spars)
+        alln2depth.append(n2depth)
 
 # concatenate measurements across all recordings and movies
 for state in states:
@@ -233,6 +233,8 @@ for state in states:
 
 assert ntotpeaks == len(allpeaktimes['d']) + len(allpeaktimes['s'])
 print('found %d peaks in total' % ntotpeaks)
+
+
 
 # plot peak width distributions in log space:
 logmin, logmax = 0.5, log10(WIDTHMAX)
@@ -275,4 +277,56 @@ titlestr = 'peak width log %s' % recnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 show()
+
+
+
+# Scatter plot reliability of each unit's responses in synched vs desynched for each movie.
+# Missing values (nids active in one state but not the other) are assigned a reliability of
+# NULLREL to indicate they're missing. For each movie, get a superset of nids, with each nid
+# having at least one peak during at least one state:
+scatrels = [[], []] # desynched, synched
+for n2rel in alln2rel: # iterate over movies
+    # get superset of nids for this movie
+    nids = np.union1d(list(n2rel['d']), list(n2rel['s']))
+    for nid in nids:
+        scatrels[0].append(n2rel['d'].get(nid, NULLREL)) # desynched
+        scatrels[1].append(n2rel['s'].get(nid, NULLREL)) # synched
+scatrels = np.asarray(scatrels).T # nrows x 2 cols
+figure(figsize=figsize)
+truerows = (scatrels != NULLREL).all(axis=1) # exclude NULLREL rows
+falserows = (scatrels == NULLREL).any(axis=1)
+scatrelstrue = scatrels[truerows]
+scatrelsfalse = scatrels[falserows]
+# report numbers, fractions and chi2 p values for reliability scatter plot.
+nbelowrelsyxline = (scatrels[:, 1] > scatrels[:, 0]).sum()
+naboverelsyxline = (scatrels[:, 0] > scatrels[:, 1]).sum()
+fractionbelowrelsyxline = nbelowrelsyxline / (nbelowrelsyxline + naboverelsyxline)
+chi2, p = chisquare([naboverelsyxline, nbelowrelsyxline])
+pstring = 'p < %g' % ceilsigfig(p)
+print('nbelowrelsyxline=%d, naboverelsyxline=%d, fractionbelowrelsyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowrelsyxline, naboverelsyxline,
+                             fractionbelowrelsyxline, chi2, p))
+plot([-1, 1], [-1, 1], 'e--') # plot y=x line
+plot(scatrelstrue[:, 1], scatrelstrue[:, 0], 'o', mec='k', mfc='None')
+plot(scatrelsfalse[:, 1], scatrelsfalse[:, 0], 'o', mec='e', mfc='None')
+xlabel('synchronized reliability')
+ylabel('desynchronized reliability')
+logmin, logmax = LOGNULLREL, 0
+xscale('log')
+yscale('log')
+xlim(10**(logmin-0.05), 10**logmax)
+ylim(10**(logmin-0.05), 10**logmax)
+# replace 10^0 label with 1 to save horizontal space:
+ticks = 10**(np.arange(logmin, logmax+1.0, 1.0))
+ticklabels = ['$10^{%d}$' % logtick for logtick in range(logmin, 0)]
+ticklabels.append('1')
+xticks(ticks, ticklabels)
+yticks(ticks, ticklabels)
+#xticks(10**(np.arange(logmin, logmax+1.0, 1.0)))
+#yticks(10**(np.arange(logmin, logmax+1.0, 1.0)))
+text(0.03, 0.98, '%s' % pstring, horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+titlestr = 'reliability scatter %s' % recnames
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
 
