@@ -97,9 +97,9 @@
    <addaction name="action_ptc21"/>
    <addaction name="action_ptc22"/>
    <addaction name="separator"/>
+   <addaction name="action_nts174"/>
    <addaction name="action_pvc107"/>
    <addaction name="action_pvc113"/>
-   <addaction name="action_nts174"/>
    <addaction name="separator"/>
    <addaction name="actionShell"/>
   </widget>

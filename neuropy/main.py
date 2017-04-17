@@ -125,6 +125,11 @@ class NeuropyWindow(QtGui.QMainWindow):
         self.open_animal(path)
 
     @QtCore.pyqtSlot()
+    def on_action_nts174_triggered(self):
+        path = os.path.join(BLABPATH, 'Ntsr1-Cre_0174')
+        self.open_animal(path)
+
+    @QtCore.pyqtSlot()
     def on_action_pvc107_triggered(self):
         path = os.path.join(BLABPATH, 'PVCre_0107')
         self.open_animal(path)
@@ -132,11 +137,6 @@ class NeuropyWindow(QtGui.QMainWindow):
     @QtCore.pyqtSlot()
     def on_action_pvc113_triggered(self):
         path = os.path.join(BLABPATH, 'PVCre_0113')
-        self.open_animal(path)
-
-    @QtCore.pyqtSlot()
-    def on_action_nts174_triggered(self):
-        path = os.path.join(BLABPATH, 'Ntsr1-Cre_0174')
         self.open_animal(path)
 
     def open_animal(self, path, tracknames=None):

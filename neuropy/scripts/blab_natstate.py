@@ -9,9 +9,9 @@ from core import recarray2dict
 
 
 # specify blab mouse recording to analyze:
-#mname, sid, eid = 'Ntsr1-Cre_0174', 2, 5
-#mname, sid, eid = 'PVCre_0113', 1, 11
-mname, sid, eid = 'PVCre_0107', 1, 9
+mname, sid, eid = 'Ntsr1-Cre_0174', 2, 5 # awake, 3 interleaved movies
+#mname, sid, eid = 'PVCre_0107', 1, 9 # anesth, 2 interleaved movies
+#mname, sid, eid = 'PVCre_0113', 1, 11 # awake, 2 interleaved movies
 POOLOVEROPTO = True
 basepath = '/home/mspacek/data/blab/natstate'
 mpath = os.path.join(basepath, mname)
