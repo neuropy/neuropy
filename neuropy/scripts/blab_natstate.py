@@ -23,6 +23,7 @@ stimfullfname = os.path.join(epath, stimfname)
 rsfullfname = os.path.join(epath, rsfname)
 
 m = Animal(mpath)
+exec('%s = m' % m.name) # add to local namespace via its short name
 m.load()
 r = m.tr[sid].r[eid]
 snids = sorted(r.n) # sorted neuron IDs
@@ -37,7 +38,7 @@ rasfigwidth = 3
 rasfigheightoffset = 0.125 # inches
 rasfigheightperntrials = (5 - 0.125) / 200 # inches per trial
 fc = 'w' # axes face colour
-xlim = 0, 5.5 # s
+xlim = 0, 6 # s, show full 1 s ITI
 xticks = [0, 1, 2, 3, 4, 5]
 # True: use xlim to designate duration to plot for each trial;
 # False: use stimOFFTime to designate duration to plot for each trial:
