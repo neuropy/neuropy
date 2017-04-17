@@ -138,6 +138,7 @@ class BaseExperiment(object):
         self.t0s = intround(stimd['stimONTimes'] * 1e6) # usec
         self.t1s = intround(stimd['stimOFFTimes'] * 1e6) # usec
         self.trange = self.t0s[0], self.t1s[-1]
+        self.ttranges = np.vstack([self.t0s, self.t1s]).T
 
     def get_nonnulltrange(self):
         """Find outermost non-NULL din times, such as at the end and beginning of pre and post
