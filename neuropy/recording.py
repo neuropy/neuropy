@@ -1272,7 +1272,7 @@ class RecordingRaster(BaseRecording):
 
         return ttranges, ttrangesweepis, exptrialis
 
-    def traster(self, nids=None, sweepis=None, eids=None, natexps=False,
+    def traster(self, nids=None, ttranges=None, sweepis=None, eids=None, natexps=False,
                 t0=None, dt=None, blank=True, strange=None,
                 plot=True, overlap=False, marker='|', s=20, c=None,
                 hlinesweepis=None, hlinec='e', title=False, ylabel=True, figsize=(7.5, None),
@@ -1280,15 +1280,16 @@ class RecordingRaster(BaseRecording):
                 psthfigsize=False):
         """Create a trial spike raster plot for each given neuron ('all' and 'quiet' are valid
         values), one figure for each neuron, or overlapping using different colours in a
-        single figure. Use the designated sweep indices, based on stimulus info in experiments
-        eids. natexps controls whether only natural scene movies are considered in ptc15
-        multiexperiment recordings. t0 and dt manually designate trial tranges. blank controls
-        whether to include blank frames for trials in movie type stimuli. Consider only those
-        spikes that fall within strange ("spike time range", in us). c controls color, and can
-        be a single value, a list of len(nids), or use c='bwg' to plot black and white bars on
-        a grey background for black and white drifting bar trials. hlinesweepis designates
-        sweepis at which to plot a horizontal line on the traster the first time they occur,
-        while hlinec designates their colour."""
+        single figure. Either use the designated trial tranges (ntrials x 2 array), or the
+        designated sweep indices, based on stimulus info in experiments eids. natexps controls
+        whether only natural scene movies are considered in ptc15 multiexperiment recordings.
+        t0 and dt manually designate trial tranges. blank controls whether to include blank
+        frames for trials in movie type stimuli. Consider only those spikes that fall within
+        strange ("spike time range", in us). c controls color, and can be a single value, a
+        list of len(nids), or use c='bwg' to plot black and white bars on a grey background
+        for black and white drifting bar trials. hlinesweepis designates sweepis at which to
+        plot a horizontal line on the traster the first time they occur, while hlinec
+        designates their colour."""
 
         if psth or norm or binw or tres or plotpsth or psthfigsize:
             raise RuntimeError("PSTH code has been factored out into recording.psth()")
@@ -1329,8 +1330,9 @@ class RecordingRaster(BaseRecording):
             else:
                 assert len(c) == nn # one specified colour per neuron
 
-        ttranges, ttrangesweepis, exptrialis = self.trialtranges(
-            sweepis=sweepis, eids=eids, natexps=natexps, t0=t0, dt=dt, blank=blank)
+        if ttranges is None:
+            ttranges, ttrangesweepis, exptrialis = self.trialtranges(
+                sweepis=sweepis, eids=eids, natexps=natexps, t0=t0, dt=dt, blank=blank)
         ntrials = len(ttranges)
 
         if strange != None:
@@ -1462,8 +1464,9 @@ class RecordingRaster(BaseRecording):
                 a.set_title(titlestr)
             f.tight_layout(pad=0.3) # crop figure to contents
 
-    def psth(self, nids=None, sweepis=None, eids=None, natexps=False, t0=None, dt=None,
-             blank=True, strange=None, binw=0.02, tres=0.0001, gauss=False, norm=True,
+    def psth(self, nids=None, ttranges=None, sweepis=None, eids=None, natexps=False,
+             t0=None, dt=None, blank=True, strange=None,
+             binw=0.02, tres=0.0001, gauss=False, norm=True,
              plot=True, overlap=False, title=False, ylabel=True, c=None, figsize=(7.5, 3)):
         """Create a peristimulus time histogram for each given neuron ('all' and 'quiet' are
         valid values), one figure for each neuron, or overlapping using different colours in a
@@ -1480,8 +1483,9 @@ class RecordingRaster(BaseRecording):
         len(nids)."""
         assert c != 'bwg' # nonsensical for PSTH
         xmin = 0
-        n2ts, n2cs, xmax, ttranges = self.traster(nids=nids, sweepis=sweepis, eids=eids,
-            natexps=natexps, t0=t0, dt=dt, blank=blank, strange=strange,
+        n2ts, n2cs, xmax, ttranges = self.traster(nids=nids, ttranges=ttranges,
+            sweepis=sweepis, eids=eids, natexps=natexps,
+            t0=t0, dt=dt, blank=blank, strange=strange,
             plot=False, overlap=overlap, c=c)
         assert len(n2ts) == len(n2cs)
         nids = sorted(n2ts)
