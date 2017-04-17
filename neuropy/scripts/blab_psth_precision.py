@@ -59,6 +59,7 @@ WIDTHMAX = 200 # maximum peak width, ms
 
 # plotting params:
 PLOTPSTH = False
+OVERPLOTPSTH = False
 #WIDTHMIN, WIDTHSTEP, WIDTHTICKSTEP = 0, 10, 50
 TSMAX, TSSTEP = 5.5, 0.25
 HEIGHTMIN, HEIGHTMAX = 0, 100
@@ -72,9 +73,11 @@ DEPTHSRANGE = np.array([0, 1400]) # um
 
 POOLOVEROPTO = True
 
-ts = {'d': [], 's': []}
 psthss = {'d': [], 's': []}
 spiketss = {'d': [], 's': []}
+rpsths = {'d': [], 's': []} # responsive PSTHs
+nreplacedbynullrel = 0
+# iterate over recordings:
 for rec in recs:
     print(rec.absname)
     nids = sorted(rec.n)
@@ -105,6 +108,16 @@ for rec in recs:
     for trialis, moviename in zip(trialiss, umovienames):
         print('  movie: %s' % moviename)
         mvttranges = e.ttranges[trialis] # trial time ranges for this movie
+        rnids = {'d': [], 's': []} # responsive neuron IDs for this movie
+        nrnids = {'d': [], 's': []} # nonresponsive neuron IDs for this movie
+        peaktimes = {'d': [], 's': []} # peak times of all nids for this movie
+        peakwidths = {'d': [], 's': []} # peak widths of all nids for this movie
+        peakheights = {'d': [], 's': []} # peak heights of all nids for this movie
+        peaknspikes = {'d': [], 's': []} # spike counts of each peak, normalized by ntrials
+        psthsdepths = {'d': [], 's': []} # physical unit depths of each peak
+        n2rel = {'d': {}, 's': {}} # nid:reliability mapping for this movie
+        n2sparseness = {'d': {}, 's': {}} # nid:sparseness mapping for this movie
+        n2depth = {'d': {}, 's': {}} # nid:unit depth mapping for this movie
         # iterate over cortical state:
         for state in states:
             ttranges = [] # build up trial tranges for this movie and state
@@ -116,19 +129,72 @@ for rec in recs:
             ttranges = np.vstack(ttranges)
             ntrials = len(ttranges)
             print('    state, ntrials: %s, %d' % (state, ntrials))
+            psthparams = {} # various parameters for each PSTH
             # psths is a regular 2D array, spikets is a 2D ragged array (list of arrays):
             t, psths, spikets = rec.psth(nids=nids, ttranges=ttranges, natexps=False,
                                          blank=BLANK, strange=None, plot=False,
                                          binw=BINW, tres=TRES, gauss=GAUSS, norm='ntrials')
             # useful for later inspection:
-            ts[state].append(t)
             psthss[state].append(psths)
             spiketss[state].append(spikets)
-            if PLOTPSTH:
+            if OVERPLOTPSTH:
                 figure()
-                plt.plot(t, psths.T, '-')
+                plt.plot(t, psths.T, '-') # plot all PSTHs for this movie and state
                 show()
             # n2count is needed for calculating reliability:
             n2count = rec.bintraster(nids=nids, ttranges=ttranges, natexps=False,
                                      blank=BLANK, strange=None,
                                      binw=TRASTERBINW, tres=TRASTERTRES, gauss=GAUSS)[0]
+            for nid, psth, ts in zip(nids, psths, spikets):
+                # run PSTH peak detection:
+                baseline = MEDIANX * np.median(psth)
+                thresh = baseline + MINTHRESH # peak detection threshold
+                print("n%d" % nid, end='')
+                peakis, lis, ris = get_psth_peaks_gac(ts, t, psth, thresh)
+                psthparams[nid] = t, psth, thresh, baseline, peakis, lis, ris
+                #psthparams[nid] = get_psth_peaks(t, psth, nid)
+                #t, psth, thresh, baseline, peakis, lis, ris = psthparams[nid] # unpack
+                if PLOTPSTH:
+                    plot_psth(psthparams, nid, fmt)
+                npeaks = len(peakis)
+                if npeaks == 0:
+                    nrnids[state].append(nid) # save nonresponsive nids by state
+                    continue # this PSTH has no peaks, skip all subsequent measures
+                rnids[state].append(nid) # save responsive nids by state
+                rpsths[state].append(psth) # save responsive PSTH by state
+                peaktimes[state].append(peakis * TRES) # save peak times, s
+                # calculate peak precision:
+                widths = (ris - lis) * TRES * 1000 # ms
+                peakwidths[state].append(widths)
+                peakheights[state].append(psth[peakis] - baseline) # peak height above baseline
+                #peakheights[state].append(psth[peakis]) # peak height above 0
+                lspikeis, rspikeis = ts.searchsorted(lis*TRES), ts.searchsorted(ris*TRES)
+                nspikes = rspikeis - lspikeis # nspikes of each detected peak
+                assert (nspikes > 0).all()
+                peaknspikes[state].append(nspikes / ntrials) # nspikes per peak per trial
+                depth = rec.alln[nid].pos[1] # y position on polytrode, microns from top
+                psthsdepths[state].append(np.tile([depth], npeaks))
+                # calculate reliability of responsive PSTHs:
+                cs = n2count[nid] # 2D array of spike counts over trial time, one row per trial
+                rhos, weights = core.pairwisecorr(cs, weight=WEIGHT, invalid='ignore')
+                # set rho to 0 for trial pairs with undefined rho (one or both trials with 0 spikes):
+                nanis = np.isnan(rhos)
+                rhos[nanis] = 0.0
+                # for log plotting convenience, replace any mean rhos < NULLREL with NULLREL
+                n2rel[state][nid] = np.mean(rhos)
+                if n2rel[state][nid] < NULLREL:
+                    n2rel[state][nid] = NULLREL
+                    nreplacedbynullrel += 1
+                # calculate sparseness of responsive PSTHs:
+                n2sparseness[state][nid] = sparseness(psth)
+                n2depth[state][nid] = depth
+            print()
+
+for state in states:
+    rpsths[state] = np.hstack(rpsths[state])
+    peaktimes[state] = np.hstack(peaktimes[state])
+    peakwidths[state] = np.hstack(peakwidths[state])
+    peakheights[state] = np.hstack(peakheights[state])
+    peaknspikes[state] = np.hstack(peaknspikes[state])
+    psthsdepths[state] = np.hstack(psthsdepths[state])
+
