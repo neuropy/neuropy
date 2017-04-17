@@ -28,6 +28,8 @@ from psth_funcs import plot_psth, get_psth_peaks_gac
 ## TODO: plot difference in mean response reliability between synched and desynched, as a
 ## function of gaussian sigma
 
+#recs = [nts174.tr2.r05, pvc113.tr1.r11] # awake
+#recs = [pvc107.tr1.r09] # anesthetized
 recs = [ eval(recname) for recname in sorted(REC2STATE2TRANGES) ] # unique, no reps, sorted
 recnames = ' '.join([rec.absname for rec in recs])
 states = ['d', 's'] # desynched, synched
