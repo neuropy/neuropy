@@ -58,7 +58,7 @@ WIDTHMAX = 200 # maximum peak width, ms
 #WIDTHMAXPOINTS = intround(WIDTHMAX / 1000 / TRES) # maximum width, number of PSTH timepoints
 
 # plotting params:
-PLOTPSTH = True
+PLOTPSTH = False
 #WIDTHMIN, WIDTHSTEP, WIDTHTICKSTEP = 0, 10, 50
 TSMAX, TSSTEP = 5.5, 0.25
 HEIGHTMIN, HEIGHTMAX = 0, 100
@@ -102,7 +102,8 @@ for rec in recs:
                 pooledtrialis = np.sort(np.hstack(oldtrialiss[movieis]))
                 trialiss.append(pooledtrialis)
     # iterate over movies:
-    for trialis, umoviename in zip(trialiss, umovienames):
+    for trialis, moviename in zip(trialiss, umovienames):
+        print('  movie: %s' % moviename)
         mvttranges = e.ttranges[trialis] # trial time ranges for this movie
         # iterate over cortical state:
         for state in states:
@@ -113,11 +114,13 @@ for rec in recs:
                 mvttri1 = mvttranges[:, 1].searchsorted(statetrange[1])
                 ttranges.append(mvttranges[mvttri0:mvttri1])
             ttranges = np.vstack(ttranges)
+            ntrials = len(ttranges)
+            print('    state, ntrials: %s, %d' % (state, ntrials))
             # psths is a regular 2D array, spikets is a 2D ragged array (list of arrays):
             t, psths, spikets = rec.psth(nids=nids, ttranges=ttranges, natexps=False,
-                                         blank=BLANK,
-                                         strange=None, plot=False, binw=BINW, tres=TRES,
-                                         gauss=GAUSS, norm='ntrials')
+                                         blank=BLANK, strange=None, plot=False,
+                                         binw=BINW, tres=TRES, gauss=GAUSS, norm='ntrials')
+            # useful for later inspection:
             ts[state].append(t)
             psthss[state].append(psths)
             spiketss[state].append(spikets)
