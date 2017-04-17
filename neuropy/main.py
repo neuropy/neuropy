@@ -226,6 +226,7 @@ def config_ipw(ipw):
     ipw.set_default_style(colors='Linux')
     ipw.font = QtGui.QFont('Lucida Console', 11) # 3rd arg can be e.g. QFont.Bold
     ipw.font.setFixedPitch(True)
+    ipw.buffer_size = 100000 # number of scrollback lines to keep before truncation
 
 def main():
     """Start kernel manager and client, create window, run app event loop,
