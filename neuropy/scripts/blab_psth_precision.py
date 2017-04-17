@@ -54,7 +54,7 @@ WEIGHT = False # weight trials by spike count for reliability measure?
 # 2.5 Hz thresh is 1 spike in the same 20 ms wide bin every 20 trials, assuming 0 baseline:
 MINTHRESH = 3 # peak detection thresh, Hz
 MEDIANX = 2 # PSTH median multiplier, Hz
-WIDTHMAX = 200 # maximum peak width, ms
+WIDTHMAX = 300 # maximum peak width, ms
 #WIDTHMAXPOINTS = intround(WIDTHMAX / 1000 / TRES) # maximum width, number of PSTH timepoints
 
 # plotting params:
@@ -177,7 +177,8 @@ for rec in recs:
                 # calculate reliability of responsive PSTHs:
                 cs = n2count[nid] # 2D array of spike counts over trial time, one row per trial
                 rhos, weights = core.pairwisecorr(cs, weight=WEIGHT, invalid='ignore')
-                # set rho to 0 for trial pairs with undefined rho (one or both trials with 0 spikes):
+                # set rho to 0 for trial pairs with undefined rho (one or both trials with
+                # 0 spikes):
                 nanis = np.isnan(rhos)
                 rhos[nanis] = 0.0
                 # for log plotting convenience, replace any mean rhos < NULLREL with NULLREL
@@ -198,3 +199,44 @@ for state in states:
     peaknspikes[state] = np.hstack(peaknspikes[state])
     psthsdepths[state] = np.hstack(psthsdepths[state])
 
+
+
+# plot peak width distributions in log space:
+logmin, logmax = 0.7, log10(WIDTHMAX)
+nbins = 15
+bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
+figure(figsize=figsize)
+n1 = hist(peakwidths['s'], bins=bins, histtype='step', color='r')[0] # synched
+n0 = hist(peakwidths['d'], bins=bins, histtype='step', color='b')[0] # desynched
+n = np.hstack([n0, n1])
+xlim(xmin=10**logmin, xmax=10**logmax)
+ymax = n.max() + 5
+ylim(ymax=ymax)
+#xticks(ticks)
+xscale('log')
+xlabel('event width (ms)')
+ylabel('event count')
+#t, p = ttest_ind(log10(peakwidths['d']), log10(peakwidths['s']), equal_var=False) # Welch's
+u, p = mannwhitneyu(log10(peakwidths['d']), log10(peakwidths['s'])) # 1-sided
+smean = 10**(log10(peakwidths['s']).mean()) # geometric
+dmean = 10**(log10(peakwidths['d']).mean())
+# display geometric means and p value:
+text(0.03, 0.98, '$\mu$ = %.1f ms' % smean, # synched
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='r')
+text(0.03, 0.90, '$\mu$ = %.1f ms' % dmean, # desynched
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='b')
+text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
+                 horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+# arrow doesn't display correctly on log axis, use annotate instead:
+annotate('', xy=(smean, (6/7)*ymax), xycoords='data', # synched
+             xytext=(smean, ymax), textcoords='data',
+             arrowprops=dict(fc='r', ec='none', width=1.3, headwidth=7, frac=0.5))
+annotate('', xy=(dmean, (6/7)*ymax), xycoords='data', # desynched
+             xytext=(dmean, ymax), textcoords='data',
+             arrowprops=dict(fc='b', ec='none', width=1.3, headwidth=7, frac=0.5))
+titlestr = 'peak width log %s' % recnames
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
