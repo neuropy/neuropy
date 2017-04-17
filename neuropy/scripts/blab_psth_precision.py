@@ -128,3 +128,7 @@ for rec in recs:
                 figure()
                 plt.plot(t, psths.T, '-')
                 show()
+            # n2count is needed for calculating reliability:
+            n2count = rec.bintraster(nids=nids, ttranges=ttranges, natexps=False,
+                                     blank=BLANK, strange=None,
+                                     binw=TRASTERBINW, tres=TRASTERTRES, gauss=GAUSS)[0]

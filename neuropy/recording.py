@@ -1545,8 +1545,9 @@ class RecordingRaster(BaseRecording):
                 a.set_title(titlestr)
             f.tight_layout(pad=0.3) # crop figure to contents
 
-    def bintraster(self, nids=None, sweepis=None, eids=None, natexps=False, t0=None, dt=None,
-                   blank=False, strange=None, binw=0.02, tres=0.005, gauss=False):
+    def bintraster(self, nids=None, ttranges=None, sweepis=None, eids=None, natexps=False,
+                   t0=None, dt=None, blank=False, strange=None,
+                   binw=0.02, tres=0.005, gauss=False):
         """Bin each trial with binw and tres. If gauss==True, convolve spike counts with a
         Gaussian kernel with sigma = binw/2. For each trial for each neuron, return (possibly
         fractional) spike count in each bin. Return nid:count mapping where count is a 2D
@@ -1555,8 +1556,9 @@ class RecordingRaster(BaseRecording):
         rec.traster plot. Also return nid:totcount mapping where totcount is a 1D (ntrials)
         array, and time bins."""
         xmin = 0
-        n2ts, n2cs, xmax, ttranges = self.traster(nids=nids, sweepis=sweepis, eids=eids,
-            natexps=natexps, t0=t0, dt=dt, blank=blank, strange=strange, plot=False)
+        n2ts, n2cs, xmax, ttranges = self.traster(nids=nids, ttranges=ttranges,
+            sweepis=sweepis, eids=eids, natexps=natexps,
+            t0=t0, dt=dt, blank=blank, strange=strange, plot=False)
         nids = sorted(n2ts)
         ntrials = len(n2ts[nids[0]]) # should be the same for all neurons
         n2totcount = { nid:len(n2ts[nid]) for nid in nids } # total spike count
