@@ -75,8 +75,22 @@ POOLOVEROPTO = True
 
 psthss = {'d': [], 's': []}
 spiketss = {'d': [], 's': []}
-rpsths = {'d': [], 's': []} # responsive PSTHs
+
+# init measurements collected across all recordings and movies, indexed by state:
+allrnids = {'d': [], 's': []}
+allnrnids = {'d': [], 's': []}
+allrpsths = {'d': [], 's': []}
+allpeaktimes = {'d': [], 's': []}
+allpeakwidths = {'d': [], 's': []}
+allpeakheights = {'d': [], 's': []}
+allpeaknspikes = {'d': [], 's': []}
+allpsthsdepths = {'d': [], 's': []}
+alln2rel = {'d': [], 's': []}
+alln2spars = {'d': [], 's': []}
+alln2depth = {'d': [], 's': []}
+
 nreplacedbynullrel = 0
+ntotpeaks = 0 # num total peaks detected
 # iterate over recordings:
 for rec in recs:
     print(rec.absname)
@@ -110,13 +124,14 @@ for rec in recs:
         mvttranges = e.ttranges[trialis] # trial time ranges for this movie
         rnids = {'d': [], 's': []} # responsive neuron IDs for this movie
         nrnids = {'d': [], 's': []} # nonresponsive neuron IDs for this movie
+        rpsths = {'d': [], 's': []} # responsive PSTHs for this movie
         peaktimes = {'d': [], 's': []} # peak times of all nids for this movie
         peakwidths = {'d': [], 's': []} # peak widths of all nids for this movie
         peakheights = {'d': [], 's': []} # peak heights of all nids for this movie
         peaknspikes = {'d': [], 's': []} # spike counts of each peak, normalized by ntrials
         psthsdepths = {'d': [], 's': []} # physical unit depths of each peak
         n2rel = {'d': {}, 's': {}} # nid:reliability mapping for this movie
-        n2sparseness = {'d': {}, 's': {}} # nid:sparseness mapping for this movie
+        n2spars = {'d': {}, 's': {}} # nid:sparseness mapping for this movie
         n2depth = {'d': {}, 's': {}} # nid:unit depth mapping for this movie
         # iterate over cortical state:
         for state in states:
@@ -128,7 +143,7 @@ for rec in recs:
                 ttranges.append(mvttranges[mvttri0:mvttri1])
             ttranges = np.vstack(ttranges)
             ntrials = len(ttranges)
-            print('    state, ntrials: %s, %d' % (state, ntrials))
+            print('    state=%s, ntrials=%d' % (state, ntrials))
             psthparams = {} # various parameters for each PSTH
             # psths is a regular 2D array, spikets is a 2D ragged array (list of arrays):
             t, psths, spikets = rec.psth(nids=nids, ttranges=ttranges, natexps=False,
@@ -156,10 +171,12 @@ for rec in recs:
                 #t, psth, thresh, baseline, peakis, lis, ris = psthparams[nid] # unpack
                 if PLOTPSTH:
                     plot_psth(psthparams, nid, fmt)
+                    show()
                 npeaks = len(peakis)
                 if npeaks == 0:
                     nrnids[state].append(nid) # save nonresponsive nids by state
                     continue # this PSTH has no peaks, skip all subsequent measures
+                ntotpeaks += npeaks
                 rnids[state].append(nid) # save responsive nids by state
                 rpsths[state].append(psth) # save responsive PSTH by state
                 peaktimes[state].append(peakis * TRES) # save peak times, s
@@ -187,39 +204,56 @@ for rec in recs:
                     n2rel[state][nid] = NULLREL
                     nreplacedbynullrel += 1
                 # calculate sparseness of responsive PSTHs:
-                n2sparseness[state][nid] = sparseness(psth)
+                n2spars[state][nid] = sparseness(psth)
                 n2depth[state][nid] = depth
             print()
+            # save measurements from this recording and movie:
+            allrnids[state].append(rnids[state])
+            allnrnids[state].append(nrnids[state])
+            allrpsths[state].append(np.hstack(rpsths[state]))
+            allpeaktimes[state].append(np.hstack(peaktimes[state]))
+            allpeakwidths[state].append(np.hstack(peakwidths[state]))
+            allpeakheights[state].append(np.hstack(peakheights[state]))
+            allpeaknspikes[state].append(np.hstack(peaknspikes[state]))
+            allpsthsdepths[state].append(np.hstack(psthsdepths[state]))
+            alln2rel[state].append(n2rel[state])
+            alln2spars[state].append(n2spars[state])
+            alln2depth[state].append(n2depth[state])
 
+# concatenate measurements across all recordings and movies
 for state in states:
-    rpsths[state] = np.hstack(rpsths[state])
-    peaktimes[state] = np.hstack(peaktimes[state])
-    peakwidths[state] = np.hstack(peakwidths[state])
-    peakheights[state] = np.hstack(peakheights[state])
-    peaknspikes[state] = np.hstack(peaknspikes[state])
-    psthsdepths[state] = np.hstack(psthsdepths[state])
+    allrnids[state] = np.hstack(allrnids[state])
+    allnrnids[state] = np.hstack(allnrnids[state])
+    allrpsths[state] = np.hstack(allrpsths[state])
+    allpeaktimes[state] = np.hstack(allpeaktimes[state])
+    allpeakwidths[state] = np.hstack(allpeakwidths[state])
+    allpeakheights[state] = np.hstack(allpeakheights[state])
+    allpeaknspikes[state] = np.hstack(allpeaknspikes[state])
+    allpsthsdepths[state] = np.hstack(allpsthsdepths[state])
 
-
+assert ntotpeaks == len(allpeaktimes['d']) + len(allpeaktimes['s'])
+print('found %d peaks in total' % ntotpeaks)
 
 # plot peak width distributions in log space:
-logmin, logmax = 0.7, log10(WIDTHMAX)
-nbins = 15
+logmin, logmax = 0.5, log10(WIDTHMAX)
+nbins = 20
 bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
 figure(figsize=figsize)
-n1 = hist(peakwidths['s'], bins=bins, histtype='step', color='r')[0] # synched
-n0 = hist(peakwidths['d'], bins=bins, histtype='step', color='b')[0] # desynched
+n1 = hist(allpeakwidths['s'], bins=bins, histtype='step', color='r')[0] # synched
+n0 = hist(allpeakwidths['d'], bins=bins, histtype='step', color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=10**logmin, xmax=10**logmax)
-ymax = n.max() + 5
+ymax = n.max() + 25
 ylim(ymax=ymax)
 #xticks(ticks)
 xscale('log')
 xlabel('event width (ms)')
 ylabel('event count')
-#t, p = ttest_ind(log10(peakwidths['d']), log10(peakwidths['s']), equal_var=False) # Welch's
-u, p = mannwhitneyu(log10(peakwidths['d']), log10(peakwidths['s'])) # 1-sided
-smean = 10**(log10(peakwidths['s']).mean()) # geometric
-dmean = 10**(log10(peakwidths['d']).mean())
+# Welch's T-test:
+#t, p = ttest_ind(log10(allpeakwidths['d']), log10(allpeakwidths['s']), equal_var=False)
+u, p = mannwhitneyu(log10(allpeakwidths['d']), log10(allpeakwidths['s'])) # 1-sided
+smean = 10**(log10(allpeakwidths['s']).mean()) # geometric
+dmean = 10**(log10(allpeakwidths['d']).mean())
 # display geometric means and p value:
 text(0.03, 0.98, '$\mu$ = %.1f ms' % smean, # synched
                  horizontalalignment='left', verticalalignment='top',
@@ -240,3 +274,5 @@ annotate('', xy=(dmean, (6/7)*ymax), xycoords='data', # desynched
 titlestr = 'peak width log %s' % recnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
+show()
+
