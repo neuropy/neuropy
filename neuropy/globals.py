@@ -143,3 +143,11 @@ REC2STATETRANGES = {'ptc17.tr2b.r58': [(5.7e6, 700e6), # desynched trange, 66 Hz
                     'ptc22.tr4b.r49': [(12.7e6, 1475e6), # desynched trange
                                        (1500e6, 2331.6e6)], # synched trange
                    }
+
+REC2STATE2TRANGES = {'nts174.tr2.r05': {'d': [(1260e6, 3605e6)],
+                                        's': [(0, 1250e6)]},
+                     'pvc107.tr1.r09': {'d': [(550e6, 1205e6)], # desynched tranges
+                                        's': [(0, 500e6)]}, # synched tranges
+                     'pvc113.tr1.r11': {'d': [(0, 340e6), (1050e6, 1205e6)],
+                                        's': [(370e6, 1040e6)]},
+                    }
