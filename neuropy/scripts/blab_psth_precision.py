@@ -329,4 +329,49 @@ text(0.03, 0.98, '%s' % pstring, horizontalalignment='left', verticalalignment='
 titlestr = 'reliability scatter %s' % recnames
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
+show()
 
+
+
+# Scatter plot sparseness of each unit's responses in synched vs desynched for each movie.
+# Missing values (nids active in one state but not the other) are assigned a sparseness of
+# NULLSPARS to indicate they're missing. For each movie, get a superset of nids, with each nid
+# having at least one peak during at least one staten:
+scatspars = [[], []] # desynched, synched
+for n2spars in alln2spars: # iterate over movies
+    # get superset of nids for this movie
+    nids = np.union1d(list(n2spars['d']), list(n2spars['s']))
+    for nid in nids:
+        scatspars[0].append(n2spars['d'].get(nid, NULLSPARS)) # desynched
+        scatspars[1].append(n2spars['s'].get(nid, NULLSPARS)) # synched
+scatspars = np.asarray(scatspars).T # nrows x 2 cols
+figure(figsize=figsize)
+truerows = (scatspars != NULLSPARS).all(axis=1) # exclude NULLSPARS rows
+falserows = (scatspars == NULLSPARS).any(axis=1)
+scatsparstrue = scatspars[truerows]
+scatsparsfalse = scatspars[falserows]
+# report numbers, fractions and chi2 p values for sparseness scatter plot.
+nbelowsparsyxline = (scatspars[:, 1] > scatspars[:, 0]).sum()
+nabovesparsyxline = (scatspars[:, 0] > scatspars[:, 1]).sum()
+fractionbelowsparsyxline = nbelowsparsyxline / (nbelowsparsyxline + nabovesparsyxline)
+chi2, p = chisquare([nabovesparsyxline, nbelowsparsyxline])
+pstring = 'p < %g' % ceilsigfig(p)
+print('nbelowsparsyxline=%d, nabovesparsyxline=%d, fractionbelowsparsyxline=%.3g, '
+      'chi2=%.3g, p=%.3g' % (nbelowsparsyxline, nabovesparsyxline,
+                             fractionbelowsparsyxline, chi2, p))
+plot([-1, 1], [-1, 1], 'e--') # plot y=x line
+plot(scatsparstrue[:, 1], scatsparstrue[:, 0], 'o', mec='k', mfc='None')
+plot(scatsparsfalse[:, 1], scatsparsfalse[:, 0], 'o', mec='e', mfc='None')
+xlabel('synchronized sparseness')
+ylabel('desynchronized sparseness')
+xlim(-0.02, 1)
+ylim(-0.02, 1)
+sparsticks = (np.arange(0, 1+0.2, 0.2), ['0', '0.2', '0.4', '0.6', '0.8', '1'])
+xticks(*sparsticks)
+yticks(*sparsticks)
+text(0.03, 0.98, '%s' % pstring, horizontalalignment='left', verticalalignment='top',
+                 transform=gca().transAxes, color='k')
+titlestr = 'sparseness scatter %s' % recnames
+gcfm().window.setWindowTitle(titlestr)
+tight_layout(pad=0.3)
+show()
