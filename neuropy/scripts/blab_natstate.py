@@ -115,7 +115,7 @@ for trialis, umoviename in zip(trialiss, umovienames):
             a.set_ylabel("trial index") # trial index order, not necessarily temporal order
         else:
             a.set_yticks([]) # turn off y ticks
-        titlestr = umoviename + '_' + ename + '_n%d' % neuron.id
+        titlestr = ename + '_' + umoviename + '_n%d' % neuron.id
         gcfm().window.setWindowTitle(titlestr)
         if title:
             a.set_title(titlestr)
@@ -166,6 +166,6 @@ if os.path.exists(rsfullfname):
 chani = -2 # 0-based chan ID
 r.lfp.specgram(f1=59, chanis=chani, width=2, tres=0.5, cm='jet', relative2t0=True, title=False,
                reclabel=False, figsize=None)
-titlestr = ename + '_specgram_c%d' % (chani+1) # 1-based chan ID
+titlestr = ename + '_specgram_chan%d' % (chani+1) # 1-based chan ID
 gcfm().window.setWindowTitle(titlestr)
 show()
