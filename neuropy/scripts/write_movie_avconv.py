@@ -32,11 +32,14 @@ import struct
 
 CONTRASTINVERT = False
 REVERSE = False # in time
-invstr, revstr = '', ''
+SHUFFLE = True # pixels of each frame
+invstr, revstr, shfstr = '', '', ''
 if CONTRASTINVERT:
     invstr = '_INV'
 if REVERSE:
     revstr = '_REV'
+if SHUFFLE:
+    shfstr = '_SHF'
 FPS = 60 # set the frame rate in the output .avi
 SCALESPACE = 1 #16 # resize the movie by this factor in both x and y
 SCALETIME = 1 #6 # repeat each frame this many times
@@ -45,11 +48,11 @@ SCALETIME = 1 #6 # repeat each frame this many times
 JPGQUALITY = None
 
 # choose your movie and frame range:
-'''
+
 mvifname = 'MVI_1400'
 path = os.path.expanduser('~/data/slab/mov/2007-11-24')
 framei0, framei1  = 200, 500 # aka, MAS_1400
-'''
+
 '''
 mvifname = 'MVI_1400'
 path = os.path.expanduser('~/data/slab/mov/2007-11-24')
@@ -65,11 +68,11 @@ mvifname = 'MVI_1419'
 path = os.path.expanduser('~/data/slab/mov/2007-11-25')
 framei0, framei1 = 3000, 3300
 '''
-
+'''
 mvifname = 'MSEQ16'
 path = os.path.expanduser('~/data/slab/mov/mseq')
 framei0, framei1 = 0, 16383
-
+'''
 
 
 class Movie(object):
@@ -101,14 +104,18 @@ if CONTRASTINVERT:
     mvi = 255 - mvi # invert contrast of all pixels, assumes 8 bit pixels
 if REVERSE:
     mvi = mvi[::-1] # reverse frame order
+if SHUFFLE:
+    for framei, frame in enumerate(mvi):
+        np.random.shuffle(frame.ravel())
+        mvi[framei] = frame
 if SCALESPACE > 1: # scale it up in both spatial dimensions
     mvi = np.repeat(np.repeat(mvi, SCALESPACE, axis=1), SCALESPACE, axis=2)
 if SCALETIME > 1: # scale it up in time (number of frames)
     mvi = np.repeat(mvi, SCALETIME, axis=0)
 
 basename = mvifname + '_' + str(framei0) + '-' + str(framei1) # e.g. MVI_1403_0-300
-fullname = ('%s%s%s_%sfps_%sxy_%st' % (os.path.join(path, basename),
-            invstr, revstr, FPS, SCALESPACE, SCALETIME))
+fullname = ('%s%s%s%s_%sfps_%sxy_%st' % (os.path.join(path, basename),
+            invstr, revstr, shfstr, FPS, SCALESPACE, SCALETIME))
 if JPGQUALITY != None:
     fullname += '_Q%d' % JPGQUALITY
 fnameavi = fullname + '.avi'
