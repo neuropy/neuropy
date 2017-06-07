@@ -32,36 +32,52 @@ class LFP(object):
     def load(self):
         with open(self.fname, 'rb') as f:
             d = np.load(f)
-            assert sorted(d) == ['chanpos', 'chans', 'data', 't0', 't1', 'tres', 'uVperAD']
-            # bind arrays in .lfp.zip file to self:
-            for key, val in d.items():
+            stdnames = ['chanpos', 'chans', 'data', 't0', 't1', 'tres', 'uVperAD']
+            optnames = ['chan0', 'probename']
+            # bind standard array names in .lfp.zip file to self:
+            for key in stdnames:
+                assert key in d
+                val = d[key]
                 # pull some singleton vals out of their arrays:
                 if key in ['t0', 't1', 'tres']: # should all be us
                     val = int(val)
                 elif key == 'uVperAD':
                     val = float(val)
                 self.__setattr__(key, val)
+            # bind optional array names in .lfp.zip file to self:
+            for key in optnames:
+                if key in d:
+                    val = d[key]
+                    # pull some singleton vals out of their arrays:
+                    if key == 'chan0':
+                        val = int(val)
+                    elif key == 'probename':
+                        val = val.tostring().decode() # convert from bytes to py3 unicode str
+                    self.__setattr__(key, val)
+        try:
+            self.chan0
+        except AttributeError: # try and figure out base of channel numbering
+            nchans, nprobechans = len(self.chans), len(self.chanpos)
+            if nchans < nprobechans:
+                # it's probably from a .srf recording with only a subset of chans selected for
+                # separate analog LFP recording
+                self.chan0 = 0 # base of channel numbering, always 0-based for .srf recordings
+                print("Found %d LFP channels, assuming 0-based channel numbering from .srf "
+                      "recording" % nchans)
+            elif nchans == nprobechans: # all probe channels have LFP
+                self.chan0 = min(self.chans) # base of channel numbering
+            else: # nchans > nprobechans
+                raise ValueError("don't know how to handle nchans=%d > nprobechans=%d" %
+                                 (nchans, nprobechans))
+        assert self.chan0 in [0, 1] # either 0- or 1-based
         # make sure chans are in vertical spatial order:
-        nchans, nprobechans = len(self.chans), len(self.chanpos)
-        if nchans < nprobechans:
-            # it's probably from a .srf recording with only a subset of chans selected for
-            # separate analog LFP recording
-            chan0 = 0 # base of channel numbering, always 0-based for .srf recordings
-            print("Found %d LFP channels, assuming 0-based channel numbering from .srf "
-                  "recording" % nchans)
-        elif nchans == nprobechans: # all probe channels have LFP
-            chan0 = min(self.chans) # base of channel numbering
-        else: # nchans > nprobechans
-            raise ValueError("don't know how to handle nchans=%d > nprobechans=%d" %
-                             (nchans, nprobechans))
-        assert chan0 in [0, 1] # either 0- or 1-based
-        ypos = self.chanpos[self.chans - chan0][:, 1]
+        ypos = self.chanpos[self.chans - self.chan0][:, 1]
         if not issorted(ypos):
             print("LFP chans in %s aren't sorted by depth, sorting them now" % self.fname)
             sortis = ypos.argsort()
             self.chans = self.chans[sortis]
             self.data = self.data[sortis]
-            newypos = self.chanpos[self.chans - chan0][:, 1]
+            newypos = self.chanpos[self.chans - self.chan0][:, 1]
             assert issorted(newypos)
         self.sampfreq = intround(1e6 / self.tres) # in Hz
         assert self.sampfreq == 1000 # should be 1000 Hz
