@@ -330,11 +330,15 @@ n1 = hist(widths[1], bins=bins, histtype='step', color='r')[0] # synched
 n0 = hist(widths[0], bins=bins, histtype='step', color='b')[0] # desynched
 n = np.hstack([n0, n1])
 xlim(xmin=10**logmin, xmax=10**logmax)
-ylim(ymax=n.max()+10)
+ymax = 195
+ylim(ymax=ymax)
 #xticks(ticks)
 xscale('log')
+gca().spines['top'].set_visible(False)
+gca().spines['right'].set_visible(False)
 xlabel('event width (ms)')
 ylabel('event count')
+
 #t, p = ttest_ind(log10(widths[0]), log10(widths[1]), equal_var=False) # Welch's T-test
 u, p = mannwhitneyu(log10(widths[0]), log10(widths[1])) # 1-sided
 smean = 10**(log10(widths[1]).mean()) # geometric
@@ -350,10 +354,10 @@ text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
                  horizontalalignment='left', verticalalignment='top',
                  transform=gca().transAxes, color='k')
 # arrow doesn't display correctly on log axis, use annotate instead:
-annotate('', xy=(smean, (6/7)*164), xycoords='data', # synched
-             xytext=(smean, 164), textcoords='data',
+annotate('', xy=(smean, (5/7)*ymax), xycoords='data', # synched
+             xytext=(smean, (6/7)*ymax), textcoords='data',
              arrowprops=dict(fc='r', ec='none', width=1.3, headwidth=7, frac=0.5))
-annotate('', xy=(dmean, 130-(1/7)*164), xycoords='data', # desynched
+annotate('', xy=(dmean, 130-(1/7)*ymax), xycoords='data', # desynched
              xytext=(dmean, 130), textcoords='data',
              arrowprops=dict(fc='b', ec='none', width=1.3, headwidth=7, frac=0.5))
 titlestr = 'peak width log %s' % urecnames
@@ -700,13 +704,15 @@ print('nbelowrelsyxline=%d, naboverelsyxline=%d, fractionbelowrelsyxline=%.3g, '
       'chi2=%.3g, p=%.3g' % (nbelowrelsyxline, naboverelsyxline,
                              fractionbelowrelsyxline, chi2, p))
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
-plot(scatrelstrue[:, 1], scatrelstrue[:, 0], 'o', mec='k', mfc='None')
-plot(scatrelsfalse[:, 1], scatrelsfalse[:, 0], 'o', mec='e', mfc='None')
+plot(scatrelstrue[:, 1], scatrelstrue[:, 0], 'o', mew=0.5, mec='k', mfc='None')
+plot(scatrelsfalse[:, 1], scatrelsfalse[:, 0], 'o', mew=0.5, mec='k', mfc='None')
 xlabel('synchronized reliability')
 ylabel('desynchronized reliability')
 logmin, logmax = LOGNULLREL, 0
-xscale('log')
+xscale('log') ## TODO: why are log minor ticks only in the middle section?
 yscale('log')
+gca().spines['top'].set_visible(False)
+gca().spines['right'].set_visible(False)
 xlim(10**(logmin-0.05), 10**logmax)
 ylim(10**(logmin-0.05), 10**logmax)
 # replace 10^0 label with 1 to save horizontal space:
@@ -838,10 +844,12 @@ print('nbelowsparsyxline=%d, nabovesparsyxline=%d, fractionbelowsparsyxline=%.3g
       'chi2=%.3g, p=%.3g' % (nbelowsparsyxline, nabovesparsyxline,
                              fractionbelowsparsyxline, chi2, p))
 plot([-1, 1], [-1, 1], 'e--') # plot y=x line
-plot(scatsparstrue[:, 1], scatsparstrue[:, 0], 'o', mec='k', mfc='None')
-plot(scatsparsfalse[:, 1], scatsparsfalse[:, 0], 'o', mec='e', mfc='None')
+plot(scatsparstrue[:, 1], scatsparstrue[:, 0], 'o', mew=0.5, mec='k', mfc='None')
+plot(scatsparsfalse[:, 1], scatsparsfalse[:, 0], 'o', mew=0.5, mec='k', mfc='None')
 xlabel('synchronized sparseness')
 ylabel('desynchronized sparseness')
+gca().spines['top'].set_visible(False)
+gca().spines['right'].set_visible(False)
 xlim(-0.02, 1)
 ylim(-0.02, 1)
 sparsticks = (np.arange(0, 1+0.2, 0.2), ['0', '0.2', '0.4', '0.6', '0.8', '1'])
