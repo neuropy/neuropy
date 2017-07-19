@@ -32,20 +32,22 @@ import struct
 
 CONTRASTINVERT = False
 REVERSE = False # in time
-SHUFFLE = True # pixels of each frame
+SHUFFLE = 'pink' # 'white': shuffle pixels of each frame; 'pink': shuffle spatial phase
 invstr, revstr, shfstr = '', '', ''
 if CONTRASTINVERT:
     invstr = '_INV'
 if REVERSE:
     revstr = '_REV'
-if SHUFFLE:
-    shfstr = '_SHF'
+if SHUFFLE == 'white':
+    shfstr = '_WHT'
+elif SHUFFLE == 'pink':
+    shfstr = '_PNK'
 FPS = 60 # set the frame rate in the output .avi
 SCALESPACE = 1 #16 # resize the movie by this factor in both x and y
 SCALETIME = 1 #6 # repeat each frame this many times
 # extracted jpg file quality, from 1 to 100, or None for PIL's default, only really necessary
 # for mseq:
-JPGQUALITY = None
+JPGQUALITY = 100
 
 # choose your movie and frame range:
 
@@ -95,21 +97,102 @@ class Movie(object):
             raise RuntimeError('There are unread bytes in movie file %r. Width, height, or'
                                'nframes are incorrect in the movie file header.' % fname)
 
+def shuffle_phase_separate_halves(mvi):
+    """Shuffle phases of movie while maintaining amplitudes. For a natural scene
+    movie, this should result in pink noise"""
+    # make sure there are an even number of pixels, for indexing the FFT components:
+    n = mvi.size
+    assert n % 2 == 0
+    MVI = np.fft.fftn(mvi) # complex numbers, same shape as mvi
+    MVI = MVI.ravel() # flatten temporarily
+    DC = MVI[0] # DC term
+    #PMVI = MVI[1:n/2] # increasingly positive freq terms, excluding DC and Nyquist terms
+    #NQ = MVI[n/2] # Nyquist term
+    #NMVI = MVI[n/2+1:] # decreasingly negative freq terms, excluding DC and Nyquist terms
+    MVI = MVI[1:n/2+1] # PMVI, NQ
+    r = np.abs(MVI) # amplitudes
+    #nr = np.abs(NMVI) # negative freq amplitudes
+    # get uniform random distribution of angles in radians from -pi to pi
+    theta = np.pi * (np.random.random(MVI.shape) * 2 - 1)
+    #ntheta = ptheta[::-1]
+    # convert polar back to rect:
+    #PPNK = r * np.cos(ptheta) +  1j * r * np.sin(ptheta)
+    PNK = r * np.exp(1j*theta) # this is equivalent to above, but slightly faster
+    NPNK = np.conj(PNK[:-1][::-1])
+    #NPNK = nr * np.exp(-1j*ntheta)
+    #NPNK = np.conj(PPNK[::-1])
+    PNK = np.concatenate([[DC], PNK, NPNK])
+    PNK.shape = mvi.shape # restore shape
+    pnk = np.fft.ifftn(PNK)
+    pnk = np.real(pnk)
+    # normalize back to exactly the same pixel value range as input mvi:
+    pnk = pnk - pnk.min()
+    pnk = pnk / pnk.max() # now ranges from 0 to 1
+    pnk = pnk * mvi.ptp() # same dynamic range as mvi
+    pnk = pnk + mvi.min() # same offset as mvi
+    pnk = np.int64(np.round(pnk))
+    assert pnk.min() == mvi.min()
+    assert pnk.max() == mvi.max()
+    assert pnk.min() >= 0
+    assert pnk.max() <= 255
+    mvi = np.uint8(pnk)
+    return mvi
+
+def shuffle_phase(mvi):
+    """Shuffle phases of movie while maintaining amplitudes. For a natural scene
+    movie, this should result in pink noise"""
+    ## TODO: confirm that output spectrogram is very similar to input spectrogram
+    ## TODO: generate pink noise movie explicitly, see how it compares to phase-shuffled
+    ## natscene movie
+    # make sure there are an even number of pixels, for indexing the FFT components:
+    n = mvi.size
+    assert n % 2 == 0
+    MVI = np.fft.fftn(mvi) # complex numbers, same shape as mvi
+    #MVI = MVI.ravel() # flatten temporarily
+    r = np.abs(MVI) # amplitudes
+    # get uniform random distribution of angles in radians from -pi to pi
+    theta = np.pi * (np.random.random(MVI.shape) * 2 - 1)
+    # convert polar back to rect:
+    #PPNK = r * np.cos(ptheta) +  1j * r * np.sin(ptheta)
+    PNK = r * np.exp(1j*theta) # this is equivalent to above, but slightly faster
+    #PNK.shape = mvi.shape # restore shape
+    pnk = np.fft.ifftn(PNK)
+    pnk = np.real(pnk)
+    #pnk = np.abs(pnk)
+    # normalize back to exactly the same pixel value range as input mvi:
+    pnk = pnk - pnk.min()
+    pnk = pnk / pnk.max() # now ranges from 0 to 1
+    pnk = pnk * mvi.ptp() # same dynamic range as mvi
+    pnk = pnk + mvi.min() # same offset as mvi
+    pnk = np.int64(np.round(pnk))
+    assert pnk.min() == mvi.min()
+    assert pnk.max() == mvi.max()
+    assert pnk.min() >= 0
+    assert pnk.max() <= 255
+    mvi = np.uint8(pnk)
+    return mvi
 
 fname = os.path.join(path, mvifname)
 m = Movie(fname)
 mvi = m.frames[framei0:framei1] # 3D numpy array
+assert mvi.dtype == np.uint8
+
 if CONTRASTINVERT:
-    assert mvi.dtype == np.uint8
     mvi = 255 - mvi # invert contrast of all pixels, assumes 8 bit pixels
+
 if REVERSE:
     mvi = mvi[::-1] # reverse frame order
-if SHUFFLE:
+
+if SHUFFLE == 'white':
     for framei, frame in enumerate(mvi):
         np.random.shuffle(frame.ravel())
         mvi[framei] = frame
+elif SHUFFLE == 'pink':
+    mvi = shuffle_phase(mvi)
+
 if SCALESPACE > 1: # scale it up in both spatial dimensions
     mvi = np.repeat(np.repeat(mvi, SCALESPACE, axis=1), SCALESPACE, axis=2)
+
 if SCALETIME > 1: # scale it up in time (number of frames)
     mvi = np.repeat(mvi, SCALETIME, axis=0)
 
