@@ -32,7 +32,7 @@ import struct
 
 CONTRASTINVERT = False
 REVERSE = False # in time
-SHUFFLE = 'pink' # 'white': shuffle pixels of each frame; 'pink': shuffle spatial phase
+SHUFFLE = 'pink' # 'white': shuffle pixels of each frame; 'pink': shuffle spatiotemporal phases
 invstr, revstr, shfstr = '', '', ''
 if CONTRASTINVERT:
     invstr = '_INV'
@@ -74,6 +74,14 @@ framei0, framei1 = 3000, 3300
 mvifname = 'MSEQ16'
 path = os.path.expanduser('~/data/slab/mov/mseq')
 framei0, framei1 = 0, 16383
+
+mvifname = 'MVI_1413-1416_128x128x1024' # extracted and whitened (?) by NVS
+path = '/home/mspacek/data/slab/mov/f-1'
+framei0, framei1 = 0, 1024
+
+mvifname = 'MVI_1413-1416_128x128x1024_scrambled' # phase-scrambled by NVS
+path = '/home/mspacek/data/slab/mov/f-1'
+framei0, framei1 = 0, 1024
 '''
 
 
