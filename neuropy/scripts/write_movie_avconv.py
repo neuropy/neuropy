@@ -80,18 +80,17 @@ framei0, framei1 = 0, 16383
 class Movie(object):
     def __init__(self, fname):
         """Load NVS movie data"""
-        f = file(fname, 'rb') # open the movie file for reading in binary format
-        self.f = f
-        headerstring = f.read(5)
-        assert headerstring == 'movie'
-        self.ncellswide, = struct.unpack('H', f.read(2)) # 'H'== unsigned short int
-        self.ncellshigh, = struct.unpack('H', f.read(2))
-        self.nframes, = struct.unpack('H', f.read(2))
-        print('width, height, nframes:', self.ncellswide, self.ncellshigh, self.nframes)
-        self.framesize = self.ncellshigh*self.ncellswide
-        self.frames = np.fromfile(f, dtype=np.uint8, count=self.nframes*self.framesize)
-        self.frames.shape = self.nframes, self.ncellshigh, self.ncellswide
-        leftover = f.read() # check if there are any leftover bytes in the file
+        with open(fname, 'rb') as f: # open the movie file for reading in binary format
+            headerstring = f.read(5)
+            assert headerstring == 'movie'
+            self.ncellswide, = struct.unpack('H', f.read(2)) # 'H'== unsigned short int
+            self.ncellshigh, = struct.unpack('H', f.read(2))
+            self.nframes, = struct.unpack('H', f.read(2))
+            print('width, height, nframes:', self.ncellswide, self.ncellshigh, self.nframes)
+            self.framesize = self.ncellshigh*self.ncellswide
+            self.frames = np.fromfile(f, dtype=np.uint8, count=self.nframes*self.framesize)
+            self.frames.shape = self.nframes, self.ncellshigh, self.ncellswide
+            leftover = f.read() # check if there are any leftover bytes in the file
         if leftover != '':
             #pprint(leftover)
             raise RuntimeError('There are unread bytes in movie file %r. Width, height, or'
