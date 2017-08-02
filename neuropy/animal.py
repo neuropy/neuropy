@@ -23,14 +23,30 @@ class Animal(object):
 
     def get_name(self):
         """Return shorter names for blab mice"""
+        long2shortstrain = {'BL6': 'bl',
+                            'PVCre': 'pvc',
+                            'Ntsr1-Cre': 'nts'}
         fields = self.longname.split('_') # split name into fields separated by underscores
-        if fields[-1].isnumeric():
-            fields[-1] = str(int(fields[-1])) # drop any leading 0s
-        n = ''.join(fields).lower()
-        n = n.replace('bl6', 'bl')
-        n = n.replace('pvcre', 'pvc')
-        n = n.replace('ntsr1-cre', 'nts')
-        return n
+        if len(fields) == 1: # no underscores, something like 'ptc22'
+            return fields[0]
+        if len(fields) == 2: # 1 underscore, something like 'BL6_0348'
+            strain, num = fields
+            year = ''
+        elif len(fields) == 3: # 2 underscores, something like 'BL6_2017_0001'
+            strain, year, num = fields
+        else:
+            raise ValueError("Don't know how to parse long name %r" % self.longname)
+        strain = long2shortstrain[strain] # filter strain, strict capitalization
+        if year:
+            assert year.isnumeric()
+            year = str(int(year) - 2000) # year wrt 2000
+            # ensure year is exactly 2 digits:
+            year= year.zfill(2)
+            assert len(year) == 2
+        assert num.isnumeric()
+        num = str(int(num)) # drop any leading 0s
+        num = num.zfill(2) # ensure animal number is at least 2 digits
+        return ''.join((strain, year, num))
 
     name = property(get_name)
 
