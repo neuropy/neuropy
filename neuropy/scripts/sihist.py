@@ -47,18 +47,30 @@ def sihist(recs=None, basetitle='', sis=None):
     #xlabel('SI (%s)' % kind)
     gcfm().window.setWindowTitle(basetitle + '_sihist')
     tight_layout(pad=0.3)
+    show()
 
-# quick tests:
-#sihist([ptc15.tr7c.r74], 'ptc15.tr7c.r74')
-#sihist([ptc22.tr1.r08], 'ptc15.tr7c.r08')
-#sihist([ptc22.tr1.r10], 'ptc15.tr7c.r10')
+# individually plot natscene movie recordings with state changes:
+catnsrecs = [ptc17.tr2b.r58, ptc18.tr1.r38, ptc18.tr2c.r58, ptc22.tr1.r08,
+             ptc22.tr1.r10, ptc22.tr4b.r49]
+mousensrecs = [nts174.tr2.r05, pvc107.tr1.r09, pvc113.tr1.r11]
+allrecs = catnsrecs + mousensrecs
+for rec in allrecs:
+    sihist([rec], rec.absname)
 
-# plot for specific natscene movie recordings with state changes:
-nsrecs = [ptc17.tr2b.r58, ptc18.tr1.r38, ptc18.tr2c.r58, ptc22.tr1.r08,
-          ptc22.tr1.r10, ptc22.tr4b.r49]
-sihist(recs=nsrecs, basetitle='all data')
-dthourall = np.sum([ rec.dthour for rec in nsrecs ])
-print('all 6 recs: %.3f h' % dthourall)
+# pool over each species:
+sihist(recs=catnsrecs, basetitle='all cat data')
+dthourall = np.sum([ rec.dthour for rec in catnsrecs ])
+print('all cat data: %.3f h' % dthourall)
+
+sihist(recs=mousensrecs, basetitle='all mouse data')
+dthourall = np.sum([ rec.dthour for rec in mousensrecs ])
+print('all mouse data: %.3f h' % dthourall)
+
+sihist(recs=allrecs, basetitle='all data')
+dthourall = np.sum([ rec.dthour for rec in allrecs ])
+print('all data: %.3f h' % dthourall)
+
+
 '''
 tracks = [ptc15.tr7c, ptc17.tr1, ptc17.tr2b, ptc18.tr1, ptc18.tr2c, ptc20.tr1, ptc20.tr2,
           ptc20.tr3, ptc21.tr2, ptc21.tr5c, ptc21.tr6b, ptc22.tr1, ptc22.tr2, ptc22.tr4b,
@@ -73,4 +85,3 @@ sihist(basetitle='all tracks', sis=sis)
 dthourall = np.sum([ track.dthour for track in tracks ])
 print('all tracks: %.3f h' % dthourall)
 '''
-show()
