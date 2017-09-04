@@ -21,19 +21,14 @@ import filter
 
 urecs = [ eval(recname) for recname in sorted(REC2STATETRANGES) ] # unique, no reps, sorted
 
-lfpwidth, lfptres = 30, 5 # sec
+lfpwidth, lfptres = 30, 5 # LFP window width and tres, sec
+assert lfptres <= lfpwidth
 chani = -1
 kind = 'L/(L+H)'
 figsize = (3, 3)
 VPPMAX = 2 # mV
 STDMAX = 225 # uV
 ALPHA = 0.1
-
-if lfpwidth == None: # LFP window width
-    lfpwidth = LFPSIWIDTH # sec
-if lfptres == None: # LFP window tres
-    lfptres = LFPSITRES # sec
-assert lfptres <= lfpwidth
 
 # collect SI and LFP Vpp from all recordings in all tracks:
 sis, Vpps, stds = [], [], []

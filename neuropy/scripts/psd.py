@@ -25,9 +25,9 @@ XSCALE = 'log'
 YLIMS = -64, -21
 
 if width == None: # window width
-    width = LFPWIDTH # sec
+    width = LFPSPECGRAMWIDTH # sec
 if tres == None: # window tres
-    tres = LFPTRES # sec
+    tres = LFPSPECGRAMTRES # sec
 assert tres <= width
 
 SAMPFREQ = 1000 # Hz, should be the same for all LFPs
@@ -62,10 +62,10 @@ def plot_psd(datas, cs=None, ylims=None, titlestr=''):
         if P1 != None:
             P[P > P1] = P1
         plot(freqs, P, c=c, ls='-', marker=None)
-    # demarcate SI frequency bands with horizontal lines:
-    hlines(y=-50, xmin=LFPSILOWBAND[0], xmax=LFPSILOWBAND[1], colors='e',
+    # demarcate SI power ratio frequency bands with horizontal lines:
+    hlines(y=-50, xmin=LFPPRATIOLOBAND[0], xmax=LFPPRATIOLOBAND[1], colors='e',
            linestyles='-', lw=5)
-    hlines(y=-30, xmin=LFPSIHIGHBAND[0], xmax=LFPSIHIGHBAND[1], colors='e',
+    hlines(y=-30, xmin=LFPPRATIOHIBAND[0], xmax=LFPPRATIOHIBAND[1], colors='e',
            linestyles='-', lw=5)
     axis('tight')
     xscale(XSCALE)

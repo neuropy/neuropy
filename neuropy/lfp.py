@@ -261,9 +261,9 @@ class LFP(object):
         if t1 == None:
             t1 = t0 + 10 # 10 sec window
         if width == None:
-            width = uns['LFPWIDTH'] # sec
+            width = uns['LFPSPECGRAMWIDTH'] # sec
         if tres == None:
-            tres = uns['LFPTRES'] # sec
+            tres = uns['LFPSPECGRAMTRES'] # sec
         assert tres <= width
         NFFT = intround(width * self.sampfreq)
         noverlap = intround(NFFT - tres * self.sampfreq)
@@ -302,11 +302,11 @@ class LFP(object):
         #self.P = P
         a.plot(freqs, P, 'k-')
         # add SI frequency band limits:
-        LFPSILOWBAND, LFPSIHIGHBAND = uns['LFPSILOWBAND'], uns['LFPSIHIGHBAND']
-        a.axvline(x=LFPSILOWBAND[0], c='r', ls='--')
-        a.axvline(x=LFPSILOWBAND[1], c='r', ls='--')
-        a.axvline(x=LFPSIHIGHBAND[0], c='b', ls='--')
-        a.axvline(x=LFPSIHIGHBAND[1], c='b', ls='--')
+        LFPPRATIOLOBAND, LFPPRATIOHIBAND = uns['LFPPRATIOLOBAND'], uns['LFPPRATIOHIBAND']
+        a.axvline(x=LFPPRATIOLOBAND[0], c='r', ls='--')
+        a.axvline(x=LFPPRATIOLOBAND[1], c='r', ls='--')
+        a.axvline(x=LFPPRATIOHIBAND[0], c='b', ls='--')
+        a.axvline(x=LFPPRATIOHIBAND[1], c='b', ls='--')
         a.axis('tight')
         a.set_xscale(xscale)
         a.set_xlabel("frequency (Hz)")
@@ -344,9 +344,9 @@ class LFP(object):
             t0, t1 = self.apply_lim2stim(t0, t1)
         dt = t1 - t0
         if width == None:
-            width = uns['LFPWIDTH'] # sec
+            width = uns['LFPSPECGRAMWIDTH'] # sec
         if tres == None:
-            tres = uns['LFPTRES'] # sec
+            tres = uns['LFPSPECGRAMTRES'] # sec
         assert tres <= width
         NFFT = intround(width * self.sampfreq)
         noverlap = intround(NFFT - tres * self.sampfreq)
@@ -485,7 +485,7 @@ class LFP(object):
         return b, a
 
     def si(self, kind=None, chani=-1, width=None, tres=None,
-           lfpwidth=None, lfptres=None, lowband=None, highband=None, plot=True,
+           lfpwidth=None, lfptres=None, loband=None, hiband=None, plot=True,
            states=False, desynchsi=0.2, synchsi=0.2, lw=4, alpha=1, relative2t0=False,
            lim2stim=False, showxlabel=True, showylabel=True, showtitle=True, showtext=True,
            swapaxes=False, figsize=(20, 3.5)):
@@ -516,7 +516,7 @@ class LFP(object):
         uns = get_ipython().user_ns
         if kind == None:
             kind = uns['LFPSIKIND']
-        if kind.startswith('L/'):
+        if kind in ['L/(L+H)', 'L/H', 'nLH']: # it's a power ratio measure
             pratio = True
         else:
             pratio = False
@@ -542,15 +542,15 @@ class LFP(object):
         if tres == None:
             tres = uns['LFPSITRES'] # sec
         if lfpwidth == None:
-            lfpwidth = uns['LFPWIDTH'] # sec
+            lfpwidth = uns['LFPPRATIOWIDTH'] if pratio else uns['LFPSPECGRAMWIDTH'] # sec
         if lfptres == None:
-            lfptres = uns['LFPTRES'] # sec
-        if lowband == None:
-            lowband = uns['LFPSILOWBAND']
-        f0, f1 = lowband
-        if highband == None:
-            highband = uns['LFPSIHIGHBAND']
-        f2, f3 = highband
+            lfptres = uns['LFPPRATIOTRES'] if pratio else uns['LFPSPECGRAMTRES'] # sec
+        if loband == None:
+            loband = uns['LFPPRATIOLOBAND']
+        f0, f1 = loband
+        if hiband == None:
+            hiband = uns['LFPPRATIOHIBAND']
+        f2, f3 = hiband
 
         assert lfptres <= lfpwidth
         NFFT = intround(lfpwidth * self.sampfreq)
@@ -573,7 +573,6 @@ class LFP(object):
 
         if pratio:
             t = Pt
-            ylim = 0, 1
             ylabel = 'SI (%s)' % kind
         else:
             # potentially overlapping bin time ranges:
@@ -597,11 +596,13 @@ class LFP(object):
         if kind[0] == 'n':
             ylim = -1, 1
             hlines = [0]
-        # calculate some metric of each column, ie each width:
+        # calculate some metric of each column, i.e. each bin:
         if kind == 'L/(L+H)':
             si = lP/(lP + hP)
+            ylim = 0, 1
         elif kind == 'L/H':
             si = lP/hP
+            ylim = 0, 1
         elif kind == 'nLH':
             t = Pt
             si = (lP - hP) / (lP + hP)
@@ -737,17 +738,17 @@ class LFP(object):
         #np.seterr(**old_settings) # restore old settings
         return si, t # t are midpoints of bins, offset depends on relative2t0
     '''
-    def si_hilbert(self, chani=-1, lowband=None, highband=None, ratio='L/(L+H)',
+    def si_hilbert(self, chani=-1, loband=None, hiband=None, ratio='L/(L+H)',
                    plot=True):
         """Return synchrony index, i.e. power ratio of low vs high bands, as measured by
         Hilbert transform (Saleem2010). Use either L/(L+H) ratio (Saleem2010) or L/H ratio
         (Li, Poo, Dan 2009)"""
-        if lowband == None:
-            lowband = uns['LFPSILOWBAND']
-        f0, f1 = lowband
-        if highband == None:
-            highband = uns['LFPSIHIGHBAND']
-        f2, f3 = highband
+        if loband == None:
+            loband = uns['LFPPRATIOLOBAND']
+        f0, f1 = loband
+        if hiband == None:
+            hiband = uns['LFPPRATIOHIBAND']
+        f2, f3 = hiband
         data = self.get_data()
         t = self.get_tssec() # full set of timestamps, in sec
         t0, t1 = t[0], t[-1] # full duration

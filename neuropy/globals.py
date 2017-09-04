@@ -54,16 +54,20 @@ MUASIWIDTH = 10 # sec
 MUASITRES = 1 # sec
 MUASIKIND = 'nstdmed'
 
-"""LFP power time range windows"""
-LFPWIDTH = 2 # sec
-LFPTRES = 0.5 # sec
+"""LFP spectrogram time range windows"""
+LFPSPECGRAMWIDTH = 2 # sec
+LFPSPECGRAMTRES = 0.5 # sec
+
+"""LFP power ratio time range windows, used by default LFPSIKIND"""
+LFPPRATIOWIDTH = 30 # sec
+LFPPRATIOTRES = 5 # sec
+LFPPRATIOLOBAND = 0.5, 5 # Hz
+LFPPRATIOHIBAND = 15, 150 # Hz
 
 """LFP synchrony index time range windows"""
-LFPSIWIDTH = 10 # sec
-LFPSITRES = 2 # sec
-LFPSILOWBAND = 0.5, 7 # Hz
-LFPSIHIGHBAND = 15, 100 # Hz
-LFPSIKIND = 'L/(L+H)'#'n3stdmed'
+LFPSIKIND = 'L/(L+H)' #'n3stdmed'
+LFPSIWIDTH = 10 # sec, used only for non-power ratio LFPSIKIND
+LFPSITRES = 2 # sec, used only for non-power ratio LFPSIKIND
 
 """List of sorted track IDs"""
 TRACKS = ['ptc15.tr7c', 'ptc22.tr1', 'ptc22.tr2']
