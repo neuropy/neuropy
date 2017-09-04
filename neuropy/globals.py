@@ -59,10 +59,10 @@ LFPSPECGRAMWIDTH = 2 # sec
 LFPSPECGRAMTRES = 0.5 # sec
 
 """LFP power ratio time range windows, used by default LFPSIKIND"""
-LFPPRATIOWIDTH = 30 # sec
-LFPPRATIOTRES = 5 # sec
-LFPPRATIOLOBAND = 0.5, 5 # Hz
-LFPPRATIOHIBAND = 15, 150 # Hz
+LFPPRWIDTH = 30 # sec
+LFPPRTRES = 5 # sec
+LFPPRLOBAND = 0.5, 5 # Hz
+LFPPRHIBAND = 15, 150 # Hz
 
 """LFP synchrony index time range windows"""
 LFPSIKIND = 'L/(L+H)' #'n3stdmed'

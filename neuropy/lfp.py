@@ -302,11 +302,11 @@ class LFP(object):
         #self.P = P
         a.plot(freqs, P, 'k-')
         # add SI frequency band limits:
-        LFPPRATIOLOBAND, LFPPRATIOHIBAND = uns['LFPPRATIOLOBAND'], uns['LFPPRATIOHIBAND']
-        a.axvline(x=LFPPRATIOLOBAND[0], c='r', ls='--')
-        a.axvline(x=LFPPRATIOLOBAND[1], c='r', ls='--')
-        a.axvline(x=LFPPRATIOHIBAND[0], c='b', ls='--')
-        a.axvline(x=LFPPRATIOHIBAND[1], c='b', ls='--')
+        LFPPRLOBAND, LFPPRHIBAND = uns['LFPPRLOBAND'], uns['LFPPRHIBAND']
+        a.axvline(x=LFPPRLOBAND[0], c='r', ls='--')
+        a.axvline(x=LFPPRLOBAND[1], c='r', ls='--')
+        a.axvline(x=LFPPRHIBAND[0], c='b', ls='--')
+        a.axvline(x=LFPPRHIBAND[1], c='b', ls='--')
         a.axis('tight')
         a.set_xscale(xscale)
         a.set_xlabel("frequency (Hz)")
@@ -517,9 +517,9 @@ class LFP(object):
         if kind == None:
             kind = uns['LFPSIKIND']
         if kind in ['L/(L+H)', 'L/H', 'nLH']: # it's a power ratio measure
-            pratio = True
+            pr = True
         else:
-            pratio = False
+            pr = False
 
         data = self.get_data()
         ts = self.get_tssec() # full set of timestamps, in sec
@@ -542,14 +542,14 @@ class LFP(object):
         if tres == None:
             tres = uns['LFPSITRES'] # sec
         if lfpwidth == None:
-            lfpwidth = uns['LFPPRATIOWIDTH'] if pratio else uns['LFPSPECGRAMWIDTH'] # sec
+            lfpwidth = uns['LFPPRWIDTH'] if pr else uns['LFPSPECGRAMWIDTH'] # sec
         if lfptres == None:
-            lfptres = uns['LFPPRATIOTRES'] if pratio else uns['LFPSPECGRAMTRES'] # sec
+            lfptres = uns['LFPPRTRES'] if pr else uns['LFPSPECGRAMTRES'] # sec
         if loband == None:
-            loband = uns['LFPPRATIOLOBAND']
+            loband = uns['LFPPRLOBAND']
         f0, f1 = loband
         if hiband == None:
-            hiband = uns['LFPPRATIOHIBAND']
+            hiband = uns['LFPPRHIBAND']
         f2, f3 = hiband
 
         assert lfptres <= lfpwidth
@@ -571,7 +571,7 @@ class LFP(object):
         lP = lP.sum(axis=0) # nt
         hP = hP.sum(axis=0) # nt
 
-        if pratio:
+        if pr:
             t = Pt
             ylabel = 'SI (%s)' % kind
         else:
@@ -725,7 +725,7 @@ class LFP(object):
             raise ValueError('unknown kind %r' % kind)
         if plot:
             # calculate xlim, always start from 0, add half a bin width to xmax:
-            if pratio:
+            if pr:
                 xlim = (0, t[-1]+lfpwidth/2)
             else:
                 xlim = (0, t[-1]+width/2)
@@ -744,10 +744,10 @@ class LFP(object):
         Hilbert transform (Saleem2010). Use either L/(L+H) ratio (Saleem2010) or L/H ratio
         (Li, Poo, Dan 2009)"""
         if loband == None:
-            loband = uns['LFPPRATIOLOBAND']
+            loband = uns['LFPPRLOBAND']
         f0, f1 = loband
         if hiband == None:
-            hiband = uns['LFPPRATIOHIBAND']
+            hiband = uns['LFPPRHIBAND']
         f2, f3 = hiband
         data = self.get_data()
         t = self.get_tssec() # full set of timestamps, in sec

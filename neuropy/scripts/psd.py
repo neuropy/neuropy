@@ -63,9 +63,9 @@ def plot_psd(datas, cs=None, ylims=None, titlestr=''):
             P[P > P1] = P1
         plot(freqs, P, c=c, ls='-', marker=None)
     # demarcate SI power ratio frequency bands with horizontal lines:
-    hlines(y=-50, xmin=LFPPRATIOLOBAND[0], xmax=LFPPRATIOLOBAND[1], colors='e',
+    hlines(y=-50, xmin=LFPPRLOBAND[0], xmax=LFPPRLOBAND[1], colors='e',
            linestyles='-', lw=5)
-    hlines(y=-30, xmin=LFPPRATIOHIBAND[0], xmax=LFPPRATIOHIBAND[1], colors='e',
+    hlines(y=-30, xmin=LFPPRHIBAND[0], xmax=LFPPRHIBAND[1], colors='e',
            linestyles='-', lw=5)
     axis('tight')
     xscale(XSCALE)
