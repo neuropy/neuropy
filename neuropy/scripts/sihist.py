@@ -7,6 +7,7 @@ lfptres = 5 # sec
 binw = 0.02 # SI
 simin, simax = 0, 1
 kind = 'L/(L+H)'
+PLOTTIMESERIES = True # also plot time series of each recording, not just distributions
 
 try:
     SICACHE
@@ -15,10 +16,13 @@ except NameError:
 
 def calcsi(recs):
     sis = []
+    plot = False
+    if len(recs) == 1:
+        plot = PLOTTIMESERIES
     for rec in recs:
         title = rec.absname + '.lfp.si()'
         si, t = rec.lfp.si(kind=kind, lfpwidth=lfpwidth, lfptres=lfptres,
-                           plot=True, title=title)
+                           plot=plot, title=title)
         sis.append(si)
     return np.hstack(sis)
 
@@ -51,7 +55,7 @@ def sihist(recs=None, basetitle='', sis=None):
     tight_layout(pad=0.3)
     show()
 
-# individually plot natscene movie recordings with state changes:
+# individually plot SI distributions of natscene movie recordings with state changes:
 catnsrecs = [ptc17.tr2b.r58, ptc18.tr1.r38, ptc18.tr2c.r58, ptc22.tr1.r08,
              ptc22.tr1.r10, ptc22.tr4b.r49]
 mousensrecs = [nts174.tr2.r05, pvc107.tr1.r09, pvc113.tr1.r11]
