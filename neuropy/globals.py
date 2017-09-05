@@ -60,7 +60,7 @@ LFPSPECGRAMTRES = 0.5 # sec
 
 """LFP power ratio time range windows, used by default LFPSIKIND"""
 LFPPRWIDTH = 30 # sec
-LFPPRTRES = 5 # sec
+LFPPRTRES = 1 # sec
 LFPPRLOBAND = 0.5, 5 # Hz
 LFPPRHIBAND = 15, 150 # Hz
 
