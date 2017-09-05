@@ -16,7 +16,9 @@ except NameError:
 def calcsi(recs):
     sis = []
     for rec in recs:
-        si, t = rec.lfp.si(kind=kind, lfpwidth=lfpwidth, lfptres=lfptres, plot=False)
+        title = rec.absname + '.lfp.si()'
+        si, t = rec.lfp.si(kind=kind, lfpwidth=lfpwidth, lfptres=lfptres,
+                           plot=True, title=title)
         sis.append(si)
     return np.hstack(sis)
 

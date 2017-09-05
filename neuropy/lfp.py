@@ -486,9 +486,9 @@ class LFP(object):
 
     def si(self, kind=None, chani=-1, width=None, tres=None,
            lfpwidth=None, lfptres=None, loband=None, hiband=None, plot=True,
-           states=False, desynchsi=0.2, synchsi=0.2, lw=4, alpha=1, relative2t0=False,
-           lim2stim=False, showxlabel=True, showylabel=True, showtitle=True, reclabel=True,
-           swapaxes=False, figsize=None):
+           showstates='auto', statelinepos=[0.2], lw=4, alpha=1, relative2t0=False,
+           lim2stim=False, showxlabel=True, showylabel=True, showtitle=True, title=None,
+           reclabel=True, swapaxes=False, figsize=None):
         """Calculate an LFP synchrony index, using potentially overlapping windows of width
         and tres, in sec, from the LFP spectrogram, itself composed of bins of lfpwidth and
         lfptres. relative2t0 controls whether to plot relative to t0, or relative to start of
@@ -533,7 +533,6 @@ class LFP(object):
             figwidth = (dt / 1000) * 5 + 0.87
             figheight = 2.5 # inches
             figsize = figwidth, figheight
-            print(figsize)
 
         t0i, t1i = ts.searchsorted((t0, t1))
         x = data[chani, t0i:t1i] / 1e3 # slice data, convert from uV to mV
@@ -611,6 +610,7 @@ class LFP(object):
             ylim = -1, 1
             yticks = -1, 0, 1
             hlines = [0]
+
         # calculate some metric of each column, i.e. each bin:
         if kind == 'L/(L+H)':
             si = lP/(lP + hP)
@@ -745,9 +745,9 @@ class LFP(object):
                 xlim = (0, t[-1]+width/2)
             self.si_plot(si, t, t0=t0, t1=t1, xlim=xlim, ylim=ylim, yticks=yticks,
                          ylabel=ylabel, showxlabel=showxlabel, showylabel=showylabel,
-                         showtitle=showtitle, title=lastcmd(),
+                         showtitle=showtitle, title=title,
                          reclabel=reclabel, hlines=hlines,
-                         states=states, desynchsi=desynchsi, synchsi=synchsi, lw=lw,
+                         showstates=showstates, statelinepos=statelinepos, lw=lw,
                          alpha=alpha, relative2t0=relative2t0, swapaxes=swapaxes,
                          figsize=figsize)
         #np.seterr(**old_settings) # restore old settings
@@ -796,8 +796,8 @@ class LFP(object):
     '''
     def si_plot(self, si, t, t0=None, t1=None, xlim=None, ylim=None, yticks=None,
                 ylabel=None, showxlabel=True, showylabel=True, showtitle=True,
-                title=None, reclabel=True, hlines=[0], states=False,
-                desynchsi=0.2, synchsi=0.2, lw=4, alpha=1,
+                title=None, reclabel=True, hlines=[0], showstates=False,
+                statelinepos=None, lw=4, alpha=1,
                 relative2t0=False, swapaxes=False, figsize=None):
         """Plot synchrony index as a function of time, with hopefully the same
         temporal scale as some of the other plots in self"""
@@ -823,9 +823,26 @@ class LFP(object):
             for hline in hlines:
                 a.axhline(y=hline, c='e', ls='--', marker=None)
 
-        # plot lines over time demarcating desynched and synched periods:
-        REC2STATETRANGES = uns['REC2STATETRANGES']
-        if states:
+        # plot lines over time demarcating different ranges of SI values, or manually
+        # defined desynched and synched periods:
+        if showstates in [True, 'auto']:
+            tranges, states = self.si_split(si, t)
+            if relative2t0:
+                 tranges = tranges - t0
+            if swapaxes:
+                lines = a.vlines
+            else:
+                lines = a.hlines
+            slposs = statelinepos
+            if len(slposs) == 1: # use same statelinepos for all states
+                nstates = len(states)
+                slposs = slposs * nstates
+            for trange, state in zip(tranges, states):
+                slpos = slposs[state]
+                clr = uns['LFPPRBINCOLOURS'][state]
+                lines(slpos, trange[0], trange[1], colors=clr, lw=lw, alpha=alpha)
+        elif showstates == 'manual':
+            REC2STATETRANGES = uns['REC2STATETRANGES']
             dtrange, strange = np.asarray(REC2STATETRANGES[self.r.absname]) / 1e6
             dtrange = max(dtrange[0], t0), min(dtrange[1], t1) # clip desynch trange to t0, t1
             strange = max(strange[0], t0), min(strange[1], t1) # clip synch trange to t0, t1
@@ -833,14 +850,14 @@ class LFP(object):
                  dtrange = dtrange - t0
                  strange = strange - t0
             if swapaxes:
-                si0, si1 = xlim
-                tlines = a.vlines
+                lines = a.vlines
             else:
-                si0, si1 = ylim
-                tlines = a.hlines
-            dsi = abs(si1 - si0)
-            tlines(si0+dsi*desynchsi, dtrange[0], dtrange[1], colors='b', lw=lw, alpha=alpha)
-            tlines(si0+dsi*synchsi, strange[0], strange[1], colors='r', lw=lw, alpha=alpha)
+                lines = a.hlines
+            slposs = statelinepos
+            if len(slposs) == 1: # use same statelinepos for both states
+                slposs = slposs * 2
+            lines(slposs[0], dtrange[0], dtrange[1], colors='b', lw=lw, alpha=alpha)
+            lines(slposs[1], strange[0], strange[1], colors='r', lw=lw, alpha=alpha)
 
         a.plot(t, si, 'k-')
         # depending on relative2t0 above, x=0 represents either t0 or time ADC clock started:
@@ -856,14 +873,45 @@ class LFP(object):
         # turn off annoying "+2.41e3" type offset on x axis:
         formatter = mpl.ticker.ScalarFormatter(useOffset=False)
         a.xaxis.set_major_formatter(formatter)
-        if title:
-            gcfm().window.setWindowTitle(title)
-            if showtitle:
-                a.set_title(title)
+        if title == None:
+            title = lastcmd()
+        gcfm().window.setWindowTitle(title)
+        if showtitle:
+            a.set_title(title)
         if reclabel:
             a.text(0.994, 0.01, '%s' % self.r.absname, color='k', transform=a.transAxes,
                    horizontalalignment='right', verticalalignment='bottom')
         f.tight_layout(pad=0.3) # crop figure to contents
+
+    def si_split(self, si, t):
+        """Return contiguous time ranges of SI values that fall between bin
+        edges in LFPPRBINLEDGES. Return an array of tranges and the associated states"""
+        nt = len(t)
+        assert len(si) == nt
+        bw = np.diff(t).mean() # time bin width
+        # t from self.si() represents mid time points for each value of SI,
+        # calculate left and right time points around each SI value instead:
+        tedges = np.asarray(list(t-bw/2) + [t[-1]+bw/2])
+        stateis = []
+        stateis = np.zeros(nt, dtype=int)
+        uns = get_ipython().user_ns
+        ledges = uns['LFPPRBINLEDGES']
+        redges = ledges[1:] + [np.inf]
+        for statei, (ledge, redge), in enumerate(zip(ledges, redges)):
+            tis = (ledge <= si) & (si < redge)
+            stateis[tis] = statei
+        tranis = list(np.diff(stateis).nonzero()[0] + 1) # state transition indices
+        ltis = [0] + tranis # left tedges indices
+        rtis = tranis + [-1] # right tedges indices
+        tranges, states = [], []
+        for lti, rti in zip(ltis, rtis):
+            trange = tedges[lti], tedges[rti]
+            state = stateis[lti]
+            tranges.append(trange)
+            states.append(state)
+        tranges = np.asarray(tranges)
+        states = np.asarray(states)
+        return tranges, states
 
     def filterwavelet(self, chanis=None, wname="db4", maxlevel=6):
         """Filter data using wavelet multi-level decomposition and reconstruction (WMLDR).
