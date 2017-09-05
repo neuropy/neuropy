@@ -599,7 +599,7 @@ class LFP(object):
 
         #old_settings = np.seterr(all='ignore') # suppress div by 0 errors
         # plot power signal to be analyzed
-        #self.si_plot(Pt, hP, t0=0, t1=t[-1], ylim=None, ylabel='highband power',
+        #self.si_plot(hP, Pt, t0=0, t1=t[-1], ylim=None, ylabel='highband power',
         #             title=lastcmd()+' highband power', text=self.r.name)
 
         # set some plotting defaults:
@@ -743,7 +743,7 @@ class LFP(object):
                 xlim = (0, t[-1]+lfpwidth/2)
             else:
                 xlim = (0, t[-1]+width/2)
-            self.si_plot(t, si, t0=t0, t1=t1, xlim=xlim, ylim=ylim, yticks=yticks,
+            self.si_plot(si, t, t0=t0, t1=t1, xlim=xlim, ylim=ylim, yticks=yticks,
                          ylabel=ylabel, showxlabel=showxlabel, showylabel=showylabel,
                          showtitle=showtitle, title=lastcmd(),
                          reclabel=reclabel, hlines=hlines,
@@ -791,10 +791,10 @@ class LFP(object):
             raise ValueError
         if plot:
             ylabel = 'LFP synchrony index (%s)' % ratio
-            self.si_plot(t, r, t0, ylabel, title=lastcmd(), text=self.r.name)
+            self.si_plot(r, t, t0, ylabel, title=lastcmd(), text=self.r.name)
         return r, t
     '''
-    def si_plot(self, t, si, t0=None, t1=None, xlim=None, ylim=None, yticks=None,
+    def si_plot(self, si, t, t0=None, t1=None, xlim=None, ylim=None, yticks=None,
                 ylabel=None, showxlabel=True, showylabel=True, showtitle=True,
                 title=None, reclabel=True, hlines=[0], states=False,
                 desynchsi=0.2, synchsi=0.2, lw=4, alpha=1,
