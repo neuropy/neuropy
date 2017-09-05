@@ -487,8 +487,8 @@ class LFP(object):
     def si(self, kind=None, chani=-1, width=None, tres=None,
            lfpwidth=None, lfptres=None, loband=None, hiband=None, plot=True,
            states=False, desynchsi=0.2, synchsi=0.2, lw=4, alpha=1, relative2t0=False,
-           lim2stim=False, showxlabel=True, showylabel=True, showtitle=True, showtext=True,
-           swapaxes=False, figsize=(20, 3.5)):
+           lim2stim=False, showxlabel=True, showylabel=True, showtitle=True, reclabel=True,
+           swapaxes=False, figsize=None):
         """Calculate an LFP synchrony index, using potentially overlapping windows of width
         and tres, in sec, from the LFP spectrogram, itself composed of bins of lfpwidth and
         lfptres. relative2t0 controls whether to plot relative to t0, or relative to start of
@@ -526,6 +526,15 @@ class LFP(object):
         t0, t1 = ts[0], ts[-1]
         if lim2stim:
             t0, t1 = self.apply_lim2stim(t0, t1)
+        dt = t1 - t0
+        if figsize == None:
+            # convert from recording duration time to width in inches, 0.87 accommodates
+            # padding around the SI plot:
+            figwidth = (dt / 1000) * 5 + 0.87
+            figheight = 2.5 # inches
+            figsize = figwidth, figheight
+            print(figsize)
+
         t0i, t1i = ts.searchsorted((t0, t1))
         x = data[chani, t0i:t1i] / 1e3 # slice data, convert from uV to mV
         x = filter.notch(x)[0] # remove 60 Hz mains noise
@@ -592,17 +601,21 @@ class LFP(object):
         # plot power signal to be analyzed
         #self.si_plot(Pt, hP, t0=0, t1=t[-1], ylim=None, ylabel='highband power',
         #             title=lastcmd()+' highband power', text=self.r.name)
+
+        # set some plotting defaults:
         hlines = []
-        if kind[0] == 'n':
+        if pr:
+            ylim = 0, 1
+            yticks = 0, 0.2, 0.4, 0.6, 0.8, 1
+        else:
             ylim = -1, 1
+            yticks = -1, 0, 1
             hlines = [0]
         # calculate some metric of each column, i.e. each bin:
         if kind == 'L/(L+H)':
             si = lP/(lP + hP)
-            ylim = 0, 1
         elif kind == 'L/H':
             si = lP/hP
-            ylim = 0, 1
         elif kind == 'nLH':
             t = Pt
             si = (lP - hP) / (lP + hP)
@@ -610,6 +623,7 @@ class LFP(object):
         elif kind == 'cv':
             si = binhP.std(axis=1) / binhP.mean(axis=1)
             ylim = 0, 2
+            ytiks = 0, 1, 2
             ylabel = 'LFP power CV'
         elif kind == 'ncv':
             s = binhP.std(axis=1)
@@ -729,9 +743,10 @@ class LFP(object):
                 xlim = (0, t[-1]+lfpwidth/2)
             else:
                 xlim = (0, t[-1]+width/2)
-            self.si_plot(t, si, t0=t0, t1=t1, xlim=xlim, ylim=ylim, ylabel=ylabel,
-                         showxlabel=showxlabel, showylabel=showylabel, showtitle=showtitle,
-                         title=lastcmd(), showtext=showtext, text=self.r.name, hlines=hlines,
+            self.si_plot(t, si, t0=t0, t1=t1, xlim=xlim, ylim=ylim, yticks=yticks,
+                         ylabel=ylabel, showxlabel=showxlabel, showylabel=showylabel,
+                         showtitle=showtitle, title=lastcmd(),
+                         reclabel=reclabel, hlines=hlines,
                          states=states, desynchsi=desynchsi, synchsi=synchsi, lw=lw,
                          alpha=alpha, relative2t0=relative2t0, swapaxes=swapaxes,
                          figsize=figsize)
@@ -779,20 +794,16 @@ class LFP(object):
             self.si_plot(t, r, t0, ylabel, title=lastcmd(), text=self.r.name)
         return r, t
     '''
-    def si_plot(self, t, si, t0=None, t1=None, xlim=None, ylim=None, ylabel=None,
-                showxlabel=True, showylabel=True, showtitle=True,
-                title=None, showtext=True, text=None, hlines=[0], states=False,
-                desynchsi=0.2, synchsi=0.9, lw=4, alpha=1,
-                relative2t0=False, swapaxes=False, figsize=(20, 6.5)):
+    def si_plot(self, t, si, t0=None, t1=None, xlim=None, ylim=None, yticks=None,
+                ylabel=None, showxlabel=True, showylabel=True, showtitle=True,
+                title=None, reclabel=True, hlines=[0], states=False,
+                desynchsi=0.2, synchsi=0.2, lw=4, alpha=1,
+                relative2t0=False, swapaxes=False, figsize=None):
         """Plot synchrony index as a function of time, with hopefully the same
         temporal scale as some of the other plots in self"""
         uns = get_ipython().user_ns
-        if figsize == None:
-            f = pl.gcf()
-            a = pl.gca()
-        else:
-            f = pl.figure(figsize=figsize)
-            a = f.add_subplot(111)
+        f = pl.figure(figsize=figsize)
+        a = f.add_subplot(111)
 
         xlabel = "time (s)"
         if ylabel == None:
@@ -835,6 +846,8 @@ class LFP(object):
         # depending on relative2t0 above, x=0 represents either t0 or time ADC clock started:
         a.set_xlim(xlim) # low/high limits are unchanged if None
         a.set_ylim(ylim)
+        if yticks != None:
+            a.set_yticks(yticks)
         if showxlabel:
             a.set_xlabel(xlabel)
         if showylabel:
@@ -847,8 +860,8 @@ class LFP(object):
             gcfm().window.setWindowTitle(title)
             if showtitle:
                 a.set_title(title)
-        if showtext:
-            a.text(0.998, 0.01, '%s' % text, color='k', transform=a.transAxes,
+        if reclabel:
+            a.text(0.994, 0.01, '%s' % self.r.absname, color='k', transform=a.transAxes,
                    horizontalalignment='right', verticalalignment='bottom')
         f.tight_layout(pad=0.3) # crop figure to contents
 
