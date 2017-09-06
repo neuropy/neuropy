@@ -3,8 +3,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-POOLOVEROPTO = True
-
+## TODO: this script could iterate over multiple recordings, although that might
+## generate excessive figures
+## TODO: this script could probably be integrated into Recording.traster()
 # specify recordings to analyze:
 #catnsrecs = [ptc17.tr2b.r58, ptc18.tr1.r38, ptc18.tr2c.r58, ptc22.tr1.r08,
 #             ptc22.tr1.r10, ptc22.tr4b.r49]
@@ -14,10 +15,19 @@ rec = ptc22.tr1.r08
 #rec = pvc107.tr1.r09
 
 # raster plot options:
+showstates = 'auto' # 'auto' or True, 'manual', False
+sortstates = False # sort trials by cortical state
+if sortstates: assert showstates
+# for mouse data with opto trials, pool trials over opto values, thereby mixing opto
+# and non-opto trials in the same raster plot, i.e., ignore opto state:
+POOLOVEROPTO = True
 marker = '|'
 s = 4 # marker size
 alpha = 1
 c = (0, 0, 0, alpha) # give the ticks some transparency
+slw = 4 # state line width
+slalpha = 1 # state line alpha
+slpos = -0.07 # x position of state line
 rasfigwidth = 3
 rasfigheightoffset = 0.125 # inches
 rasfigheightperntrials = (5 - 0.125) / 200 # inches per trial
@@ -66,6 +76,7 @@ if p: # mouse recording with potentially interleaved movie trials and opto
                 movieis, = np.where(movienames == umoviename)
                 pooledtrialis = np.sort(np.hstack(oldtrialiss[movieis]))
                 trialiss.append(pooledtrialis)
+            trialiss = np.asarray(trialiss) # convert to 2D array
 else: # cat recording with identical movie trials
     ntrials = len(t0s)
     trialiss = np.arange(ntrials).reshape((1, -1)) # make 2D
@@ -78,10 +89,35 @@ else: # cat recording with identical movie trials
 snids = sorted(rec.n) # sorted neuron IDs
 neurons = [ rec.n[nid] for nid in snids ] # sorted list of neurons
 
+if showstates:
+    # find current state at start of each trial, and later use that to plot state colour
+    # as a function of trial index:
+    si, tsi = rec.lfp.si(showstates=showstates, title=rec.absname+'.si()')
+    stranges, states = rec.lfp.si_split(si, tsi) # state time ranges and values
+    if sortstates:
+        raise NotImplementedError()
+        # only keep trials that fully fall within a single state trange,
+        # and sort them by state instead of by time
+        statesortis = states.argsort()
+        states = states[statesortis]
+        # first sort stranges by increasing state:
+        stranges = stranges[statesortis]
+        ## TODO: filter and sort trialiss here
+    trial2state = {} # map trial index to state value
+    for triali in trialiss.ravel():
+        t0 = t0s[triali] / 1e6 # sec
+        statei, = np.where((stranges[:, 0] <= t0) & (t0 < stranges[:, 1]))
+        assert len(statei) <= 1 # trial start should only match a single state trange
+        if len(statei) == 1:
+            state = states[statei[0]] # pull it out of the array, dereference
+        else:
+            state = None
+        trial2state[triali] = state
+
 # plot rasters: iterate over movies, units, trials
 nrasterplots = 0
 for trialis, umoviename in zip(trialiss, umovienames):
-    ntrials = len(trialis)
+    ntrials = len(trialis) # number of trials for this movie
     rasfigheight = rasfigheightoffset + ntrials*rasfigheightperntrials
     rasfigsize = rasfigwidth, rasfigheight
     for neuron in neurons:
@@ -102,6 +138,27 @@ for trialis, umoviename in zip(trialiss, umovienames):
 
         f = plt.figure(figsize=rasfigsize)
         a = f.add_subplot(111, fc=fc)
+
+        if showstates:
+            rasterstates = np.asarray([ trial2state[triali] for triali in trialis ])
+            # don't try and plot state for trials with no state:
+            validstateis = rasterstates != None
+            statesubtrialis = np.arange(ntrials)[validstateis] # 0-based
+            # plot vertical lines just left of y axis:
+            statelinepos = np.tile(slpos, len(statesubtrialis))
+        if showstates in [True, 'auto']:
+            clrs = [ LFPPRBINCOLOURS[state] for state in rasterstates[validstateis] ]
+            a.vlines(statelinepos, statesubtrialis+0.5, statesubtrialis+1.5,
+                     colors=clrs, lw=slw, alpha=slalpha, clip_on=False)
+        elif showstates == 'manual':
+            raise NotImplementedError()
+            '''
+            dtrange, strange = np.asarray(REC2STATETRANGES[self.r.absname]) / 1e6
+            dtrange = max(dtrange[0], t0), min(dtrange[1], t1) # clip desynch trange to t0, t1
+            strange = max(strange[0], t0), min(strange[1], t1) # clip synch trange to t0, t1
+            a.vlines(statelinepos, dtrange[0], dtrange[1], colors='b', lw=lw, alpha=alpha)
+            a.vlines(statelinepos, strange[0], strange[1], colors='r', lw=lw, alpha=alpha)
+            '''
         # plot 1-based trialis:
         a.scatter(ts/1e6, subtrialis+1, marker=marker, c=c, s=s, cmap=None) # in sec
         a.set_xlim(xlim)
@@ -124,8 +181,10 @@ for trialis, umoviename in zip(trialiss, umovienames):
 
         show() # call within the neuron loop, to ensure that rasters are displayed in nid order
         nrasterplots += 1
+
 print('created %d raster plots' % nrasterplots)
 
+## TODO: autoload runspeed info in Experiment.load_stim_mat
 '''
 if os.path.exists(rsfullfname):
     # load runspeed info:
