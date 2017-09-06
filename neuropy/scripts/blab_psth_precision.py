@@ -19,7 +19,7 @@ from numpy import log10
 
 import matplotlib.pyplot as plt
 
-from core import get_ssnids, sparseness, intround, ceilsigfig, scatterbin, g
+from core import get_ssnids, sparseness, intround, ceilsigfig, scatterbin, g, dictlists
 
 from psth_funcs import plot_psth, get_psth_peaks_gac
 
@@ -62,18 +62,18 @@ FMTS = {'d':'b-', 's':'r-'} # PSTH plotting formats for desynched and synched
 
 POOLOVEROPTO = True
 
-psthss = {'d': [], 's': []}
-spiketss = {'d': [], 's': []}
+psthss = dictlists(states)
+spiketss = dictlists(states)
 
 # init measurements collected across all recordings and movies, indexed by state:
-allrnids = {'d': [], 's': []}
-allnrnids = {'d': [], 's': []}
-allrpsths = {'d': [], 's': []}
-allpeaktimes = {'d': [], 's': []}
-allpeakwidths = {'d': [], 's': []}
-allpeakheights = {'d': [], 's': []}
-allpeaknspikes = {'d': [], 's': []}
-allpsthsdepths = {'d': [], 's': []}
+allrnids = dictlists(states)
+allnrnids = dictlists(states)
+allrpsths = dictlists(states)
+allpeaktimes = dictlists(states)
+allpeakwidths = dictlists(states)
+allpeakheights = dictlists(states)
+allpeaknspikes = dictlists(states)
+allpsthsdepths = dictlists(states)
 alln2rel = []
 alln2spars = []
 alln2depth = []
@@ -111,14 +111,14 @@ for rec in recs:
     for trialis, moviename in zip(trialiss, umovienames):
         print('  movie: %s' % moviename)
         mvttranges = e.ttranges[trialis] # trial time ranges for this movie
-        rnids = {'d': [], 's': []} # responsive neuron IDs for this movie
-        nrnids = {'d': [], 's': []} # nonresponsive neuron IDs for this movie
-        rpsths = {'d': [], 's': []} # responsive PSTHs for this movie
-        peaktimes = {'d': [], 's': []} # peak times of all nids for this movie
-        peakwidths = {'d': [], 's': []} # peak widths of all nids for this movie
-        peakheights = {'d': [], 's': []} # peak heights of all nids for this movie
-        peaknspikes = {'d': [], 's': []} # spike counts of each peak, normalized by ntrials
-        psthsdepths = {'d': [], 's': []} # physical unit depths of each peak
+        rnids = dictlists(states) # responsive neuron IDs for this movie
+        nrnids = dictlists(states) # nonresponsive neuron IDs for this movie
+        rpsths = dictlists(states) # responsive PSTHs for this movie
+        peaktimes = dictlists(states) # peak times of all nids for this movie
+        peakwidths = dictlists(states) # peak widths of all nids for this movie
+        peakheights = dictlists(states) # peak heights of all nids for this movie
+        peaknspikes = dictlists(states) # spike counts of each peak, normalized by ntrials
+        psthsdepths = dictlists(states) # physical unit depths of each peak
         n2rel = {'d': {}, 's': {}} # nid:reliability mapping for this movie
         n2spars = {'d': {}, 's': {}} # nid:sparseness mapping for this movie
         n2depth = {'d': {}, 's': {}} # nid:unit depth mapping for this movie
