@@ -603,7 +603,8 @@ class BaseExperiment(object):
 
     def get_sweeptranges(self):
         """Find positions of each sweep index in the din, and generate array of tranges
-        during which that stimulus condition was on"""
+        during which that stimulus condition was on. Return dict of arrays, with sweep
+        indices as keys"""
         try:
             return self._sweeptranges # check for cache
         except AttributeError:
@@ -627,6 +628,21 @@ class BaseExperiment(object):
         return self._sweeptranges
 
     sweeptranges = property(get_sweeptranges)
+
+    def get_ttranges(self):
+        """Return trial time ranges"""
+        try:
+            return self._ttranges # check for cache
+        except AttributeError:
+            pass
+        # build and cache ttranges:
+        self._ttranges, ttrangesweepis, exptrialis = self.r.trialtranges(eids=[self.id])
+        return self._ttranges
+
+    def set_ttranges(self, ttranges):
+        self._ttranges = ttranges
+
+    ttranges = property(get_ttranges, set_ttranges)
 
 
 class ExperimentCode(BaseExperiment):
