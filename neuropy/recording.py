@@ -1331,8 +1331,12 @@ class RecordingRaster(BaseRecording):
                 assert len(c) == nn # one specified colour per neuron
 
         if ttranges is None:
-            ttranges, ttrangesweepis, exptrialis = self.trialtranges(
-                sweepis=sweepis, eids=eids, natexps=natexps, t0=t0, dt=dt, blank=blank)
+            if self.tr.animal.type == 'Mouse':
+                ttranges = self.e0.ttranges
+                ttrangesweepis, exptrialis = None, None
+            else:
+                ttranges, ttrangesweepis, exptrialis = self.trialtranges(
+                    sweepis=sweepis, eids=eids, natexps=natexps, t0=t0, dt=dt, blank=blank)
         ntrials = len(ttranges)
 
         if strange != None:
