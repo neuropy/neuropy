@@ -1,33 +1,17 @@
-"""Load blab natmov trial times and runspeed from .mat files, plot rasters and specgrams"""
+"""Plot natural scene movie trial rasters, and optionally runspeed and specgrams"""
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.io import loadmat
 
-from lfp import LFP
-from core import recarray2dict
-
-
-# specify blab mouse recording to analyze:
-mname, sid, eid = 'Ntsr1-Cre_0174', 2, 5 # awake, 3 interleaved movies
-#mname, sid, eid = 'PVCre_0107', 1, 9 # anesth, 2 interleaved movies
-#mname, sid, eid = 'PVCre_0113', 1, 11 # awake, 2 interleaved movies
 POOLOVEROPTO = True
-basepath = '/home/mspacek/data/blab/natstate'
-mpath = os.path.join(basepath, mname)
-ename = '%s_s%02d_e%02d' % (mname, sid, eid)
-epath = os.path.join(mpath, 'tr%d' % sid, '%02d' % eid)
-stimfname = ename + '_stim.mat'
-rsfname = ename + '_runspeed.mat'
-stimfullfname = os.path.join(epath, stimfname)
-rsfullfname = os.path.join(epath, rsfname)
 
-m = Animal(mpath)
-exec('%s = m' % m.name) # add to local namespace via its short name
-m.load()
-r = m.tr[sid].r[eid]
-snids = sorted(r.n) # sorted neuron IDs
-neurons = [ r.n[nid] for nid in snids ] # sorted list of neurons
+# specify recordings to analyze:
+#catnsrecs = [ptc17.tr2b.r58, ptc18.tr1.r38, ptc18.tr2c.r58, ptc22.tr1.r08,
+#             ptc22.tr1.r10, ptc22.tr4b.r49]
+#mousensrecs = [nts174.tr2.r05, pvc107.tr1.r09, pvc113.tr1.r11]
+#allrecs = catnsrecs + mousensrecs
+rec = ptc22.tr1.r08
+#rec = pvc107.tr1.r09
 
 # raster plot options:
 marker = '|'
@@ -46,36 +30,53 @@ forcedt = True
 ylabel = False
 title = False
 
-# load stimulus info:
-stimd = loadmat(stimfullfname, squeeze_me=True) # dict
-t0s = stimd['stimONTimes'] # sec
+# start recording loop here:
+
+# get stimulus info for this recording and its single experiment:
+assert len(rec.e) == 1
+e = rec.e0
+t0s = e.ttranges[:, 0] # us
+t1s = e.ttranges[:, 1] # us
 if forcedt:
-    t1s = t0s + xlim[1]
-else:
-    t1s = stimd['stimOFFTimes'] # sec
-p = recarray2dict(stimd['p']) # stim parameters struct `p` converted to dict
-# each row is trial indices for its matching movie:
-trialiss = p['seqnums'] - 1 # convert seqnums from 1-based to 0-based
-movienames = p['movie']
-umovienames = np.unique(movienames)
-# handle opto trials:
-if len(movienames) != len(umovienames):
-    # some movies were displayed multiple times, probably in combination with opto stim:
-    optopari, = np.where(p['parnames'] == 'opto')
-    optovals = p['pars'][optopari]
-    uoptovals = np.unique(optovals)
-    if len(uoptovals) > 1:
-        print('found multiple unique opto values: %r' % optovals)
-    if POOLOVEROPTO:
-        # pool trials over opto values, thereby mixing opto and non-opto trials
-        # in the same raster plot:
-        print('pooling over opto values')
-        oldtrialiss = trialiss.copy()
-        trialiss = []
-        for umoviename in umovienames:
-            movieis, = np.where(movienames == umoviename)
-            pooledtrialis = np.sort(np.hstack(oldtrialiss[movieis]))
-            trialiss.append(pooledtrialis)
+    t1s = t0s + xlim[1] * 1e6 # us
+try:
+    p = e.p # mouse stim params dict
+except AttributeError:
+    p = None
+if p: # mouse recording with potentially interleaved movie trials and opto
+    # trialiss is 2D array, each row is trial indices for its matching movie:
+    trialiss = p['seqnums'] - 1 # convert seqnums from 1-based to 0-based
+    movienames = p['movie']
+    umovienames = np.unique(movienames)
+    # handle opto trials:
+    if len(movienames) != len(umovienames):
+        # some movies were displayed multiple times, probably in combination with opto stim:
+        optopari, = np.where(p['parnames'] == 'opto')
+        optovals = p['pars'][optopari]
+        uoptovals = np.unique(optovals)
+        if len(uoptovals) > 1:
+            print('found multiple unique opto values: %r' % optovals)
+        if POOLOVEROPTO:
+            # pool trials over opto values, thereby mixing opto and non-opto trials
+            # in the same raster plot:
+            print('pooling over opto values')
+            oldtrialiss = trialiss.copy()
+            trialiss = []
+            for umoviename in umovienames:
+                movieis, = np.where(movienames == umoviename)
+                pooledtrialis = np.sort(np.hstack(oldtrialiss[movieis]))
+                trialiss.append(pooledtrialis)
+else: # cat recording with identical movie trials
+    ntrials = len(t0s)
+    trialiss = np.arange(ntrials).reshape((1, -1)) # make 2D
+    # format movie name as for mouse:
+    moviename = os.path.split(ptc22.tr1.r08.e0.s['fname'])[-1]
+    framerange = ptc22.tr1.r08.e0.d['framei']
+    moviename += '_%d-%d' % (framerange.start, framerange.stop)
+    umovienames = [moviename]
+
+snids = sorted(rec.n) # sorted neuron IDs
+neurons = [ rec.n[nid] for nid in snids ] # sorted list of neurons
 
 # plot rasters: iterate over movies, units, trials
 nrasterplots = 0
@@ -84,7 +85,7 @@ for trialis, umoviename in zip(trialiss, umovienames):
     rasfigheight = rasfigheightoffset + ntrials*rasfigheightperntrials
     rasfigsize = rasfigwidth, rasfigheight
     for neuron in neurons:
-        spikes = neuron.spikes / 1e6 # spike times, in seconds
+        spikes = neuron.spikes # spike times, us
         ts, subtrialis = [], [] # x and y values for all spikes in this trial raster plot
         for subtriali, triali in enumerate(trialis):
             t0, t1 = t0s[triali], t1s[triali]
@@ -92,7 +93,7 @@ for trialis, umoviename in zip(trialiss, umovienames):
             # this unit's spike times relative to start of this trial, in seconds:
             t = spikes[s0i:s1i] - t0
             nspikes = len(t) # if nspikes == 0, append empty arrays to ts and subtrialis
-            ts.append(t) # x values for this trial
+            ts.append(t) # x values for this trial, us
             # generate 0-based y values for spikes in this trial:
             subtrialis.append(np.tile(subtriali, nspikes))
 
@@ -102,7 +103,7 @@ for trialis, umoviename in zip(trialiss, umovienames):
         f = plt.figure(figsize=rasfigsize)
         a = f.add_subplot(111, fc=fc)
         # plot 1-based trialis:
-        a.scatter(ts, subtrialis+1, marker=marker, c=c, s=s, cmap=None)
+        a.scatter(ts/1e6, subtrialis+1, marker=marker, c=c, s=s, cmap=None) # in sec
         a.set_xlim(xlim)
         # -1 inverts the y axis, +1 ensures last trial is fully visible:
         a.set_ylim(ntrials+1, -1)
@@ -115,7 +116,7 @@ for trialis, umoviename in zip(trialiss, umovienames):
             a.set_ylabel("trial index") # trial index order, not necessarily temporal order
         else:
             a.set_yticks([]) # turn off y ticks
-        titlestr = ename + '_' + umoviename + '_n%d' % neuron.id
+        titlestr = rec.absname + '_' + umoviename + '_n%d' % neuron.id
         gcfm().window.setWindowTitle(titlestr)
         if title:
             a.set_title(titlestr)
@@ -125,6 +126,7 @@ for trialis, umoviename in zip(trialiss, umovienames):
         nrasterplots += 1
 print('created %d raster plots' % nrasterplots)
 
+'''
 if os.path.exists(rsfullfname):
     # load runspeed info:
     rsd = loadmat(rsfullfname, squeeze_me=True) # dict
@@ -161,7 +163,9 @@ if os.path.exists(rsfullfname):
     gcfm().window.setWindowTitle(titlestr)
     f.tight_layout(pad=0.3) # crop figure to contents
     show()
+'''
 
+'''
 # plot LFP specgram:
 chani = -2 # 0-based chan ID
 r.lfp.specgram(f1=59, chanis=chani, width=2, tres=0.5, cm='jet', relative2t0=True, title=False,
@@ -169,3 +173,4 @@ r.lfp.specgram(f1=59, chanis=chani, width=2, tres=0.5, cm='jet', relative2t0=Tru
 titlestr = ename + '_specgram_chan%d' % (chani+1) # 1-based chan ID
 gcfm().window.setWindowTitle(titlestr)
 show()
+'''
