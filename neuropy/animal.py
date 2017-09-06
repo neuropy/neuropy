@@ -41,7 +41,7 @@ class Animal(object):
             assert year.isnumeric()
             year = str(int(year) - 2000) # year wrt 2000
             # ensure year is exactly 2 digits:
-            year= year.zfill(2)
+            year = year.zfill(2)
             assert len(year) == 2
         assert num.isnumeric()
         num = str(int(num)) # drop any leading 0s
@@ -54,6 +54,20 @@ class Animal(object):
         return self.name
 
     id = property(get_id)
+
+    def get_type(self):
+        """Return animal type based on short name"""
+        name = self.name
+        if name.startswith('ptc'):
+            return 'Cat'
+        elif name.startswith('ptr'):
+            return 'Rat'
+        elif name.startswith('bl') or name.startswith('pvc') or name.startswith('nts'):
+            return 'Mouse'
+        else:
+            raise ValueError('Unknown type for animal %r' % name)
+
+    type = property(get_type)
 
     def tree(self):
         """Print tree hierarchy"""
