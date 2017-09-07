@@ -11,14 +11,14 @@ import matplotlib.pyplot as plt
 #             ptc22.tr1.r10, ptc22.tr4b.r49]
 #mousensrecs = [nts174.tr2.r05, pvc107.tr1.r09, pvc113.tr1.r11]
 #allrecs = catnsrecs + mousensrecs
-rec = ptc22.tr1.r08
-#rec = nts174.tr2.r05
+#rec = ptc22.tr1.r08
+rec = nts174.tr2.r05
 #rec = pvc107.tr1.r09
 #rec = pvc113.tr1.r11
 
 # raster plot options:
 showstates = 'auto' # 'auto' or True, 'manual', False
-sortstates = False # sort trials by cortical state
+sortstates = True # sort trials by cortical state
 if sortstates: assert showstates
 # for mouse data with opto trials, pool trials over opto values, thereby mixing opto
 # and non-opto trials in the same raster plot, i.e., ignore opto state:
