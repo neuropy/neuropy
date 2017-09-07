@@ -103,8 +103,10 @@ if showstates:
         # first sort stranges by increasing state:
         stranges = stranges[statesortis]
         ## TODO: filter and sort trialiss here
+    # find current state at start of each trial, and later use that to plot state colour
+    # as a function of trial index:
     trial2state = {} # map trial index to state value
-    for triali in trialiss.ravel():
+    for triali in np.concatenate(trialiss): # iterate over all trials, regardless of trial type
         t0 = t0s[triali] / 1e6 # sec
         statei, = np.where((stranges[:, 0] <= t0) & (t0 < stranges[:, 1]))
         assert len(statei) <= 1 # trial start should only match a single state trange
@@ -143,12 +145,13 @@ for trialis, umoviename in zip(trialiss, umovienames):
             rasterstates = np.asarray([ trial2state[triali] for triali in trialis ])
             # don't try and plot state for trials with no state:
             validstateis = rasterstates != None
-            statesubtrialis = np.arange(ntrials)[validstateis] # 0-based
+            statesubtrials = np.arange(ntrials)[validstateis] + 1 # 1-based
             # plot vertical lines just left of y axis:
-            statelinepos = np.tile(slpos, len(statesubtrialis))
+            statelinepos = np.tile(slpos, len(statesubtrials))
         if showstates in [True, 'auto']:
             clrs = [ LFPPRBINCOLOURS[state] for state in rasterstates[validstateis] ]
-            a.vlines(statelinepos, statesubtrialis+0.5, statesubtrialis+1.5,
+            # the -0.5 and +0.5 center the lines around the raster ticks of single trials
+            a.vlines(statelinepos, statesubtrials-0.5, statesubtrials+0.5,
                      colors=clrs, lw=slw, alpha=slalpha, clip_on=False)
         elif showstates == 'manual':
             raise NotImplementedError()
