@@ -49,16 +49,10 @@ WIDTHMAX = 300 # maximum peak width, ms
 # plotting params:
 PLOTPSTH = False
 OVERPLOTPSTH = False
-#WIDTHMIN, WIDTHSTEP, WIDTHTICKSTEP = 0, 10, 50
-TSMAX, TSSTEP = 5.5, 0.25
-HEIGHTMIN, HEIGHTMAX = 0, 100
-NSPARSBINS = 15
-NRELBINS = 15
 LOGNULLREL = -3
 NULLREL = 10**LOGNULLREL
 NULLSPARS = 0
 figsize = (3, 3) # inches
-DEPTHSRANGE = np.array([0, 1400]) # um
 FMTS = {'d':'b-', 's':'r-'} # PSTH plotting formats for desynched and synched
 
 POOLOVEROPTO = True
