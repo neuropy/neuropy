@@ -241,7 +241,7 @@ print('found %d peaks in total' % ntotpeaks)
 logmin, logmax = 0.5, log10(WIDTHMAX)
 nbins = 20
 bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
-figure(figsize=figsize)
+f, a = subplots(figsize=figsize)
 n1 = hist(allpeakwidths['s'], bins=bins, histtype='step', color='r')[0] # synched
 n0 = hist(allpeakwidths['d'], bins=bins, histtype='step', color='b')[0] # desynched
 n = np.hstack([n0, n1])
@@ -293,7 +293,7 @@ for n2rel in alln2rel: # iterate over movies
         scatrels[0].append(n2rel['d'].get(nid, NULLREL)) # desynched
         scatrels[1].append(n2rel['s'].get(nid, NULLREL)) # synched
 scatrels = np.asarray(scatrels).T # nrows x 2 cols
-figure(figsize=figsize)
+f, a = subplots(figsize=figsize)
 truerows = (scatrels != NULLREL).all(axis=1) # exclude NULLREL rows
 falserows = (scatrels == NULLREL).any(axis=1)
 scatrelstrue = scatrels[truerows]
@@ -348,7 +348,7 @@ for n2spars in alln2spars: # iterate over movies
         scatspars[0].append(n2spars['d'].get(nid, NULLSPARS)) # desynched
         scatspars[1].append(n2spars['s'].get(nid, NULLSPARS)) # synched
 scatspars = np.asarray(scatspars).T # nrows x 2 cols
-figure(figsize=figsize)
+f, a = subplots(figsize=figsize)
 truerows = (scatspars != NULLSPARS).all(axis=1) # exclude NULLSPARS rows
 falserows = (scatspars == NULLSPARS).any(axis=1)
 scatsparstrue = scatspars[truerows]
