@@ -2359,6 +2359,17 @@ class NeuropyAutoLocator(mpl.ticker.MaxNLocator):
         mpl.ticker.MaxNLocator.__init__(self) # use MaxNLocator's defaults instead
 
 
+def fix_minor_log_ticks(ax):
+    """Fix minor ticks sometimes missing on a log scale due to them exceeding MPL's
+    default tick count limit.
+    See https://stackoverflow.com/a/44079725/2020363
+    """
+    locmin = mpl.ticker.LogLocator(base=10.0,
+                                   subs=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
+                                   numticks=100)
+    ax.xaxis.set_minor_locator(locmin)
+    ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+
 def getargstr(obj):
     """Returns object's argument list as a string. Stolen from wx.py package?"""
     import inspect

@@ -19,7 +19,8 @@ from numpy import log10
 
 import matplotlib.pyplot as plt
 
-from core import get_ssnids, sparseness, intround, ceilsigfig, scatterbin, g, dictlists
+from core import (get_ssnids, sparseness, intround, ceilsigfig, scatterbin, g, dictlists,
+                  fix_minor_log_ticks)
 
 from psth_funcs import plot_psth, get_psth_peaks_gac
 
@@ -322,6 +323,8 @@ ticklabels = ['$10^{%d}$' % logtick for logtick in range(logmin, 0)]
 ticklabels.append('1')
 xticks(ticks, ticklabels)
 yticks(ticks, ticklabels)
+# make sure minor ticks show up on both log scales:
+fix_minor_log_ticks(a)
 #xticks(10**(np.arange(logmin, logmax+1.0, 1.0)))
 #yticks(10**(np.arange(logmin, logmax+1.0, 1.0)))
 text(0.03, 0.98, '%s' % pstring, horizontalalignment='left', verticalalignment='top',
