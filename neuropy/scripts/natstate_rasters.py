@@ -1,4 +1,6 @@
-"""Plot natural scene movie trial rasters, and optionally runspeed and specgrams"""
+"""Plot natural scene movie trial rasters, and optionally runspeed and specgrams
+
+Run from within neuropy using `run -i scripts/natstate_rasters.py`"""
 
 import numpy as np
 import matplotlib.pyplot as plt
