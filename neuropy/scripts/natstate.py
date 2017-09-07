@@ -12,7 +12,9 @@ import matplotlib.pyplot as plt
 #mousensrecs = [nts174.tr2.r05, pvc107.tr1.r09, pvc113.tr1.r11]
 #allrecs = catnsrecs + mousensrecs
 rec = ptc22.tr1.r08
+#rec = nts174.tr2.r05
 #rec = pvc107.tr1.r09
+#rec = pvc113.tr1.r11
 
 # raster plot options:
 showstates = 'auto' # 'auto' or True, 'manual', False
@@ -79,7 +81,7 @@ if p: # mouse recording with potentially interleaved movie trials and opto
             trialiss = np.asarray(trialiss) # convert to 2D array
 else: # cat recording with identical movie trials
     ntrials = len(t0s)
-    trialiss = np.arange(ntrials).reshape((1, -1)) # make 2D
+    trialiss = np.arange(ntrials).reshape((1, -1)) # 0-based 2D array with 1 row
     # format movie name as for mouse:
     moviename = os.path.split(ptc22.tr1.r08.e0.s['fname'])[-1]
     framerange = ptc22.tr1.r08.e0.d['framei']
@@ -90,19 +92,36 @@ snids = sorted(rec.n) # sorted neuron IDs
 neurons = [ rec.n[nid] for nid in snids ] # sorted list of neurons
 
 if showstates:
-    # find current state at start of each trial, and later use that to plot state colour
-    # as a function of trial index:
+    # show coloured state lines along left edge of raster plot
     si, tsi = rec.lfp.si(showstates=showstates, title=rec.absname+'.si()')
-    stranges, states = rec.lfp.si_split(si, tsi) # state time ranges and values
+    stranges, states = rec.lfp.si_split(si, tsi) # state time ranges (sec) and values
     if sortstates:
-        raise NotImplementedError()
-        # only keep trials that fully fall within a single state trange,
-        # and sort them by state instead of by time
-        statesortis = states.argsort()
+        print('Sorting trials by state, excluding those that traverse states')
+        # only keep trials that completely fall within a single state trange,
+        # and sort trials by state instead of by time
+        # first sort stranges by increasing state, use stable argsort to keep stranges
+        # within a state sorted in time:
+        statesortis = states.argsort(kind='mergesort')
         states = states[statesortis]
-        # first sort stranges by increasing state:
         stranges = stranges[statesortis]
-        ## TODO: filter and sort trialiss here
+        # filter and sort trialiss:
+        strialiss = []
+        for strange in stranges:
+            strialis = np.where((strange[0] <= t0s/1e6) & (t1s/1e6 <= strange[1]))[0] # 0-based
+            strialiss.append(strialis)
+        strialis = np.concatenate(strialiss)
+        oldtrialiss = trialiss # rename
+        nconditions = len(oldtrialiss)
+        # build up new trialiss as a list of lists,
+        # can't use [[]]*nconditions because that makes copies!:
+        trialiss = [ [] for cond in range(nconditions) ]
+        for striali in strialis:
+            # for each kept trial, find its row index in oldtrialiss, i.e. its movie/opto index,
+            # there's probably a more vectorized way to do this:
+            i = np.where(oldtrialiss == striali)[0]
+            assert len(i) == 1
+            i = int(i) # convert from array to int for indexing into list
+            trialiss[i].append(striali)
     # find current state at start of each trial, and later use that to plot state colour
     # as a function of trial index:
     trial2state = {} # map trial index to state value
