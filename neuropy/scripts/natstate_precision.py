@@ -1,4 +1,4 @@
-"""For blab animals, detect response events within PSTHs, count them, measure the width of
+"""Detect response events within PSTHs, count them, measure the width of
 each one, and plot their distributions as a function of cortical state within each of the
 natural scene movie recordings listed below.
 
@@ -9,7 +9,7 @@ Dan, 2009.
 
 Also, measure sparseness of responsive PSTHs.
 
-Run from within neuropy using `run -i scripts/blab_psth_precision.py`"""
+Run from within neuropy using `run -i scripts/natstate_precision.py`"""
 
 from scipy.signal import argrelextrema
 from scipy.stats import ttest_ind, chisquare, mannwhitneyu, linregress
@@ -31,9 +31,9 @@ from psth_funcs import plot_psth, get_psth_peaks_gac
 
 #recs = [nts174.tr2.r05, pvc113.tr1.r11] # awake mice
 #recs = [pvc107.tr1.r09] # anesthetized mice
-recs = [nts174.tr2.r05, pvc113.tr1.r11, pvc107.tr1.r09] # all mice
-#recs = [ptc17.tr2b.r58, ptc18.tr1.r38, ptc18.tr2c.r58, ptc22.tr1.r08,
-#        ptc22.tr1.r10, ptc22.tr4b.r49] # all cats
+#recs = [nts174.tr2.r05, pvc113.tr1.r11, pvc107.tr1.r09] # all mice
+recs = [ptc17.tr2b.r58, ptc18.tr1.r38, ptc18.tr2c.r58, ptc22.tr1.r08,
+        ptc22.tr1.r10, ptc22.tr4b.r49] # all cats
 #recs = [ eval(recname) for recname in sorted(REC2STATE2TRANGES) ] # unique, no reps, sorted
 recnames = ' '.join([rec.absname for rec in recs])
 states = ['d', 's'] # desynched, synched
