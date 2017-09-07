@@ -9,6 +9,8 @@ Dan, 2009.
 
 Also, measure sparseness of responsive PSTHs.
 
+This script only works for cat data.
+
 Run from within neuropy using `run -i scripts/psth_precision.py`"""
 
 from scipy.signal import argrelextrema
