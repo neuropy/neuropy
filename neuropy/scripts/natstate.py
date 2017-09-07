@@ -80,7 +80,7 @@ if p: # mouse recording with potentially interleaved movie trials and opto
                 trialiss.append(pooledtrialis)
             trialiss = np.asarray(trialiss) # convert to 2D array
 else: # cat recording with identical movie trials
-    ntrials = len(t0s)
+    ntrials = len(e.ttranges)
     trialiss = np.arange(ntrials).reshape((1, -1)) # 0-based 2D array with 1 row
     # format movie name as for mouse:
     moviename = os.path.split(ptc22.tr1.r08.e0.s['fname'])[-1]

@@ -31,6 +31,8 @@ from psth_funcs import plot_psth, get_psth_peaks_gac
 #recs = [nts174.tr2.r05, pvc113.tr1.r11] # awake mice
 #recs = [pvc107.tr1.r09] # anesthetized mice
 recs = [nts174.tr2.r05, pvc113.tr1.r11, pvc107.tr1.r09] # all mice
+#recs = [ptc17.tr2b.r58, ptc18.tr1.r38, ptc18.tr2c.r58, ptc22.tr1.r08,
+#        ptc22.tr1.r10, ptc22.tr4b.r49] # all cats
 #recs = [ eval(recname) for recname in sorted(REC2STATE2TRANGES) ] # unique, no reps, sorted
 recnames = ' '.join([rec.absname for rec in recs])
 states = ['d', 's'] # desynched, synched
@@ -80,28 +82,42 @@ for rec in recs:
     print(rec.absname)
     nids = sorted(rec.n)
     e = rec.e0
-    # each row is trial indices for its matching movie:
-    trialiss = e.p['seqnums'] - 1 # convert seqnums from 1-based to 0-based
-    movienames = e.p['movie']
-    umovienames = np.unique(movienames)
-    # handle opto trials:
-    if len(movienames) != len(umovienames):
-        # some movies were displayed multiple times, probably in combination with opto stim:
-        optopari, = np.where(e.p['parnames'] == 'opto')
-        optovals = e.p['pars'][optopari]
-        uoptovals = np.unique(optovals)
-        if len(uoptovals) > 1:
-            print('found multiple unique opto values: %r' % optovals)
-        if POOLOVEROPTO:
-            # pool trials over opto values, thereby mixing opto and non-opto trials
-            # in the same raster plot:
-            print('pooling over opto values')
-            oldtrialiss = trialiss.copy()
-            trialiss = []
-            for umoviename in umovienames:
-                movieis, = np.where(movienames == umoviename)
-                pooledtrialis = np.sort(np.hstack(oldtrialiss[movieis]))
-                trialiss.append(pooledtrialis)
+    try:
+        p = e.p # mouse stim params dict
+    except AttributeError:
+        p = None
+    if p: # mouse recording with potentially interleaved movie trials and opto
+        # trialiss is 2D array, each row is trial indices for its matching movie:
+        trialiss = p['seqnums'] - 1 # convert seqnums from 1-based to 0-based
+        movienames = p['movie']
+        umovienames = np.unique(movienames)
+        # handle opto trials:
+        if len(movienames) != len(umovienames):
+            # some movies were displayed multiple times, probably in combination with opto stim:
+            optopari, = np.where(p['parnames'] == 'opto')
+            optovals = p['pars'][optopari]
+            uoptovals = np.unique(optovals)
+            if len(uoptovals) > 1:
+                print('found multiple unique opto values: %r' % optovals)
+            if POOLOVEROPTO:
+                # pool trials over opto values, thereby mixing opto and non-opto trials
+                # in the same raster plot:
+                print('pooling over opto values')
+                oldtrialiss = trialiss.copy()
+                trialiss = []
+                for umoviename in umovienames:
+                    movieis, = np.where(movienames == umoviename)
+                    pooledtrialis = np.sort(np.hstack(oldtrialiss[movieis]))
+                    trialiss.append(pooledtrialis)
+                trialiss = np.asarray(trialiss) # convert to 2D array
+    else: # cat recording with identical movie trials
+        ntrials = len(e.ttranges)
+        trialiss = np.arange(ntrials).reshape((1, -1)) # 0-based 2D array with 1 row
+        # format movie name as for mouse:
+        moviename = os.path.split(ptc22.tr1.r08.e0.s['fname'])[-1]
+        framerange = ptc22.tr1.r08.e0.d['framei']
+        moviename += '_%d-%d' % (framerange.start, framerange.stop)
+        umovienames = [moviename]
     # iterate over movies:
     for trialis, moviename in zip(trialiss, umovienames):
         print('  movie: %s' % moviename)
