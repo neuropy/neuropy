@@ -152,10 +152,26 @@ REC2STATETRANGES = {'ptc17.tr2b.r58': [(5.7e6, 700e6), # desynched trange, 66 Hz
                                        (1500e6, 2331.6e6)], # synched trange
                    }
 
-REC2STATE2TRANGES = {'nts174.tr2.r05': {'d': [(1260e6, 3605e6)],
-                                        's': [(0, 1250e6)]},
-                     'pvc107.tr1.r09': {'d': [(550e6, 1205e6)], # desynched tranges
-                                        's': [(0, 500e6)]}, # synched tranges
-                     'pvc113.tr1.r11': {'d': [(0, 340e6), (1050e6, 1205e6)],
-                                        's': [(370e6, 1040e6)]},
+
+# mapping of recording absname to dict of lists of desynched ('d') and synched ('s') tranges.
+# tranges are in sec relative to start of ADC clock:
+REC2STATE2TRANGES = {
+                     'ptc17.tr2b.r58': {'d':[(5.7, 700)], # 66 Hz refresh rate
+                                        's':[(800, 1117.1)]}, # 66 Hz refresh rate
+                     'ptc18.tr1.r38':  {'d':[(43.8, 425)],
+                                        's':[(550, 2243.8)]},
+                     'ptc18.tr2c.r58': {'d':[(49, 750)],
+                                        's':[(1000, 2248.9)]},
+                     'ptc22.tr1.r08':  {'d':[(11, 1500)],
+                                        's':[(1550, 2329.9)]},
+                     'ptc22.tr1.r10':  {'d':[(1480, 2330.9)],
+                                        's':[(12.1, 1400)]},
+                     'ptc22.tr4b.r49': {'d':[(12.7, 1475)],
+                                        's':[(1500, 2331.6)]},
+                     'nts174.tr2.r05': {'d':[(1260, 3605)],
+                                        's':[(0, 1250)]},
+                     'pvc107.tr1.r09': {'d':[(550, 1205)],
+                                        's':[(0, 500)]},
+                     'pvc113.tr1.r11': {'d':[(0, 340), (1050, 1205)],
+                                        's':[(370, 1040)]},
                     }

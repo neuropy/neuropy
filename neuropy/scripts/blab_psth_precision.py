@@ -28,9 +28,10 @@ from psth_funcs import plot_psth, get_psth_peaks_gac
 ## TODO: plot difference in mean response reliability between synched and desynched, as a
 ## function of gaussian sigma
 
-#recs = [nts174.tr2.r05, pvc113.tr1.r11] # awake
-#recs = [pvc107.tr1.r09] # anesthetized
-recs = [ eval(recname) for recname in sorted(REC2STATE2TRANGES) ] # unique, no reps, sorted
+#recs = [nts174.tr2.r05, pvc113.tr1.r11] # awake mice
+#recs = [pvc107.tr1.r09] # anesthetized mice
+recs = [nts174.tr2.r05, pvc113.tr1.r11, pvc107.tr1.r09] # all mice
+#recs = [ eval(recname) for recname in sorted(REC2STATE2TRANGES) ] # unique, no reps, sorted
 recnames = ' '.join([rec.absname for rec in recs])
 states = ['d', 's'] # desynched, synched
 
@@ -110,7 +111,7 @@ for rec in recs:
     # iterate over movies:
     for trialis, moviename in zip(trialiss, umovienames):
         print('  movie: %s' % moviename)
-        mvttranges = e.ttranges[trialis] # trial time ranges for this movie
+        mvttranges = e.ttranges[trialis] # trial time ranges for this movie, us
         rnids = dictlists(states) # responsive neuron IDs for this movie
         nrnids = dictlists(states) # nonresponsive neuron IDs for this movie
         rpsths = dictlists(states) # responsive PSTHs for this movie
@@ -125,7 +126,7 @@ for rec in recs:
         # iterate over cortical state:
         for state in states:
             ttranges = [] # build up trial tranges for this movie and state
-            statetranges = REC2STATE2TRANGES[rec.absname][state]
+            statetranges = np.asarray(REC2STATE2TRANGES[rec.absname][state]) * 1e6 # us
             for statetrange in statetranges: # can be multiple time ranges for a given state
                 mvttri0 = mvttranges[:, 0].searchsorted(statetrange[0])
                 mvttri1 = mvttranges[:, 1].searchsorted(statetrange[1])
