@@ -85,8 +85,8 @@ else: # cat recording with identical movie trials
     ntrials = len(e.ttranges)
     trialiss = np.arange(ntrials).reshape((1, -1)) # 0-based 2D array with 1 row
     # format movie name as for mouse:
-    moviename = os.path.split(ptc22.tr1.r08.e0.s['fname'])[-1]
-    framerange = ptc22.tr1.r08.e0.d['framei']
+    moviename = os.path.split(e.s['fname'])[-1]
+    framerange = e.d['framei']
     moviename += '_%d-%d' % (framerange.start, framerange.stop)
     umovienames = [moviename]
 
