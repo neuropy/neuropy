@@ -22,8 +22,8 @@ rec = nts174.tr2.r05
 animal = rec.tr.animal
 
 # raster plot options:
-showstates = 'auto' # 'auto' or True, 'manual', False
-sortstates = True # sort trials by cortical state
+showstates = True # 'auto' or True, 'manual', False
+sortstates = False # sort trials by cortical state
 if sortstates: assert showstates
 # for mouse data with opto trials, pool trials over opto values, thereby mixing opto
 # and non-opto trials in the same raster plot, i.e., ignore opto state:
@@ -32,12 +32,12 @@ marker = '|'
 s = 4 # marker size
 alpha = 1
 c = (0, 0, 0, alpha) # give the ticks some transparency
-slw = 4 # state line width
+slw = 5 # state line width
 slalpha = 1 # state line alpha
 slpos = -0.07 # x position of state line
-rasfigwidth = 3
-rasfigheightoffset = 0.125 # inches
-rasfigheightperntrials = (5 - 0.125) / 200 # inches per trial
+rasfigwidth = 2.5
+rasfigheightpadding = 0.675 # inches
+rasfigheightperntrials = 0.01545 # inches
 fc = 'w' # axes face colour
 
 showITI = False
@@ -158,7 +158,7 @@ if showstates:
 nrasterplots = 0
 for trialis, umoviename in zip(trialiss, umovienames):
     ntrials = len(trialis) # number of trials for this movie
-    rasfigheight = rasfigheightoffset + ntrials*rasfigheightperntrials
+    rasfigheight = rasfigheightpadding + ntrials*rasfigheightperntrials
     rasfigsize = rasfigwidth, rasfigheight
     for neuron in neurons:
         spikes = neuron.spikes # spike times, us
