@@ -13,11 +13,15 @@ import matplotlib.pyplot as plt
 #             ptc22.tr1.r10, ptc22.tr4b.r49]
 #mousensrecs = [nts174.tr2.r05, pvc107.tr1.r09, pvc113.tr1.r11]
 #allrecs = catnsrecs + mousensrecs
-#rec = ptc22.tr1.r08
-rec = nts174.tr2.r05
+rec = ptc22.tr1.r08
+#rec = ptc22.tr1.r10
+#rec = nts174.tr2.r05
 #rec = pvc107.tr1.r09
 #rec = pvc113.tr1.r11
 
+#nids = None
+nids = [17, 20, 32, 40, 74, 94]
+#nids = [13, 23, 28, 34, 46, 52, 63, 66, 69, 79]
 
 animal = rec.tr.animal
 
@@ -107,8 +111,9 @@ else: # cat recording with identical movie trials
     moviename += '_%d-%d' % (framerange.start, framerange.stop)
     umovienames = [moviename]
 
-snids = sorted(rec.n) # sorted neuron IDs
-neurons = [ rec.n[nid] for nid in snids ] # sorted list of neurons
+if nids == None:
+    nids = sorted(rec.n) # all neuron IDs, sorted
+neurons = [ rec.n[nid] for nid in nids ] # list of neurons
 
 if showstates:
     # show coloured state lines along left edge of raster plot
