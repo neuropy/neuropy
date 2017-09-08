@@ -18,6 +18,9 @@ rec = nts174.tr2.r05
 #rec = pvc107.tr1.r09
 #rec = pvc113.tr1.r11
 
+
+animal = rec.tr.animal
+
 # raster plot options:
 showstates = 'auto' # 'auto' or True, 'manual', False
 sortstates = True # sort trials by cortical state
@@ -36,8 +39,22 @@ rasfigwidth = 3
 rasfigheightoffset = 0.125 # inches
 rasfigheightperntrials = (5 - 0.125) / 200 # inches per trial
 fc = 'w' # axes face colour
-xlim = 0, 6 # s, show full 1 s ITI
-xticks = [0, 1, 2, 3, 4, 5]
+
+showITI = False
+if animal.type == 'Mouse':
+    if showITI:
+        xlim = 0, 6 # s, 1 s ITI
+        xticks = [0, 1, 2, 3, 4, 5]
+    else:
+        xlim = 0, 5 # s, without ITI
+        xticks = [0, 1, 2, 3, 4]
+elif animal.type == 'Cat':
+    if showITI:
+        xlim = 0, 5.5 # s, 1 s ITI
+        xticks = [0, 1, 2, 3, 4, 5]
+    else:
+        xlim = 0, 4.5 # s, without ITI
+        xticks = [0, 1, 2, 3, 4]
 # True: use xlim to designate duration to plot for each trial;
 # False: use stimOFFTime to designate duration to plot for each trial:
 forcedt = True
