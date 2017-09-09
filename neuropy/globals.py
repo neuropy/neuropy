@@ -64,8 +64,8 @@ LFPPRWIDTH = 30 # sec
 LFPPRTRES = 1 # sec
 LFPPRLOBAND = 0.5, 5 # Hz
 LFPPRHIBAND = 15, 150 # Hz
-LFPPRBINLEDGES = [0, 0.4, 0.6, 0.8, 0.9, 0.95] # power ratio left bin edges, designate states
-LFPPRBINCOLOURS = clr.VIOLET, clr.BLUE, clr.DARKGREEN, clr.ORANGE, clr.RED, clr.MAGENTA
+LFPPRBINLEDGES = [0, 0.5, 0.7, 0.85] # power ratio left bin edges, designate states
+LFPPRBINCOLOURS = clr.BLUE, clr.DARKGREEN, clr.ORANGE, clr.RED
 assert len(LFPPRBINLEDGES) == len(LFPPRBINCOLOURS)
 
 """LFP synchrony index time range windows"""
