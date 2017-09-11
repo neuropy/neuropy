@@ -19,8 +19,8 @@ from numpy import log10
 
 import matplotlib.pyplot as plt
 
-from core import (get_ssnids, sparseness, intround, ceilsigfig, scatterbin, g, dictlists,
-                  fix_minor_log_ticks)
+from core import (get_ssnids, sparseness, intround, ceilsigfig, scatterbin, g,
+                  dictlists, dictdicts, fix_minor_log_ticks)
 
 from psth_funcs import plot_psth, get_psth_peaks_gac
 
@@ -31,12 +31,16 @@ from psth_funcs import plot_psth, get_psth_peaks_gac
 
 #recs = [nts174.tr2.r05, pvc113.tr1.r11] # awake mice
 #recs = [pvc107.tr1.r09] # anesthetized mice
-#recs = [nts174.tr2.r05, pvc113.tr1.r11, pvc107.tr1.r09] # all mice
-recs = [ptc17.tr2b.r58, ptc18.tr1.r38, ptc18.tr2c.r58, ptc22.tr1.r08,
-        ptc22.tr1.r10, ptc22.tr4b.r49] # all cats
+recs = [nts174.tr2.r05, pvc113.tr1.r11, pvc107.tr1.r09] # all mice
+#recs = [ptc17.tr2b.r58, ptc18.tr1.r38, ptc18.tr2c.r58, ptc22.tr1.r08,
+#        ptc22.tr1.r10, ptc22.tr4b.r49] # all cats
 #recs = [ eval(recname) for recname in sorted(REC2STATE2TRANGES) ] # unique, no reps, sorted
 recnames = ' '.join([rec.absname for rec in recs])
-states = ['d', 's'] # desynched, synched
+states = AUTOSTATES # AUTOSTATES, MANUALSTATES
+if states == AUTOSTATES:
+    STATECOLOURS = LFPPRBINCOLOURS
+else:
+    STATECOLOURS = MANUALSTATECOLOURS
 
 BINW, TRES = 0.02, 0.0001 # PSTH time bins, sec
 GAUSS = True # calculate PSTH and single trial rates by convolving with Gaussian kernel?
@@ -47,7 +51,7 @@ WEIGHT = False # weight trials by spike count for reliability measure?
 MINTHRESH = 3 # peak detection thresh, Hz
 MEDIANX = 2 # PSTH median multiplier, Hz
 WIDTHMAX = 300 # maximum peak width, ms
-#WIDTHMAXPOINTS = intround(WIDTHMAX / 1000 / TRES) # maximum width, number of PSTH timepoints
+MINNTRIALS = 10 # minimum number of trials in a state over which to perform calculations
 
 # plotting params:
 PLOTPSTH = False
@@ -80,7 +84,7 @@ nreplacedbynullrel = 0
 ntotpeaks = 0 # num total peaks detected
 # iterate over recordings:
 for rec in recs:
-    print(rec.absname)
+    print('*** ', rec.absname)
     nids = sorted(rec.n)
     e = rec.e0
     try:
@@ -112,17 +116,23 @@ for rec in recs:
                     trialiss.append(pooledtrialis)
                 trialiss = np.asarray(trialiss) # convert to 2D array
     else: # cat recording with identical movie trials
-        ntrials = len(e.ttranges)
-        trialiss = np.arange(ntrials).reshape((1, -1)) # 0-based 2D array with 1 row
+        nmovietrials = len(e.ttranges)
+        trialiss = np.arange(nmovietrials).reshape((1, -1)) # 0-based 2D array with 1 row
         # format movie name as for mouse:
         moviename = os.path.split(e.s['fname'])[-1]
         framerange = e.d['framei']
         moviename += '_%d-%d' % (framerange.start, framerange.stop)
         umovienames = [moviename]
+
+    if states == AUTOSTATES: # calculate SI
+        si, tsi = rec.lfp.si(plot=False)
+        autostranges, autostatevals = rec.lfp.si_split(si, tsi) # state tranges (sec) and vals
+
     # iterate over movies:
     for trialis, moviename in zip(trialiss, umovienames):
         print('  movie: %s' % moviename)
         mvttranges = e.ttranges[trialis] # trial time ranges for this movie, us
+        mvt0s, mvt1s = mvttranges[:, 0], mvttranges[:, 1] # start and stop times of mvtranges
         rnids = dictlists(states) # responsive neuron IDs for this movie
         nrnids = dictlists(states) # nonresponsive neuron IDs for this movie
         rpsths = dictlists(states) # responsive PSTHs for this movie
@@ -131,20 +141,29 @@ for rec in recs:
         peakheights = dictlists(states) # peak heights of all nids for this movie
         peaknspikes = dictlists(states) # spike counts of each peak, normalized by ntrials
         psthsdepths = dictlists(states) # physical unit depths of each peak
-        n2rel = {'d': {}, 's': {}} # nid:reliability mapping for this movie
-        n2spars = {'d': {}, 's': {}} # nid:sparseness mapping for this movie
-        n2depth = {'d': {}, 's': {}} # nid:unit depth mapping for this movie
+        n2rel = dictdicts(states) # nid:reliability mappings for this movie
+        n2spars = dictdicts(states) # nid:sparseness mappings for this movie
+        n2depth = dictdicts(states) # nid:unit depth mappings for this movie
         # iterate over cortical state:
         for state in states:
-            ttranges = [] # build up trial tranges for this movie and state
-            statetranges = np.asarray(REC2STATE2TRANGES[rec.absname][state]) * 1e6 # us
-            for statetrange in statetranges: # can be multiple time ranges for a given state
-                mvttri0 = mvttranges[:, 0].searchsorted(statetrange[0])
-                mvttri1 = mvttranges[:, 1].searchsorted(statetrange[1])
-                ttranges.append(mvttranges[mvttri0:mvttri1])
+            # build up tranges of this movie's trials that fall completely within state:
+            ttranges = []
+            if state in MANUALSTATES:
+                stranges = np.asarray(REC2STATE2TRANGES[rec.absname][state]) * 1e6 # us
+            else:
+                stranges = autostranges[autostatevals == state] * 1e6 # us
+            if len(stranges) == 0:
+                print('    state %d never occurs during this movie, skipping' % state)
+                continue
+            for strange in stranges: # can be multiple time ranges for a given state
+                strialis = np.where((strange[0] <= mvt0s) & (mvt1s <= strange[1]))[0] # 0-based
+                ttranges.append(mvttranges[strialis])
             ttranges = np.vstack(ttranges)
             ntrials = len(ttranges)
             print('    state=%s, ntrials=%d' % (state, ntrials))
+            if ntrials < MINNTRIALS:
+                print('    skipping state due to insufficient trials for this movie')
+                continue
             psthparams = {} # various parameters for each PSTH
             # psths is a regular 2D array, spikets is a 2D ragged array (list of arrays):
             t, psths, spikets = rec.psth(nids=nids, ttranges=ttranges, natexps=False,
@@ -232,7 +251,7 @@ for state in states:
     allpeaknspikes[state] = np.hstack(allpeaknspikes[state])
     allpsthsdepths[state] = np.hstack(allpsthsdepths[state])
 
-assert ntotpeaks == len(allpeaktimes['d']) + len(allpeaktimes['s'])
+assert ntotpeaks == sum([ len(allpeaktimes[key]) for key in allpeaktimes ])
 print('found %d peaks in total' % ntotpeaks)
 
 
@@ -242,44 +261,52 @@ logmin, logmax = 0.5, log10(WIDTHMAX)
 nbins = 20
 bins = np.logspace(logmin, logmax, nbins+1) # nbins+1 points in log space
 f, a = subplots(figsize=figsize)
-n1 = hist(allpeakwidths['s'], bins=bins, histtype='step', color='r')[0] # synched
-n0 = hist(allpeakwidths['d'], bins=bins, histtype='step', color='b')[0] # desynched
-n = np.hstack([n0, n1])
+ns, meanpeakwidths = [], {}
+for state in states:
+    clr = STATECOLOURS[state]
+    n = hist(allpeakwidths[state], bins=bins, histtype='step', color=clr)[0]
+    ns.append(n)
+    meanpeakwidths[state] = 10**(log10(allpeakwidths[state]).mean()) # geometric
 xlim(xmin=10**logmin, xmax=10**logmax)
-ymax = n.max() + 25
+ymax = np.hstack(ns).max() + 25
 ylim(ymax=ymax)
 #xticks(ticks)
 xscale('log')
 xlabel('event width (ms)')
 ylabel('event count')
-# Welch's T-test:
-#t, p = ttest_ind(log10(allpeakwidths['d']), log10(allpeakwidths['s']), equal_var=False)
-u, p = mannwhitneyu(log10(allpeakwidths['d']), log10(allpeakwidths['s'])) # 1-sided
-smean = 10**(log10(allpeakwidths['s']).mean()) # geometric
-dmean = 10**(log10(allpeakwidths['d']).mean())
-# display geometric means and p value:
-text(0.03, 0.98, '$\mu$ = %.1f ms' % smean, # synched
-                 horizontalalignment='left', verticalalignment='top',
-                 transform=gca().transAxes, color='r')
-text(0.03, 0.90, '$\mu$ = %.1f ms' % dmean, # desynched
-                 horizontalalignment='left', verticalalignment='top',
-                 transform=gca().transAxes, color='b')
-text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
-                 horizontalalignment='left', verticalalignment='top',
-                 transform=gca().transAxes, color='k')
-# arrow doesn't display correctly on log axis, use annotate instead:
-annotate('', xy=(smean, (6/7)*ymax), xycoords='data', # synched
-             xytext=(smean, ymax), textcoords='data',
-             arrowprops=dict(fc='r', ec='none', width=1.3, headwidth=7, frac=0.5))
-annotate('', xy=(dmean, (6/7)*ymax), xycoords='data', # desynched
-             xytext=(dmean, ymax), textcoords='data',
-             arrowprops=dict(fc='b', ec='none', width=1.3, headwidth=7, frac=0.5))
-titlestr = 'peak width log %s' % recnames
+if states == MANUALSTATES:
+    # Welch's T-test:
+    #t, p = ttest_ind(log10(allpeakwidths['d']), log10(allpeakwidths['s']), equal_var=False)
+    u, p = mannwhitneyu(log10(allpeakwidths['d']), log10(allpeakwidths['s'])) # 1-sided
+    smean = meanpeakwidths['s'] # geometric
+    dmean = meanpeakwidths['d']
+    # display geometric means and p value:
+    text(0.03, 0.98, '$\mu$ = %.1f ms' % smean, # synched
+                     horizontalalignment='left', verticalalignment='top',
+                     transform=gca().transAxes, color='r')
+    text(0.03, 0.90, '$\mu$ = %.1f ms' % dmean, # desynched
+                     horizontalalignment='left', verticalalignment='top',
+                     transform=gca().transAxes, color='b')
+    text(0.03, 0.82, 'p < %.1g' % ceilsigfig(p, 1),
+                     horizontalalignment='left', verticalalignment='top',
+                     transform=gca().transAxes, color='k')
+    statesstr = 'manualstates'
+else:
+    statesstr = 'autostates'
+# now that ymax is calculated, plot arrows:
+for state in states:
+    meanpeakwidth = meanpeakwidths[state]
+    clr = STATECOLOURS[state]
+    annotate('', xy=(meanpeakwidth, (6/7)*ymax), xycoords='data', # desynched
+                 xytext=(meanpeakwidth, ymax), textcoords='data',
+                 arrowprops=dict(fc=clr, ec='none', width=1.3, headwidth=7, frac=0.5))
+titlestr = '%s peak width log %s' % (statesstr, recnames)
 gcfm().window.setWindowTitle(titlestr)
 tight_layout(pad=0.3)
 show()
 
-
+if states == AUTOSTATES:
+    raise NotImplementedError # can't really go any further
 
 # Scatter plot reliability of each unit's responses in synched vs desynched for each movie.
 # Missing values (nids active in one state but not the other) are assigned a reliability of

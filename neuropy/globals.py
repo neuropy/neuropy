@@ -65,8 +65,10 @@ LFPPRTRES = 1 # sec
 LFPPRLOBAND = 0.5, 5 # Hz
 LFPPRHIBAND = 15, 150 # Hz
 LFPPRBINLEDGES = [0, 0.5, 0.7, 0.85] # power ratio left bin edges, designate states
-LFPPRBINCOLOURS = clr.BLUE, clr.DARKGREEN, clr.ORANGE, clr.RED
-assert len(LFPPRBINLEDGES) == len(LFPPRBINCOLOURS)
+LFPPRBINCOLOURS = clr.MIDBLUE, clr.DARKGREEN, clr.ORANGE, clr.RED
+NAUTOSTATES = len(LFPPRBINLEDGES)
+assert NAUTOSTATES == len(LFPPRBINCOLOURS)
+AUTOSTATES = list(range(NAUTOSTATES))
 
 """LFP synchrony index time range windows"""
 LFPSIKIND = 'L/(L+H)' #'n3stdmed'
@@ -153,7 +155,10 @@ REC2STATETRANGES = {'ptc17.tr2b.r58': [(5.7e6, 700e6), # desynched trange, 66 Hz
                    }
 
 
-# mapping of recording absname to dict of lists of desynched ('d') and synched ('s') tranges.
+MANUALSTATES = ['d', 's']
+MANUALSTATECOLOURS = {'d':clr.MIDBLUE, 's':clr.RED}
+# mapping of recording absname to dict of manually defined lists of
+# desynched ('d') and synched ('s') tranges.
 # tranges are in sec relative to start of ADC clock:
 REC2STATE2TRANGES = {
                      'ptc17.tr2b.r58': {'d':[(5.7, 700)], # 66 Hz refresh rate

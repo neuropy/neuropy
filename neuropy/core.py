@@ -3500,6 +3500,13 @@ def dictlists(keys):
         d[k] = []
     return d
 
+def dictdicts(keys):
+    """Return a dictionary of keys mapped to empty dictionaries"""
+    d = {}
+    for k in keys:
+        d[k] = {}
+    return d
+
 def commontres(t0, y0, t1, y1):
     """Return signals y0 and y1 with common time resolution of overlap periods.
     y0 and y1 can be of arbitrary dimension, but their last dimension must correspond to
