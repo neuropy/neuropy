@@ -107,13 +107,13 @@ class LFP(object):
         return self.get_ts() / 1e6
 
     def apply_lim2stim(self, t0, t1):
-        """Limit t0 and t1 (in sec) to exclude outermost NULL din times, such as pre and post
-        experiment periods of blank screen"""
-        nnt = self.r.e0.nonnulltrange # in us
+        """Limit t0 and t1 (in sec) to start and end of first and last trial"""
+        assert len(self.r.e) == 1
         print("original trange: %r" % ((t0, t1),))
-        print("lim2stim trange: %r" % ((nnt[0]/1e6, nnt[1]/1e6),))
-        t0 = max(t0, nnt[0]/1e6)
-        t1 = min(t1, nnt[1]/1e6)
+        ttranges = self.r.e0.ttranges
+        t0 = max(t0, ttranges[0, 0]/1e6)
+        t1 = min(t1, ttranges[-1, 1]/1e6)
+        print("lim2stim trange: %r" % ((t0, t1),))
         return t0, t1
 
     def plot(self, t0=None, t1=None, chanis=None, gain=1, c='k', alpha=1.0, yunits='um',
