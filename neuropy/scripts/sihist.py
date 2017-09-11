@@ -48,6 +48,7 @@ def sihist(recs=None, basetitle='', sis=None):
     ticks = [0, 0.2, 0.4, 0.6, 0.8, 1] # minimal decimal places
     xticks(ticks, [str(t) for t in ticks])
     yticks([]) # turn off y ticks to save space
+    xlabel('SI')
     title(basetitle)
     #yticks([0, n.max()])
     #xlabel('SI (%s)' % kind)
