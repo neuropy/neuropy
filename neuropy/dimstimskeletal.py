@@ -145,7 +145,9 @@ class SweepTable(object):
         except IndexError: # there aren't any variables at all
             nvals = 0
         for varname in self.data:
-            assert len(self.data[varname]) == nvals, '%s length in sweep table does not match expected length %d' % (varname, nvals)
+            if len(self.data[varname]) != nvals:
+                raise ValueError('%s length in sweep table does not match expected length %d'
+                                 % (varname, nvals))
 
         # For convenience the main stimulus loop, add non-varying dynamic params to self.data:
         nvals = max(nvals, 1) # make sure the sweep table has at least one entry
@@ -278,42 +280,45 @@ class Movie(Experiment):
         # figure out the local path to the same movie file:
         pathparts = core.pathdecomp(self.static.fname) # as it existed on the stim computer
         movi = pathparts.index('mov')
-        tail = os.path.join(pathparts[movi+1:]) # everything after 'mov' folder
+        tail = os.path.join(*pathparts[movi+1:]) # everything after 'mov' folder
         MOVIEPATH = get_ipython().user_ns['MOVIEPATH']
-        fullfname = os.path.join(MOVIEPATH, *tail) # full fname with local MOVIEPATH
-        self.f = file(fullfname, 'rb') # open the movie file for reading in binary format
-        headerstring = self.f.read(5)
-        if headerstring == 'movie': # a header has been added to the start of the file
-            self.ncellswide, = struct.unpack('H', self.f.read(2)) # 'H'== unsigned short int
-            self.ncellshigh, = struct.unpack('H', self.f.read(2))
-            self.nframes, = struct.unpack('H', self.f.read(2))
-            if self.nframes == 0:
-                # this was used in ptc15 mseq movies to indicate 2**16 frames, shouldn't
-                # really worry about this, cuz we're using slightly modified mseq movies now
-                # that don't have the extra frame at the end that the ptc15 movies had (see
-                # comment in Experiment module), and therefore never have a need to indicate
-                # 2**16 frames
-                self.nframes = 2**16
-            self.offset = self.f.tell() # header is 11 bytes long
-        else: # there's no header at the start of the file, set the file pointer back to the beginning and use these hard coded values:
-            self.f.seek(0)
-            self.ncellswide = self.ncellshigh = 64
-            self.nframes = 6000
-            self.offset = self.f.tell() # header is 0 bytes long
-        self.framesize = self.ncellshigh*self.ncellswide
+        fullfname = os.path.join(MOVIEPATH, tail) # full fname with local MOVIEPATH
+        with open(fullfname, 'rb') as self.f: # open movie file for reading in binary format
+            headerstring = self.f.read(5)
+            if headerstring == 'movie': # start of file has a header
+                self.ncellswide, = struct.unpack('H', self.f.read(2)) # 'H': unsigned short int
+                self.ncellshigh, = struct.unpack('H', self.f.read(2))
+                self.nframes, = struct.unpack('H', self.f.read(2))
+                if self.nframes == 0:
+                    # this was used in ptc15 mseq movies to indicate 2**16 frames, shouldn't
+                    # really worry about this, since we're using slightly modified mseq movies
+                    # now that don't have the extra frame at the end that the ptc15 movies had
+                    # (see comment in Experiment module), and therefore never have a need to
+                    # indicate 2**16 frames
+                    self.nframes = 2**16
+                self.offset = self.f.tell() # header is 11 bytes long
+            else:
+                # no header at the start of the file, set the file pointer back to the
+                # beginning and use these hard coded values:
+                self.f.seek(0)
+                self.ncellswide = self.ncellshigh = 64
+                self.nframes = 6000
+                self.offset = self.f.tell() # header is 0 bytes long
+            self.framesize = self.ncellshigh*self.ncellswide
 
-        # read in all of the frames. Maybe check first to see if file is > 1GB. If so,
-        # _loadaslist() to prevent trying to allocate one huge piece of contiguous memory and
-        # raising a MemoryError, or worse, segfaulting
-        if asarray:
-            self._loadasarray(flip=flip)
-        else:
-            self._loadaslist(flip=flip)
-        leftover = self.f.read() # check if there are any leftover bytes in the file
-        if leftover != '':
-            pprint(leftover)
-            print(self.ncellswide, self.ncellshigh, self.nframes)
-            raise RuntimeError('There are unread bytes in movie file %r. Width, height, or nframes is incorrect in the movie file header.' % self.static.fname)
+            # read in all of the frames. Maybe check first to see if file is > 1GB. If so,
+            # _loadaslist() to prevent trying to allocate one huge piece of contiguous memory
+            # and raising a MemoryError:
+            if asarray:
+                self._loadasarray(flip=flip)
+            else:
+                self._loadaslist(flip=flip)
+            leftover = self.f.read() # check if there are any leftover bytes in the file
+            if leftover != '':
+                print(leftover)
+                print(self.ncellswide, self.ncellshigh, self.nframes)
+                raise RuntimeError('Unread bytes in movie file %r. Width, height, or nframes '
+                                   'incorrect in the movie file header.' % self.static.fname)
         self.f.close() # close the movie file
 
     def _loadasarray(self, flip=True):
@@ -324,7 +329,7 @@ class Movie(Experiment):
 
     def _loadaslist(self, flip=True):
         self.frames = []
-        for framei in xrange(self.nframes): # one frame at a time...
+        for framei in range(self.nframes): # one frame at a time...
             frame = np.fromfile(self.f, dtype=np.uint8, count=self.framesize) # load the next frame
             frame.shape = (self.ncellshigh, self.ncellswide)
             if flip:

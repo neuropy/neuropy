@@ -448,7 +448,7 @@ class BaseExperiment(object):
         tabs = ''
         for dim in range(ndims): # here come the nested for loops...
 
-            code += tabs+'for vali['+str(dim)+'] in xrange(dimlengths['+str(dim)+']):\n' # val index for this dim, used for all vars in this dim
+            code += tabs+'for vali['+str(dim)+'] in range(dimlengths['+str(dim)+']):\n' # val index for this dim, used for all vars in this dim
             tabs +='\t'
 
         code += tabs+'indextable.append(vali[:])\n' # here's the innermost part of the nested for loops, val[:] returns a copy (important!)
@@ -502,7 +502,7 @@ class BaseExperiment(object):
             elif allrandomized:
                 sweeplist = core.randomize(sweeplist)
             else: # shuffle/randomize each dim individually (slower)
-                for dimi in xrange(ndims):
+                for dimi in range(ndims):
                     if dimshuffles[dimi] in (1, 2): # if flag is set to shuffle or randomize
                         col = [None]*nsweeps # init for speed
                         for sweepi in sweeplist: # extract column from indextable for dimi
@@ -518,7 +518,7 @@ class BaseExperiment(object):
                         #sortedsweeplist = [ sweeplist[si] for si in sortindices ]
 
                         offset = 1 # offset is the product of the lengths of all dims other than dimi
-                        for dimj in xrange(ndims):
+                        for dimj in range(ndims):
                             if dimj != dimi: # for all dims other than dimi
                                 offset *= dimlengths[dimj]
 
@@ -529,17 +529,17 @@ class BaseExperiment(object):
                                              "%d" % dimi)
                         ncollections = nsweeps // ldimi # can safely divide now
 
-                        for colli in xrange(ncollections):
+                        for colli in range(ncollections):
                             # collis is a collection of indices to shuffle over, made up of every offset'th index, starting from colli
                             collis = [None]*ldimi # init for speed
-                            for i, j in enumerate(xrange(colli, offset*ldimi, offset)):
+                            for i, j in enumerate(range(colli, offset*ldimi, offset)):
                                 collis[i] = j
-                            #collis = [ j for j in xrange(colli,offset*ldimi,offset) ]
+                            #collis = [ j for j in range(colli,offset*ldimi,offset) ]
                             if dimshuffles[dimi] == 1: # shuffle this dim
                                 shuffcollis = core.shuffle(collis)
                             elif dimshuffles[dimi] == 2: # randomize this dim
                                 shuffcollis = core.randomize(collis)
-                            for i in xrange(len(collis)):
+                            for i in range(len(collis)):
                                 sweeplist[sortindices[collis[i]]] = sortedsweeplist[shuffcollis[i]] # update sweeplist appropriately, this is the trickiest bit
             for i, j in enumerate(range(nsweeps*shufflei, nsweeps*(shufflei+1))):
                 sweeplistlist[j] = sweeplist[i] # enters a copy of sweeplist for this shuffle into the concatenated list of sweeplists
@@ -563,14 +563,14 @@ class BaseExperiment(object):
                 addedsweeps += addsweeps
                 addsweeps = nsweeps // blankSweep[0] - addedsweeps
             stimOn = [1]*nsweeps # init stimOn to all 1s (stim is on for all sweeps)
-            for sweepi in xrange(nsweeps):
+            for sweepi in range(nsweeps):
                 if (sweepi+1) % blankSweep[0] == 0: # if 1 based sweepi is multiple of blankSweep[0]
                     stimOn[sweepi] = 0 # stimulus will be off on sweepi
             if shuffleBlankSweeps == 1:
                 stimOn = core.shuffle(stimOn) # shuffle the stimulus state list
             #print('stimOn is', stimOn)
             # insert blank sweeps into sweeplist, according to stimulus state list
-            for sweepi in xrange(nsweeps): # for all sweeps (values) in stimulus table
+            for sweepi in range(nsweeps): # for all sweeps (values) in stimulus table
                 if stimOn[sweepi] == 0: # if we're on a blank sweep
                     insertioni = min(sweepi, len(sweeplist)-1) # insert at the lesser of sweepi or what's currently the last index in sweeplist. This prevents the case where many of the zeros in a shuffled stimOn are clustered at the end, and you end up trying to insert a repeat at an index value that's out of range of sweeplist
                     sweeplist.insert(insertioni, None) # insert a 'None' value into sweeplist at insertioni, this indicates a blank sweep
@@ -580,14 +580,14 @@ class BaseExperiment(object):
         if makeSweepTableText:
             f = StringIO() # create a string file-like object
             f.write('sweepi\t') # 'sweepi' column header
-            for dim in xrange(ndims): # print out column headers in dim order
+            for dim in range(ndims): # print out column headers in dim order
                 f.write( str(dimvars[dim]) + '\t' )
             f.seek(-1, 2) # move the file pointer back one relative to end
             f.truncate() # get rid of the last tab
             f.write('\n')
-            for sweepi in xrange(nuniquesweeps):
+            for sweepi in range(nuniquesweeps):
                 f.write('%.6s\t' % sweepi) # write the sweep index in the first column
-                for dimi in xrange(ndims): # print out columns in dim order
+                for dimi in range(ndims): # print out columns in dim order
                     for var in dimvars[dimi]:
                         f.write('%.6s\t' % sweeptable[var][sweepi])
                 f.seek(-1, 2) # move the file pointer back one relative to end

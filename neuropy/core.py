@@ -3665,9 +3665,8 @@ def g3(x0, y0, z0, sx, sy, sz, x, y, z):
     return np.exp( -(x-x0)**2 / (2*sx**2) - (y-y0)**2 / (2*sy**2) - (z-z0)**2 / (2*sz**2) )
 
 def eucd(coords):
-    """Generates Euclidean distance matrix from a
-    sequence of n m-dimensional coordinates. Nice and fast.
-    Written by Willi Richert
+    """Generates Euclidean distance matrix from a sequence of n m-dimensional coordinates.
+    Nice and fast. Written by Willi Richert
     Taken from:
     http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/498246
     on 2006/11/11
@@ -3675,7 +3674,7 @@ def eucd(coords):
     coords = np.asarray(coords)
     n, m = coords.shape
     delta = np.zeros((n, n), dtype=np.float64)
-    for d in xrange(m):
+    for d in range(m):
         data = coords[:, d]
         delta += (data - data[:, np.newaxis]) ** 2
     return np.sqrt(delta)
