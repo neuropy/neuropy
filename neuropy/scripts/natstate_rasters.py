@@ -13,25 +13,28 @@ import matplotlib.pyplot as plt
 #             ptc22.tr1.r10, ptc22.tr4b.r49]
 #mousensrecs = [nts174.tr2.r05, pvc107.tr1.r09, pvc113.tr1.r11]
 #allrecs = catnsrecs + mousensrecs
-rec = ptc22.tr1.r08
+#rec = ptc22.tr1.r08
 #rec = ptc22.tr1.r10
 #rec = nts174.tr2.r05
 #rec = pvc107.tr1.r09
 #rec = pvc113.tr1.r11
+rec = pvc1706.tr3.r03
 
-#nids = None
-nids = [17, 20, 32, 40, 74, 94]
+nids = None
+#nids = [17, 20, 40, 94]
+#nids = [17, 20, 32, 40, 74, 94]
+#nids = [28, 34, 46, 69]
 #nids = [13, 23, 28, 34, 46, 52, 63, 66, 69, 79]
 
 animal = rec.tr.animal
 
 # raster plot options:
-showstates = True # 'auto' or True, 'manual', False
+showstates = False # 'auto' or True, 'manual', False
 sortstates = False # sort trials by cortical state
 if sortstates: assert showstates
 # for mouse data with opto trials, pool trials over opto values, thereby mixing opto
 # and non-opto trials in the same raster plot, i.e., ignore opto state:
-POOLOVEROPTO = True
+POOLOVEROPTO = False
 marker = '|'
 s = 4 # marker size
 alpha = 1
@@ -140,8 +143,8 @@ if showstates:
         # can't use [[]]*nconditions because that makes copies!:
         trialiss = [ [] for cond in range(nconditions) ]
         for striali in strialis:
-            # for each kept trial, find its row index in oldtrialiss, i.e. its movie/opto index,
-            # there's probably a more vectorized way to do this:
+            # for each kept trial, find its row index in oldtrialiss, i.e. its
+            # movie/opto index, there's probably a more vectorized way to do this:
             i = np.where(oldtrialiss == striali)[0]
             assert len(i) == 1
             i = int(i) # convert from array to int for indexing into list
@@ -149,7 +152,7 @@ if showstates:
     # find current state at start of each trial, and later use that to plot state colour
     # as a function of trial index:
     trial2state = {} # map trial index to state value
-    for triali in np.concatenate(trialiss): # iterate over all trials, regardless of trial type
+    for triali in np.concatenate(trialiss): # iterate over all trials, regardless of type
         t0 = t0s[triali] / 1e6 # sec
         statei, = np.where((stranges[:, 0] <= t0) & (t0 < stranges[:, 1]))
         assert len(statei) <= 1 # trial start should only match a single state trange
