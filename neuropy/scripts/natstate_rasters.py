@@ -161,7 +161,7 @@ if showstates:
 
 # plot rasters: iterate over movies, units, trials
 nrasterplots = 0
-for trialis, umoviename in zip(trialiss, umovienames):
+for trialtypei, (trialis, moviename) in enumerate(zip(trialiss, movienames)):
     ntrials = len(trialis) # number of trials for this movie
     rasfigheight = rasfigheightpadding + ntrials*rasfigheightperntrials
     rasfigsize = rasfigwidth, rasfigheight
@@ -219,7 +219,9 @@ for trialis, umoviename in zip(trialiss, umovienames):
             a.set_ylabel("trial index") # trial index order, not necessarily temporal order
         else:
             a.set_yticks([]) # turn off y ticks
-        titlestr = rec.absname + '_' + umoviename + '_n%d' % neuron.id
+        titlestr = rec.absname + '_' + moviename + '_n%d' % neuron.id
+        if trialtypei == 1: # assume second row in trialiss (if any) is the opto trials
+            titlestr += '_opto'
         gcfm().window.setWindowTitle(titlestr)
         if title:
             a.set_title(titlestr)
