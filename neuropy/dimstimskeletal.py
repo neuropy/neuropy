@@ -14,8 +14,8 @@ from core import dictattr, TAB
 
 def deg2pix(deg, I):
     """Convert from degrees of visual space to pixels"""
-    # shouldn't I be using opp = 2.0 * distance * tan(deg/2), ie trig instead of solid angle of a circle ???!!
-    # make it a one-liner, break it up into multiple lines in the docstring
+    # TODO: this should probably use opp = 2.0 * distance * tan(deg/2), ie trig instead of
+    # solid angle of a circle.
     if deg == None:
         deg = 0 # convert to an int
     rad = deg * math.pi / 180 # float, angle in radians
@@ -36,7 +36,8 @@ class DynamicParams(dictattr):
 class Variable(object):
     """A dynamic experiment parameter that varies over sweeps"""
     def __init__(self, vals, dim=0, shuffle=False, random=False):
-        """Bind the dynamic parameter values, its dim, and its shuffle and random flags to this experiment Variable"""
+        """Bind the dynamic parameter values, its dim, and its shuffle and random flags to
+        this experiment Variable"""
         self.vals = vals
         self.dim = dim
         self.shuffle = shuffle
@@ -50,8 +51,8 @@ class Variable(object):
 class Variables(dictattr):
     """A collection of Variable objects, attributed by their name.
     Exactly which attributes are stored here depends on the Variable objects themselves.
-    Each of the Variable objects stored here can have different dims and shuffle and random flags,
-    unlike those stored in a Dimension"""
+    Each of the Variable objects stored here can have different dims and shuffle and random
+    flags, unlike those stored in a Dimension"""
     def __iter__(self):
         """Iterates over all Variable objects stored here"""
         return iter(self.values())
@@ -67,7 +68,8 @@ class Runs(object):
     """Stores info about experiment runs"""
     def __init__(self, n=1, reshuffle=False):
         self.n = n # number of runs
-        self.reshuffle = reshuffle # reshuffle/rerandomize on every run those variables with their shuffle/random flags set?
+        self.reshuffle = reshuffle # reshuffle/rerandomize on every run those variables with
+                                   # their shuffle/random flags set?
 
 
 class BlankSweeps(object):
@@ -131,8 +133,10 @@ class SweepTable(object):
         self.data = dictattr() # holds the actual sweep table, a dict with attribute access
         for dim in self.dimensions:
             for var in dim.variables:
-                dimi = self.dimitable[:, dim.dim] # get the entire column of indices into the values of this dimension
-                vals = np.asarray(var.vals)[dimi] # convert to array so you can select multiple values with a sequence of indices
+                # get the entire column of indices into the values of this dimension:
+                dimi = self.dimitable[:, dim.dim]
+                # convert to array to enable multiple value selection:
+                vals = np.asarray(var.vals)[dimi]
                 self.data[var.name] = vals # store it as an array
 
         # Check to make sure that all the variables in self.data have the same number of vals
@@ -143,24 +147,26 @@ class SweepTable(object):
         for varname in self.data:
             assert len(self.data[varname]) == nvals, '%s length in sweep table does not match expected length %d' % (varname, nvals)
 
-        # For convenience in the main stimulus loop, add the non-varying dynamic params to self.data
+        # For convenience the main stimulus loop, add non-varying dynamic params to self.data:
         nvals = max(nvals, 1) # make sure the sweep table has at least one entry
         for paramname, paramval in e.dynamic.items():
             if paramname not in self.data:
-                self.data[paramname] = np.tile(paramval, nvals) # paramval was already checked to be a scalar in Experiment.check()
+                # paramval was already checked to be a scalar in Experiment.check():
+                self.data[paramname] = np.tile(paramval, nvals)
 
     def builddimensions(self):
         """Build the Dimension objects from the Experiment Variables"""
         e = self.experiment # synonym
 
-        # find unique dimension values across variables. Dim values could be 0, 5, 5, 5, 2, 666, -74,...
-        dims = list(np.unique([ var.dim for var in e.variables ])) # np.unique returns sorted values
+        # find unique dimension values across variables,
+        # dimension values could be 0, 5, 5, 5, 2, 666, -74,...
+        dims = list(np.unique([ var.dim for var in e.variables ])) # also sorted
 
         # renumber dimension values to be consecutive 0-based
         newdims = range(len(dims)) # 0-based consecutive dim values
         old2new = dict(zip(dims, newdims)) # maps from old dim values to new ones
         for var in e.variables:
-            var.dim = old2new[var.dim] # overwrite each Variable's old dim value with the new one
+            var.dim = old2new[var.dim] # overwrite each old dim value with the new one
 
         # use newdims to init a list of Dimensions, each with an empty Variables object
         self.dimensions = []
@@ -172,24 +178,32 @@ class SweepTable(object):
         for var in e.variables:
             d = self.dimensions[var.dim] # get the Dimension object
             d.variables[var.name] = var # assign the Variable to the Dimension's Variables
-            d.shuffle = var.shuffle # set the Dimension's shuffle and random flags according to this Variable
+            d.shuffle = var.shuffle # sets the Dimension's shuffle and random flags
             d.random = var.random
 
     def builddimitable(self):
         """Build the dimension index table"""
-        # Can't figure out how to use a recursive generator/function to do this, see Apress Beginning Python p192
-        # HACK!!: generate and exec the appropriate Python code to build the ordered (unshuffled/unrandomized) dimension index table
-        dimi = [None]*len(self.dimensions) # stores the index we're currently on in each dimension
-        self.dimitable = [] # ordered dimension index table, these are indices into the values in dimensions, dimensions are in columns, sweeps are in rows
+        # Can't figure out how to use a recursive generator/function to do this, see Apress
+        # Beginning Python p192
+        # HACK!!: generate and exec the appropriate Python code to build the ordered
+        # (unshuffled/unrandomized) dimension index table
+        dimi = [None]*len(self.dimensions) # stores index we're currently on in each dimension
+        # ordered dimension index table, these are indices into the values in dimensions,
+        # dimensions are in columns, sweeps are in rows:
+        self.dimitable = []
         # generate code with the right number of nested for loops
         code = ''
         tabs = ''
         for dimension in self.dimensions: # generate ndim nested for loops...
             i = str(dimension.dim)
             code += tabs+'for dimi['+i+'] in range(len(self.dimensions['+i+'])):\n'
-            tabs += TAB # add a tab to tabs in preparation for the next for loop, or the innermost part of the last one
-        code += tabs+'self.dimitable.append(copy(dimi))\n' # innermost part of the nested for loops, copying dimi is important
-        exec(code) # run the generated code, this builds the ordered dimitable with all the permutations
+            # add a tab to tabs in preparation for the next for loop,
+            # or the innermost part of the last one:
+            tabs += TAB
+        # innermost part of the nested for loops, copying dimi is important:
+        code += tabs+'self.dimitable.append(copy(dimi))\n'
+        # run the generated code, this builds the ordered dimitable with all the permutations:
+        exec(code)
         '''
         # example of what the generated code looks like for 3 dimensions:
         for dimi[0] in range(len(self.dimensions[0])):
@@ -200,25 +214,26 @@ class SweepTable(object):
         self.dimitable = np.asarray(self.dimitable)
 
     def pprint(self, i=None):
-        """Print out the sweep table at sweep table indices i,
-        formatted as an actual table instead of just a dict.
-        Only Variables are included (non-varying dynamic params are left out).
-        If i is left as None, prints the basic sorted sweep table"""
+        """Print out the sweep table at sweep table indices i, formatted as an actual table
+        instead of just a dict. Only Variables are included (non-varying dynamic params are
+        left out). If i is left as None, prints the basic sorted sweep table"""
         print(self._pprint(i))
 
     def _pprint(self, i=None):
         """Return a string representation of the sweep table at sweep table indices i,
-        formatted as an actual table instead of just a dict.
-        Only Variables are included (non-varying dynamic params are left out).
-        If i is left as None, prints the basic sorted sweep table"""
+        formatted as an actual table instead of just a dict. Only Variables are included
+        (non-varying dynamic params are left out). If i is left as None, prints the basic
+        sorted sweep table"""
         f = StringIO() # create a string file-like object
         f.write('i\t') # sweep table index label
         for dim in self.dimensions:
             for var in dim.variables:
                 f.write('%s\t' % var.name) # column label
         if i == None:
-            # sweep table will always have at least one value per dynamic parameter, see self.build()
-            i = range(len(self.data.values()[0])) # default to printing one Run's worth of the table in sorted order
+            # sweep table will always have at least one value per dynamic parameter,
+            # see self.build(). Default to printing one Run's worth of the table in sorted
+            # order:
+            i = range(len(self.data.values()[0]))
         for ival in i:
             f.write('\n')
             f.write('%s\t' % ival) # sweep table index
@@ -227,7 +242,8 @@ class SweepTable(object):
                     if ival == None: # blank sweep
                         f.write('%s\t' % None)
                     else:
-                        f.write('%s\t' % self.data[var.name][ival]) # variable value at sweep table index
+                        # variable value at sweep table index:
+                        f.write('%s\t' % self.data[var.name][ival])
         return f.getvalue()
 
 
