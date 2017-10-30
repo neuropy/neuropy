@@ -18,7 +18,8 @@ import matplotlib.pyplot as plt
 #rec = nts174.tr2.r05
 #rec = pvc107.tr1.r09
 #rec = pvc113.tr1.r11
-rec = pvc1706.tr3.r03
+#rec = pvc1706.tr3.r03
+rec = pvc1708.tr9.r07
 
 nids = None
 #nids = [17, 20, 40, 94]
@@ -81,6 +82,8 @@ try:
     p = e.p # mouse stim params dict
 except AttributeError:
     p = None
+
+hasopto = False
 if p: # mouse recording with potentially interleaved movie trials and opto
     # trialiss is 2D array, each row is trial indices for its matching movie:
     trialiss = p['seqnums'] - 1 # convert seqnums from 1-based to 0-based
@@ -89,6 +92,7 @@ if p: # mouse recording with potentially interleaved movie trials and opto
     # handle opto trials:
     if len(movienames) != len(umovienames):
         # some movies were displayed multiple times, probably in combination with opto stim:
+        hasopto = True
         optopari, = np.where(p['parnames'] == 'opto')
         optovals = p['pars'][optopari]
         uoptovals = np.unique(optovals)
@@ -223,7 +227,8 @@ for trialtypei, (trialis, moviename) in enumerate(zip(trialiss, movienames)):
         else:
             a.set_yticks([]) # turn off y ticks
         titlestr = rec.absname + '_' + moviename + '_n%d' % neuron.id
-        if trialtypei == 1: # assume second row in trialiss (if any) is the opto trials
+        if hasopto and trialtypei == 1:
+            # assume second row in trialiss (if any) is the opto trials
             titlestr += '_opto'
         gcfm().window.setWindowTitle(titlestr)
         if title:
