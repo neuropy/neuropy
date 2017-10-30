@@ -82,8 +82,17 @@ class BaseRecording(object):
     absname = property(get_absname)
 
     def get_id(self):
-        # return the first word in the name, using -, _ and whitespace as separators
-        return self.name.split('-')[0].split('_')[0].split(' ')[0]
+        # get the first field in the name, using -, _ and whitespace as separators:
+        firstfield = self.name.split('-')[0].split('_')[0].split(' ')[0]
+        # get numeric part of the last field in the name, _ as separator:
+        lastfield = self.name.split('_')[-1]
+        lastfieldnum = lastfield.lstrip('e')
+        if firstfield[0].isdigit():
+            return firstfield
+        elif lastfieldnum.isnumeric():
+            return lastfieldnum
+        else:
+            raise ValueError("Don't know how to parse recording ID from name %r" % self.name)
 
     id = property(get_id)
 

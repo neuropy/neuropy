@@ -76,10 +76,18 @@ class Track(object):
         # print string to tree hierarchy and screen
         self.writetree(treestr + '\n')
         print(treestr)
-        # collect recording names: 1st char of each name must be a digit, that's all:
-        rnames = [ name for name in os.listdir(self.path)
-                   if os.path.isdir(os.path.join(self.path, name))
-                   and name[0].isdigit() ]
+        dirnames = [ name for name in os.listdir(self.path)
+                     if os.path.isdir(os.path.join(self.path, name)) ]
+        # collect recording names: either the 1st char of each name must be a digit,
+        # or the last _ separated field must be an 'e' (for 'experiment') followed by a number:
+        rnames = []
+        for dirname in dirnames:
+            if dirname[0].isdigit():
+                rnames.append(dirname)
+            else:
+                lastfield = dirname.split('_')[-1]
+                if lastfield[0] == 'e' and lastfield[1:].isnumeric():
+                    rnames.append(dirname)
         rnames.sort() # alphabetical order
         dt = 0 # calculate total track duration by summing durations of all recordings
         # does this track have any missing sorts, or rely on old impoverished .spk files?:
