@@ -321,15 +321,15 @@ class LFP(object):
         return P, freqs
         
     def specgram(self, t0=None, t1=None, f0=0.1, f1=100, p0=-60, p1=None, chanis=-1,
-                 width=None, tres=None, cm='jet', colorbar=False, states=False, lw=4, alpha=1,
-                 relative2t0=False, lim2stim=False, title=True, reclabel=True,
-                 figsize=None):
+                 width=None, tres=None, cm='jet', colorbar=False,
+                 showstates=False, lw=4, alpha=1, relative2t0=False, lim2stim=False,
+                 title=True, reclabel=True, swapaxes=False, figsize=None):
         """Plot a spectrogram from t0 to t1 in sec, from f0 to f1 in Hz, and clip power values
         from p0 to p1 in dB, based on channel index chani of LFP data. chanis=0 uses most
         superficial channel, chanis=-1 uses deepest channel. If len(chanis) > 1, take mean of
         specified chanis. width and tres are in sec. As an alternative to cm.jet (the
         default), cm.gray, cm.hsv cm.terrain, and cm.cubehelix_r colormaps seem to bring out
-        the most structure in the spectrogram. states controls whether to plot lines
+        the most structure in the spectrogram. showstates controls whether to plot lines
         demarcating desynchronized and synchronized periods. relative2t0 controls whether to
         plot relative to t0, or relative to start of ADC clock. lim2stim limits the time range
         only to when a stimulus was on screen, i.e. to the outermost times of non-NULL din"""
@@ -377,6 +377,7 @@ class LFP(object):
             f0 = freqs[0]
         if f1 == None:
             f1 = freqs[-1]
+        df = f1 - f0
         lo, hi = freqs.searchsorted([f0, f1])
         P, freqs = P[lo:hi], freqs[lo:hi]
         # check for and replace zero power values (ostensibly due to gaps in recording)
@@ -393,21 +394,38 @@ class LFP(object):
         if p1 != None:
             P[P > p1] = p1
         #self.P = P
-        # plot horizontal lines demarcating desynched and synched periods:
-        REC2STATETRANGES = uns['REC2STATETRANGES']
-        if states:
-            dtrange, strange = np.asarray(REC2STATETRANGES[self.r.absname]) / 1e6
-            dtrange = max(dtrange[0], t0), min(dtrange[1], t1) # clip desynch trange to t0, t1
-            strange = max(strange[0], t0), min(strange[1], t1) # clip synch trange to t0, t1
-            if relative2t0:
-                 dtrange = dtrange - t0
-                 strange = strange - t0
-            df = f1 - f0
-            # plot horizontal lines just below x axis:
-            a.hlines(f0-df*0.015, dtrange[0], dtrange[1], colors='b', lw=lw, alpha=alpha,
-                     clip_on=False)
-            a.hlines(f0-df*0.015, strange[0], strange[1], colors='r', lw=lw, alpha=alpha,
-                     clip_on=False)
+
+        # plot horizontal bars over time demarcating different ranges of SI values,
+        # or manually defined desynched and synched periods:
+        statelinepos = f0 - df*0.015 # plot horizontal bars just below x axis
+        if showstates:
+            if showstates in [True, 'auto']:
+                print("TODO: there's an offset plotting bug for 'auto', compare with 'manual'")
+                si, t = self.si(plot=False)
+                stranges, states = self.si_split(si, t) # sec
+                STATECOLOURS = uns['LFPPRBINCOLOURS']
+            elif showstates == 'manual':
+                stranges, states = [], []
+                for state in uns['MANUALSTATES']:
+                    for strange in uns['REC2STATE2TRANGES'][self.r.absname][state]:
+                        stranges.append(strange)
+                        states.append(state)
+                stranges = np.vstack(stranges) # 2D array
+                STATECOLOURS = uns['MANUALSTATECOLOURS']
+            else:
+                raise ValueError('invalid value showstates=%r' % showstates)
+            # clip stranges to t0, t1:
+            stranges[0, 0] = max(stranges[0, 0], t0)
+            stranges[-1, 1] = min(stranges[-1, 1], t1)
+            if swapaxes:
+                lines = a.vlines
+            else:
+                lines = a.hlines
+            for strange, state in zip(stranges, states):
+                clr = STATECOLOURS[state]
+                lines(statelinepos, strange[0], strange[1], colors=clr, lw=lw, alpha=alpha,
+                      clip_on=False)
+
         # Label far left, right, top and bottom edges of imshow image. imshow interpolates
         # between these to place the axes ticks. Time limits are
         # set from midpoints of specgram time bins
