@@ -140,6 +140,9 @@ class BaseExperiment(object):
         self.trange = self.t0s[0], self.t1s[-1]
         self.ttranges = np.vstack([self.t0s, self.t1s]).T
 
+    def load_runspeed_mat(self, path):
+        self.runspeed = loadmat(path, squeeze_me=True) # dict
+
     def get_nonnulltrange(self):
         """Find outermost non-NULL din times, such as at the end and beginning of pre and post
         experiment periods of blank screen, respectively"""
