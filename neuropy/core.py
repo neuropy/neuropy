@@ -3331,7 +3331,7 @@ def pathdecomp(path):
     return path.split(os.path.sep)
 
 def eof(f):
-    """Return whether file pointer is a end of file"""
+    """Return whether file pointer is at end of file"""
     orig = f.tell()
     f.seek(0, 2) # seek 0 bytes from end
     return f.tell() == orig

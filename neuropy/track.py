@@ -244,7 +244,8 @@ class Track(object):
             allnids = [ list(self.r[rid].alln) for rid in rids ]
             return core.intersect1d(allnids, assume_unique=True)
 
-    def pospdfrec(self, neurons=None, rids=None, dim='y', nbins=10, a=None, figsize=(7.5, 6.5)):
+    def pospdfrec(self, neurons=None, rids=None, dim='y', nbins=10, a=None,
+                  figsize=(7.5, 6.5)):
         """Plot PDF of cell positions ('x' or 'y') along the polytrode
         for each recording to get an idea of how cells are distributed in space,
         and how that changes from one recording to the next"""
