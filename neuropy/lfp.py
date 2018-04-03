@@ -766,8 +766,7 @@ class LFP(object):
                          showtitle=showtitle, title=title,
                          reclabel=reclabel, hlines=hlines,
                          showstates=showstates, statelinepos=statelinepos, lw=lw,
-                         alpha=alpha, relative2t0=relative2t0, swapaxes=swapaxes,
-                         figsize=figsize)
+                         alpha=alpha, swapaxes=swapaxes, figsize=figsize)
         #np.seterr(**old_settings) # restore old settings
         return si, t # t are midpoints of bins, offset depends on relative2t0
     '''
@@ -816,7 +815,7 @@ class LFP(object):
                 ylabel=None, showxlabel=True, showylabel=True, showtitle=True,
                 title=None, reclabel=True, hlines=[0], showstates=False,
                 statelinepos=None, lw=4, alpha=1,
-                relative2t0=False, swapaxes=False, figsize=None):
+                swapaxes=False, figsize=None):
         """Plot synchrony index as a function of time, with hopefully the same
         temporal scale as some of the other plots in self"""
         uns = get_ipython().user_ns
@@ -841,32 +840,26 @@ class LFP(object):
             for hline in hlines:
                 a.axhline(y=hline, c='e', ls='--', marker=None)
 
-        # plot lines over time demarcating different ranges of SI values, or manually
-        # defined desynched and synched periods:
+        # plot horizontal bars over time demarcating different ranges of SI values,
+        # or manually defined desynched and synched periods:
         if showstates in [True, 'auto']:
-            tranges, states = self.si_split(si, t)
-            if relative2t0:
-                 tranges = tranges - t0
+            stranges, states = self.si_split(si, t)
             if swapaxes:
                 lines = a.vlines
             else:
                 lines = a.hlines
             slposs = statelinepos
             if len(slposs) == 1: # use same statelinepos for all states
-                nstates = len(states)
-                slposs = slposs * nstates
-            for trange, state in zip(tranges, states):
-                slpos = slposs[state]
+                nstranges = len(stranges)
+                slposs = slposs * nstranges
+            for strange, state, slpos in zip(stranges, states, slposs):
                 clr = uns['LFPPRBINCOLOURS'][state]
-                lines(slpos, trange[0], trange[1], colors=clr, lw=lw, alpha=alpha)
+                lines(slpos, strange[0], strange[1], colors=clr, lw=lw, alpha=alpha)
         elif showstates == 'manual':
             REC2STATETRANGES = uns['REC2STATETRANGES']
             dtrange, strange = np.asarray(REC2STATETRANGES[self.r.absname]) / 1e6
             dtrange = max(dtrange[0], t0), min(dtrange[1], t1) # clip desynch trange to t0, t1
             strange = max(strange[0], t0), min(strange[1], t1) # clip synch trange to t0, t1
-            if relative2t0:
-                 dtrange = dtrange - t0
-                 strange = strange - t0
             if swapaxes:
                 lines = a.vlines
             else:
@@ -878,7 +871,7 @@ class LFP(object):
             lines(slposs[1], strange[0], strange[1], colors='r', lw=lw, alpha=alpha)
 
         a.plot(t, si, 'k-')
-        # depending on relative2t0 above, x=0 represents either t0 or time ADC clock started:
+        # depending on relative2t0 in si(), x=0 represents either t0 or time ADC clock started:
         a.set_xlim(xlim) # low/high limits are unchanged if None
         a.set_ylim(ylim)
         if yticks != None:
