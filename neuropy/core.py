@@ -3334,7 +3334,9 @@ def eof(f):
     """Return whether file pointer is at end of file"""
     orig = f.tell()
     f.seek(0, 2) # seek 0 bytes from end
-    return f.tell() == orig
+    new = f.tell()
+    f.seek(orig) # restore original file pointer position
+    return new == orig
 
 def td2usec(td):
     """Convert datetime.timedelta to microseconds"""
